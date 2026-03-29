@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>이벤트 상점 완결판 (클래식 RPG & 마스터 에디션)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        /* === 공통 스타일 === */
+        :root { --bg:#FFFDF2; --main:#FFB366; --act:#FF9F43; --dark:#5D4037; --shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        * { box-sizing:border-box; }
+        body { font-family:'Jua'; background:var(--bg); margin:0; background-image: radial-gradient(#FFE4B5 3px, transparent 3px); background-size: 40px 40px; display:flex; justify-content:center; height:100vh; overflow:hidden; color:var(--dark); }
+        ::-webkit-scrollbar { width: 12px; height: 12px; }
+        ::-webkit-scrollbar-track { background: #FFF3E0; border-radius: 10px; margin: 5px; }
+        ::-webkit-scrollbar-thumb { background: #FFB74D; border-radius: 10px; border: 3px solid #FFF3E0; }
+        .hidden { display:none!important; }
+        
+        .btn { border:none; padding:12px 20px; border-radius:25px; cursor:pointer; font-family:'Jua'; font-size:16px; color:white; background:var(--main); box-shadow: 0 4px 0 rgba(0,0,0,0.1); transition:0.1s; position:relative; z-index:2; white-space: nowrap; }
+        .btn:active { transform:translateY(2px); box-shadow:none; }
+        .btn-org { background:var(--act); } .btn-red { background:#EF5350; } .btn-blue { background:#42A5F5; } .btn-green { background:#66BB6A; } .btn-gray { background:#90A4AE; }
+        
+        input, select, textarea { padding:12px 15px; border:3px solid #FFE0B2; border-radius:20px; font-family:'Jua'; width:100%; margin-bottom:10px; font-size:16px; background:#FFFDF9; outline:none; }
+        input:focus { border-color:var(--act); background:white; }
+        
+        .app { display:flex; width:95vw; height:95vh; background:white; border-radius:30px; border:5px solid white; box-shadow:var(--shadow); margin-top:2.5vh; overflow:hidden; }
+        .side { width:240px; background:#FFF8E1; padding:20px; border-right:3px dashed #FFE0B2; overflow-y:auto; display: flex; flex-direction: column; }
+        .cont { flex:1; padding:30px; overflow-y:auto; background:#FAFAFA; position:relative; }
+        .menu { padding:15px 12px; margin-bottom:10px; cursor:pointer; border-radius:15px; color:#8D6E63; font-size:24px; font-weight:bold; transition:0.2s; }
+        .menu.on { background:var(--act); color:white; font-weight:900; box-shadow:0 4px 10px rgba(255, 159, 67, 0.4); }
+        .card { background:white; padding:15px; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom:15px; border:2px solid #F5F5F5; position:relative; }
+        .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; align-items: start; }
+        
+        /* 교사용 테이블 */
+        table { width:100%; border-collapse:separate; border-spacing:0 5px; font-size:14px; text-align:center; }
+        #appT th { background:#4E342E !important; color:white !important; padding:10px; cursor: pointer; user-select: none; border-radius: 5px; }
+        th { background:var(--dark); color:white; padding:10px; cursor: pointer; user-select: none; }
+        td { background:white; padding:8px; border-top:1px solid #eee; border-bottom:1px solid #eee; }
+        td:first-child { border-left:1px solid #eee; border-radius:10px 0 0 10px; }
+        td:last-child { border-right:1px solid #eee; border-radius:0 10px 10px 0; }
+        .qty-input { width:60px; text-align:center; padding:5px; font-weight:bold; color:var(--dark); }
+
+        /* === 도감 (양피지) === */
+        .parchment-scroll { background: #FDF3D5; background-image: repeating-linear-gradient(transparent, transparent 40px, rgba(139, 69, 19, 0.04) 40px, rgba(139, 69, 19, 0.04) 42px); border-left: 2px solid #E0C097; border-right: 2px solid #E0C097; position: relative; padding: 40px 30px; box-shadow: inset 0 0 50px rgba(139, 69, 19, 0.15), 5px 15px 20px rgba(0,0,0,0.1); min-height: 80vh; display: flex; flex-direction: column; margin: 25px 15px; border-radius: 8px;}
+        .parchment-scroll::before, .parchment-scroll::after { content: ''; position: absolute; left: -15px; width: calc(100% + 30px); height: 40px; background: linear-gradient(to bottom, #8D6E63, #5D4037, #3E2723); border-radius: 20px; box-shadow: 0 5px 10px rgba(0,0,0,0.3), inset 0 2px 3px rgba(255,255,255,0.15); border: 2px solid #212121; z-index: 10; }
+        .parchment-scroll::before { top: -20px; } .parchment-scroll::after { bottom: -20px; }
+        .parchment-cap { position: absolute; width: 46px; height: 46px; background: #FFC107; border-radius: 50%; border: 3px solid #3E2723; box-shadow: inset -4px -4px 6px rgba(0,0,0,0.3), 3px 3px 8px rgba(0,0,0,0.4); z-index: 11; }
+        .cap-tl { top: -23px; left: -25px; } .cap-tr { top: -23px; right: -25px; } .cap-bl { bottom: -23px; left: -25px; } .cap-br { bottom: -23px; right: -25px; }
+        
+        .quest-slot { background: rgba(255,255,255,0.5); border: 2px dashed #D7CCC8; border-radius: 15px; padding: 15px 10px; text-align: center; position: relative; transition: 0.3s; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2; aspect-ratio: 1/1; }
+        .quest-slot.achieved { background: rgba(255,255,255,0.9); border: 2px solid #FFC107; box-shadow: inset 0 0 15px rgba(255, 193, 7, 0.2), 3px 3px 8px rgba(0,0,0,0.05); }
+        .quest-icon { width: 80px; height: 80px; font-size: 70px; line-height: 80px; margin-bottom: 10px; display:flex; justify-content:center; align-items:center; }
+        .quest-icon img { width:100%; height:100%; object-fit:contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.1)); }
+        .unknown-icon { filter: grayscale(100%) opacity(0.2); }
+        .stamp-clear { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-20deg); color: #E53935; font-size: 30px; font-weight: 900; letter-spacing: 2px; border: 4px solid #E53935; border-radius: 10px; padding: 5px 15px; opacity: 0.85; pointer-events: none; z-index: 10; box-shadow: inset 0 0 4px rgba(229, 57, 53, 0.3), 0 0 4px rgba(229, 57, 53, 0.3); background: rgba(255,255,255,0.7); }
+
+        /* === 로그인 화면 === */
+        #login { position:absolute; width:100%; height:100%; background:var(--bg); z-index:999; display:flex; justify-content:center; align-items:center; background-image: radial-gradient(#FFE4B5 3px, transparent 3px); background-size: 40px 40px; }
+        .login-box h1 { font-size: 64px; color: #5D4037; margin-top: 20px; margin-bottom: 40px; text-shadow: 2px 2px 0px rgba(0,0,0,0.05); }
+        .login-box { background: white; padding: 60px; border-radius: 40px; width: 550px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.08); border: 5px solid #FFF; }
+        .cookie-logo { font-size: 120px; margin-bottom: 10px; display: inline-block; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.15)); }
+        .login-btn-group { display: flex; gap: 10px; margin-bottom: 25px; background: #EEEEEE; padding: 5px; border-radius: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; cursor: pointer; background: transparent; font-family: 'Jua'; font-size: 16px; border-radius: 15px; margin: 0; color: #7f8c8d; transition: 0.2s; }
+        .tab-btn.active { background: var(--act); color: white; transform: scale(1.0); box-shadow: 0 4px 10px rgba(255, 159, 67, 0.3); font-weight: bold; }
+        .login-input { padding: 15px; border: 2px solid #FFE0B2; border-radius: 15px; font-family: 'Jua'; width: 100%; font-size: 16px; background: #FFFDF9; outline: none; text-align: center; margin-bottom: 15px; }
+        .login-action-btn { width: 100%; padding: 15px; font-size: 20px; border-radius: 15px; cursor: pointer; color: white; background: var(--act); border: none; box-shadow: 0 4px 0 rgba(0,0,0,0.1); font-family: 'Jua'; transition: 0.1s; }
+
+      /* 모험가 자격증 배경 및 캐릭터 박스 화이트톤 수정 */
+        .rpg-stat-box { background: white !important; border: 4px solid #FFB300; border-radius: 20px; box-shadow: 0 6px 0 #FFE0B2; color: #5D4037; margin-bottom: 25px; overflow: hidden; position: relative; }
+        .rpg-stat-header { background: #FFB300; color: white; font-size: 16px; font-weight: bold; padding: 10px 0; text-align: center; border-bottom: 2px dashed #FFF; letter-spacing: 1px; }
+        .rpg-stat-content { padding: 15px; display: flex; align-items: center; gap: 15px; background: white; }
+        
+        .rpg-character-box { width: 95px; height: 105px; background: white !important; border: 3px solid #FFE0B2; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
+        .rpg-stars { position: absolute; bottom: -12px; font-size: 18px; color: #FFB300; text-shadow: 1px 1px 0 #5D4037; letter-spacing: -2px; width: 100%; text-align: center; z-index: 5; }
+        .rpg-avatar { font-size: 65px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.1)); margin-bottom: 5px;}
+        
+        .rpg-info-box { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .rpg-name { font-size: 32px; font-weight: 900; color: #5D4037; margin-bottom: 10px; text-align: center; }
+        .rpg-wealth { display: flex; justify-content: space-between; align-items: center; background: #FFFDF2; padding: 10px 15px; border-radius: 12px; border: 2px solid #FFE0B2; }
+        .rpg-wealth-label { font-size: 12px; color: #8D6E63; font-weight:bold; }
+        .rpg-wealth-value { font-size: 24px; color: #FF9800; font-weight: 900; }
+        
+        .npc-speech { background: white; border: 3px solid #FFCA28; border-radius: 20px; padding: 15px 25px; margin-bottom: 45px; position: relative; color: #5D4037; font-weight: bold; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .npc-speech::after { content: ''; position: absolute; bottom: -15px; left: 40px; border-width: 15px 15px 0 0; border-style: solid; border-color: #FFCA28 transparent transparent transparent; }
+
+        /* === 상점 렌더링 세팅 === */
+        #s_sh { background-color: #5D4037 !important; background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 40px), linear-gradient(to bottom, #6D4C41, #4E342E) !important; padding: 50px 30px; border-radius: 25px; border: 8px solid #3E2723; box-shadow: inset 0 0 80px rgba(0,0,0,0.7); }
+        .shop-section { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 70px !important; position: relative; }
+        #s_sh .grid { position: relative; margin-top: 50px !important; z-index: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; gap: 50px 20px !important; }
+        
+        .shop-toggle-bar { display: flex; width: 450px; margin: 0 auto 40px auto; background: repeating-linear-gradient(to bottom, #4E342E 0px, #4E342E 5px, #3E2723 5px, #3E2723 10px); border: 4px solid #2A1A17; border-radius: 40px; box-shadow: 0 8px 15px rgba(0,0,0,0.5), inset 0 2px 8px rgba(0,0,0,0.8); position: relative; z-index: 10; padding: 6px; }
+        .tab-slider { position: absolute; top: 6px; left: 6px; width: calc(50% - 6px); height: calc(100% - 12px); background: repeating-linear-gradient(to bottom, #D4A373 0px, #D4A373 5px, #BC8A5F 5px, #BC8A5F 10px); border: 2px solid #8D6E63; border-radius: 30px; box-shadow: 0 4px 0 #8D6E63, 0 5px 10px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1; }
+        .shop-tab { flex: 1; text-align: center; padding: 12px 0; font-size: 20px; font-weight: 900; cursor: pointer; z-index: 2; color: #A1887F; text-shadow: 1px 1px 1px rgba(0,0,0,0.5); transition: color 0.3s; }
+        .shop-tab.tab-active { color: #4E342E; text-shadow: 1px 1px 0px rgba(255,255,255,0.4); }
+
+        .shop-card { width: 220px !important; height: 310px !important; background: linear-gradient(to bottom, #5D4037, #3E2723) !important; border: 4px solid #2A1A17 !important; border-bottom: 12px solid #1A0F0D !important; border-radius: 110px 110px 12px 12px !important; box-shadow: inset 0 35px 40px rgba(0,0,0,0.95), inset 0 0 15px rgba(0,0,0,0.6), 0 8px 15px rgba(0,0,0,0.4) !important; padding: 0 !important; display: block !important; position: relative !important; margin: 0 auto !important; overflow: hidden !important; cursor: pointer; transition: transform 0.2s; }
+        .shop-card:hover { transform: translateY(-5px); z-index: 9999 !important; }
+        
+        .click-catcher { position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; z-index: 100 !important; cursor: pointer; }
+        
+        .shop-card-content { position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; padding-top: 115px !important; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 10 !important; pointer-events: none !important; text-align: center; }
+        .shop-card::before { content: ''; position: absolute; top: 0 !important; left: 50%; transform: translateX(-50%); width: 30px !important; height: 15px !important; background: radial-gradient(circle at 50% 10%, #FFF9C4, #FFC107 60%, #FF9800); border: 3px solid #1A0F0D !important; border-top: none !important; border-radius: 0 0 15px 15px !important; box-shadow: 0 4px 10px rgba(255, 193, 7, 0.8) !important; z-index: 4; }
+        .shop-card::after { content: ''; position: absolute; top: 30px !important; left: -10% !important; width: 120% !important; height: 60px !important; border-radius: 50% !important; border-bottom: 4px solid rgba(0, 0, 0, 0.5) !important; pointer-events: none; z-index: 1 !important; box-shadow: 0 220px 0 0 rgba(0,0,0,0.3) !important; }
+        
+        .shop-card-content::before, .shop-card-content::after { content: ''; position: absolute; top: 15px !important; left: 50%; width: 70px !important; height: 280px !important; background: linear-gradient(to bottom, rgba(255, 240, 150, 0.25) 0%, rgba(255, 240, 150, 0) 100%) !important; transform-origin: top center; filter: blur(8px) !important; pointer-events: none; z-index: -1; }
+        .shop-card-content::before { transform: translateX(-50%) rotate(-22deg) !important; }
+        .shop-card-content::after { transform: translateX(-50%) rotate(22deg) !important; }
+        
+        .shop-title { position: absolute !important; top: 70px !important; left: 0 !important; color: #FFF !important; text-shadow: 2px 2px 3px #000 !important; font-weight: bold; font-size: 24px !important; width: 100% !important; text-align: center !important; margin: 0 !important; }
+        
+        /* 가챠 이미지 중앙 정렬 및 호버 효과 */
+        .item-shiny { font-size: 110px !important; width: 110px !important; height: 110px !important; object-fit: contain !important; line-height: 1 !important; filter: drop-shadow(0 0 15px gold) !important; display: flex !important; justify-content: center !important; align-items: center !important; margin: 0 auto !important; transition: transform 0.3s; }
+        .shop-card:hover .shop-card-content { transform: translateY(-8px); }
+        .shop-card:hover .item-shiny { transform: scale(1.1) !important; filter: drop-shadow(0 0 25px #FF5722) !important; }
+        
+        .pedestal { position: absolute !important; bottom: 15px !important; left: 0 !important; right: 0 !important; margin: 0 auto !important; width: 170px !important; height: 55px !important; background: repeating-linear-gradient(90deg, #D4A373 0px, #D4A373 20px, #BC8A5F 20px, #BC8A5F 40px) !important; border: 3px solid #2A1A17 !important; border-radius: 0 0 85px 85px / 0 0 25px 25px !important; box-shadow: 0 10px 15px rgba(0,0,0,0.8) !important; z-index: 2 !important; pointer-events: none !important; }
+        .pedestal-top { position: absolute; top: -12px; left: -3px; right: -3px; height: 24px !important; background: #E6B88A; border: 3px solid #2A1A17; border-radius: 50%; }
+        .ped-gold { background: repeating-linear-gradient(90deg, #FFCA28 0px, #FFCA28 20px, #FFB300 20px, #FFB300 40px) !important; }
+        .ped-gold .pedestal-top { background: #FFE082 !important; }
+        .shop-card .btn-price { position: absolute !important; top: 50% !important; left: 50% !important; transform: translate(-50%, -20%) !important; background: transparent !important; border: none !important; box-shadow: none !important; color: #FFF !important; font-size: 25px !important; font-weight: 900 !important; font-family: 'Jua', sans-serif !important; text-shadow: 1px 1px 3px rgba(0,0,0,0.9), -1px -1px 0 rgba(0,0,0,0.6) !important; width: 100% !important; text-align: center !important; z-index: 5 !important; padding: 0 !important; margin: 0 !important; pointer-events: none !important; }
+
+        /* === 모달 및 오버레이 === */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .g-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:3000; display:flex; justify-content:center; align-items:center; flex-direction:column; }
+        .modal-window { background: #5D4037 !important; border: 4px solid #3E2723 !important; border-radius: 25px !important; padding: 10px !important; box-shadow: 0 15px 35px rgba(0,0,0,0.5) !important; width: 380px !important; text-align: center !important; position: relative !important; animation: popUp 0.3s ease-out !important; }
+        .modal-inner { background: #FFF8E1 !important; border-radius: 18px !important; padding: 30px 20px !important; border: 3px solid #D7CCC8 !important; }
+        .modal-title { font-size: 28px !important; color: #4E342E !important; margin: 0 0 20px 0 !important; font-weight: 900 !important; }
+        .modal-icon { font-size: 70px !important; margin-bottom: 15px !important; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.2)) !important; display: flex; justify-content: center; align-items: center; }
+        .modal-icon img { width: 100%; height: 100%; object-fit: contain; }
+        .modal-btn-group { display: flex !important; gap: 10px !important; justify-content: center !important; margin-top: 20px !important; }
+        .modal-btn-group button { flex: none !important; width: 60% !important; padding: 15px !important; font-size: 20px !important; border-radius: 15px !important; cursor: pointer; }
+        .modal-close-btn { position: absolute; top: 15px !important; right: 15px !important; width: 35px; height: 35px; background: #8D6E63 !important; color: white; border: 2px solid #5D4037; border-radius: 50%; font-size: 20px; font-weight: bold; line-height: 1; cursor: pointer; z-index: 20; box-shadow: inset 0 2px 5px rgba(255,255,255,0.2), 0 2px 5px rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center; transition: transform 0.1s; }
+        .modal-close-btn:hover { transform: scale(1.1); background: #A1887F !important; }
+
+        @keyframes popUp { from{transform:scale(0.8);opacity:0;} to{transform:scale(1);opacity:1;} }
+        @keyframes floatTrophy { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+
+        /* 기타 아이템 관리 디자인 */
+        .asset { background:white; border:3px solid #eee; border-radius:20px; padding:10px; text-align:center; cursor:pointer; transition:0.2s; position:relative; aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .asset:hover { transform:translateY(-3px); border-color:var(--main); }
+        .asset.sel { border-color:#EF5350; background:#FFCDD2; box-shadow: 0 0 10px rgba(239, 83, 80, 0.5); }
+        .asset.req { border-color:#EF5350; background:#FFEBEE; animation:pulse 1s infinite; }
+        .asset.used { background-color: #E0E0E0 !important; border-color: #BDBDBD !important; filter: grayscale(100%); opacity: 0.7; }
+        .asset .del-btn { position: absolute; top: -8px; right: -8px; background: #EF5350; color: white; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px; cursor: pointer; display: none; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: bold; }
+        .asset:hover .del-btn { display: block; }
+        
+        #t_set .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } 
+        #t_set .asset { padding: 10px; overflow: hidden; justify-content: center; align-items: center; }
+        .huge-emoji { font-size: 60px; line-height: 1; margin-bottom: 10px; }
+        #t_set .asset .info { width: 100%; background: rgba(255,255,255,0.9); padding: 5px; font-size: 14px; font-weight: bold; border-top: 1px solid #eee; }
+
+        .col-cell-wrap { display: flex; flex-wrap: wrap; gap: 4px; max-width: 400px; }
+        .col-chip { width: 40px; height: 40px; border-radius: 8px; display: inline-flex; justify-content: center; align-items: center; border: 2px solid #ddd; background: #eee; cursor: help; font-size: 24px; margin: 2px; transition: 0.2s; }
+        .col-chip.has { border: 2px solid rgba(0,0,0,0.1); background: white; }
+        .col-chip.not-has { filter: grayscale(100%); opacity: 0.2; }
+        .col-chip img { width: 30px; height: 30px; object-fit: contain; }
+
+        /* === 학생 페이지 인벤토리 (RPG 탭 스타일 & 큰 이미지) === */
+        .stardew-tabs { display: flex; gap: 5px; padding-left: 15px; margin-bottom: -4px; position: relative; z-index: 10; }
+        .sd-tab { background: #E6C280; border: 4px solid #C4803D; border-bottom: none; padding: 10px 20px; border-radius: 12px 12px 0 0; cursor: pointer; font-weight: bold; color: #5D4037; font-size: 18px; transition: 0.2s; box-shadow: inset 0 2px 5px rgba(255,255,255,0.4); }
+        .sd-tab:hover { background: #FAD69E; }
+        .sd-tab.active { background: #F5F5F5; padding-top: 14px; margin-top: -4px; border-bottom: 4px solid #F5F5F5; z-index: 11; }
+
+       /* 가방 슬롯 크기 2배 확대 및 꽉 찬 정사각형 고정 */
+        #s_iv { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; background: #F5F5F5; padding: 25px; border-radius: 0 15px 15px 15px; border: 4px solid #C4803D; box-shadow: inset 0 0 15px rgba(0,0,0,0.1); position: relative; z-index: 5; }
+        
+        .inventory-slot { width: 100%; aspect-ratio: 1 / 1; background: #E0D5C1; border: 3px solid #BCAAA4; border-radius: 12px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1); transition: 0.2s; cursor: pointer; padding: 10px; overflow: hidden; }
+        
+        .inventory-slot.has-item { background: white; border-color: #8D6E63; }
+        .inventory-slot.has-item:hover { transform: scale(1.05); border-color: var(--act); z-index: 5; }
+        .inventory-slot.c-A { border-color: #FFC107; background: #FFFDE7; }
+        .inventory-slot.c-B { border-color: #42A5F5; background: #E3F2FD; }
+        
+        /* 이미지 및 이모지 크기도 2배 확대 */
+        .inventory-slot img { width: 100px; height: 100px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.15)); }
+        .inventory-slot .slot-emoji { font-size: 90px; line-height: 100px; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.15)); }
+        
+        .item-count { position: absolute; bottom: 8px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 2px 10px; border-radius: 8px; font-size: 16px; font-weight: bold; }
+        .inventory-slot.is-used { filter: grayscale(100%); opacity: 0.5; background: #D7CCC8; border-color: #A1887F; cursor: not-allowed; }
+        #appS .side { width: 360px; padding: 30px; }
+        #appS .menu { font-size: 36px; padding: 25px 20px; margin-bottom: 18px; border-radius: 20px; }
+        #appS .side .btn { font-size: 24px; padding: 18px; border-radius: 25px; }
+
+        /* 게임 이펙트 (스크래치, 카드, 로또) */
+        .scratch-container { position: relative; width: 300px; height: 350px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: popUp 0.3s; }
+        .scratch-result { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
+        #scratchCanvas { position: absolute; top: 0; left: 0; z-index: 2; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewport="0 0 96 96" style="fill:gold;stroke:orange;stroke-width:3px;"><circle cx="48" cy="48" r="40" /><text x="50%" y="50%" dy=".3em" text-anchor="middle" font-size="60">₩</text></svg>') 48 48, auto; }
+        
+        .card-stage { display: flex; justify-content: center; gap: 50px; align-items: center; height: 450px; perspective: 1000px; }
+        .flip-card-wrapper { width: 195px; height: 270px; position: relative; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; }
+        .flip-card-wrapper:hover { transform: translateY(-10px); }
+        .flip-card-wrapper.flipped { transform: rotateY(180deg) scale(1.15); z-index: 100; pointer-events: none; }
+        .flip-card-wrapper.flipped .flip-card-back { background: #FFFDE7; border-color: #FFD700; box-shadow: 0 0 30px rgba(255, 215, 0, 0.8); }
+        .flip-card-wrapper.flipped-missed { transform: rotateY(180deg) scale(0.9); pointer-events: none; }
+        .flip-card-wrapper.flipped-missed .flip-card-back { filter: grayscale(100%); opacity: 0.8; background: #EEEEEE; }
+        .flip-card-wrapper.flipped .flip-card-front, .flip-card-wrapper.flipped-missed .flip-card-front { opacity: 0; transition: opacity 0.2s; }
+        .pass-stamp { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); border: 5px solid #555; color: #555; font-size: 48px; font-weight: 900; padding: 5px 10px; border-radius: 8px; opacity: 0.8; z-index: 10; font-family: sans-serif; letter-spacing: 2px; white-space: nowrap; background: rgba(255,255,255,0.8); }
+        .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 5px solid #FFCC00; background: white; }
+        .flip-card-front { background-color: #5D4037; background-image: radial-gradient(circle at 50% 50%, #8D6E63 10%, transparent 10%), repeating-linear-gradient(45deg, #5D4037 0, #5D4037 10px, #4E342E 10px, #4E342E 20px); border: 5px solid #FFCA28; z-index: 2; }
+        .flip-card-front::after { content: '🍭'; font-size: 90px; background: #FFF3E0; border-radius: 50%; width: 135px; height: 135px; display: flex; align-items: center; justify-content: center; border: 5px solid #FFCA28; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .flip-card-back { transform: rotateY(180deg); z-index: 1; }
+
+        .gumball-machine { position: relative; width: 320px; height: 480px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; animation: popUp 0.3s; }
+        .gumball-globe { width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.8), rgba(255,255,255,0.1) 40%, rgba(230,240,255,0.2)); border: 5px solid #E0E0E0; position: relative; overflow: hidden; z-index: 5; box-shadow: inset 0 0 40px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.1); background-color: #E3F2FD; }
+        .gumball-base { width: 240px; height: 200px; background: #D32F2F; border-radius: 10px 10px 35px 35px; position: relative; top: -35px; z-index: 4; display: flex; flex-direction: column; align-items: center; box-shadow: inset -10px 0 20px rgba(0,0,0,0.2), 5px 10px 20px rgba(0,0,0,0.3); }
+        .gumball-lid { position: absolute; top: -10px; width: 120px; height: 20px; background: #D32F2F; border-radius: 50% 50% 0 0; z-index: 6; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .gumball-plate { width: 120px; height: 70px; background: #ECEFF1; border-radius: 10px; margin-top: 45px; border: 3px solid #B0BEC5; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 3px 0 rgba(0,0,0,0.1); }
+        .gumball-knob { width: 40px; height: 40px; background: #B0BEC5; border-radius: 50%; border: 2px solid #78909C; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+        .gumball-knob::after { content: 'X'; color: #455A64; font-weight: bold; font-size: 20px; }
+        .gumball-knob.spin { animation: spinKnob 1s ease-in-out; }
+        .gumball-exit { width: 80px; height: 50px; background: #333; border-radius: 0 0 20px 20px; position: absolute; bottom: 15px; border: 4px solid #555; overflow: visible; box-shadow: inset 0 5px 10px black; }
+        @keyframes spinKnob { 0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);} }
+
+        .lotto-ball { position: absolute; width: 50px; height: 50px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); box-shadow: inset -2px -2px 10px rgba(0,0,0,0.2), 2px 2px 5px rgba(0,0,0,0.2); z-index: 5; display: flex; align-items: center; justify-content: center; }
+        .lotto-ball::after { content: ''; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, white 50%, transparent 50%); position: absolute; top: 0; left: 0; transform: rotate(45deg); }
+        .lotto-ball.paused { animation-play-state: paused !important; }
+        .lotto-shaking { animation: machineShake 0.1s infinite; }
+        @keyframes machineShake { 0% { transform: rotate(0deg); } 25% { transform: rotate(1deg); } 75% { transform: rotate(-1deg); } 100% { transform: rotate(0deg); } }
+        @keyframes chaos1 { 0% {top:80%; left:50%;} 25% {top:20%; left:20%;} 50% {top:70%; left:80%;} 75% {top:30%; left:60%;} 100% {top:80%; left:40%;} }
+        @keyframes chaos2 { 0% {top:80%; left:40%;} 25% {top:10%; left:70%;} 50% {top:60%; left:10%;} 75% {top:50%; left:50%;} 100% {top:80%; left:60%;} }
+        @keyframes chaos3 { 0% {top:70%; left:20%;} 25% {top:50%; left:80%;} 50% {top:10%; left:40%;} 75% {top:70%; left:10%;} 100% {top:70%; left:30%;} }
+        @keyframes chaos4 { 0% {top:70%; left:80%;} 25% {top:30%; left:10%;} 50% {top:60%; left:50%;} 75% {top:10%; left:80%;} 100% {top:70%; left:70%;} }
+        .ball-moving-1 { animation: chaos1 1.2s infinite alternate ease-in-out; }
+        .ball-moving-2 { animation: chaos2 1.5s infinite alternate ease-in-out; }
+        .ball-moving-3 { animation: chaos3 1.0s infinite alternate ease-in-out; }
+        .ball-moving-4 { animation: chaos4 1.8s infinite alternate ease-in-out; }
+        .ball-drop { position: absolute!important; transition: top 0.5s cubic-bezier(0.5, 0, 0.75, 0); z-index: 100!important; } 
+        .ball-center { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 99999!important; width: 300px; height: 300px; border-radius: 50%; border: 5px solid rgba(255,255,255,0.5); background-color: white; box-shadow: inset -10px -10px 30px rgba(0,0,0,0.2), 0 0 100px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; color: #333; text-align: center; }
+        .ball-center.show { transform: translate(-50%, -50%) scale(1); }
+        .ball-center::after { content: ''; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, rgba(255,255,255,0.9) 50%, transparent 50%); position: absolute; top: 0; left: 0; transform: rotate(45deg); pointer-events: none; }
+        .ball-content-wrapper { z-index: 10; position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; transform: rotate(-5deg); } 
+        .ball-text-title { font-size: 24px; font-weight: bold; color: #FF9800; text-shadow: 1px 1px 0px #FFF3E0; margin-top: 10px; font-family: 'Jua'; }
+        .ball-text-item { font-size: 28px; font-weight: bold; color: #333; text-shadow: 1px 1px 2px rgba(255,255,255,0.8); font-family: 'Jua'; }
+        .confetti-particle { position: absolute; width: 10px; height: 10px; border-radius: 50%; animation: fall 2s linear forwards; opacity: 0.8; z-index: 9999; }
+        @keyframes fall { 0% { transform: translateY(-50px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } }
+    </style>
+</head>
+<body>
+<div id="login">
+    <div class="login-box">
+        <div class="cookie-logo">🍪</div>
+        <h1 style="color:#5D4037; margin-bottom:30px;">이벤트 상점</h1>
+        <div class="login-btn-group">
+            <button class="tab-btn active" onclick="mode('student',this)">🐣 학생</button>
+            <button class="tab-btn" onclick="mode('teacher',this)">👑 선생님</button>
+        </div>
+        <div id="ls">
+            <input id="sc" class="login-input" placeholder="학생 코드" onkeyup="if(event.key==='Enter')logS()">
+            <button class="btn btn-org login-action-btn" onclick="logS()">입장하기 🚀</button>
+        </div>
+        <div id="lt" class="hidden">
+            <input type="password" id="tp" class="login-input" placeholder="교사 코드" onkeyup="if(event.key==='Enter')logT()">
+            <button class="btn btn-org login-action-btn" onclick="logT()">입장하기 🚀</button>
+        </div>
+    </div>
+</div>
+
+<div id="appT" class="app hidden">
+    <div class="side">
+        <div class="menu on" onclick="nav('t_stu',this)">📜 학생 관리</div>
+        <div class="menu" onclick="nav('t_mgr',this)">📦 쿠폰 관리</div>
+        <div class="menu" onclick="nav('t_col',this)">📖 도감 관리</div>
+        <div class="menu" onclick="nav('t_set',this)">⚙️ 상점 관리</div>
+        
+        <div class="menu" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">🖥️ 키오스크</div>
+        
+        <button class="btn btn-gray" onclick="location.reload()" style="margin-top:auto; width:100%">종료</button>
+    </div>   
+
+ <div class="cont">
+        <div id="t_stu">
+            <h2>📜 학생 관리</h2>
+            <div class="card" style="background:#FFF8E1;">
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <input id="an" placeholder="번호" style="width:50px"><input id="am" placeholder="이름"><input id="ac" placeholder="코드">
+                    <button class="btn btn-green" onclick="add1()" style="white-space:nowrap; min-width:80px;">추가</button>
+                </div>
+                <textarea id="bk" rows="3" placeholder="일괄등록: 1 홍길동 1001 (엔터로 구분)"></textarea>
+                <div style="margin-top:5px; display:flex; justify-content:space-between;">
+                    <div>
+
+                        <button class="btn btn-org" onclick="bulk()">🚀 일괄등록</button>
+                        <button class="btn btn-red" onclick="rst()">⚠️ 초기화</button>
+                    </div>
+                    <button class="btn btn-blue" onclick="showLogModal()">📜 지급 기록</button>
+                </div>
+            </div>
+            <div style="margin: 10px 0; text-align:right;">
+                선택한 학생: <button class="btn btn-org" onclick="modCandy(1)">+1 🍭</button> <button class="btn btn-gray" onclick="modCandy(-1)">-1 🍭</button>
+            </div>
+            <table><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th>코드</th><th>🍭</th><th>관리</th></tr></thead><tbody id="ttb"></tbody></table>
+        </div>
+        <div id="t_mgr" class="hidden">
+            <h2>📦 쿠폰 관리</h2>
+            <div style="margin-bottom:10px;">
+                <button class="btn btn-red sort-btn" onclick="srt('req')">🚨 요청순 <span id="s_req"></span></button>
+                <button class="btn sort-btn" onclick="srt('num')">🔢 번호순 <span id="s_num"></span></button>
+                <button class="btn sort-btn" onclick="srt('typ')">🏷️ 종류순 <span id="s_typ"></span></button>
+                <button id="btnHide" class="btn btn-gray" onclick="toggleHide()">🙈 숨기기</button>
+                <button class="btn btn-red" onclick="delSel()" style="float:right;">🗑️ 삭제</button>
+            </div>
+            <div id="t_ag" class="grid"></div>
+            <div class="card" style="margin-top:20px; background:#E3F2FD;">
+                <h3>🎁 쿠폰 지급</h3>
+                <div style="display:flex; gap:5px;">
+                    <select id="gt"></select>
+                    <select id="gi"></select>
+                    <button class="btn btn-blue" onclick="giv()">지급</button>
+                </div>
+            </div>
+        </div>
+        <div id="t_col" class="hidden">
+            <h2>📖 도감 및 초월 관리 <span style="font-size:14px; color:#888;">(※초월 숫자를 0으로 변경하면 별이 삭제됩니다)</span></h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th width="60" onclick="sortCol('no')">번호</th>
+                        <th width="100" onclick="sortCol('nm')">이름</th>
+                        <th width="80">초월(★)</th>
+                        <th width="80" onclick="sortCol('rate')">달성률</th>
+                        <th style="text-align:left;">획득 현황 (미획득 회색)</th>
+                    </tr>
+                </thead>
+                <tbody id="ctb"></tbody>
+            </table>
+        </div>
+        <div id="t_set" class="hidden">
+            <h2>⚙️ 상점 관리</h2>
+            <div class="card">
+                <h3>🎁 아이템 등록</h3>
+                <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                    <input id="in" placeholder="이름" style="width:120px;">
+                    <input id="ip" type="number" placeholder="가격(🍭)" style="width:80px">
+                    <input id="ii" placeholder="이모지/주소" style="width:120px">
+                    <input id="id_desc" placeholder="설명" style="flex:1; min-width:150px;">
+                    <label style="font-size:14px; cursor:pointer;"><input type="checkbox" id="isSale" checked> 판매</label>
+                    <button class="btn btn-org" onclick="addI()">등록</button>
+                </div>
+                <div id="il" class="grid" style="margin-top:10px;"></div>
+            </div>
+            <div class="card">
+                <h3>🔮 뽑기 기계</h3>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input id="gn" placeholder="기계명" style="flex:1">
+                    <input id="gc" type="number" placeholder="비용(🍭)" style="width:80px">
+                    <select id="gy" style="margin-bottom:0; width:120px;"><option value="scratch">스크래치</option><option value="card">카드뒤집기</option><option value="lotto">캡슐로또</option></select>
+                    <label style="font-size:13px; margin-left:5px; display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="g_spc" style="width:auto; margin-right:3px;">스페셜(중복방지)</label>
+                    <button class="btn btn-org" onclick="mkG()">생성</button>
+                </div>
+                <div id="gr" style="margin:5px 0;"></div>
+                <button class="btn btn-gray" onclick="addGr()">+ 확률 추가</button>
+                <div id="gl" class="grid" style="margin-top:10px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="appS" class="app hidden">
+    <div class="side">
+        <div class="rpg-stat-box">
+    <div class="rpg-stat-header">모험가 자격증</div>
+    <div class="rpg-stat-content" style="display:flex; align-items:center; gap:15px; padding:15px; background: white;">
+        <div style="width: 100px; height: 100px; background: white; border: 3px solid #FFE0B2; border-radius: 10px; display: flex; justify-content: center; align-items: center; position: relative; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); overflow: visible;">
+            <div id="side_avatar" style="font-size: 60px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.2));">🥚</div>
+            <div id="side_stars" style="position: absolute; bottom: -15px; font-size: 18px; color: #FFB300; text-shadow: 1px 1px 0 #5D4037, -1px -1px 0 #5D4037, 1px -1px 0 #5D4037, -1px 1px 0 #5D4037; letter-spacing: -1px; width: 100%; text-align: center; z-index: 10; font-weight: bold;"></div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items: center;">
+            <div class="rpg-name" id="snm" style="font-size:32px; font-weight:900; color:#5D4037; margin-bottom:5px;">나</div>
+            <div class="rpg-wealth" style="background:transparent; border:none; padding:0;">
+                <span class="rpg-wealth-value" id="side_cn" style="font-size: 28px;">0 🍭</span>
+            </div>
+        </div>
+    </div>
+</div>
+        
+        <div class="menu on" onclick="navS('s_bg',this)">🎒 가방</div>
+        <div class="menu" onclick="navS('s_col',this)">📖 도감</div>
+        <div class="menu" onclick="navS('s_sh',this)">🏪 상점</div>
+        
+        <button class="btn btn-gray" onclick="location.reload()" style="margin-top:auto; width:100%">로그아웃</button>
+    </div>
+    <div class="cont">
+        <div id="s_bg"></div>
+        <div id="s_col" class="hidden"></div>
+        <div id="s_sh" class="hidden"></div>
+    </div>
+</div>
+
+<div id="scrM" class="g-overlay hidden"><div class="scratch-container" id="scrCon"><div class="scratch-result" id="scrRes"></div><canvas id="scratchCanvas" width="300" height="350"></canvas></div><div style="margin-top:20px;"><button class="btn btn-org" onclick="clsScr()" id="scrCloseBtn">닫기</button></div><div id="confetti" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div></div>
+<div id="cardM" class="g-overlay hidden"><div style="color:white; font-size:24px; margin-bottom:30px; font-weight:bold;">✨ 운명의 카드를 선택하세요!</div><div class="card-stage" id="cardStage"></div><div id="cardConfetti" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div><button class="btn btn-org hidden" id="cardCloseBtn" style="margin-top:30px; z-index:100;" onclick="clsCard()">확인</button></div>
+<div id="lottoM" class="g-overlay hidden">
+    <div class="gumball-machine">
+        <div class="gumball-lid"></div>
+        <div class="gumball-globe" id="lottoBowl"></div>
+        <div class="gumball-base">
+            <div class="gumball-plate"><div class="gumball-knob" id="gKnob"></div></div>
+            <div class="gumball-exit"></div>
+        </div>
+    </div>
+    <div id="lottoRes" class="lotto-res-box" style="display:none;"></div>
+    <div id="lottoConfetti" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div>
+    <button class="btn btn-org hidden" id="lottoCloseBtn" style="margin-top:20px; z-index:102; font-size:20px; padding:10px 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);" onclick="clsLotto()">확인</button>
+</div>
+
+<script>
+    const ac = new (window.AudioContext||window.webkitAudioContext)();
+    document.addEventListener('mousedown', () => { if(ac.state === 'suspended') ac.resume(); });
+    document.addEventListener('touchstart', () => { if(ac.state === 'suspended') ac.resume(); });
+
+    function snd(t) {
+        if(ac.state==='suspended')ac.resume().catch(e=>{});
+        try{
+            const o=ac.createOscillator(), g=ac.createGain(); o.connect(g); g.connect(ac.destination);
+            if(t==='f'){ o.type='sawtooth'; o.frequency.setValueAtTime(440,ac.currentTime); o.frequency.linearRampToValueAtTime(523.25,ac.currentTime+0.2); o.frequency.linearRampToValueAtTime(659.25,ac.currentTime+0.4); g.gain.linearRampToValueAtTime(0,ac.currentTime+0.6); g.gain.value=0.15; o.start(); o.stop(ac.currentTime+0.6); }
+            if(t==='master') { o.type='square'; o.frequency.setValueAtTime(261.63, ac.currentTime); o.frequency.setValueAtTime(329.63, ac.currentTime+0.2); o.frequency.setValueAtTime(392.00, ac.currentTime+0.4); o.frequency.setValueAtTime(523.25, ac.currentTime+0.6); g.gain.setValueAtTime(0.3, ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime+1.5); o.start(); o.stop(ac.currentTime+1.5); }
+            if(t==='s'){ const bufferSize = ac.sampleRate * 0.1; const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1; const noise = ac.createBufferSource(); noise.buffer = buffer; const noiseGain = ac.createGain(); noiseGain.gain.value = 0.2; noise.connect(noiseGain); noiseGain.connect(ac.destination); noise.start(); }
+            if(t==='r'){ o.type='triangle'; o.frequency.setValueAtTime(150,ac.currentTime); o.frequency.exponentialRampToValueAtTime(600,ac.currentTime+0.3); g.gain.linearRampToValueAtTime(0,ac.currentTime+0.4); o.start(); o.stop(ac.currentTime+0.4); } 
+        }catch(e){}
+    }
+
+    let isDragging = false, dragMode = true, lastSelectedIndex = -1, currentRenderedItems = [];
+document.addEventListener('mouseup', () => { isDragging = false; document.body.style.userSelect = ''; });
+function startDrag(e, idx, id) {
+    if(e.button !== 0) return; // 좌클릭만 허용
+    
+    // Shift + 클릭 (구간 선택)
+    if (e.shiftKey && lastSelectedIndex !== -1) {
+        if(!e.ctrlKey && !e.metaKey) {
+            sel.clear();
+            document.querySelectorAll('#t_ag .asset').forEach(el => el.classList.remove('sel'));
+        }
+        const start = Math.min(lastSelectedIndex, idx);
+        const end = Math.max(lastSelectedIndex, idx);
+        for(let i = start; i <= end; i++) {
+            const targetId = currentRenderedItems[i];
+            sel.add(targetId);
+            const card = document.getElementById('card_' + targetId);
+            if(card) card.classList.add('sel');
+        }
+        return;
+    }
+
+    isDragging = true;
+    lastSelectedIndex = idx;
+
+    // Ctrl + 클릭 (개별 토글)
+    if (e.ctrlKey || e.metaKey) {
+        if (sel.has(id)) {
+            sel.delete(id);
+            document.getElementById('card_' + id).classList.remove('sel');
+            dragMode = false;
+        } else {
+            sel.add(id);
+            document.getElementById('card_' + id).classList.add('sel');
+            dragMode = true;
+        }
+    } else {
+        // 일반 클릭 (초기화 후 선택)
+        sel.clear();
+        document.querySelectorAll('#t_ag .asset').forEach(el => el.classList.remove('sel'));
+        sel.add(id);
+        document.getElementById('card_' + id).classList.add('sel');
+        dragMode = true;
+    }
+    document.body.style.userSelect = 'none'; // 드래그 시 파란색 텍스트 선택 방지
+}
+const firebaseConfig = {
+  apiKey: "AIzaSyCzsI9FW3bga1V73lCR7pNgfPLdcqcbsgM",
+  authDomain: "class-manager-bad00.firebaseapp.com",
+  databaseURL: "https://class-manager-bad00-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "class-manager-bad00",
+  storageBucket: "class-manager-bad00.firebasestorage.app",
+  messagingSenderId: "436830301778",
+  appId: "1:436830301778:web:d3da11a5ac0e6c252d798b",
+  measurementId: "G-H95D2Z7MFF"
+};
+// Firebase 초기화
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const dbRef = firebase.database().ref('ClassData/EventShop'); // 데이터베이스 저장 경로
+
+    // 기본 데이터 세팅
+    let db = {stu:[], itm:[{n:'기본 간식',p:10,i:'🍩',s:true}], gac:[{n:'랜덤',c:20,i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], ak:''};
+
+    let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = false;
+    let cSort='no', cDir=1;
+    let currentBuyItem = null;
+    let currentGachaIndex = null;
+    let showTrash = false; 
+
+    // Firebase 실시간 동기화 (키오스크에서 티켓을 쓰면 상점 화면도 즉시 변경됨)
+    dbRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            db = data;
+            
+            // Firebase는 비어있는 배열을 무시하는 특징이 있어 빈 배열 방어 코드 추가
+            if(!db.stu) db.stu = [];
+            if(!db.itm) db.itm = [];
+            if(!db.gac) db.gac = [];
+            if(!db.log) db.log = [];
+
+            // 1. 학생 로그인 상태일 때 화면 실시간 업데이트
+            if (me && me.cd) {
+                const updatedMe = db.stu.find(x => String(x.cd).trim() === String(me.cd).trim());
+                if (updatedMe) {
+                    me = updatedMe;
+                    if(!me.inv) me.inv = [];
+                    if(!me.col) me.col = [];
+                    updateNameTag();
+                    // 화면에 떠있는 탭만 새로고침 (입력방해 최소화)
+                    if(!document.getElementById('s_bg').classList.contains('hidden')) rBg();
+                    if(!document.getElementById('s_sh').classList.contains('hidden')) rSh();
+                    if(!document.getElementById('s_col').classList.contains('hidden')) rCol();
+                }
+            }
+            
+            // 2. 선생님 로그인 상태일 때 화면 실시간 업데이트
+            if (!document.getElementById('appT').classList.contains('hidden')) {
+                if(!document.getElementById('t_stu').classList.contains('hidden')) rTb();
+                if(!document.getElementById('t_mgr').classList.contains('hidden')) { rAs(); upGiv(); }
+                if(!document.getElementById('t_col').classList.contains('hidden')) rColT();
+                if(!document.getElementById('t_set').classList.contains('hidden')) rSet();
+            }
+        } else {
+            // 파이어베이스가 완전히 비어있을 경우 (처음 실행)
+            if(!db.stu.some(s => s.cd === '1234')) {
+                db.stu.push({no:1, nm:'학생1', cd:'1234', ck:0, cn:100, kc:0, inv:[], ibx:[], col:[], rd:{}, rb:0});
+            }
+            sv(); // 초기값을 파이어베이스에 업로드
+        }
+    });
+
+    // 데이터를 저장하는 함수 (로컬스토리지 대신 Firebase로 전송)
+    function sv(){
+        dbRef.set(db); 
+    }
+// 마우스가 지나갈 때 (드래그 중)
+function doDrag(e, id) {
+    if (!isDragging) return;
+    if (dragMode) {
+        sel.add(id);
+        document.getElementById('card_' + id).classList.add('sel');
+    } else {
+        sel.delete(id);
+        document.getElementById('card_' + id).classList.remove('sel');
+    }
+}
+
+    function logCandy(targets, change, method) {
+        const now = new Date();
+        const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+        db.log.unshift({ time: timeStr, targets: targets, change: change, method: method });
+        if(db.log.length > 100) db.log.pop(); 
+        sv();
+    }
+
+    window.showLogModal = function() {
+        let trs = (db.log || []).map(l => `<tr><td>${l.time}</td><td>${l.targets}</td><td><b style="color:${l.change>0?'green':'red'}">${l.change>0?'+':''}${l.change}</b></td><td>${l.method}</td></tr>`).join('');
+        if(!trs) trs = `<tr><td colspan="4">기록이 없습니다.</td></tr>`;
+        const html = `<div id="logModal" class="modal-overlay" onclick="this.remove()"><div class="modal-window" style="width:500px;" onclick="event.stopPropagation()"><button class="modal-close-btn" onclick="document.getElementById('logModal').remove()">X</button><div class="modal-inner" style="max-height:60vh; overflow-y:auto;"><h2 class="modal-title" style="margin-bottom:15px;">📜 🍭 지급 기록</h2><table style="width:100%; font-size:14px; background:white; border-radius:10px; overflow:hidden;"><thead><tr style="background:#5D4037; color:white;"><th>시간</th><th>대상</th><th>증감</th><th>방식</th></tr></thead><tbody>${trs}</tbody></table></div></div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    function mode(m,e){
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); e.classList.add('active');
+        if(m==='student'){ document.getElementById('ls').classList.remove('hidden'); document.getElementById('lt').classList.add('hidden'); } 
+        else { document.getElementById('ls').classList.add('hidden'); document.getElementById('lt').classList.remove('hidden'); }
+    }
+
+    function logT(){ 
+        if(document.getElementById('tp').value==='csgo10'){
+            document.getElementById('login').classList.add('hidden'); 
+            document.getElementById('appT').classList.remove('hidden'); 
+            nav('t_stu');
+        }else alert("비밀번호 오류"); 
+    }
+
+    function getRebirthStars(rb) {
+        if (!rb || rb <= 0) return '';
+        return '★'.repeat(rb);
+    }
+
+    function logS(){ 
+        const c = document.getElementById('sc').value.trim(); 
+        if(!c) return alert("코드를 입력하세요.");
+        const s = db.stu.find(x => String(x.cd).trim() === c); 
+        if(s){
+            me = s; 
+            if(!me.col) me.col = []; 
+            document.getElementById('login').classList.add('hidden'); 
+            document.getElementById('appS').classList.remove('hidden'); 
+            updateNameTag();
+            navS('s_bg'); 
+        } else {
+            alert("일치하는 학생 코드가 없습니다.");
+        }
+    }
+
+  function updateNameTag() {
+    if(me) {
+        document.getElementById('snm').innerHTML = me.nm;
+        
+        // 사이드바 캐릭터 하단에 별(★) 표시
+        const starEl = document.getElementById('side_stars');
+        if(starEl) starEl.innerHTML = getRebirthStars(me.rb);
+
+        const avatarEl = document.getElementById('side_avatar');
+        if(avatarEl) {
+            // 환수 진화 테마 수정: 0단(🐣) -> 1단(🐦‍🔥) -> 2단 이상(🐲)
+            let avatar = '🐣'; // 0단계: 병아리
+            
+            if(me.rb === 1) {
+                avatar = '🐦‍🔥'; // 1단계: 불사조
+            } 
+            else if(me.rb >= 2) {
+                avatar = '👑';  // 2단계 이상: 드래곤
+            }
+            
+            avatarEl.innerHTML = avatar;
+        }
+    }
+}
+
+    // 아이템 상세 보기 (화이트톤 팝업)
+    window.showItemDetail = function(itemName) {
+        const item = me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active');
+        if(!item) return;
+        
+        const modalHtml = `
+            <div id="itemModal" class="modal-overlay" onclick="this.remove()">
+                <div class="modal-window" style="background:white !important; border: 5px solid #FFE0B2 !important;" onclick="event.stopPropagation()">
+                    <button class="modal-close-btn" onclick="document.getElementById('itemModal').remove()">X</button>
+                    <div class="modal-inner" style="background:white !important; border:none !important;">
+                        <div class="modal-icon" style="font-size:80px;">
+                            ${item.i.includes('http') ? `<img src="${item.i}" style="width:80px; height:80px; object-fit:contain;">` : item.i}
+                        </div>
+                        <h2 class="modal-title" style="color:#5D4037; margin-top:10px;">${item.n}</h2>
+                        <p style="color:#8D6E63; font-size:18px;">선생님께 사용 승인을 요청할까요?</p>
+                        <div class="modal-btn-group">
+                            <button class="btn btn-org" onclick="useQ('${item.n.replace(/'/g, "\\'")}')" style="width:100%; font-size:20px;">사용하기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    // 아이템 사용 요청 실행 (상태값 변경 및 저장)
+    function useQ(itemName){
+    const idx = me.inv.findIndex(i => i.n.trim() === itemName.trim() && i.st === 'active');
+    if(idx === -1) return;
+    
+    // 상태를 'active'에서 'req'(요청중)로 변경
+    me.inv[idx].st = 'req'; 
+    upMe(); // DB 저장 및 화면 갱신
+    rBg(); // 가방 갱신
+    
+    // 사용 버튼 누른 후 모달 창 닫기
+    const modal = document.getElementById('itemModal');
+    if(modal) modal.remove();
+    
+    alert("선생님께 사용 요청을 보냈습니다! 잠시만 기다려주세요. 🍭");
+}
+
+    function upMe(){ 
+        if (!me || !me.cd) return;
+        const i = db.stu.findIndex(x => String(x.cd).trim() === String(me.cd).trim()); 
+        if (i !== -1) {
+            Object.assign(db.stu[i], me); 
+            sv(); 
+            const sideCn = document.getElementById('side_cn');
+            if (sideCn) sideCn.innerText = (me.cn || 0) + ' 🍭';
+            updateNameTag();
+        }
+    }
+
+    function nav(id,e){
+        document.querySelectorAll('#appT .cont > div').forEach(d=>d.classList.add('hidden')); document.getElementById(id).classList.remove('hidden');
+        if(e){document.querySelectorAll('.side .menu').forEach(m=>m.classList.remove('on')); e.classList.add('on');}
+        if(id==='t_stu') rTb(); 
+        if(id==='t_mgr'){rAs(); upGiv();} 
+        if(id==='t_col') rColT(); 
+        if(id==='t_set') rSet();
+    }
+    
+    function navS(id,e){ 
+        document.querySelectorAll('#appS .cont > div').forEach(d=>d.classList.add('hidden')); 
+        document.getElementById(id).classList.remove('hidden'); 
+        if(e){document.querySelectorAll('.side .menu').forEach(m=>m.classList.remove('on')); e.classList.add('on');} 
+        if(id==='s_col') {
+            window.masterPopupShown = false; 
+            rCol(); 
+        }
+        if(id==='s_bg') rBg(); 
+        if(id==='s_sh') rSh(); 
+    }
+
+    function add1(){
+        const n=document.getElementById('an').value, nm=document.getElementById('am').value, c=document.getElementById('ac').value;
+        if(n&&nm&&c){ 
+            if(!db.stu) db.stu = [];
+            db.stu.push({no:n, nm:nm, cd:c, ck:0, cn:0, kc:0, inv:[], ibx:[], col:[], rd:{}, rb:0}); 
+            db.stu.sort((a,b)=>a.no-b.no); 
+            sv(); rTb(); alert("추가됨"); 
+        }
+    }
+
+    async function bulk(){
+        const l=document.getElementById('bk').value.split('\n');
+        if(!db.stu) db.stu = [];
+        for(let r of l){
+            const p=r.trim().split(/[\s,]+/);
+            if(p.length>=3){
+                let s=db.stu.find(x=>x.cd===p[2]);
+                if(!s) db.stu.push({no:p[0], nm:p[1], cd:p[2], ck:0, cn:0, kc:0, inv:[], ibx:[], col:[], rd:{}, rb:0});
+                else { s.no=p[0]; s.nm=p[1]; }
+            }
+        }
+        db.stu.sort((a,b)=>a.no-b.no); sv(); rTb(); alert("등록 완료");
+    }
+    
+    function rst(){ if(confirm("초기화?")){db.stu=[]; db.log=[]; sv(); rTb();} }
+    
+    function rTb(){ 
+        if(!db.stu) return;
+        const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>c.value); 
+        document.getElementById('ttb').innerHTML=db.stu.map((s,i)=>{
+            return `<tr><td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td><td>${s.no}</td><td>${s.nm}</td><td>${s.cd}</td><td><input class="qty-input" type="number" value="${s.cn}" onchange="upCk(${i},'cn',this.value)"></td><td><button class="btn btn-red" onclick="delS(${i})">삭제</button></td></tr>`;
+        }).join(''); 
+    }
+
+    function toggleAll(e){ document.querySelectorAll('.stu-chk').forEach(c=>c.checked=e.checked); }
+    
+    function modCandy(n){ 
+        const chks = document.querySelectorAll('.stu-chk:checked');
+        if(chks.length===0) return alert("학생을 선택하세요.");
+        const selectedIndices = Array.from(chks).map(c=>c.value); 
+        let targetNames = [];
+        chks.forEach(c => {
+            const i = parseInt(c.value);
+            db.stu[i].cn = Math.max(0, (db.stu[i].cn||0) + n);
+            targetNames.push(db.stu[i].nm);
+        });
+        const logTarget = targetNames.length > 1 ? `${targetNames[0]} 외 ${targetNames.length-1}명` : targetNames[0];
+        logCandy(logTarget, n, '일괄수정');
+
+        sv(); rTb(); 
+        selectedIndices.forEach(val => {
+            const el = document.querySelector(`.stu-chk[value="${val}"]`);
+            if(el) el.checked = true;
+        });
+    }
+
+    function delS(i){ db.stu.splice(i,1); sv(); rTb(); }
+    
+    function upCk(i,k,v){ 
+        if(k === 'cn') {
+            const prev = db.stu[i].cn || 0;
+            const newVal = parseInt(v);
+            const diff = newVal - prev;
+            if(diff !== 0) logCandy(db.stu[i].nm, diff, '개별수정');
+        }
+        db.stu[i][k]=parseInt(v); sv(); 
+        if(k === 'rb' && me && db.stu[i].cd === me.cd) {
+            me.rb = parseInt(v);
+            updateNameTag();
+        }
+    }
+    
+    function srt(m){ 
+        if(asort===m) sdir *= -1; else sdir = 1; asort=m; 
+        ['req','num','typ'].forEach(k=>document.getElementById('s_'+k).innerText=''); 
+        document.getElementById('s_'+m).innerText = sdir===1 ? '▲' : '▼'; 
+        rAs(); 
+    }
+
+    function toggleHide() {
+        hideCompleted = !hideCompleted;
+        document.getElementById('btnHide').innerText = hideCompleted ? "👁️ 보이기" : "🙈 숨기기";
+        rAs();
+    }
+    
+    function rAs(){
+        if(!db.stu) return;
+        let l=[]; 
+        db.stu.forEach((s,si)=>{ 
+            (s.inv||[]).forEach((t,k)=>l.push({y:'c',si,k,t,sn:s.nm,no:s.no}));
+            (s.ibx||[]).forEach((t,k)=> { if(t.y==='sys') return; l.push({y:'l',si,k,t,sn:s.nm,no:s.no}); });
+        });
+        
+        if(hideCompleted) {
+            l = l.filter(x => x.t.st !== 'used' && x.t.st !== 'usd');
+        }
+
+        const getW = (st) => { if(st==='req') return 0; if(st==='used' || st==='usd') return 2; return 1; };
+        l.sort((a,b)=>{ let val = 0; if(asort==='req') val = getW(a.t.st) - getW(b.t.st); else if(asort==='num') val = parseInt(a.no)-parseInt(b.no); else if(asort==='typ') val = (a.t.n||"").localeCompare(b.t.n||""); return val * sdir; });
+        
+        // 시각적인 순서를 저장해둡니다 (Shift 선택용)
+currentRenderedItems = l.map(x => `${x.y}_${x.si}_${x.k}`); 
+
+document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
+    const id=`${x.y}_${x.si}_${x.k}`, seld=sel.has(id); 
+    const img=x.y==='c'?(x.t.i.includes('http')?`<img src="${x.t.i}" style="width:70px;height:70px;object-fit:contain;margin-bottom:5px;">`:`<div class="huge-emoji" style="font-size:70px;">${x.t.i}</div>`):`<div class="huge-emoji" style="font-size:70px;">${x.t.y==='d'?'🍭':'💌'}</div>`; 
+    const statusBadge = x.t.st==='req' ? '<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:5px">🚨 사용요청</div>' : ''; 
+    const itemTitle = `<div style="font-weight:bold;font-size:14px;margin-top:5px;">${x.sn}의 ${x.t.n||'아이템'}<br><span style="font-size:11px;color:#5D4037;">${x.y==='l'?`(From. ${x.t.f})`:''}</span></div>`; 
+    const content = x.t.tx ? `<div style="font-size:12px;color:#666;margin:5px 0;background:#f9f9f9;padding:3px;border-radius:5px;">${x.t.tx}</div>` : ''; 
+    const actionBtn = x.t.st==='req' ? `<button class="btn btn-blue" style="width:100%;margin-top:5px;" onclick="appU('${x.y}',${x.si},${x.k})">승인</button>` : (x.t.st==='active' || x.t.st==='new' ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div>` : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div>`);
+    
+    // id 속성을 부여하고 onmousedown, onmouseenter 이벤트를 연결합니다.
+    return `<div id="card_${id}" class="asset ${seld?'sel':''} ${x.t.st==='req'?'req':''} ${x.t.st==='used' || x.t.st==='usd'?'used':''}" 
+        onmousedown="startDrag(event, ${visualIdx}, '${id}')" 
+        onmouseenter="doDrag(event, '${id}')" 
+        ondblclick="useOne('${x.y}',${x.si},${x.k})"> ${statusBadge} ${img} ${itemTitle} ${content} ${actionBtn} </div>`;
+}).join('');
+    }
+
+    
+    function delSel(){ 
+        if(!confirm("선택 항목을 정말 삭제하시겠습니까? (영구 삭제)")){ return; }
+        sel.forEach(id=>{
+            const [type, stuIdx, itemIdx] = id.split('_');
+            const s = db.stu[stuIdx];
+            let targetItem = null;
+            if(type === 'c') targetItem = s.inv[itemIdx];
+            else targetItem = s.ibx[itemIdx];
+
+            if(targetItem) {
+                targetItem.del = true; 
+                const iName = targetItem.n; 
+                const remainInv = (s.inv || []).filter(x => x.n === iName && !x.del).length;
+                const remainIbx = (s.ibx || []).filter(x => x.n === iName && !x.del).length;
+                if (remainInv + remainIbx === 0 && iName && s.col) {
+                    s.col = s.col.filter(cName => cName !== iName);
+                }
+            }
+        });
+        db.stu.forEach(s=>{
+            if(s.inv) s.inv = s.inv.filter(x => !x.del);
+            if(s.ibx) s.ibx = s.ibx.filter(x => !x.del);
+        });
+        sel.clear(); 
+        sv(); rAs(); rColT(); 
+    }
+    
+    function appU(y,si,k){ if(y==='c')db.stu[si].inv[k].st='used'; else db.stu[si].ibx[k].st='used'; sv(); rAs(); }
+    function useOne(y,si,k){ if(confirm("사용처리/삭제?")){if(y==='c')db.stu[si].inv.splice(k,1);else db.stu[si].ibx.splice(k,1); sv(); rAs();} }
+    
+    function upGiv(){ document.getElementById('gt').innerHTML=`<option value="all">📢 전체 학생</option>`+db.stu.map((s,i)=>`<option value="${i}">${s.no}번 ${s.nm}</option>`).join(''); document.getElementById('gi').innerHTML=db.itm.map((t,i)=>`<option value="${i}">${t.n}</option>`).join(''); }
+    
+    function giv(){ 
+        const ti=document.getElementById('gt').value, ii=document.getElementById('gi').value, it=db.itm[ii]; 
+        const o={n:it.n, i:it.i, st:'active', g:it.g||'C'}; 
+        
+        if(ti==='all') {
+            db.stu.forEach(s => {
+                if(!s.inv) s.inv=[];
+                s.inv.push({...o});
+                if(!s.col) s.col = [];
+                if(!s.col.includes(it.n)) s.col.push(it.n);
+            });
+        } else {
+            const s = db.stu[ti];
+            if(!s.inv) s.inv=[];
+            s.inv.push({...o});
+            if(!s.col) s.col = [];
+            if(!s.col.includes(it.n)) s.col.push(it.n);
+        }
+        sv(); alert("지급됨"); rAs(); rColT();
+    }
+
+    function sortCol(key) {
+        if(cSort === key) { cDir *= -1; } else { cSort = key; if(key === 'rate') cDir = -1; else cDir = 1; }
+        rColT();
+    }
+
+    // 교사용 도감 - 초월 관리 가능하게 수정
+    function rColT() {
+        if(!db.stu) return;
+        const total = db.itm.length;
+        let displayList = db.stu.map((s, idx) => {
+            const myCol = s.col || [];
+            const validCount = db.itm.filter(i => myCol.includes(i.n)).length;
+            const pct = total === 0 ? 0 : Math.round((validCount / total) * 100);
+            return { ...s, pct, validCount, orgIdx: idx }; 
+        });
+
+        displayList.sort((a,b) => {
+            let val = 0;
+            if(cSort === 'no') val = parseInt(a.no) - parseInt(b.no);
+            else if(cSort === 'nm') val = a.nm.localeCompare(b.nm);
+            else if(cSort === 'rate') val = a.pct - b.pct;
+            return val * cDir;
+        });
+
+        document.getElementById('ctb').innerHTML = displayList.map(s => {
+            const myCol = s.col || [];
+            const isDone = total > 0 && s.validCount >= total;
+            
+            const grids = db.itm.map(item => {
+                const has = myCol.includes(item.n);
+                let content = '';
+                if(has) {
+                    if(item.i.includes('http')) content = `<img src="${item.i}">`; else content = item.i;
+                }
+                return `<span class="col-chip ${has?'has':'not-has'}" title="${item.n}">${content}</span>`;
+            }).join('');
+
+            return `<tr class="${isDone ? 'col-row-done' : ''}">
+                <td>${s.no}</td>
+                <td><b>${s.nm}</b></td>
+                <td><input class="qty-input" type="number" value="${s.rb||0}" onchange="upCk(${s.orgIdx},'rb',this.value)"></td>
+                <td><div style="font-weight:bold; color:#5D4037; font-size:16px;">${s.pct}%</div></td>
+                <td style="text-align:left;"><div class="col-cell-wrap">${grids}</div></td>
+            </tr>`;
+        }).join('');
+    }
+
+// 도감 마스터 팝업 (통합형: 축하 + 도전 여부)
+    window.showMasterOverlay = function() {
+        if(document.getElementById('masterOverlay')) return;
+        snd('master');
+        
+        const html = `
+        <div id="masterOverlay" class="modal-overlay" style="background: rgba(0,0,0,0.8); z-index:99999;" onclick="this.remove()">
+            <div class="modal-window" style="background:#FFFDF9 !important; border: 6px solid #FFD700 !important; width: 480px !important;" onclick="event.stopPropagation()">
+                <div style="font-size: 120px; filter: drop-shadow(0 0 30px gold); margin-top:-60px;">🏆</div>
+                <h2 style="color: #FF9800; font-size: 38px; margin-top:10px; text-shadow: 1px 1px 0px #FFF;">도감 마스터 달성!</h2>
+                <p style="font-size: 18px; color: #5D4037; font-weight: bold; margin: 20px 0; line-height: 1.6;">
+                    축하합니다! 모든 도감을 완성했습니다.<br>
+                    <span style="color:#E65100;">다음 단계(초월)에 도전하시겠습니까?</span><br>
+                    <span style="font-size:14px; color:#8D6E63; font-weight:normal;">(도전 시 가방의 아이템은 유지되며, 도감만 초기화됩니다)</span>
+                </p>
+                <div style="display:flex; gap:15px; justify-content:center;">
+                    <button class="btn btn-gray" style="font-size: 18px; padding: 12px 25px;" onclick="document.getElementById('masterOverlay').remove()">나중에 하기</button>
+                    <button class="btn btn-org" style="font-size: 20px; padding: 12px 30px; box-shadow: 0 4px 10px rgba(255, 159, 67, 0.5);" onclick="doRebirth()">도전하기 ✨</button>
+                </div>
+                <div style="color: #aaa; font-size: 13px; margin-top: 20px; cursor: pointer;" onclick="document.getElementById('masterOverlay').remove()">
+                    (화면 바깥을 터치하면 닫힙니다)
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    // 초월(환생) 실행 함수
+    window.doRebirth = function() {
+        const overlay = document.getElementById('masterOverlay');
+        if(overlay) overlay.remove();
+
+        me.rb = (me.rb || 0) + 1; // 초월 횟수 증가
+
+        // 1. 가방(inv)에서 도감에 등록된 아이템 종류별로 딱 1개씩만 찾아 삭제(차감)
+        db.itm.forEach(item => {
+            // 가방에서 '사용 안 한(active)' 아이템의 인덱스를 우선적으로 찾음
+            let idx = me.inv.findIndex(i => i.n === item.n && i.st !== 'used' && i.st !== 'usd');
+            
+            // 만약 멀쩡한 아이템이 없다면, 이미 사용한(used) 아이템이라도 찾아서 차감
+            if (idx === -1) {
+                idx = me.inv.findIndex(i => i.n === item.n);
+            }
+            
+            // 찾았다면 배열에서 1개만 쏙 빼서 영구 차감
+            if (idx !== -1) {
+                me.inv.splice(idx, 1); 
+            }
+        });
+
+        // 2. 도감 초기화 (차감 후 도감 비우기)
+        me.col = []; 
+        
+        upMe(); // DB에 변경된 가방, 도감, 초월 단계 저장
+        rCol(); // 도감 화면 갱신
+        rBg();  // 가방 화면 갱신 (차감된 것 즉시 반영)
+        snd('f'); // 축하 효과음 재생
+        alert(me.rb + "단계 진화 성공! 캐릭터가 다음 단계로 성장했습니다! 👑");
+    }
+
+    function rSet(){ 
+        document.getElementById('il').innerHTML=db.itm.map((x,i)=>`<div class="asset" onclick="editI(${i})"><div class="del-btn" onclick="event.stopPropagation();delI_T(${i})">×</div><div class="huge-emoji">${x.i}</div><div class="info">${x.n} | ${x.p}🍭${x.s?'':'(비매품)'}<br><span style="font-size:11px;color:#888; font-weight:normal;">${x.d||''}</span></div></div>`).join(''); 
+        const typeEmoji = {scratch:'🥠', card:'💳️', lotto:'🕹️'};
+        document.getElementById('gl').innerHTML=db.gac.map((x,i)=>`<div class="asset" ondblclick="editG(${i})" oncontextmenu="tryGachaT(${i}); return false;"><div class="del-btn" onclick="event.stopPropagation();delG(${i})">×</div><div class="huge-emoji">${typeEmoji[x.t]}</div><div class="info">${x.n} ${x.spc?'✨':''}| ${x.c}🍭</div></div>`).join(''); 
+    }
+    
+    function addI(){ 
+        const isSale = document.getElementById('isSale').checked;
+        const desc = document.getElementById('id_desc').value;
+        db.itm.push({n:document.getElementById('in').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}); 
+        sv(); rSet(); 
+        document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
+    }
+    
+    function editI(i) { 
+        const it = db.itm[i]; document.getElementById('in').value = it.n; document.getElementById('ip').value = it.p; document.getElementById('ii').value = it.i; document.getElementById('id_desc').value = it.d || ''; document.getElementById('isSale').checked = it.s !== false;
+        const btn = document.querySelector('#t_set .btn-org'); btn.innerText = "수정완료"; 
+        btn.onclick = function() { 
+            const isSale = document.getElementById('isSale').checked;
+            const desc = document.getElementById('id_desc').value;
+            db.itm[i] = {n:document.getElementById('in').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}; 
+            sv(); rSet(); this.innerText = "등록"; this.onclick = addI; 
+            document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
+        } 
+    }
+    
+    function delI_T(i) { if(confirm("아이템을 삭제하시겠습니까?")) { db.itm.splice(i,1); sv(); rSet(); } }
+    
+    function mkG(){ 
+        let rs=[]; document.querySelectorAll('#gr div').forEach(e=>{rs.push({n:e.querySelector('.gn').value, p:e.querySelector('.gp').value})}); 
+        const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
+        db.gac.push({n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}); 
+        sv(); rSet(); document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
+    }
+    
+    function editG(i) { 
+        const g = db.gac[i]; document.getElementById('gn').value = g.n; document.getElementById('gc').value = g.c; document.getElementById('gy').value = g.t || 'scratch'; 
+        if(document.getElementById('g_spc')) document.getElementById('g_spc').checked = g.spc || false;
+        const grDiv = document.getElementById('gr'); grDiv.innerHTML = ''; g.r.forEach(r => { 
+            const d = document.createElement('div');
+            d.innerHTML = `<input class="gn" value="${r.n}" style="width:80px"><input class="gp" value="${r.p}" type="number" style="width:50px"><button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
+            grDiv.appendChild(d);
+        }); 
+        const btn = document.querySelectorAll('#t_set .btn-org')[1]; btn.innerText = "수정완료"; 
+        btn.onclick = function() { 
+            let rs=[]; document.querySelectorAll('#gr div').forEach(e=>{rs.push({n:e.querySelector('.gn').value, p:e.querySelector('.gp').value})}); 
+            const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
+            db.gac[i] = {n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}; 
+            sv(); rSet(); this.innerText = "생성"; this.onclick = mkG; 
+            document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
+        } 
+    }
+    
+    function delG(i) { if(confirm("뽑기 기계를 삭제하시겠습니까?")) { db.gac.splice(i,1); sv(); rSet(); } }
+
+    function addGr(){ 
+        const d = document.createElement('div'); d.style.marginBottom="5px"; d.style.display="flex"; d.style.gap="5px";
+        let opts = `<option value="">아이템 선택</option>`; db.itm.forEach(i => { opts += `<option value="${i.n}">${i.n}</option>`; });
+        d.innerHTML = `<select class="gn" style="flex:1; margin-bottom:0;">${opts}</select><input class="gp" type="number" placeholder="%" style="width:80px; margin-bottom:0;"><button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
+        document.getElementById('gr').appendChild(d);
+    } 
+    if(document.getElementById('gr') && document.getElementById('gr').innerHTML==="") addGr();
+
+    function tryGachaT(i) {
+        if(!confirm("테스트해보시겠습니까? (비용 차감 없음)")) return;
+        me = {cn: 9999, inv: [], col: [], kc: 9999, isTest: true}; 
+        document.getElementById('appT').classList.add('hidden');
+        runRNG(db.gac[i], true); 
+        const restoreT = setInterval(() => {
+            if(document.getElementById('lottoM').classList.contains('hidden') && document.getElementById('cardM').classList.contains('hidden') && document.getElementById('scrM').classList.contains('hidden')) {
+                document.getElementById('appT').classList.remove('hidden');
+                me = null;
+                clearInterval(restoreT);
+            }
+        }, 1000);
+    }
+    
+    // 학생 인벤토리 휴지통 토글
+    window.toggleTrash = function(isTrash) {
+        showTrash = isTrash;
+        rBg();
+    }
+
+    function rBg(){ 
+        if(!me) return;
+const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText = me.cn + ' 🍭';      
+        document.getElementById('s_bg').innerHTML = `
+            <div class="stardew-tabs">
+                <div class="sd-tab ${!showTrash ? 'active' : ''}" onclick="toggleTrash(false)">🎒 가방</div>
+                <div class="sd-tab ${showTrash ? 'active' : ''}" onclick="toggleTrash(true)">🗑️ 완료</div>
+            </div>
+            <div id="s_iv"></div>
+        `;
+        
+        if(!me.inv) me.inv = [];
+        const counts = {};
+        me.inv.forEach(i => { 
+            const isUsed = (i.st === 'used' || i.st === 'usd');
+            if (showTrash && !isUsed) return; 
+            if (!showTrash && isUsed) return;
+
+            const key = `${i.n}_${i.st}`; 
+            if(!counts[key]) counts[key] = { ...i, count: 0 }; 
+            counts[key].count++; 
+        });
+        
+        const itemList = Object.values(counts);
+        let slotsHtml = "";
+        itemList.forEach(item => {
+            const isReq = (item.st === 'req'); const tierCls = `c-${item.g||'C'}`;
+            const clickEvent = (!showTrash && !isReq) ? `showItemDetail('${item.n.replace(/'/g, "\\'")}')` : '';
+            
+            slotsHtml += `<div class="inventory-slot has-item ${tierCls} ${showTrash ? 'is-used' : ''}" onclick="${clickEvent}">
+                ${item.i.includes('http') ? `<img src="${item.i}">` : `<div class="slot-emoji">${item.i}</div>`}
+                <div style="font-size: 18px; font-weight: bold; margin-top: 10px; color: #5D4037; text-align: center; word-break: keep-all; line-height: 1.2;">${item.n}</div>
+                <div class="item-count">${item.count}</div>
+                ${isReq ? '<div style="position:absolute; top:0; background:orange; color:white; font-size:10px; width:100%; text-align:center; border-radius:7px 7px 0 0;">요청중</div>' : ''}
+            </div>`;
+        });
+        
+        // 24에서 18로 변경
+        const emptySlots = Math.max(0, 18 - itemList.length);
+        for(let i=0; i<emptySlots; i++) { slotsHtml += `<div class="inventory-slot"></div>`; }
+        document.getElementById('s_iv').innerHTML = slotsHtml;
+    }
+         
+    function rCol(){ 
+        const total = db.itm.length; if(!me.col) me.col = []; 
+        const myCount = db.itm.filter(i => me.col.includes(i.n)).length; 
+        const pct = total === 0 ? 0 : Math.round((myCount / total) * 100);
+        
+        const gridHtml = db.itm.map(item => { 
+            const hasIt = me.col.includes(item.n); 
+            if(!hasIt) { return `<div class="quest-slot"><div class="quest-icon unknown-icon">❓</div></div>`; }
+            const itemIcon = item.i.includes('http') ? `<img src="${item.i}" style="width:100%;height:100%;object-fit:contain;">` : `${item.i}`;
+            return `<div class="quest-slot achieved"><div class="stamp-clear">GET!</div><div class="quest-icon">${itemIcon}</div><div style="font-weight:bold; font-size:16px; margin-top:5px; color:#5D4037;">${item.n}</div></div>`; 
+        }).join(''); 
+        
+        document.getElementById('s_col').innerHTML = `
+        <div class="parchment-scroll">
+            <div class="parchment-cap cap-tl"></div><div class="parchment-cap cap-tr"></div><div class="parchment-cap cap-bl"></div><div class="parchment-cap cap-br"></div>
+            <h2 style="text-align:center; font-size:50px; color:#4E342E; margin-top:10px; margin-bottom:40px; border-bottom: 2px dashed #D7CCC8; padding-bottom:15px;">📜 전설의 도감</h2>
+            <div id="s_cl" class="grid" style="flex-grow:1; align-content:start; margin-bottom:40px;">${gridHtml}</div>
+
+            <div style="background:rgba(255,255,255,0.6); padding:15px 20px; border-radius:15px; border:2px dashed #D7CCC8; margin-top:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px;">
+                    <div style="font-size:18px; font-weight:bold; color:#5D4037;">🏆 수집 달성률</div>
+                    <div style="font-size:24px; font-weight:900; color:#E65100;">${pct}%</div>
+                </div>
+                <div style="width:100%; height:18px; background:rgba(0,0,0,0.05); border-radius:10px; overflow:hidden; border:inset 1px rgba(0,0,0,0.1);">
+                    <div style="width:${pct}%; height:100%; background:linear-gradient(90deg, #FFC107, #E65100); border-radius:10px; transition:width 0.8s;"></div>
+                </div>
+                <div style="text-align:right; font-size:14px; color:#8D6E63; margin-top:8px; font-weight:bold;">${myCount} / ${total} 개 수집 완료</div>
+            </div>
+        </div>`;
+
+        const isColTabVisible = !document.getElementById('s_col').classList.contains('hidden');
+        if (pct === 100 && total > 0 && isColTabVisible) {
+            if (!window.masterPopupShown) {
+                setTimeout(showMasterOverlay, 100);
+                window.masterPopupShown = true;
+            }
+        } else if (pct < 100) {
+            window.masterPopupShown = false;
+        }
+    }
+
+    function rSh(){ 
+       const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText = me.cn + ' 🍭';
+
+        const saleItems = db.itm.filter(i => i.s === true);
+        
+        let normalShopHtml = "";
+        if(saleItems.length > 0) {
+            normalShopHtml = `
+                <div id="shop-normal-sec" class="shop-section" style="display:block;">
+                    <div id="s_sh_items" class="grid" style="margin-top: 20px !important;">
+                       ${saleItems.map((item, idx) => `
+    <div class="shop-card">
+        <div class="click-catcher" onclick="window.showAskModal('${item.n.replace(/'/g, "\\'")}')"></div>
+        <div class="shop-card-content">
+            <div class="shop-title">${item.n}</div>
+            ${item.i.includes('http') ? `<img src="${item.i}" class="item-shiny">` : `<div class="item-shiny">${item.i}</div>`}
+        </div>
+        <div class="pedestal">
+            <div class="pedestal-top"></div>
+            <div class="btn-price">${item.p} 🍭</div>
+        </div>
+    </div>
+`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        const typeEmoji = {scratch:'🥠', card:'💳️', lotto:'🕹️'};
+        const gachaShopHtml = `
+            <div id="shop-gacha-sec" class="shop-section" style="display:none;">
+                <div id="s_gl" class="grid" style="margin-top: 20px !important;">
+                    ${db.gac.map((x,i)=>`
+                        <div class="shop-card">
+                            <div class="click-catcher" onclick="window.showGachaModal('${x.n.replace(/'/g, "\\'")}')"></div>
+                            <div class="shop-card-content">
+                                <div class="shop-title" style="color:#FFF9C4;">${x.n}</div>
+                                <div class="item-shiny gacha-shiny">${typeEmoji[x.t]}</div>
+                            </div>
+                            <div class="pedestal ped-gold">
+                                <div class="pedestal-top"></div>
+                                <div class="btn-price">${x.c} 🍭</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        document.getElementById('s_sh').innerHTML = `
+            <div class="npc-speech">
+                <div style="font-size: 65px; line-height: 1;">🧙‍♂️</div>
+                <div>"어서오게, 꼬마 용사여!<br><span style="color:#FF9800; font-size:22px;">오늘은 어떤 신기한 물건을 찾아왔는가?</span>"</div>
+            </div>
+            <div class="shop-toggle-bar">
+                <div id="tab-slider" class="tab-slider"></div>
+                <div id="tab-normal" class="shop-tab tab-active" onclick="toggleShopTab('normal')">일반 상점</div>
+                <div id="tab-gacha" class="shop-tab" onclick="toggleShopTab('gacha')">스페셜 뽑기</div>
+            </div>
+            ${normalShopHtml}
+            ${gachaShopHtml}
+        `;
+    }
+
+    window.toggleShopTab = function(tabType) {
+        const slider = document.getElementById('tab-slider');
+        if(tabType === 'normal') {
+            document.getElementById('shop-normal-sec').style.display = 'block';
+            document.getElementById('shop-gacha-sec').style.display = 'none';
+            document.getElementById('tab-normal').classList.add('tab-active');
+            document.getElementById('tab-gacha').classList.remove('tab-active');
+            if(slider) slider.style.transform = 'translateX(0)';
+        } else {
+            document.getElementById('shop-normal-sec').style.display = 'none';
+            document.getElementById('shop-gacha-sec').style.display = 'block';
+            document.getElementById('tab-normal').classList.remove('tab-active');
+            document.getElementById('tab-gacha').classList.add('tab-active');
+            if(slider) slider.style.transform = 'translateX(100%)';
+        }
+    }
+
+    window.showAskModal = function(itemName) {
+        const item = db.itm.find(i => i.n === itemName);
+        if (!item) return;
+        if (me.cn < item.p) return alert("🍭가 부족해요!");
+
+        const old = document.getElementById('askModal'); if(old) old.remove();
+        const itemIcon = item.i.includes('http') ? `<img src="${item.i}" style="width:70px; height:70px; object-fit:contain;">` : `<div style="font-size:70px;">${item.i}</div>`;
+
+        const modalHtml = `
+            <div id="askModal" class="modal-overlay">
+                <div class="modal-window">
+                    <button class="modal-close-btn" onclick="document.getElementById('askModal').remove()">X</button>
+                    <div class="modal-inner">
+                        <div class="modal-icon">${itemIcon}</div>
+                        <h2 class="modal-title">구매 하시겠습니까?</h2>
+                        <div style="background:rgba(255,255,255,0.8); border: 2px dashed #A1887F; border-radius: 15px; padding: 15px; margin-bottom:20px;">
+                            <div style="font-size:24px; font-weight:900; color:#FF6F00;">${item.n}</div>
+                            <div style="font-size:20px; color:#5D4037; margin-top:10px;">가격: <b style="color:#E65100; font-size:24px;">${item.p}</b> 🍭</div>
+                        </div>
+                        <div class="modal-btn-group" style="justify-content: center;">
+                            <button class="btn btn-org" onclick="realBuyCurrent('${item.n.replace(/'/g, "\\'")}')" style="flex: none; width: 60%;">네, 살래요!</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    window.realBuyCurrent = function(itemName) {
+        const modal = document.getElementById('askModal');
+        if (modal) modal.remove();
+
+        const item = db.itm.find(i => i.n === itemName);
+        if (!item || me.cn < item.p) return;
+
+        me.cn -= item.p;
+        me.inv.push({n: item.n, i: item.i, st: 'active', g: item.g || 'C'});
+        if (!me.col) me.col = [];
+        if (!me.col.includes(item.n)) me.col.push(item.n);
+        
+        upMe(); rBg(); rSh(); rCol();
+        setTimeout(() => showBuyModal(item.n), 50);
+    }
+
+    function showBuyModal(itemName) {
+        const old = document.getElementById('buyModal'); if(old) old.remove();
+        const modalHtml = `
+            <div id="buyModal" class="modal-overlay">
+                <div class="modal-window">
+                     <div class="modal-inner" style="background:#FFFDE7; border-color:#FFC107;">
+                        <div class="modal-icon">🎁</div>
+                        <h2 class="modal-title" style="color:#FF6F00;">🎉 축하합니다!</h2>
+                        <div style="font-size:18px; color:#6D4C41; font-weight:bold;">
+                            <b style="color:#E65100; font-size:24px;">${itemName}</b><br><br>
+                            아이템을 획득했습니다!<br>
+                        </div>
+                        <div class="modal-btn-group" style="justify-content: center; margin-top: 20px;">
+                            <button class="btn btn-green" onclick="document.getElementById('buyModal').remove()" style="flex: none; width: 60%;">확인 완료!</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="buyConfetti" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10000;"></div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        snd('f'); fireConfetti('buyConfetti'); 
+    }
+
+    window.showGachaModal = function(gachaName) {
+        const g = db.gac.find(i => i.n === gachaName);
+        if (!g) return;
+        if (me.cn < g.c) return alert("🍭가 부족해요!");
+        
+        const old = document.getElementById('gachaModal'); if(old) old.remove();
+        const typeEmoji = {scratch:'🥠', card:'💳️', lotto:'🕹️'};
+        const emo = typeEmoji[g.t] || '🎁';
+        
+        const modalHtml = `
+            <div id="gachaModal" class="modal-overlay">
+                <div class="modal-window">
+                    <button class="modal-close-btn" onclick="document.getElementById('gachaModal').remove()">X</button>
+                    <div class="modal-inner">
+                        <div class="modal-icon">${emo}</div>
+                        <h2 class="modal-title">${g.n}</h2>
+                        <div style="background:rgba(255,255,255,0.8); border: 2px dashed #A1887F; border-radius: 15px; padding: 15px; margin-bottom:20px;">
+                            <div style="font-size:22px; color:#5D4037; font-weight:bold;">비용: <b style="color:#FF6F00; font-size:26px;">${g.c}</b> 🍭</div>
+                        </div>
+                        <div class="modal-btn-group" style="justify-content: center;">
+                            <button class="btn btn-org" onclick="executeGachaCurrent('${g.n.replace(/'/g, "\\'")}')" style="flex: none; width: 60%;">뽑기 시작!</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    window.executeGachaCurrent = function(gachaName) {
+        const modal = document.getElementById('gachaModal');
+        if (modal) modal.remove();
+
+        const g = db.gac.find(i => i.n === gachaName);
+        if (!g || me.cn < g.c) return;
+
+        me.cn -= g.c;
+        upMe();
+        rBg(); rSh();
+        runRNG(g, true); 
+    }
+
+    function runRNG(g, isSpecial) {
+        if (g.spc && me && me.inv) {
+            let availableItems = g.r.map(r => r.n);
+            let itemCounts = {};
+            availableItems.forEach(n => itemCounts[n] = 0);
+            me.inv.forEach(i => { if (itemCounts[i.n] !== undefined) itemCounts[i.n]++; });
+            
+            let minCount = Math.min(...Object.values(itemCounts));
+            let candidates = availableItems.filter(n => itemCounts[n] === minCount);
+            
+            let pickName = candidates[Math.floor(Math.random() * candidates.length)];
+            winItem = db.itm.find(it => it.n === pickName);
+            if (!winItem) winItem = {n: pickName, i: '🎁', g: 'C'};
+        } else {
+            let rnd=Math.random()*100, acc=0, pk=g.r[0]; 
+            for(let r of g.r){ acc+=parseFloat(r.p); if(rnd<=acc){ pk=r; break; } }
+            winItem = db.itm.find(it => it.n === pk.n); 
+            if(!winItem) winItem = {n:pk.n, i:'🎁', g:'C'};
+        }
+        
+        const others = db.itm.filter(it => it.n !== winItem.n);
+        if(others.length >= 2) {
+            const shuffled = others.sort(() => 0.5 - Math.random());
+            dummy1 = shuffled[0]; dummy2 = shuffled[1];
+        } else if (others.length === 1) {
+            dummy1 = others[0]; dummy2 = Math.random() > 0.5 ? others[0] : winItem;
+        } else {
+            dummy1 = winItem; dummy2 = winItem;
+        }
+
+        scratchItem = winItem; 
+        
+        if(g.t === 'lotto') initLotto();
+        else if(g.t === 'card') initCardFlipMode();
+        else initScratch(winItem);
+    }
+
+    function initLotto() {
+        document.getElementById('lottoM').classList.remove('hidden');
+        document.getElementById('lottoCloseBtn').classList.add('hidden');
+        document.getElementById('lottoRes').innerHTML = '';
+        document.getElementById('lottoRes').style.opacity = '0';
+        document.getElementById('gKnob').classList.remove('spin');
+        const bowl = document.getElementById('lottoBowl'); bowl.innerHTML = ''; 
+        document.querySelectorAll('.ball-drop').forEach(el => el.remove());
+        document.querySelectorAll('.ball-center').forEach(el => el.remove()); 
+
+        const colors = ['#4DD0E1', '#81C784', '#42A5F5', '#9575CD', '#EF5350', '#FFCA28'];
+        for(let i=0; i<6; i++) {
+            let b = document.createElement('div');
+            b.className = `lotto-ball ball-moving-${(i%4)+1}`;
+            b.style.background = colors[i % colors.length];
+            b.style.left = (Math.random() * 200 + 10) + 'px';
+            b.style.top = (Math.random() * 200 + 10) + 'px';
+            b.style.transform = `rotate(${Math.random() * 360}deg)`;
+            bowl.appendChild(b);
+        }
+        document.querySelector('.gumball-machine').classList.add('lotto-shaking');
+        document.getElementById('gKnob').classList.add('spin');
+        snd('s');
+
+        setTimeout(() => {
+            document.querySelector('.gumball-machine').classList.remove('lotto-shaking');
+            const movingBalls = document.querySelectorAll('.lotto-ball');
+            movingBalls.forEach(ball => {
+                ball.classList.add('paused');
+                const computedStyle = window.getComputedStyle(ball);
+                ball.style.top = computedStyle.top; ball.style.left = computedStyle.left;
+            });
+
+            let chosen = document.createElement('div');
+            chosen.className = 'lotto-ball ball-drop';
+            chosen.style.left = '50%'; chosen.style.transform = 'translateX(-50%)'; chosen.style.top = '160px'; 
+            const winColor = colors[Math.floor(Math.random()*colors.length)];
+            chosen.style.background = winColor;
+            document.querySelector('.gumball-machine').appendChild(chosen);
+
+            setTimeout(() => { chosen.style.top = '380px'; }, 50);
+
+            setTimeout(() => {
+                setTimeout(() => {
+                    const centerBall = document.createElement('div');
+                    centerBall.className = 'ball-center';
+                    centerBall.style.background = winColor;
+                    
+                    const itemIcon = scratchItem.i.includes('http') ? `<img src="${scratchItem.i}" style="width:150px; height:150px; object-fit:contain;">` : `<div style="font-size:100px; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.2));">${scratchItem.i}</div>`;
+                    
+                    centerBall.innerHTML = `<div class="ball-content-wrapper">${itemIcon}<div class="ball-text-title">CONGRATULATIONS!</div><div class="ball-text-item">${scratchItem.n}</div></div>`; 
+                    document.body.appendChild(centerBall);
+                    requestAnimationFrame(() => {
+                        centerBall.classList.add('show');
+                        centerBall.style.boxShadow = `0 0 100px 40px white`;
+                    });
+                    snd('f'); 
+                    if(scratchItem.g === 'A' || scratchItem.g === 'B') fireConfetti('lottoConfetti');
+                    
+                    giveReward(scratchItem);
+
+                    document.getElementById('lottoCloseBtn').classList.remove('hidden');
+                    document.getElementById('lottoCloseBtn').onclick = () => {
+                        centerBall.remove(); chosen.remove(); clsLotto();
+                    };
+                }, 600); 
+            }, 600);
+        }, 2000); 
+    }
+
+    function clsLotto() { 
+        document.getElementById('lottoM').classList.add('hidden'); 
+        document.getElementById('lottoConfetti').innerHTML = ''; 
+        if(!me.isTest) rBg();
+    }
+
+    function initCardFlipMode() {
+        document.getElementById('cardM').classList.remove('hidden');
+        document.getElementById('cardCloseBtn').classList.add('hidden');
+        const stage = document.getElementById('cardStage');
+        stage.innerHTML = '';
+        
+        const cardsData = [
+            { type: 'win', item: winItem },
+            { type: 'lose', item: dummy1 },
+            { type: 'lose', item: dummy2 }
+        ].sort(() => Math.random() - 0.5);
+
+        cardsData.forEach((c, i) => {
+            let wrapper = document.createElement('div');
+            wrapper.className = 'flip-card-wrapper';
+            wrapper.innerHTML = `<div class="flip-card-front"></div><div class="flip-card-back" id="c_back_${i}"></div>`;
+            wrapper.onclick = () => selectCard(i, wrapper, c, cardsData);
+            stage.appendChild(wrapper);
+        });
+    }
+    
+    function selectCard(idx, el, cData, allCards) {
+        if (document.querySelector('.flip-card-wrapper.flipped')) return; 
+        
+        el.classList.add('flipped');
+        const back = document.getElementById(`c_back_${idx}`);
+        
+        const itemIcon = cData.item.i.includes('http') 
+            ? `<img src="${cData.item.i}" style="width:80px; height:80px; object-fit:contain;">` 
+            : `<div style="font-size:80px;">${cData.item.i}</div>`;
+        
+        back.innerHTML = `${itemIcon}<div style="font-size:18px; font-weight:bold; color:#333; margin-top:10px;">${cData.item.n}</div>`;
+        
+        if(cData.type === 'win') {
+            snd('f');
+            if(cData.item.g === 'A' || cData.item.g === 'B') fireConfetti('cardConfetti');
+            giveReward(cData.item);
+        } else {
+            snd('r');
+        }
+        
+        setTimeout(() => {
+            document.querySelectorAll('.flip-card-wrapper').forEach((wrapper, k) => {
+                if (k === idx) return; 
+                wrapper.classList.add('flipped-missed');
+                const otherBack = document.getElementById(`c_back_${k}`);
+                const otherData = allCards[k];
+                const otherIcon = otherData.item.i.includes('http') ? `<img src="${otherData.item.i}" style="width:60px;">` : `<div style="font-size:60px;">${otherData.item.i}</div>`;
+                
+                otherBack.innerHTML = `<div class="pass-stamp">PASS</div>${otherIcon}<div style="font-size:16px;">${otherData.item.n}</div>`;
+            });
+            document.getElementById('cardCloseBtn').classList.remove('hidden');
+        }, 800);
+    }
+    
+    function clsCard() { 
+        document.getElementById('cardM').classList.add('hidden'); 
+        document.getElementById('cardConfetti').innerHTML = '';
+        if(!me.isTest) rBg(); 
+    }
+
+    function initScratch(realItem) {
+        document.getElementById('scrM').classList.remove('hidden');
+        document.getElementById('scrCloseBtn').classList.remove('hidden');
+        if(ac.state==='suspended')ac.resume(); 
+
+        const resDiv = document.getElementById('scrRes');
+        const itemIcon = realItem.i.includes('http') ? `<img src="${realItem.i}" style="width:100px; margin-bottom:10px;">` : `<div style="font-size:80px; margin-bottom:10px;">${realItem.i}</div>`;
+        
+        resDiv.innerHTML = `${itemIcon}<div style="font-size:24px; font-weight:bold; color:#333;">${realItem.n}</div>`;
+        
+        scratchCanvas = document.getElementById('scratchCanvas'); 
+        scratchCtx = scratchCanvas.getContext('2d'); 
+        scratchCtx.globalCompositeOperation = 'source-over'; 
+        scratchCtx.fillStyle = '#CFD8DC'; 
+        scratchCtx.fillRect(0, 0, 300, 350);
+        scratchCtx.font = "30px Jua"; 
+        scratchCtx.fillStyle = "#546E7A"; 
+        scratchCtx.textAlign = "center";
+        scratchCtx.fillText("SCRATCH!", 150, 175);
+        
+        scratchCanvas.style.opacity = '1';
+        scratchCanvas.style.pointerEvents = 'auto';
+
+        isScratching = false;
+        
+        const startScratch = () => { 
+            isScratching = true; 
+            if(ac.state==='suspended')ac.resume();
+            document.getElementById('scrCloseBtn').classList.add('hidden'); 
+        };
+        const endScratch = () => { isScratching = false; checkReveal(); };
+        
+        const doScratch = (e) => {
+            if(!isScratching) return; 
+            e.preventDefault();
+            
+            const now = Date.now();
+            if (now - lastSoundTime > 50) { 
+                snd('s');
+                lastSoundTime = now;
+            }
+
+            const rect = scratchCanvas.getBoundingClientRect();
+            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            scratchCtx.globalCompositeOperation = 'destination-out'; 
+            scratchCtx.beginPath(); 
+            scratchCtx.arc(x, y, 25, 0, Math.PI * 2); 
+            scratchCtx.fill();
+        };
+        
+        scratchCanvas.onmousedown = startScratch; 
+        scratchCanvas.ontouchstart = startScratch; 
+        scratchCanvas.onmouseup = endScratch; 
+        scratchCanvas.ontouchend = endScratch; 
+        scratchCanvas.onmousemove = doScratch; 
+        scratchCanvas.ontouchmove = doScratch;
+    }
+
+    function checkReveal() {
+        const imageData = scratchCtx.getImageData(0, 0, 300, 350); 
+        let clearCount = 0;
+        for(let i=0; i<imageData.data.length; i+=4) { if(imageData.data[i+3] === 0) clearCount++; }
+        
+        if(clearCount / (300*350) > 0.4) {
+            scratchCanvas.style.transition = 'opacity 1s';
+            scratchCanvas.style.opacity = '0'; 
+            scratchCanvas.style.pointerEvents = 'none';
+            document.getElementById('scrCloseBtn').classList.remove('hidden');
+            
+            snd('f'); 
+            if(scratchItem.g === 'A' || scratchItem.g === 'B') fireConfetti('confetti');
+            giveReward(scratchItem);
+        }
+    }
+
+    function clsScr() { 
+        document.getElementById('scrM').classList.add('hidden'); 
+        document.getElementById('confetti').innerHTML = ''; 
+        if(!me.isTest) rBg(); 
+    }
+
+    function giveReward(item) {
+        if(me.isTest) return; 
+
+        me.inv.push({n: item.n, i: item.i, st: 'active', g: item.g||'C'});
+        if(!me.col) me.col = [];
+        if(!me.col.includes(item.n)) me.col.push(item.n);
+        
+        upMe(); rBg(); rSh(); rCol();
+    }
+
+    function fireConfetti(elementId) {
+        const colors = ['#EF5350', '#EC407A', '#AB47BC', '#7E57C2', '#5C6BC0', '#42A5F5', '#29B6F6', '#26C6DA', '#26A69A', '#66BB6A', '#9CCC65', '#D4E157', '#FFEE58', '#FFCA28', '#FFA726', '#FF7043'];
+        const container = document.getElementById(elementId);
+        container.innerHTML = '';
+        for (let i = 0; i < 50; i++) {
+            const p = document.createElement('div');
+            p.className = 'confetti-particle';
+            p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            p.style.left = Math.random() * 100 + '%';
+            p.style.animationDelay = Math.random() * 2 + 's';
+            p.style.animationDuration = (Math.random() * 2 + 2) + 's';
+            container.appendChild(p);
+        }
+    }
+
+    </script>
+</body>
+</html>
