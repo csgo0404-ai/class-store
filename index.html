@@ -352,7 +352,42 @@
     transform: translateY(3px) scale(1.1); /* 위치 유지하며 확대 */
     color: #D32F2F;
 }
+/* 📱 태블릿 가로 모드 (세로 높이가 850px 이하일 때) 자동 최적화 */
+        @media (max-height: 850px) {
+            /* 1. 상점: NPC 말풍선 & 상점 탭 축소 */
+            .npc-speech { padding: 10px 20px !important; margin-bottom: 20px !important; }
+            .npc-speech > div:first-child { font-size: 45px !important; }
+            .shop-toggle-bar { margin: 0 auto 20px auto !important; width: 400px !important; padding: 4px !important; }
+            .shop-tab { padding: 8px 0 !important; font-size: 18px !important; }
+            
+            /* 상점 카드 비율 축소 */
+            #s_sh .grid { gap: 20px 15px !important; margin-top: 20px !important; }
+            .shop-card { width: 170px !important; height: 250px !important; border-radius: 85px 85px 12px 12px !important; border-bottom: 8px solid #1A0F0D !important; }
+            .shop-card-content { padding-top: 85px !important; }
+            .item-shiny { width: 80px !important; height: 80px !important; font-size: 80px !important; }
+            .shop-title { top: 55px !important; font-size: 20px !important; }
+            .pedestal { width: 130px !important; height: 45px !important; bottom: 10px !important; }
+            .shop-card .btn-price { font-size: 20px !important; }
 
+            /* 2. 가방: 슬롯 및 아이콘 크기 축소 */
+            #s_iv { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
+            .inventory-slot { padding: 5px !important; border-radius: 10px !important; }
+            .inventory-slot img { width: 70px !important; height: 70px !important; }
+            .inventory-slot .slot-emoji { font-size: 60px !important; line-height: 70px !important; }
+            .inventory-slot > div:nth-child(2) { font-size: 15px !important; margin-top: 5px !important; }
+            .stardew-tabs { padding-left: 10px !important; }
+            .sd-tab { padding: 8px 15px !important; font-size: 16px !important; }
+
+            /* 3. 도감: 양피지 여백 및 퀘스트 슬롯 축소 */
+            .parchment-scroll { padding: 25px 20px !important; min-height: 60vh !important; margin: 15px 10px !important; }
+            .parchment-scroll::before { top: -15px !important; height: 30px !important; }
+            .parchment-scroll::after { bottom: -15px !important; height: 30px !important; }
+            .parchment-scroll h2 { font-size: 38px !important; margin-bottom: 25px !important; padding-bottom: 10px !important; }
+            #s_cl.grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)) !important; gap: 10px !important; margin-bottom: 25px !important; }
+            .quest-slot { padding: 10px 5px !important; border-radius: 10px !important; }
+            .quest-icon { width: 55px !important; height: 55px !important; font-size: 50px !important; line-height: 55px !important; margin-bottom: 5px !important; }
+            .quest-slot div:last-child { font-size: 14px !important; }
+        }
     </style>
 </head>
 <body>
@@ -1495,10 +1530,10 @@ window.appU = function(y, si, k) {
     
     function mkG(){ 
         let rs=[]; 
-        document.querySelectorAll('#gr div').forEach(e=>{
+        document.querySelectorAll('#gr > div').forEach(e=>{
             rs.push({
                 n: e.querySelector('.gn').value, 
-                q: parseInt(e.querySelector('.gq').value) || 1, // 🌟 개수 저장
+                q: parseInt(e.querySelector('.gq').value) || 1, 
                 p: e.querySelector('.gp').value
             });
         }); 
@@ -1512,25 +1547,37 @@ window.appU = function(y, si, k) {
         if(g.cur) document.getElementById('gc_cur').value = g.cur;
         if(document.getElementById('g_spc')) document.getElementById('g_spc').checked = g.spc || false;
         
+        let optsBase = `<option value="">아이템 선택</option>`; db.itm.forEach(it => { optsBase += `<option value="${it.n}">${it.n}</option>`; });
+
         const grDiv = document.getElementById('gr'); grDiv.innerHTML = ''; 
         g.r.forEach(r => { 
             const d = document.createElement('div');
-            d.style.marginBottom="5px"; d.style.display="flex"; d.style.gap="5px";
-            const qty = r.q || 1; // 🌟 기존 데이터 호환 및 개수 불러오기
+            d.style.marginBottom="8px"; d.style.display="flex"; d.style.gap="6px"; d.style.alignItems="center";
+            const qty = r.q || 1; 
+            
+            // 🌟 수정: 기존에 input으로 뜨던 창을 등록할 때와 동일하게 select UI로 바꿈
             d.innerHTML = `
-                <input class="gn" value="${r.n}" style="flex:2; min-width:160px; margin-bottom:0;">
-                <input class="gq" value="${qty}" type="number" placeholder="개수" style="width:60px; margin-bottom:0;">
-                <input class="gp" value="${r.p}" type="number" placeholder="%" style="width:80px; margin-bottom:0;">
-                <button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
+                <select class="gn" style="flex:2; min-width:140px; margin-bottom:0; padding:10px; border-radius:12px; border:2px solid #FFE0B2; outline:none; font-family:'Jua'; font-size:15px;">${optsBase}</select>
+                <div style="display:flex; align-items:center; background:white; border:2px solid #FFE0B2; border-radius:12px; padding:0 5px; height:42px;">
+                    <input class="gq" type="number" placeholder="개수" value="${qty}" style="width:45px; border:none; margin:0; padding:0; text-align:center; outline:none; font-family:'Jua'; font-size:16px;">
+                    <span style="font-size:14px; color:#8D6E63; font-weight:bold; margin-right:5px; white-space:nowrap;">개</span>
+                </div>
+                <div style="display:flex; align-items:center; background:white; border:2px solid #FFE0B2; border-radius:12px; padding:0 5px; height:42px;">
+                    <input class="gp" type="number" placeholder="확률" value="${r.p}" style="width:45px; border:none; margin:0; padding:0; text-align:center; outline:none; font-family:'Jua'; font-size:16px;">
+                    <span style="font-size:14px; color:#8D6E63; font-weight:bold; margin-right:5px; white-space:nowrap;">%</span>
+                </div>
+                <button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:0; width:42px; height:42px; border-radius:12px; display:flex; justify-content:center; align-items:center; font-size:20px; flex-shrink:0;">×</button>`;
+            
+            setTimeout(() => { d.querySelector('.gn').value = r.n; }, 10);
             grDiv.appendChild(d);
         }); 
         
         const btn = document.querySelectorAll('#t_set .btn-org')[1]; btn.innerText = "수정완료"; 
         btn.onclick = function() { 
-            let rs=[]; document.querySelectorAll('#gr div').forEach(e=>{
+            let rs=[]; document.querySelectorAll('#gr > div').forEach(e=>{
                 rs.push({
                     n: e.querySelector('.gn').value, 
-                    q: parseInt(e.querySelector('.gq').value) || 1, // 🌟 수정 시 개수 저장
+                    q: parseInt(e.querySelector('.gq').value) || 1, 
                     p: e.querySelector('.gp').value
                 });
             }); 
@@ -1544,17 +1591,24 @@ window.appU = function(y, si, k) {
     function delG(i) { if(confirm("뽑기 기계를 삭제하시겠습니까?")) { db.gac.splice(i,1); sv(); rSet(); } }
 
     function addGr(){ 
-        const d = document.createElement('div'); d.style.marginBottom="5px"; d.style.display="flex"; d.style.gap="5px";
+        const d = document.createElement('div'); d.style.marginBottom="8px"; d.style.display="flex"; d.style.gap="6px"; d.style.alignItems="center";
         let opts = `<option value="">아이템 선택</option>`; db.itm.forEach(i => { opts += `<option value="${i.n}">${i.n}</option>`; });
         
-        // 🌟 수정: 아이템명(gn)을 넓게(flex:2), 개수 칸(gq) 추가
+        // 🌟 수정: 텍스트 입력 대신 깔끔하게 '개'와 '%' 텍스트를 고정으로 박아넣어 분리함
         d.innerHTML = `
-            <select class="gn" style="flex:2; min-width:160px; margin-bottom:0;">${opts}</select>
-            <input class="gq" type="number" placeholder="개수" value="1" style="width:60px; margin-bottom:0;">
-            <input class="gp" type="number" placeholder="%" style="width:80px; margin-bottom:0;">
-            <button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
+            <select class="gn" style="flex:2; min-width:140px; margin-bottom:0; padding:10px; border-radius:12px; border:2px solid #FFE0B2; outline:none; font-family:'Jua'; font-size:15px;">${opts}</select>
+            <div style="display:flex; align-items:center; background:white; border:2px solid #FFE0B2; border-radius:12px; padding:0 5px; height:42px;">
+                <input class="gq" type="number" placeholder="개수" value="1" style="width:45px; border:none; margin:0; padding:0; text-align:center; outline:none; font-family:'Jua'; font-size:16px;">
+                <span style="font-size:14px; color:#8D6E63; font-weight:bold; margin-right:5px; white-space:nowrap;">개</span>
+            </div>
+            <div style="display:flex; align-items:center; background:white; border:2px solid #FFE0B2; border-radius:12px; padding:0 5px; height:42px;">
+                <input class="gp" type="number" placeholder="확률" style="width:45px; border:none; margin:0; padding:0; text-align:center; outline:none; font-family:'Jua'; font-size:16px;">
+                <span style="font-size:14px; color:#8D6E63; font-weight:bold; margin-right:5px; white-space:nowrap;">%</span>
+            </div>
+            <button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:0; width:42px; height:42px; border-radius:12px; display:flex; justify-content:center; align-items:center; font-size:20px; flex-shrink:0;">×</button>`;
         document.getElementById('gr').appendChild(d);
     }
+
     if(document.getElementById('gr') && document.getElementById('gr').innerHTML==="") addGr();
 
     function tryGachaT(i) {
@@ -2487,21 +2541,22 @@ let isScratchDone = false;
         resDiv.classList.remove('hidden'); 
         if(ac.state==='suspended')ac.resume(); 
 
-        // 🌟 버그 수정: 새로운 복권을 켤 때 이전 상태를 완벽하게 초기화
         isScratchDone = false;
         slotCleared = { '0_t':false, '0_b':false, '1_t':false, '1_b':false, '2_t':false, '2_b':false };
         lastSoundTime = 0;
 
+        // 🌟 수정: 아이템 개수(qty)에 맞춰 복권 점수 시각화를 완벽하게 동기화!
+        // 이제 4개 당첨이면 무조건 초코(5)+쿠키(15) 조합으로 20점이 뜨게 됩니다.
+        let q = realItem._qty || 1;
         let bonusPoints = 0;
-        const rand = Math.random() * 100;
         let win1 = false, win2 = false, win3 = false;
-
-        if (rand < 3) { win1 = true; win2 = true; win3 = true; bonusPoints = 30; } 
-        else if (rand < 10) { win2 = true; win3 = true; bonusPoints = 25; }
-        else if (rand < 25) { win1 = true; win3 = true; bonusPoints = 20; }
-        else if (rand < 45) { win3 = true; bonusPoints = 15; }
-        else if (rand < 70) { win2 = true; bonusPoints = 10; }
-        else { win1 = true; bonusPoints = 5; }
+        
+        if (q === 1) { win1 = true; bonusPoints = 5; }
+        else if (q === 2) { win2 = true; bonusPoints = 10; }
+        else if (q === 3) { win3 = true; bonusPoints = 15; }
+        else if (q === 4) { win1 = true; win3 = true; bonusPoints = 20; }
+        else if (q === 5) { win2 = true; win3 = true; bonusPoints = 25; }
+        else { win1 = true; win2 = true; win3 = true; bonusPoints = 30; }
 
         scratchTop = ['🍫', '🍬', '🍪'];
         const dummies = ['🍩', '🍰', '🧁', '🍦', '🍧', '🍮', '🥧'].sort(() => Math.random() - 0.5);
@@ -2512,14 +2567,10 @@ let isScratchDone = false;
             win3 ? '🍪' : dummies.pop()
         ];
 
-scratchBonus = bonusPoints;
-        // 🌟 여러 개 당첨 시 메시지 깔끔하게 바꾸기
-        let itemDName = scratchItem._qty > 1 ? `${scratchItem.n} x${scratchItem._qty}` : scratchItem.n;
-        scratchMsg = bonusPoints > 0 ? `+${bonusPoints} & ${itemDName}!` : `${itemDName} 당첨!`;
-        
-        slotCleared = { '0_t':false, '0_b':false, '1_t':false, '1_b':false, '2_t':false, '2_b':false };
-
-        scratchMsg = `+${bonusPoints} 당첨!`; // 🎁 이모지 제거됨
+        scratchBonus = bonusPoints;
+        let itemDName = realItem._qty > 1 ? `${realItem.n} x${realItem._qty}` : realItem.n;
+        // 🌟 수정: +점수 & 텍스트를 완전히 제거하고 아이템명 당첨! 만 뜨게 변경
+        scratchMsg = `${itemDName} 당첨!`;
 
         // 복권 바깥 영역 누르면 닫기
         resDiv.onclick = (e) => { 
