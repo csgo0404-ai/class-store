@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>이벤트 상점 완결판 (클래식 RPG & 마스터 에디션)</title>
-    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&family=Jua&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -22,6 +22,7 @@
         .btn { border:none; padding:12px 20px; border-radius:25px; cursor:pointer; font-family:'Jua'; font-size:16px; color:white; background:var(--main); box-shadow: 0 4px 0 rgba(0,0,0,0.1); transition:0.1s; position:relative; z-index:2; white-space: nowrap; }
         .btn:active { transform:translateY(2px); box-shadow:none; }
         .btn-org { background:var(--act); } .btn-red { background:#EF5350; } .btn-blue { background:#42A5F5; } .btn-green { background:#66BB6A; } .btn-gray { background:#90A4AE; }
+        .btn-wood { background:#8D6E63; box-shadow: 0 4px 0 #5D4037; } 
         
         input, select, textarea { padding:12px 15px; border:3px solid #FFE0B2; border-radius:20px; font-family:'Jua'; width:100%; margin-bottom:10px; font-size:16px; background:#FFFDF9; outline:none; }
         input:focus { border-color:var(--act); background:white; }
@@ -41,7 +42,7 @@
         td { background:white; padding:8px; border-top:1px solid #eee; border-bottom:1px solid #eee; }
         td:first-child { border-left:1px solid #eee; border-radius:10px 0 0 10px; }
         td:last-child { border-right:1px solid #eee; border-radius:0 10px 10px 0; }
-        .qty-input { width:60px; text-align:center; padding:5px; font-weight:bold; color:var(--dark); }
+        .qty-input { width:80px; text-align:center; padding:5px; font-weight:bold; color:var(--dark); } 
 
         /* === 도감 (양피지) === */
         .parchment-scroll { background: #FDF3D5; background-image: repeating-linear-gradient(transparent, transparent 40px, rgba(139, 69, 19, 0.04) 40px, rgba(139, 69, 19, 0.04) 42px); border-left: 2px solid #E0C097; border-right: 2px solid #E0C097; position: relative; padding: 40px 30px; box-shadow: inset 0 0 50px rgba(139, 69, 19, 0.15), 5px 15px 20px rgba(0,0,0,0.1); min-height: 80vh; display: flex; flex-direction: column; margin: 25px 15px; border-radius: 8px;}
@@ -68,33 +69,31 @@
         .login-input { padding: 15px; border: 2px solid #FFE0B2; border-radius: 15px; font-family: 'Jua'; width: 100%; font-size: 16px; background: #FFFDF9; outline: none; text-align: center; margin-bottom: 15px; }
         .login-action-btn { width: 100%; padding: 15px; font-size: 20px; border-radius: 15px; cursor: pointer; color: white; background: var(--act); border: none; box-shadow: 0 4px 0 rgba(0,0,0,0.1); font-family: 'Jua'; transition: 0.1s; }
 
-      /* 모험가 자격증 배경 및 캐릭터 박스 화이트톤 수정 */
-        .rpg-stat-box { background: white !important; border: 4px solid #FFB300; border-radius: 20px; box-shadow: 0 6px 0 #FFE0B2; color: #5D4037; margin-bottom: 25px; overflow: hidden; position: relative; }
-        .rpg-stat-header { background: #FFB300; color: white; font-size: 16px; font-weight: bold; padding: 10px 0; text-align: center; border-bottom: 2px dashed #FFF; letter-spacing: 1px; }
-        .rpg-stat-content { padding: 15px; display: flex; align-items: center; gap: 15px; background: white; }
-        
-        .rpg-character-box { width: 95px; height: 105px; background: white !important; border: 3px solid #FFE0B2; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); }
-        .rpg-stars { position: absolute; bottom: -12px; font-size: 18px; color: #FFB300; text-shadow: 1px 1px 0 #5D4037; letter-spacing: -2px; width: 100%; text-align: center; z-index: 5; }
-        .rpg-avatar { font-size: 65px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.1)); margin-bottom: 5px;}
-        
-        .rpg-info-box { flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .rpg-name { font-size: 32px; font-weight: 900; color: #5D4037; margin-bottom: 10px; text-align: center; }
-        .rpg-wealth { display: flex; justify-content: space-between; align-items: center; background: #FFFDF2; padding: 10px 15px; border-radius: 12px; border: 2px solid #FFE0B2; }
-        .rpg-wealth-label { font-size: 12px; color: #8D6E63; font-weight:bold; }
-        .rpg-wealth-value { font-size: 24px; color: #FF9800; font-weight: 900; }
+        /* 🆕 다했어요 연동 스타일 자격증 UI */
+        .new-license { background: #FCECA6; border-radius: 20px; padding: 20px 25px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .nl-left { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .nl-lv-text { font-family: 'Dongle', sans-serif; font-size: 30px; color: #D4B872; font-weight: 700; line-height: 0.8; margin-bottom: 2px; }
+        .nl-lv-num { font-family: 'Dongle', sans-serif; font-size: 65px; color: #5D4037; font-weight: 700; line-height: 0.8; }
+        .nl-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+        .nl-name { font-size: 28px; color: #5D4037; font-weight: 900; margin-bottom: 8px; }
+        .nl-cookie { font-size: 22px; color: #5D4037; font-weight: 900; display: flex; align-items: center; gap: 8px; }
         
         .npc-speech { background: white; border: 3px solid #FFCA28; border-radius: 20px; padding: 15px 25px; margin-bottom: 45px; position: relative; color: #5D4037; font-weight: bold; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
         .npc-speech::after { content: ''; position: absolute; bottom: -15px; left: 40px; border-width: 15px 15px 0 0; border-style: solid; border-color: #FFCA28 transparent transparent transparent; }
 
+       /* === 상점 렌더링 세팅 === */
         /* === 상점 렌더링 세팅 === */
         #s_sh { background-color: #5D4037 !important; background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 40px), linear-gradient(to bottom, #6D4C41, #4E342E) !important; padding: 50px 30px; border-radius: 25px; border: 8px solid #3E2723; box-shadow: inset 0 0 80px rgba(0,0,0,0.7); }
         .shop-section { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 70px !important; position: relative; }
-        #s_sh .grid { position: relative; margin-top: 50px !important; z-index: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; gap: 50px 20px !important; }
         
-        .shop-toggle-bar { display: flex; width: 450px; margin: 0 auto 40px auto; background: repeating-linear-gradient(to bottom, #4E342E 0px, #4E342E 5px, #3E2723 5px, #3E2723 10px); border: 4px solid #2A1A17; border-radius: 40px; box-shadow: 0 8px 15px rgba(0,0,0,0.5), inset 0 2px 8px rgba(0,0,0,0.8); position: relative; z-index: 10; padding: 6px; }
-        .tab-slider { position: absolute; top: 6px; left: 6px; width: calc(50% - 6px); height: calc(100% - 12px); background: repeating-linear-gradient(to bottom, #D4A373 0px, #D4A373 5px, #BC8A5F 5px, #BC8A5F 10px); border: 2px solid #8D6E63; border-radius: 30px; box-shadow: 0 4px 0 #8D6E63, 0 5px 10px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1; }
+        /* 🌟 상점 아이템 중앙 정렬 (justify-content: center 추가) */
+      #s_sh .grid { position: relative; margin-top: 50px !important; z-index: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; gap: 50px 20px !important; justify-content: center; }
+        
+        .shop-toggle-bar { display: flex; width: 500px; margin: 0 auto 40px auto; background: repeating-linear-gradient(to bottom, #4E342E 0px, #4E342E 5px, #3E2723 5px, #3E2723 10px); border: 4px solid #2A1A17; border-radius: 40px; box-shadow: 0 8px 15px rgba(0,0,0,0.5), inset 0 2px 8px rgba(0,0,0,0.8); position: relative; z-index: 10; padding: 6px; }
+        .tab-slider { position: absolute; top: 6px; left: 6px; height: calc(100% - 12px); background: repeating-linear-gradient(to bottom, #D4A373 0px, #D4A373 5px, #BC8A5F 5px, #BC8A5F 10px); border: 2px solid #8D6E63; border-radius: 30px; box-shadow: 0 4px 0 #8D6E63, 0 5px 10px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1; }
         .shop-tab { flex: 1; text-align: center; padding: 12px 0; font-size: 20px; font-weight: 900; cursor: pointer; z-index: 2; color: #A1887F; text-shadow: 1px 1px 1px rgba(0,0,0,0.5); transition: color 0.3s; }
         .shop-tab.tab-active { color: #4E342E; text-shadow: 1px 1px 0px rgba(255,255,255,0.4); }
+    
 
         .shop-card { width: 220px !important; height: 310px !important; background: linear-gradient(to bottom, #5D4037, #3E2723) !important; border: 4px solid #2A1A17 !important; border-bottom: 12px solid #1A0F0D !important; border-radius: 110px 110px 12px 12px !important; box-shadow: inset 0 35px 40px rgba(0,0,0,0.95), inset 0 0 15px rgba(0,0,0,0.6), 0 8px 15px rgba(0,0,0,0.4) !important; padding: 0 !important; display: block !important; position: relative !important; margin: 0 auto !important; overflow: hidden !important; cursor: pointer; transition: transform 0.2s; }
         .shop-card:hover { transform: translateY(-5px); z-index: 9999 !important; }
@@ -125,7 +124,7 @@
         /* === 모달 및 오버레이 === */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 9999; display: flex; justify-content: center; align-items: center; }
         .g-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:3000; display:flex; justify-content:center; align-items:center; flex-direction:column; }
-        .modal-window { background: #5D4037 !important; border: 4px solid #3E2723 !important; border-radius: 25px !important; padding: 10px !important; box-shadow: 0 15px 35px rgba(0,0,0,0.5) !important; width: 380px !important; text-align: center !important; position: relative !important; animation: popUp 0.3s ease-out !important; }
+        .modal-window { background: #5D4037 !important; border: 4px solid #3E2723 !important; border-radius: 25px !important; padding: 10px !important; box-shadow: 0 15px 35px rgba(0,0,0,0.5) !important; width: 450px !important; text-align: center !important; position: relative !important; animation: popUp 0.3s ease-out !important; }
         .modal-inner { background: #FFF8E1 !important; border-radius: 18px !important; padding: 30px 20px !important; border: 3px solid #D7CCC8 !important; }
         .modal-title { font-size: 28px !important; color: #4E342E !important; margin: 0 0 20px 0 !important; font-weight: 900 !important; }
         .modal-icon { font-size: 70px !important; margin-bottom: 15px !important; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.2)) !important; display: flex; justify-content: center; align-items: center; }
@@ -139,12 +138,18 @@
         @keyframes floatTrophy { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
 
         /* 기타 아이템 관리 디자인 */
-        .asset { background:white; border:3px solid #eee; border-radius:20px; padding:10px; text-align:center; cursor:pointer; transition:0.2s; position:relative; aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+     /* 기타 아이템 관리 디자인 */
+        .asset { background:white; border:3px solid #eee; border-radius:20px; padding:10px; text-align:center; cursor:pointer; transition:0.2s; position:relative; aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: center; align-items: center; user-select: none; -webkit-user-select: none; }
+        
+        /* 🌟 수정: 자식 요소들의 마우스 이벤트를 차단하여 드래그 끊김 완벽 해결 */
+        .asset * { pointer-events: none; } 
+        .asset .del-btn { pointer-events: auto; position: absolute; top: -8px; right: -8px; background: #EF5350; color: white; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px; cursor: pointer; display: none; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: bold; }
+.asset .btn { pointer-events: auto !important; position: relative; z-index: 10; }
+        
         .asset:hover { transform:translateY(-3px); border-color:var(--main); }
         .asset.sel { border-color:#EF5350; background:#FFCDD2; box-shadow: 0 0 10px rgba(239, 83, 80, 0.5); }
         .asset.req { border-color:#EF5350; background:#FFEBEE; animation:pulse 1s infinite; }
         .asset.used { background-color: #E0E0E0 !important; border-color: #BDBDBD !important; filter: grayscale(100%); opacity: 0.7; }
-        .asset .del-btn { position: absolute; top: -8px; right: -8px; background: #EF5350; color: white; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 20px; font-size: 16px; cursor: pointer; display: none; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.2); font-weight: bold; }
         .asset:hover .del-btn { display: block; }
         
         #t_set .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } 
@@ -173,6 +178,7 @@
         .inventory-slot.has-item:hover { transform: scale(1.05); border-color: var(--act); z-index: 5; }
         .inventory-slot.c-A { border-color: #FFC107; background: #FFFDE7; }
         .inventory-slot.c-B { border-color: #42A5F5; background: #E3F2FD; }
+        .inventory-slot.c-S { border-color: #FF7043; background: #FBE9E7; } /* 캔디/티켓 특수 배경 */
         
         /* 이미지 및 이모지 크기도 2배 확대 */
         .inventory-slot img { width: 100px; height: 100px; object-fit: contain; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.15)); }
@@ -184,11 +190,32 @@
         #appS .menu { font-size: 36px; padding: 25px 20px; margin-bottom: 18px; border-radius: 20px; }
         #appS .side .btn { font-size: 24px; padding: 18px; border-radius: 25px; }
 
-        /* 게임 이펙트 (스크래치, 카드, 로또) */
-        .scratch-container { position: relative; width: 300px; height: 350px; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: popUp 0.3s; }
+     /* 🌟 복권 디자인 (크림색 배경, 파선 테두리 제거, 드래그 방지) */
+                .slot-wrapper { position: relative; width: 100px; height: 130px; border-radius: 12px; overflow: hidden; background: #ECEFF1; border: 3px solid #90A4AE; display:flex; flex-direction: column; align-items:center; justify-content:center; box-shadow:inset 0 4px 8px rgba(0,0,0,0.1); user-select: none; -webkit-user-select: none; transition: 0.3s; }
+        .slot-canvas { position: absolute; z-index: 2; touch-action: none; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewport="0 0 40 40"><circle cx="20" cy="20" r="16" fill="%23FFC107" stroke="%23FF9800" stroke-width="2"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" font-size="20" font-weight="bold" fill="%23FF9800">₩</text></svg>') 20 20, auto; user-select: none; -webkit-user-select: none; }
+        
+        /* 🌟 당첨 슬롯 애니메이션 효과 */
+        .slot-win { border-color: #FF5722 !important; background: #FFF3E0 !important; animation: winPulse 0.8s infinite alternate; box-shadow: 0 0 15px rgba(255, 87, 34, 0.5) !important; z-index: 5; }
+        @keyframes winPulse { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }
+
+        .ticket-title { font-family: 'Jua', sans-serif; font-size: 38px; color: #5D4037; line-height: 1.1; text-align: center; margin-bottom: 5px; word-break: keep-all; }
+        .ticket-info { font-size: 14px; background: white; color: #5D4037; padding: 12px; border-radius: 12px; font-weight: bold; line-height: 1.6; text-align: left; border: 2px dashed #BCAAA4; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+
+/* 복권 안쪽 파선 제거 */
+.lottery-inner-border {
+    border: none; /* 기존에 border: dashed... 가 적용된 클래스의 테두리를 제거 */
+}
+
+/* 복권 제목 기울기 제거 */
+.lottery-title {
+    transform: none; /* transform: rotate() 또는 skew()가 적용되어 있다면 초기화 */
+    font-style: normal; /* 만약 폰트 스타일로 기울임이 들어갔다면 normal로 설정 */
+}
+        @keyframes winPulse { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }
         .scratch-result { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
         #scratchCanvas { position: absolute; top: 0; left: 0; z-index: 2; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewport="0 0 96 96" style="fill:gold;stroke:orange;stroke-width:3px;"><circle cx="48" cy="48" r="40" /><text x="50%" y="50%" dy=".3em" text-anchor="middle" font-size="60">₩</text></svg>') 48 48, auto; }
         
+          /* === 게임 이펙트 (스크래치, 카드, 로또) === */
         .card-stage { display: flex; justify-content: center; gap: 50px; align-items: center; height: 450px; perspective: 1000px; }
         .flip-card-wrapper { width: 195px; height: 270px; position: relative; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; }
         .flip-card-wrapper:hover { transform: translateY(-10px); }
@@ -200,8 +227,23 @@
         .pass-stamp { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); border: 5px solid #555; color: #555; font-size: 48px; font-weight: 900; padding: 5px 10px; border-radius: 8px; opacity: 0.8; z-index: 10; font-family: sans-serif; letter-spacing: 2px; white-space: nowrap; background: rgba(255,255,255,0.8); }
         .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border: 5px solid #FFCC00; background: white; }
         .flip-card-front { background-color: #5D4037; background-image: radial-gradient(circle at 50% 50%, #8D6E63 10%, transparent 10%), repeating-linear-gradient(45deg, #5D4037 0, #5D4037 10px, #4E342E 10px, #4E342E 20px); border: 5px solid #FFCA28; z-index: 2; }
-        .flip-card-front::after { content: '🍭'; font-size: 90px; background: #FFF3E0; border-radius: 50%; width: 135px; height: 135px; display: flex; align-items: center; justify-content: center; border: 5px solid #FFCA28; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        /* 🌟 카드 뒤집기 중앙을 쿠키로 변경 */
+        .flip-card-front::after { content: '🍪'; font-size: 90px; background: #FFF3E0; border-radius: 50%; width: 135px; height: 135px; display: flex; align-items: center; justify-content: center; border: 5px solid #FFCA28; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
         .flip-card-back { transform: rotateY(180deg); z-index: 1; }
+
+        /* 🌟 복권 디자인 완벽 반영 (크림색 배경, 파선 테두리, 드래그 방지, 길쭉한 슬롯) */
+        .scratch-container { 
+            position: relative; background: #FFFDF9; border: 8px solid #5D4037 !important; border-radius: 20px; 
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3); animation: popUp 0.3s; 
+            width: 80vw !important; max-width: 1050px !important; height: auto !important; aspect-ratio: 680 / 320 !important; 
+            display: flex; flex-direction: row; align-items: center; justify-content: space-between; 
+            padding: 3% !important; box-sizing: border-box; overflow: hidden; user-select: none; -webkit-user-select: none; 
+        }
+        .slot-wrapper { position: relative; width: 90px; height: 160px; border-radius: 12px; overflow: hidden; background: #ECEFF1; border: 3px solid #90A4AE; display:flex; flex-direction: column; align-items:center; justify-content:space-evenly; font-size:45px; box-shadow:inset 0 4px 8px rgba(0,0,0,0.1); user-select: none; -webkit-user-select: none; }
+        /* 🌟 스크래치 복권 이모지 변경 🪙 */
+        .slot-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewport="0 0 40 40"><circle cx="20" cy="20" r="16" fill="%23FFC107" stroke="%23FF9800" stroke-width="2"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" font-size="20" font-weight="bold" fill="%23FF9800">₩</text></svg>') 20 20, auto; user-select: none; -webkit-user-select: none; }
+        .ticket-title { font-family: 'Jua', sans-serif; font-size: 38px; color: #5D4037; line-height: 1.1; text-align: center; margin-bottom: 10px; word-break: keep-all; }
+        .ticket-info { font-size: 15px; background: white; color: #5D4037; padding: 12px; border-radius: 12px; font-weight: bold; line-height: 1.6; text-align: left; border: 2px dashed #BCAAA4; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
 
         .gumball-machine { position: relative; width: 320px; height: 480px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; animation: popUp 0.3s; }
         .gumball-globe { width: 280px; height: 280px; border-radius: 50%; background: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.8), rgba(255,255,255,0.1) 40%, rgba(230,240,255,0.2)); border: 5px solid #E0E0E0; position: relative; overflow: hidden; z-index: 5; box-shadow: inset 0 0 40px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.1); background-color: #E3F2FD; }
@@ -236,6 +278,81 @@
         .ball-text-item { font-size: 28px; font-weight: bold; color: #333; text-shadow: 1px 1px 2px rgba(255,255,255,0.8); font-family: 'Jua'; }
         .confetti-particle { position: absolute; width: 10px; height: 10px; border-radius: 50%; animation: fall 2s linear forwards; opacity: 0.8; z-index: 9999; }
         @keyframes fall { 0% { transform: translateY(-50px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } }
+
+        /* 경매 관련 스타일 추가 */
+        .auc-card { background: #E8F5E9; border: 2px solid #81C784; border-radius: 15px; padding: 15px; margin-bottom: 15px; display:flex; flex-direction:column; gap:10px; position:relative; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .auc-card.req { background: #FFF3E0; border-color: #FFB74D; }
+        .auc-card.done { background: #F5F5F5; border-color: #BDBDBD; opacity:0.8; }
+        .auc-badge { position: absolute; top: 15px; right: 15px; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; }
+        .badge-req { background: #FF9800; }
+        .badge-act { background: #E53935; animation: pulse 1.5s infinite; }
+        .badge-done { background: #757575; }
+        .auc-info-row { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.6); padding: 10px; border-radius: 10px; }
+        .auc-val { font-size: 20px; font-weight: bold; color: #D84315; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+
+/* [수정] 경매 카드 및 컨테이너 가로 크기 통일 */
+.auc-card, .auc-item-container { 
+    width: 100%; 
+    max-width: 350px; /* 모든 경매 카드의 최대 너비를 통일 */
+    margin-bottom: 15px; 
+}
+
+/* [수정] 그리드 레이아웃 통일 (교사/학생 공통) */
+#t_auc_req, #t_auc_act, #t_auc_done, #shop-auc-sec .auc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+    gap: 20px;
+    align-items: start;
+}
+        /* 실시간 채팅형 경매 스타일 추가 */
+        .auc-chat-container { background: #1E1E1E; border-radius: 10px; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; border: 3px solid #4E342E; box-shadow: inset 0 3px 10px rgba(0,0,0,0.5); scroll-behavior: smooth;}
+        .auc-chat-msg { background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 8px; font-size: 14px; color: #FFF; animation: fadeIn 0.3s; display: flex; justify-content: space-between; align-items: center;}
+        .auc-chat-name { color: #FFCA28; font-weight: bold; }
+        .auc-chat-amt { color: #81C784; font-weight: bold; }
+        .auc-chat-msg.my-bid { background: rgba(66, 165, 245, 0.2); border: 1px solid rgba(66, 165, 245, 0.5); }
+        .auc-chat-msg.my-bid .auc-chat-name { color: #90CAF9; }
+        .auc-chat-container::-webkit-scrollbar { width: 8px; }
+        .auc-chat-container::-webkit-scrollbar-track { background: #333; border-radius: 4px; }
+        .auc-chat-container::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+
+/* 교사 페이지 전체 텍스트 및 학생 스탯 테이블 가독성 향상 */
+.teacher-page-container {
+    color: white;
+}
+.teacher-page-container th {
+    background-color: darkgray;
+}
+
+/* 교사 페이지 삭제(X) 버튼 예쁘게 변경 */
+.delete-btn {
+    float: right;
+    margin-right: 5px;
+    cursor: pointer;
+    background: transparent;
+    color: #5D4037;
+    border: none;
+    border-radius: 8px;
+    width: 30px; /* 버튼 영역 조절 */
+    height: 30px;
+    font-family: 'Dongle', sans-serif;
+    font-size: 24px; /* 기존 38px에서 0.6배 축소 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 🌟 위치를 살짝 아래로 내림 */
+    transform: translateY(3px); 
+    transition: transform 0.2s, color 0.2s;
+}
+
+.delete-btn:hover {
+    transform: translateY(3px) scale(1.1); /* 위치 유지하며 확대 */
+    color: #D32F2F;
+}
+
     </style>
 </head>
 <body>
@@ -264,16 +381,23 @@
         <div class="menu" onclick="nav('t_mgr',this)">📦 쿠폰 관리</div>
         <div class="menu" onclick="nav('t_col',this)">📖 도감 관리</div>
         <div class="menu" onclick="nav('t_set',this)">⚙️ 상점 관리</div>
+        <div class="menu" onclick="nav('t_auc',this)">🔨 경매 관리</div>
         
-        <div class="menu" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">🖥️ 키오스크</div>
-        
+<div class="menu" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">🖥️ 키오스크</div>        
         <button class="btn btn-gray" onclick="location.reload()" style="margin-top:auto; width:100%">종료</button>
     </div>   
 
  <div class="cont">
         <div id="t_stu">
-            <h2>📜 학생 관리</h2>
-            <div class="card" style="background:#FFF8E1;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0;">📜 학생 관리</h2>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input id="dahessni_api" placeholder="다했니 API Key (쿠키 연동용)" style="width:250px; margin:0;" onchange="saveDahessniKey(this.value)">
+                    <button class="btn btn-wood" id="syncBtn" onclick="syncAllCookies()" style="padding:8px 15px;">쿠키 수동 동기화</button>
+                </div>
+            </div>
+            
+            <div class="card" style="background:#FFF8E1; margin-top:15px;">
                 <div style="display:flex; gap:5px; margin-top:5px;">
                     <input id="an" placeholder="번호" style="width:50px"><input id="am" placeholder="이름"><input id="ac" placeholder="코드">
                     <button class="btn btn-green" onclick="add1()" style="white-space:nowrap; min-width:80px;">추가</button>
@@ -281,17 +405,13 @@
                 <textarea id="bk" rows="3" placeholder="일괄등록: 1 홍길동 1001 (엔터로 구분)"></textarea>
                 <div style="margin-top:5px; display:flex; justify-content:space-between;">
                     <div>
-
                         <button class="btn btn-org" onclick="bulk()">🚀 일괄등록</button>
                         <button class="btn btn-red" onclick="rst()">⚠️ 초기화</button>
                     </div>
                     <button class="btn btn-blue" onclick="showLogModal()">📜 지급 기록</button>
                 </div>
             </div>
-            <div style="margin: 10px 0; text-align:right;">
-                선택한 학생: <button class="btn btn-org" onclick="modCandy(1)">+1 🍭</button> <button class="btn btn-gray" onclick="modCandy(-1)">-1 🍭</button>
-            </div>
-            <table><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th>코드</th><th>🍭</th><th>관리</th></tr></thead><tbody id="ttb"></tbody></table>
+            <table><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th>코드</th><th>🍭캔디</th><th>🧺누구나 바구니</th><th>🪙코인</th><th>🍪쿠키</th><th>관리</th></tr></thead><tbody id="ttb"></tbody></table>
         </div>
         <div id="t_mgr" class="hidden">
             <h2>📦 쿠폰 관리</h2>
@@ -319,7 +439,7 @@
                     <tr>
                         <th width="60" onclick="sortCol('no')">번호</th>
                         <th width="100" onclick="sortCol('nm')">이름</th>
-                        <th width="80">초월(★)</th>
+                        <th width="100">초월(★)</th>
                         <th width="80" onclick="sortCol('rate')">달성률</th>
                         <th style="text-align:left;">획득 현황 (미획득 회색)</th>
                     </tr>
@@ -327,58 +447,112 @@
                 <tbody id="ctb"></tbody>
             </table>
         </div>
+
         <div id="t_set" class="hidden">
-            <h2>⚙️ 상점 관리</h2>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:15px;">
+                <h2 style="margin:0;">⚙️ 상점 관리</h2>
+                </div>
+        
             <div class="card">
                 <h3>🎁 아이템 등록</h3>
-                <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
-                    <input id="in" placeholder="이름" style="width:120px;">
-                    <input id="ip" type="number" placeholder="가격(🍭)" style="width:80px">
-                    <input id="ii" placeholder="이모지/주소" style="width:120px">
-                    <input id="id_desc" placeholder="설명" style="flex:1; min-width:150px;">
-                    <label style="font-size:14px; cursor:pointer;"><input type="checkbox" id="isSale" checked> 판매</label>
-                    <button class="btn btn-org" onclick="addI()">등록</button>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <input id="in" placeholder="이름" style="width:140px; margin-bottom:5px;">
+                    
+                    <select id="ic" style="width:140px; margin-bottom:5px;">
+                        <option value="cn">🍭 캔디</option>
+                        <option value="tk">🧺 누구나 바구니</option>
+                        <option value="co">🪙 동전</option>
+                        <option value="kc">🍪 쿠키</option>
+                    </select>
+        
+                    <input id="ip" type="number" placeholder="가격" style="width:100px; margin-bottom:5px;">
+                    
+                    <input id="ii" placeholder="이모지" style="width:100px; margin-bottom:5px;">
+                    <input id="id_desc" placeholder="설명" style="flex:1; min-width:200px; margin-bottom:5px;">
+                    
+                    <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                        <label style="font-size:14px; cursor:pointer; display:flex; align-items:center; gap:3px;">
+                            <input type="checkbox" id="isSale" checked style="width:auto; margin:0;"> 판매
+                        </label>
+                        <button class="btn btn-org" onclick="addI()" style="padding:10px 20px;">등록</button>
+                    </div>
                 </div>
-                <div id="il" class="grid" style="margin-top:10px;"></div>
+                <div id="il" class="grid" style="margin-top:15px;"></div>
             </div>
+        
             <div class="card">
                 <h3>🔮 뽑기 기계</h3>
-                <div style="display:flex; gap:5px; align-items:center;">
-                    <input id="gn" placeholder="기계명" style="flex:1">
-                    <input id="gc" type="number" placeholder="비용(🍭)" style="width:80px">
-                    <select id="gy" style="margin-bottom:0; width:120px;"><option value="scratch">스크래치</option><option value="card">카드뒤집기</option><option value="lotto">캡슐로또</option></select>
-                    <label style="font-size:13px; margin-left:5px; display:flex; align-items:center; cursor:pointer;"><input type="checkbox" id="g_spc" style="width:auto; margin-right:3px;">스페셜(중복방지)</label>
-                    <button class="btn btn-org" onclick="mkG()">생성</button>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <input id="gn" placeholder="기계명" style="flex:1; min-width:150px; margin-bottom:5px;">
+                    
+                    <select id="gc_cur" style="width:140px; margin-bottom:5px;">
+                        <option value="cn">🍭 캔디</option>
+                        <option value="tk">🧺 누구나 바구니</option>
+                        <option value="co">🪙 동전</option>
+                        <option value="kc">🍪 쿠키</option>
+                    </select>
+        
+                    <input id="gc" type="number" placeholder="비용" style="width:100px; margin-bottom:5px;">
+                    
+                    <select id="gy" style="margin-bottom:5px; width:130px;">
+                        <option value="scratch">스크래치</option>
+                        <option value="card">카드뒤집기</option>
+                        <option value="lotto">캡슐로또</option>
+                    </select>
+                    
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+                        <label style="font-size:13px; display:flex; align-items:center; cursor:pointer; gap:3px;">
+                            <input type="checkbox" id="g_spc" style="width:auto; margin:0;"> 스페셜(중복방지)
+                        </label>
+                        <button class="btn btn-org" onclick="mkG()">생성</button>
+                    </div>
                 </div>
-                <div id="gr" style="margin:5px 0;"></div>
-                <button class="btn btn-gray" onclick="addGr()">+ 확률 추가</button>
-                <div id="gl" class="grid" style="margin-top:10px;"></div>
+                
+                <div id="gr" style="margin:10px 0; background:#FAFAFA; padding:10px; border-radius:15px; border:1px solid #EEE;"></div>
+                <button class="btn btn-gray" onclick="addGr()" style="font-size:14px; padding:8px 15px;">+ 확률 추가</button>
+                
+                <div id="gl" class="grid" style="margin-top:15px;"></div>
             </div>
+        </div>
+
+        <div id="t_auc" class="hidden">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 style="margin:0;">🔨 경매 관리</h2>
+                <button class="btn btn-org" onclick="showAucRegModal()">+ 경매 등록</button>
+            </div>
+            
+            <h3 style="color:#FF9800; border-bottom:2px dashed #FFCC80; padding-bottom:5px;">🚨 학생 요청 (대기중)</h3>
+            <div id="t_auc_req" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px;"></div>
+            
+            <h3 style="color:#E53935; border-bottom:2px dashed #EF9A9A; padding-bottom:5px;">🔴 진행 중</h3>
+            <div id="t_auc_act" style="margin-bottom:30px;"></div>
+            
+           <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px dashed #BDBDBD; padding-bottom:5px; margin-bottom:15px;">
+                <h3 style="color:#757575; margin:0;">✅ 종료됨</h3>
+                <button class="btn btn-gray" style="padding:6px 12px; font-size:14px;" onclick="delAllDoneAuc()">모두 삭제</button>
+            </div>
+            <div id="t_auc_done" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px;"></div>
         </div>
     </div>
 </div>
 
 <div id="appS" class="app hidden">
     <div class="side">
-        <div class="rpg-stat-box">
-    <div class="rpg-stat-header">모험가 자격증</div>
-    <div class="rpg-stat-content" style="display:flex; align-items:center; gap:15px; padding:15px; background: white;">
-        <div style="width: 100px; height: 100px; background: white; border: 3px solid #FFE0B2; border-radius: 10px; display: flex; justify-content: center; align-items: center; position: relative; box-shadow: inset 0 0 5px rgba(0,0,0,0.05); overflow: visible;">
-            <div id="side_avatar" style="font-size: 60px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,0.2));">🥚</div>
-            <div id="side_stars" style="position: absolute; bottom: -15px; font-size: 18px; color: #FFB300; text-shadow: 1px 1px 0 #5D4037, -1px -1px 0 #5D4037, 1px -1px 0 #5D4037, -1px 1px 0 #5D4037; letter-spacing: -1px; width: 100%; text-align: center; z-index: 10; font-weight: bold;"></div>
-        </div>
-        <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items: center;">
-            <div class="rpg-name" id="snm" style="font-size:32px; font-weight:900; color:#5D4037; margin-bottom:5px;">나</div>
-            <div class="rpg-wealth" style="background:transparent; border:none; padding:0;">
-                <span class="rpg-wealth-value" id="side_cn" style="font-size: 28px;">0 🍭</span>
+        <div class="new-license" id="student_license">
+            <div class="nl-left">
+                <div class="nl-lv-text">Lv</div>
+                <div class="nl-lv-num" id="side_lv">1</div>
+            </div>
+            <div class="nl-right">
+                <div class="nl-name" id="snm">이름</div>
+                <div class="nl-cookie">🍪 <span id="side_ck">0</span></div>
             </div>
         </div>
-    </div>
-</div>
         
         <div class="menu on" onclick="navS('s_bg',this)">🎒 가방</div>
         <div class="menu" onclick="navS('s_col',this)">📖 도감</div>
         <div class="menu" onclick="navS('s_sh',this)">🏪 상점</div>
+        <div id="s_kiosk_menu" class="menu hidden" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">🖥️ 키오스크</div>
         
         <button class="btn btn-gray" onclick="location.reload()" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
@@ -414,7 +588,17 @@
         if(ac.state==='suspended')ac.resume().catch(e=>{});
         try{
             const o=ac.createOscillator(), g=ac.createGain(); o.connect(g); g.connect(ac.destination);
-            if(t==='f'){ o.type='sawtooth'; o.frequency.setValueAtTime(440,ac.currentTime); o.frequency.linearRampToValueAtTime(523.25,ac.currentTime+0.2); o.frequency.linearRampToValueAtTime(659.25,ac.currentTime+0.4); g.gain.linearRampToValueAtTime(0,ac.currentTime+0.6); g.gain.value=0.15; o.start(); o.stop(ac.currentTime+0.6); }
+            // 🌟 더 크고 신나는 팡파레 효과음
+            if(t==='f'){ 
+                o.type='square'; 
+                o.frequency.setValueAtTime(440, ac.currentTime);
+                o.frequency.setValueAtTime(554.37, ac.currentTime+0.1);
+                o.frequency.setValueAtTime(659.25, ac.currentTime+0.2);
+                o.frequency.setValueAtTime(880, ac.currentTime+0.3);
+                g.gain.setValueAtTime(0.5, ac.currentTime);
+                g.gain.linearRampToValueAtTime(0, ac.currentTime+0.8); 
+                o.start(); o.stop(ac.currentTime+0.8); 
+            }
             if(t==='master') { o.type='square'; o.frequency.setValueAtTime(261.63, ac.currentTime); o.frequency.setValueAtTime(329.63, ac.currentTime+0.2); o.frequency.setValueAtTime(392.00, ac.currentTime+0.4); o.frequency.setValueAtTime(523.25, ac.currentTime+0.6); g.gain.setValueAtTime(0.3, ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime+1.5); o.start(); o.stop(ac.currentTime+1.5); }
             if(t==='s'){ const bufferSize = ac.sampleRate * 0.1; const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1; const noise = ac.createBufferSource(); noise.buffer = buffer; const noiseGain = ac.createGain(); noiseGain.gain.value = 0.2; noise.connect(noiseGain); noiseGain.connect(ac.destination); noise.start(); }
             if(t==='r'){ o.type='triangle'; o.frequency.setValueAtTime(150,ac.currentTime); o.frequency.exponentialRampToValueAtTime(600,ac.currentTime+0.3); g.gain.linearRampToValueAtTime(0,ac.currentTime+0.4); o.start(); o.stop(ac.currentTime+0.4); } 
@@ -422,11 +606,12 @@
     }
 
     let isDragging = false, dragMode = true, lastSelectedIndex = -1, currentRenderedItems = [];
+    let currentShopTab = 'normal';
+
 document.addEventListener('mouseup', () => { isDragging = false; document.body.style.userSelect = ''; });
 function startDrag(e, idx, id) {
-    if(e.button !== 0) return; // 좌클릭만 허용
+    if(e.button !== 0) return;
     
-    // Shift + 클릭 (구간 선택)
     if (e.shiftKey && lastSelectedIndex !== -1) {
         if(!e.ctrlKey && !e.metaKey) {
             sel.clear();
@@ -446,7 +631,6 @@ function startDrag(e, idx, id) {
     isDragging = true;
     lastSelectedIndex = idx;
 
-    // Ctrl + 클릭 (개별 토글)
     if (e.ctrlKey || e.metaKey) {
         if (sel.has(id)) {
             sel.delete(id);
@@ -458,15 +642,15 @@ function startDrag(e, idx, id) {
             dragMode = true;
         }
     } else {
-        // 일반 클릭 (초기화 후 선택)
         sel.clear();
         document.querySelectorAll('#t_ag .asset').forEach(el => el.classList.remove('sel'));
         sel.add(id);
         document.getElementById('card_' + id).classList.add('sel');
         dragMode = true;
     }
-    document.body.style.userSelect = 'none'; // 드래그 시 파란색 텍스트 선택 방지
+    document.body.style.userSelect = 'none';
 }
+
 const firebaseConfig = {
   apiKey: "AIzaSyCzsI9FW3bga1V73lCR7pNgfPLdcqcbsgM",
   authDomain: "class-manager-bad00.firebaseapp.com",
@@ -477,14 +661,13 @@ const firebaseConfig = {
   appId: "1:436830301778:web:d3da11a5ac0e6c252d798b",
   measurementId: "G-H95D2Z7MFF"
 };
-// Firebase 초기화
+
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
-    const dbRef = firebase.database().ref('ClassData/EventShop'); // 데이터베이스 저장 경로
+    const dbRef = firebase.database().ref('ClassData/EventShop');
 
-    // 기본 데이터 세팅
-    let db = {stu:[], itm:[{n:'기본 간식',p:10,i:'🍩',s:true}], gac:[{n:'랜덤',c:20,i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], ak:''};
+    let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], ak:'', cfg: {hideCandy: false}};
 
     let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = false;
     let cSort='no', cDir=1;
@@ -492,19 +675,117 @@ const firebaseConfig = {
     let currentGachaIndex = null;
     let showTrash = false; 
 
-    // Firebase 실시간 동기화 (키오스크에서 티켓을 쓰면 상점 화면도 즉시 변경됨)
+    // 🪙 화폐 아이콘 매핑
+    const curEmoji = {cn: '🍭', tk: '🧺', kc: '🍪', co: '🪙'};
+    const curName = {cn: '캔디', tk: '누구나 바구니', kc: '쿠키', co: '동전'};
+
+    // 다했니 API 동기화 설정
+    function saveDahessniKey(val) {
+        localStorage.setItem('dahessni_api_key', val);
+        alert("다했니 API Key가 저장되었습니다.");
+    }
+    
+    async function fetchDahessni(code) {
+        const key = localStorage.getItem('dahessni_api_key');
+        if(!key || !code) return false;
+        try {
+            const res = await fetch(`https://api.dahandin.com/openapi/v1/get/student/total?code=${code}`, { headers: { "X-API-Key": key } });
+            if(res.ok) {
+                const json = await res.json();
+                if(json.data && json.data.cookie !== undefined) {
+                    return { cookie: json.data.cookie, usedCookie: json.data.usedCookie || 0 };
+                }
+            }
+        } catch(e) { console.error("Fetch Error:", e); }
+        return false;
+    }
+
+    async function syncAllCookies() {
+        const key = localStorage.getItem('dahessni_api_key');
+        if(!key) return alert("다했니 API Key를 먼저 입력해주세요.");
+        
+        const btn = document.getElementById('syncBtn');
+        btn.innerText = "동기화 중...";
+        btn.disabled = true;
+        
+        let updated = false;
+        for(let s of db.stu) {
+            const data = await fetchDahessni(s.cd);
+            if(data) {
+                s.cookie = data.cookie;
+                s.usedCookie = data.usedCookie;
+                updated = true;
+            }
+        }
+        if(updated) sv();
+        rTb();
+        
+        btn.innerText = "쿠키 수동 동기화";
+        btn.disabled = false;
+        alert("동기화 완료!");
+    }
+
+    // 🚀 5초마다 조용히 API에서 쿠키 정보 최신화
+    async function syncAllCookiesSilent() {
+        const key = localStorage.getItem('dahessni_api_key');
+        if(!key || !db.stu) return;
+        let updated = false;
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        for(let s of stuList) {
+            try {
+                const res = await fetch(`https://api.dahandin.com/openapi/v1/get/student/total?code=${s.cd}`, { headers: { "X-API-Key": key } });
+                if(res.ok) {
+                    const json = await res.json();
+                    if(json.data && json.data.cookie !== undefined) {
+                        if(s.cookie !== json.data.cookie || s.usedCookie !== (json.data.usedCookie || 0)) {
+                            s.cookie = json.data.cookie;
+                            s.usedCookie = json.data.usedCookie || 0;
+                            updated = true;
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+        db.stu = stuList;
+        if(updated) {
+            sv();
+            // 🌟 수정: 5초마다 전체 표를 덮어쓰면 선생님 타이핑이 끊기므로 쿠키 텍스트만 업데이트
+            if (!document.getElementById('appT').classList.contains('hidden') && !document.getElementById('t_stu').classList.contains('hidden')) {
+                stuList.forEach((s, i) => {
+                    const el = document.getElementById(`cookie_val_${i}`);
+                    if(el) {
+                        const curCookie = Math.max(0, (s.cookie || 0) - (s.usedCookie || 0));
+                        el.innerText = curCookie;
+                    }
+                });
+            }
+            if (me) updateNameTag();
+        }
+    }
+    setInterval(syncAllCookiesSilent, 5000);
+
     dbRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
             db = data;
             
-            // Firebase는 비어있는 배열을 무시하는 특징이 있어 빈 배열 방어 코드 추가
-            if(!db.stu) db.stu = [];
-            if(!db.itm) db.itm = [];
-            if(!db.gac) db.gac = [];
-            if(!db.log) db.log = [];
+            // 🌟 파이어베이스 배열 깨짐 원천 차단 (등록/도감 버그 픽스)
+            if(!db.stu) db.stu = []; else if(!Array.isArray(db.stu)) db.stu = Object.values(db.stu);
+            if(!db.itm) db.itm = []; else if(!Array.isArray(db.itm)) db.itm = Object.values(db.itm);
+            if(!db.gac) db.gac = []; else if(!Array.isArray(db.gac)) db.gac = Object.values(db.gac);
+            if(!db.log) db.log = []; else if(!Array.isArray(db.log)) db.log = Object.values(db.log);
+            if(!db.auc) db.auc = []; else if(!Array.isArray(db.auc)) db.auc = Object.values(db.auc);
+            if(!db.cfg) db.cfg = {show_cn: true, show_tk: true, show_co: true};
 
-            // 1. 학생 로그인 상태일 때 화면 실시간 업데이트
+            db.itm.forEach(i => { if(!i.c) i.c = 'cn'; });
+            db.gac.forEach(g => { if(!g.cur) g.cur = 'cn'; });
+
+            db.stu.forEach(s => {
+                if(s.tk === undefined) s.tk = 0;
+                if(s.co === undefined) s.co = 0; 
+                if(s.kc === undefined) s.kc = 0;
+            });
+
             if (me && me.cd) {
                 const updatedMe = db.stu.find(x => String(x.cd).trim() === String(me.cd).trim());
                 if (updatedMe) {
@@ -512,44 +793,115 @@ const firebaseConfig = {
                     if(!me.inv) me.inv = [];
                     if(!me.col) me.col = [];
                     updateNameTag();
-                    // 화면에 떠있는 탭만 새로고침 (입력방해 최소화)
                     if(!document.getElementById('s_bg').classList.contains('hidden')) rBg();
                     if(!document.getElementById('s_sh').classList.contains('hidden')) rSh();
                     if(!document.getElementById('s_col').classList.contains('hidden')) rCol();
                 }
             }
             
-            // 2. 선생님 로그인 상태일 때 화면 실시간 업데이트
             if (!document.getElementById('appT').classList.contains('hidden')) {
-                if(!document.getElementById('t_stu').classList.contains('hidden')) rTb();
+                if(!document.getElementById('t_stu').classList.contains('hidden')) {
+                    document.getElementById('dahessni_api').value = localStorage.getItem('dahessni_api_key') || "";
+                    rTb();
+                }
                 if(!document.getElementById('t_mgr').classList.contains('hidden')) { rAs(); upGiv(); }
                 if(!document.getElementById('t_col').classList.contains('hidden')) rColT();
                 if(!document.getElementById('t_set').classList.contains('hidden')) rSet();
+                if(!document.getElementById('t_auc').classList.contains('hidden')) rAucT();
             }
         } else {
-            // 파이어베이스가 완전히 비어있을 경우 (처음 실행)
-            if(!db.stu.some(s => s.cd === '1234')) {
-                db.stu.push({no:1, nm:'학생1', cd:'1234', ck:0, cn:100, kc:0, inv:[], ibx:[], col:[], rd:{}, rb:0});
+            if(!db.stu || db.stu.length === 0) {
+                db.stu = [{no:1, nm:'학생1', cd:'1234', cn:100, tk:10, co:5, cookie:0, usedCookie:0, level:1, inv:[], ibx:[], col:[], rd:{}, rb:0}];
             }
-            sv(); // 초기값을 파이어베이스에 업로드
+            sv();
         }
     });
 
-    // 데이터를 저장하는 함수 (로컬스토리지 대신 Firebase로 전송)
+    // 🌟 안전한 경매 타이머 루프
+    setInterval(() => {
+        let needSave = false;
+        const now = Date.now();
+        
+        if(db.auc) {
+            db.auc.forEach(a => {
+                if(a.st === 'active') {
+                    const diff = a.et - now;
+                    
+                    // 시간 종료 처리
+                    if(diff <= 0) {
+                        // 교사 페이지가 열려 있거나, 경매를 올린 학생 본인일 때만 마감 처리를 진행해 중복 차감을 방지합니다.
+                        if (!document.getElementById('appT').classList.contains('hidden') || (me && me.cd === a.reqBy)) {
+                            resolveAuctionTimer(a);
+                            needSave = true;
+                        }
+                    }
+                }
+            });
+        }
+        if(needSave) {
+            sv();
+            if (!document.getElementById('appT').classList.contains('hidden')) rAucT();
+            if (me && !document.getElementById('s_sh').classList.contains('hidden')) rSh();
+        } else {
+            updateAucTimersUI();
+        }
+    }, 1000);
+
+    function resolveAuctionTimer(auc) {
+        if(!auc.bids || auc.bids.length === 0) {
+            auc.st = 'done';
+            auc.winner = null;
+            return;
+        }
+        const maxAmt = Math.max(...auc.bids.map(b => b.amt));
+        const topBidders = auc.bids.filter(b => b.amt === maxAmt);
+        
+        if(topBidders.length === 1) {
+            auc.st = 'done';
+            auc.winner = topBidders[0];
+            processAuctionWin(auc, topBidders[0]);
+        } else {
+            auc.st = 'tie'; 
+            auc.tied = topBidders;
+        }
+    }
+
+    function processAuctionWin(auc, winnerData) {
+        const s = db.stu.find(x => x.cd === winnerData.cd);
+        if(s) {
+            if(auc.cur === 'kc') {
+                s.usedCookie = (s.usedCookie || 0) + winnerData.amt;
+            } else {
+                s[auc.cur] -= winnerData.amt;
+            }
+            logCandy(s.nm, -winnerData.amt, `경매 낙찰 (${auc.n})`);
+        }
+    }
+
+    function updateAucTimersUI() {
+        const now = Date.now();
+        document.querySelectorAll('.auc-timer').forEach(el => {
+            const et = parseInt(el.getAttribute('data-et'));
+            if(et > now) {
+                const diff = Math.floor((et - now) / 1000);
+                const m = Math.floor(diff / 60);
+                const s = diff % 60;
+                el.innerText = `⏱️ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            } else {
+                el.innerText = "마감 처리중...";
+            }
+        });
+    }
+
     function sv(){
         dbRef.set(db); 
     }
-// 마우스가 지나갈 때 (드래그 중)
-function doDrag(e, id) {
-    if (!isDragging) return;
-    if (dragMode) {
-        sel.add(id);
-        document.getElementById('card_' + id).classList.add('sel');
-    } else {
-        sel.delete(id);
-        document.getElementById('card_' + id).classList.remove('sel');
+
+    window.toggleHideCandy = function(val) {
+        if(!db.cfg) db.cfg = {};
+        db.cfg.hideCandy = val;
+        sv();
     }
-}
 
     function logCandy(targets, change, method) {
         const now = new Date();
@@ -562,7 +914,7 @@ function doDrag(e, id) {
     window.showLogModal = function() {
         let trs = (db.log || []).map(l => `<tr><td>${l.time}</td><td>${l.targets}</td><td><b style="color:${l.change>0?'green':'red'}">${l.change>0?'+':''}${l.change}</b></td><td>${l.method}</td></tr>`).join('');
         if(!trs) trs = `<tr><td colspan="4">기록이 없습니다.</td></tr>`;
-        const html = `<div id="logModal" class="modal-overlay" onclick="this.remove()"><div class="modal-window" style="width:500px;" onclick="event.stopPropagation()"><button class="modal-close-btn" onclick="document.getElementById('logModal').remove()">X</button><div class="modal-inner" style="max-height:60vh; overflow-y:auto;"><h2 class="modal-title" style="margin-bottom:15px;">📜 🍭 지급 기록</h2><table style="width:100%; font-size:14px; background:white; border-radius:10px; overflow:hidden;"><thead><tr style="background:#5D4037; color:white;"><th>시간</th><th>대상</th><th>증감</th><th>방식</th></tr></thead><tbody>${trs}</tbody></table></div></div></div>`;
+        const html = `<div id="logModal" class="modal-overlay" onclick="this.remove()"><div class="modal-window" style="width:500px;" onclick="event.stopPropagation()"><button class="modal-close-btn" onclick="document.getElementById('logModal').remove()">X</button><div class="modal-inner" style="max-height:60vh; overflow-y:auto;"><h2 class="modal-title" style="margin-bottom:15px;">📜 지급 기록</h2><table style="width:100%; font-size:14px; background:white; border-radius:10px; overflow:hidden;"><thead><tr style="background:#5D4037; color:white;"><th>시간</th><th>대상</th><th>증감</th><th>방식</th></tr></thead><tbody>${trs}</tbody></table></div></div></div>`;
         document.body.insertAdjacentHTML('beforeend', html);
     }
 
@@ -572,25 +924,45 @@ function doDrag(e, id) {
         else { document.getElementById('ls').classList.add('hidden'); document.getElementById('lt').classList.remove('hidden'); }
     }
 
+   function doDrag(e, id) {
+        if (!isDragging) return;
+        // 🌟 수정: 마우스 왼쪽 버튼(1)을 떼면 드래그 모드를 즉시 종료 (창 밖으로 나가는 오류 방지)
+        if (e.buttons !== 1) { isDragging = false; return; } 
+        if (dragMode) {
+            sel.add(id);
+            document.getElementById('card_' + id).classList.add('sel');
+        } else {
+            sel.delete(id);
+            document.getElementById('card_' + id).classList.remove('sel');
+        }
+    }
+
     function logT(){ 
         if(document.getElementById('tp').value==='csgo10'){
             document.getElementById('login').classList.add('hidden'); 
             document.getElementById('appT').classList.remove('hidden'); 
+            document.getElementById('dahessni_api').value = localStorage.getItem('dahessni_api_key') || "";
             nav('t_stu');
+            // 🌟 수정: 오류를 일으키던 옛날 코드를 지우고 즉시 표를 강제 렌더링합니다!
+            setTimeout(rTb, 50);
         }else alert("비밀번호 오류"); 
     }
 
-    function getRebirthStars(rb) {
-        if (!rb || rb <= 0) return '';
-        return '★'.repeat(rb);
-    }
-
-    function logS(){ 
+    async function logS(){ 
         const c = document.getElementById('sc').value.trim(); 
         if(!c) return alert("코드를 입력하세요.");
         const s = db.stu.find(x => String(x.cd).trim() === c); 
         if(s){
             me = s; 
+            
+            // 로그인 시 다했니 쿠키 동기화 (조용하게)
+            const data = await fetchDahessni(me.cd);
+            if(data) {
+                me.cookie = data.cookie;
+                me.usedCookie = data.usedCookie;
+                upMe(); // 파이어베이스 저장
+            }
+            
             if(!me.col) me.col = []; 
             document.getElementById('login').classList.add('hidden'); 
             document.getElementById('appS').classList.remove('hidden'); 
@@ -602,33 +974,26 @@ function doDrag(e, id) {
     }
 
   function updateNameTag() {
-    if(me) {
-        document.getElementById('snm').innerHTML = me.nm;
-        
-        // 사이드바 캐릭터 하단에 별(★) 표시
-        const starEl = document.getElementById('side_stars');
-        if(starEl) starEl.innerHTML = getRebirthStars(me.rb);
-
-        const avatarEl = document.getElementById('side_avatar');
-        if(avatarEl) {
-            // 환수 진화 테마 수정: 0단(🐣) -> 1단(🐦‍🔥) -> 2단 이상(🐲)
-            let avatar = '🐣'; // 0단계: 병아리
+        if(me) {
+            document.getElementById('snm').innerHTML = me.nm;
+            const totalCookie = me.cookie || 0;
+            const curCookie = Math.max(0, totalCookie - (me.usedCookie || 0));
+            const lv = Math.floor(totalCookie / 10); 
             
-            if(me.rb === 1) {
-                avatar = '🐦‍🔥'; // 1단계: 불사조
-            } 
-            else if(me.rb >= 2) {
-                avatar = '👑';  // 2단계 이상: 드래곤
+            if(document.getElementById('side_lv')) document.getElementById('side_lv').innerText = lv;
+            if(document.getElementById('side_ck')) document.getElementById('side_ck').innerText = `${curCookie} / ${totalCookie}`;
+            
+            // 🌟 매니저 권한 시 사이드바 키오스크 탭 보이기
+            const kioskMenu = document.getElementById('s_kiosk_menu');
+            if(kioskMenu) {
+                if(me.mgr) kioskMenu.classList.remove('hidden');
+                else kioskMenu.classList.add('hidden');
             }
-            
-            avatarEl.innerHTML = avatar;
         }
     }
-}
 
-    // 아이템 상세 보기 (화이트톤 팝업)
     window.showItemDetail = function(itemName) {
-        const item = me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active');
+        const item = me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
         if(!item) return;
         
         const modalHtml = `
@@ -650,17 +1015,14 @@ function doDrag(e, id) {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
-    // 아이템 사용 요청 실행 (상태값 변경 및 저장)
     function useQ(itemName){
-    const idx = me.inv.findIndex(i => i.n.trim() === itemName.trim() && i.st === 'active');
+    const idx = me.inv.findIndex(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
     if(idx === -1) return;
     
-    // 상태를 'active'에서 'req'(요청중)로 변경
     me.inv[idx].st = 'req'; 
-    upMe(); // DB 저장 및 화면 갱신
-    rBg(); // 가방 갱신
+    upMe(); 
+    rBg(); 
     
-    // 사용 버튼 누른 후 모달 창 닫기
     const modal = document.getElementById('itemModal');
     if(modal) modal.remove();
     
@@ -673,8 +1035,6 @@ function doDrag(e, id) {
         if (i !== -1) {
             Object.assign(db.stu[i], me); 
             sv(); 
-            const sideCn = document.getElementById('side_cn');
-            if (sideCn) sideCn.innerText = (me.cn || 0) + ' 🍭';
             updateNameTag();
         }
     }
@@ -686,6 +1046,7 @@ function doDrag(e, id) {
         if(id==='t_mgr'){rAs(); upGiv();} 
         if(id==='t_col') rColT(); 
         if(id==='t_set') rSet();
+        if(id==='t_auc') rAucT();
     }
     
     function navS(id,e){ 
@@ -704,7 +1065,7 @@ function doDrag(e, id) {
         const n=document.getElementById('an').value, nm=document.getElementById('am').value, c=document.getElementById('ac').value;
         if(n&&nm&&c){ 
             if(!db.stu) db.stu = [];
-            db.stu.push({no:n, nm:nm, cd:c, ck:0, cn:0, kc:0, inv:[], ibx:[], col:[], rd:{}, rb:0}); 
+            db.stu.push({no:n, nm:nm, cd:c, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:[], ibx:[], col:[], rd:{}, rb:0}); 
             db.stu.sort((a,b)=>a.no-b.no); 
             sv(); rTb(); alert("추가됨"); 
         }
@@ -717,53 +1078,131 @@ function doDrag(e, id) {
             const p=r.trim().split(/[\s,]+/);
             if(p.length>=3){
                 let s=db.stu.find(x=>x.cd===p[2]);
-                if(!s) db.stu.push({no:p[0], nm:p[1], cd:p[2], ck:0, cn:0, kc:0, inv:[], ibx:[], col:[], rd:{}, rb:0});
+                if(!s) db.stu.push({no:p[0], nm:p[1], cd:p[2], cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:[], ibx:[], col:[], rd:{}, rb:0});
                 else { s.no=p[0]; s.nm=p[1]; }
             }
         }
         db.stu.sort((a,b)=>a.no-b.no); sv(); rTb(); alert("등록 완료");
     }
     
-    function rst(){ if(confirm("초기화?")){db.stu=[]; db.log=[]; sv(); rTb();} }
+    function rst(){ if(confirm("초기화?")){db.stu=[]; db.log=[]; db.auc=[]; sv(); rTb();} }
     
     function rTb(){ 
         if(!db.stu) return;
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>c.value); 
-        document.getElementById('ttb').innerHTML=db.stu.map((s,i)=>{
-            return `<tr><td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td><td>${s.no}</td><td>${s.nm}</td><td>${s.cd}</td><td><input class="qty-input" type="number" value="${s.cn}" onchange="upCk(${i},'cn',this.value)"></td><td><button class="btn btn-red" onclick="delS(${i})">삭제</button></td></tr>`;
+        
+        const s_cn = db.cfg && db.cfg.show_cn !== false;
+        const s_tk = db.cfg && db.cfg.show_tk !== false;
+        const s_co = db.cfg && db.cfg.show_co !== false;
+
+        // 🌟 수정: [화폐 이름(클릭 시 초기화)] - [▲▼ 증감 화살표] 순서로 깔끔하게 재배치
+        document.getElementById('t_stu').querySelector('table thead').innerHTML = `
+            <tr>
+                <th><input type="checkbox" onchange="toggleAll(this)"></th>
+                <th>번호</th><th>이름</th><th>코드</th>
+                <th style="background:${s_cn ? '#4E342E' : '#BDBDBD'}; color:${s_cn ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <span onclick="bulkReset('cn')" oncontextmenu="toggleVis('cn'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🍭캔디</span>
+                        <div style="display:flex; flex-direction:column; gap:1px;">
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('cn',1)">▲</button>
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('cn',-1)">▼</button>
+                        </div>
+                    </div>
+                </th>
+                <th style="background:${s_tk ? '#4E342E' : '#BDBDBD'}; color:${s_tk ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <span onclick="bulkReset('tk')" oncontextmenu="toggleVis('tk'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🧺바구니</span>
+                        <div style="display:flex; flex-direction:column; gap:1px;">
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('tk',1)">▲</button>
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('tk',-1)">▼</button>
+                        </div>
+                    </div>
+                </th>
+                <th style="background:${s_co ? '#4E342E' : '#BDBDBD'}; color:${s_co ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🪙동전</span>
+                        <div style="display:flex; flex-direction:column; gap:1px;">
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',1)">▲</button>
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',-1)">▼</button>
+                        </div>
+                    </div>
+                </th>
+                <th style="background:#4E342E; color:white;">🍪쿠키</th>
+                <th style="background:#4E342E; color:white;">관리</th>
+            </tr>
+        `;
+
+        document.getElementById('ttb').innerHTML = stuList.map((s,i)=>{
+            const curCookie = Math.max(0, (s.cookie || 0) - (s.usedCookie || 0));
+            return `<tr><td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td><td>${s.no}</td><td>${s.nm}</td><td>${s.cd}</td>
+            <td><input class="qty-input" type="number" value="${s.cn||0}" onchange="upCk(${i},'cn',this.value)"></td>
+            <td><input class="qty-input" type="number" value="${s.tk||0}" onchange="upCk(${i},'tk',this.value)" style="color:#42A5F5;"></td>
+            <td><input class="qty-input" type="number" value="${s.co||0}" onchange="upCk(${i},'co',this.value)" style="color:#FBC02D;"></td>
+            <td style="font-weight:bold; color:#8D6E63;" id="cookie_val_${i}">${curCookie}</td>
+            <td>
+                <button class="btn ${s.mgr ? 'btn-wood' : 'btn-gray'}" onclick="toggleMgr(${i})" style="padding:6px 10px; margin-right:4px;">매니저</button>
+                <button class="delete-btn" onclick="delS(${i})">☒</button>
+            </td></tr>`;
         }).join(''); 
+    }
+   window.bulkCur = function(type, amt) {
+        const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>parseInt(c.value));
+        if(checked.length === 0) return alert("대상을 먼저 선택해주세요!");
+        
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        let targetNames = [];
+        
+        checked.forEach(i => {
+            let current = stuList[i][type] || 0;
+            let newVal = Math.max(0, current + amt); 
+            stuList[i][type] = newVal;
+            targetNames.push(stuList[i].nm);
+        });
+        
+        db.stu = stuList;
+        if(targetNames.length > 0) {
+            logCandy(targetNames.length > 3 ? targetNames[0]+' 외 '+(targetNames.length-1)+'명' : targetNames.join(', '), amt > 0 ? `일괄 +${amt}` : `일괄 ${amt}`, `선택수정 (${curName[type]})`);
+        }
+        sv(); rTb();
+    }
+
+    // 🌟 화폐를 0으로 초기화하는 기능 추가
+    window.bulkReset = function(type) {
+        const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>parseInt(c.value));
+        if(checked.length === 0) return alert("초기화할 학생을 먼저 선택해주세요!");
+        if(!confirm(`선택한 학생들의 ${curName[type]}을(를) 정말 0으로 초기화하시겠습니까?`)) return;
+        
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        let targetNames = [];
+        
+        checked.forEach(i => {
+            stuList[i][type] = 0; // 0으로 세팅
+            targetNames.push(stuList[i].nm);
+        });
+        
+        db.stu = stuList;
+        if(targetNames.length > 0) {
+            logCandy(targetNames.length > 3 ? targetNames[0]+' 외 '+(targetNames.length-1)+'명' : targetNames.join(', '), 0, `일괄 초기화 (${curName[type]})`);
+        }
+        sv(); rTb();
+    }
+    // 🌟 매니저 권한 토글 함수 추가
+    window.toggleMgr = function(i) {
+        db.stu[i].mgr = !db.stu[i].mgr;
+        sv(); rTb();
     }
 
     function toggleAll(e){ document.querySelectorAll('.stu-chk').forEach(c=>c.checked=e.checked); }
-    
-    function modCandy(n){ 
-        const chks = document.querySelectorAll('.stu-chk:checked');
-        if(chks.length===0) return alert("학생을 선택하세요.");
-        const selectedIndices = Array.from(chks).map(c=>c.value); 
-        let targetNames = [];
-        chks.forEach(c => {
-            const i = parseInt(c.value);
-            db.stu[i].cn = Math.max(0, (db.stu[i].cn||0) + n);
-            targetNames.push(db.stu[i].nm);
-        });
-        const logTarget = targetNames.length > 1 ? `${targetNames[0]} 외 ${targetNames.length-1}명` : targetNames[0];
-        logCandy(logTarget, n, '일괄수정');
-
-        sv(); rTb(); 
-        selectedIndices.forEach(val => {
-            const el = document.querySelector(`.stu-chk[value="${val}"]`);
-            if(el) el.checked = true;
-        });
-    }
 
     function delS(i){ db.stu.splice(i,1); sv(); rTb(); }
     
     function upCk(i,k,v){ 
-        if(k === 'cn') {
-            const prev = db.stu[i].cn || 0;
+        if(k === 'cn' || k === 'tk' || k === 'co') {
+            const prev = db.stu[i][k] || 0;
             const newVal = parseInt(v);
             const diff = newVal - prev;
-            if(diff !== 0) logCandy(db.stu[i].nm, diff, '개별수정');
+            if(diff !== 0) logCandy(db.stu[i].nm, diff, `개별수정 (${curName[k]})`);
         }
         db.stu[i][k]=parseInt(v); sv(); 
         if(k === 'rb' && me && db.stu[i].cd === me.cd) {
@@ -787,8 +1226,9 @@ function doDrag(e, id) {
     
     function rAs(){
         if(!db.stu) return;
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         let l=[]; 
-        db.stu.forEach((s,si)=>{ 
+        stuList.forEach((s,si)=>{ 
             (s.inv||[]).forEach((t,k)=>l.push({y:'c',si,k,t,sn:s.nm,no:s.no}));
             (s.ibx||[]).forEach((t,k)=> { if(t.y==='sys') return; l.push({y:'l',si,k,t,sn:s.nm,no:s.no}); });
         });
@@ -800,26 +1240,78 @@ function doDrag(e, id) {
         const getW = (st) => { if(st==='req') return 0; if(st==='used' || st==='usd') return 2; return 1; };
         l.sort((a,b)=>{ let val = 0; if(asort==='req') val = getW(a.t.st) - getW(b.t.st); else if(asort==='num') val = parseInt(a.no)-parseInt(b.no); else if(asort==='typ') val = (a.t.n||"").localeCompare(b.t.n||""); return val * sdir; });
         
-        // 시각적인 순서를 저장해둡니다 (Shift 선택용)
-currentRenderedItems = l.map(x => `${x.y}_${x.si}_${x.k}`); 
+        currentRenderedItems = l.map(x => `${x.y}_${x.si}_${x.k}`); 
 
-document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
-    const id=`${x.y}_${x.si}_${x.k}`, seld=sel.has(id); 
-    const img=x.y==='c'?(x.t.i.includes('http')?`<img src="${x.t.i}" style="width:70px;height:70px;object-fit:contain;margin-bottom:5px;">`:`<div class="huge-emoji" style="font-size:70px;">${x.t.i}</div>`):`<div class="huge-emoji" style="font-size:70px;">${x.t.y==='d'?'🍭':'💌'}</div>`; 
-    const statusBadge = x.t.st==='req' ? '<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:5px">🚨 사용요청</div>' : ''; 
-    const itemTitle = `<div style="font-weight:bold;font-size:14px;margin-top:5px;">${x.sn}의 ${x.t.n||'아이템'}<br><span style="font-size:11px;color:#5D4037;">${x.y==='l'?`(From. ${x.t.f})`:''}</span></div>`; 
-    const content = x.t.tx ? `<div style="font-size:12px;color:#666;margin:5px 0;background:#f9f9f9;padding:3px;border-radius:5px;">${x.t.tx}</div>` : ''; 
-    const actionBtn = x.t.st==='req' ? `<button class="btn btn-blue" style="width:100%;margin-top:5px;" onclick="appU('${x.y}',${x.si},${x.k})">승인</button>` : (x.t.st==='active' || x.t.st==='new' ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div>` : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div>`);
-    
-    // id 속성을 부여하고 onmousedown, onmouseenter 이벤트를 연결합니다.
-    return `<div id="card_${id}" class="asset ${seld?'sel':''} ${x.t.st==='req'?'req':''} ${x.t.st==='used' || x.t.st==='usd'?'used':''}" 
-        onmousedown="startDrag(event, ${visualIdx}, '${id}')" 
-        onmouseenter="doDrag(event, '${id}')" 
-        ondblclick="useOne('${x.y}',${x.si},${x.k})"> ${statusBadge} ${img} ${itemTitle} ${content} ${actionBtn} </div>`;
-}).join('');
+        document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
+            const id=`${x.y}_${x.si}_${x.k}`, seld=sel.has(id); 
+            const img=x.y==='c'?(x.t.i.includes('http')?`<img src="${x.t.i}" style="width:70px;height:70px;object-fit:contain;margin-bottom:5px;">`:`<div class="huge-emoji" style="font-size:70px;">${x.t.i}</div>`):`<div class="huge-emoji" style="font-size:70px;">${x.t.y==='d'?'🍭':'💌'}</div>`; 
+            const statusBadge = x.t.st==='req' ? '<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:5px">🚨 사용요청</div>' : ''; 
+            const itemTitle = `<div style="font-weight:bold;font-size:14px;margin-top:5px;">${x.sn}의 ${x.t.n||'아이템'}<br><span style="font-size:11px;color:#5D4037;">${x.y==='l'?`(From. ${x.t.f})`:''}</span></div>`; 
+            const content = x.t.tx ? `<div style="font-size:12px;color:#666;margin:5px 0;background:#f9f9f9;padding:3px;border-radius:5px;">${x.t.tx}</div>` : ''; 
+            
+            // 🌟 수정: 학생 요청이 없어도(active/new 상태) 교사가 강제로 승인(사용)할 수 있는 버튼 추가
+            const actionBtn = x.t.st==='req' 
+                ? `<button class="btn btn-blue" style="width:100%;margin-top:5px; pointer-events:auto;" onclick="appU('${x.y}',${x.si},${x.k})">요청 승인</button>` 
+                : (x.t.st==='active' || x.t.st==='new' 
+                    ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div><button class="btn btn-org" style="width:100%;margin-top:5px; padding:6px; font-size:14px; pointer-events:auto;" onclick="appU('${x.y}',${x.si},${x.k})">✔️ 강제 사용</button>` 
+                    : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div><button class="btn btn-green" style="width:100%;margin-top:5px;padding:6px;font-size:14px; pointer-events:auto;" onclick="resU('${x.y}',${x.si},${x.k})">🔄 복구</button>`);
+            
+            return `<div id="card_${id}" class="asset ${seld?'sel':''} ${x.t.st==='req'?'req':''} ${x.t.st==='used' || x.t.st==='usd'?'used':''}" 
+                draggable="false" ondragstart="return false;"
+                onmousedown="startDrag(event, ${visualIdx}, '${id}')" 
+                onmouseenter="doDrag(event, '${id}')" 
+                ondblclick="useOne('${x.y}',${x.si},${x.k})"> ${statusBadge} ${img} ${itemTitle} ${content} ${actionBtn} </div>`;
+        }).join('');
     }
 
-    
+    window.resU = function(y, si, k) { 
+        if(confirm("이 아이템을 다시 사용할 수 있도록 복구하시겠습니까?")) {
+            let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+            let s = stuList[si];
+            if (!s) return alert("학생을 찾을 수 없습니다.");
+            
+            if(y === 'c' && s.inv && s.inv[k]) s.inv[k].st = 'active'; 
+            else if(y === 'l' && s.ibx && s.ibx[k]) s.ibx[k].st = 'new'; 
+            
+            db.stu = stuList;
+            sv(); 
+            setTimeout(() => { rAs(); rColT(); }, 100);
+            alert("복구되었습니다!");
+        }
+    }
+window.appU = function(y, si, k) { 
+        if(confirm("이 아이템을 사용(승인) 처리하시겠습니까?")) {
+            let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+            let s = stuList[si];
+            
+            if(y === 'c' && s.inv && s.inv[k]) s.inv[k].st = 'used'; 
+            else if(y === 'l' && s.ibx && s.ibx[k]) s.ibx[k].st = 'used'; 
+            
+            db.stu = stuList;
+            sv(); rAs(); 
+        }
+    }
+    window.useOne = function(y, si, k) { 
+        if(confirm("아이템을 목록에서 완전히 삭제하시겠습니까?")){
+            let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+            let s = stuList[si];
+            
+            if(y === 'c' && s.inv) {
+                if (Array.isArray(s.inv)) s.inv.splice(k, 1);
+                else delete s.inv[k];
+            } else if(y === 'l' && s.ibx) {
+                if (Array.isArray(s.ibx)) s.ibx.splice(k, 1);
+                else delete s.ibx[k];
+            }
+            
+            // 객체로 변한 배열을 다시 정상 배열로 압축
+            if (s.inv && !Array.isArray(s.inv)) s.inv = Object.values(s.inv).filter(Boolean);
+            if (s.ibx && !Array.isArray(s.ibx)) s.ibx = Object.values(s.ibx).filter(Boolean);
+
+            db.stu = stuList;
+            sv(); rAs();
+        } 
+    }
     function delSel(){ 
         if(!confirm("선택 항목을 정말 삭제하시겠습니까? (영구 삭제)")){ return; }
         sel.forEach(id=>{
@@ -878,13 +1370,13 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
         rColT();
     }
 
-    // 교사용 도감 - 초월 관리 가능하게 수정
     function rColT() {
         if(!db.stu) return;
-        const total = db.itm.length;
+        const targetItms = db.itm.filter(i => i.s === true); 
+        const total = targetItms.length;
         let displayList = db.stu.map((s, idx) => {
             const myCol = s.col || [];
-            const validCount = db.itm.filter(i => myCol.includes(i.n)).length;
+            const validCount = targetItms.filter(i => myCol.includes(i.n)).length;
             const pct = total === 0 ? 0 : Math.round((validCount / total) * 100);
             return { ...s, pct, validCount, orgIdx: idx }; 
         });
@@ -901,7 +1393,7 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
             const myCol = s.col || [];
             const isDone = total > 0 && s.validCount >= total;
             
-            const grids = db.itm.map(item => {
+            const grids = targetItms.map(item => {
                 const has = myCol.includes(item.n);
                 let content = '';
                 if(has) {
@@ -913,14 +1405,13 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
             return `<tr class="${isDone ? 'col-row-done' : ''}">
                 <td>${s.no}</td>
                 <td><b>${s.nm}</b></td>
-                <td><input class="qty-input" type="number" value="${s.rb||0}" onchange="upCk(${s.orgIdx},'rb',this.value)"></td>
+                <td><input class="qty-input" type="number" value="${s.rb||0}" onchange="upCk(${s.orgIdx},'rb',this.value)" style="width:100px;"></td>
                 <td><div style="font-weight:bold; color:#5D4037; font-size:16px;">${s.pct}%</div></td>
                 <td style="text-align:left;"><div class="col-cell-wrap">${grids}</div></td>
             </tr>`;
         }).join('');
     }
 
-// 도감 마스터 팝업 (통합형: 축하 + 도전 여부)
     window.showMasterOverlay = function() {
         if(document.getElementById('masterOverlay')) return;
         snd('master');
@@ -947,60 +1438,54 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
         document.body.insertAdjacentHTML('beforeend', html);
     }
 
-    // 초월(환생) 실행 함수
     window.doRebirth = function() {
         const overlay = document.getElementById('masterOverlay');
         if(overlay) overlay.remove();
 
-        me.rb = (me.rb || 0) + 1; // 초월 횟수 증가
+        me.rb = (me.rb || 0) + 1; 
 
-        // 1. 가방(inv)에서 도감에 등록된 아이템 종류별로 딱 1개씩만 찾아 삭제(차감)
-        db.itm.forEach(item => {
-            // 가방에서 '사용 안 한(active)' 아이템의 인덱스를 우선적으로 찾음
+        const targetItms = db.itm.filter(i => i.s === true); 
+        targetItms.forEach(item => {
             let idx = me.inv.findIndex(i => i.n === item.n && i.st !== 'used' && i.st !== 'usd');
-            
-            // 만약 멀쩡한 아이템이 없다면, 이미 사용한(used) 아이템이라도 찾아서 차감
             if (idx === -1) {
                 idx = me.inv.findIndex(i => i.n === item.n);
             }
-            
-            // 찾았다면 배열에서 1개만 쏙 빼서 영구 차감
             if (idx !== -1) {
                 me.inv.splice(idx, 1); 
             }
         });
 
-        // 2. 도감 초기화 (차감 후 도감 비우기)
         me.col = []; 
         
-        upMe(); // DB에 변경된 가방, 도감, 초월 단계 저장
-        rCol(); // 도감 화면 갱신
-        rBg();  // 가방 화면 갱신 (차감된 것 즉시 반영)
-        snd('f'); // 축하 효과음 재생
+        upMe(); 
+        rCol(); 
+        rBg();  
+        snd('f'); 
         alert(me.rb + "단계 진화 성공! 캐릭터가 다음 단계로 성장했습니다! 👑");
     }
 
     function rSet(){ 
-        document.getElementById('il').innerHTML=db.itm.map((x,i)=>`<div class="asset" onclick="editI(${i})"><div class="del-btn" onclick="event.stopPropagation();delI_T(${i})">×</div><div class="huge-emoji">${x.i}</div><div class="info">${x.n} | ${x.p}🍭${x.s?'':'(비매품)'}<br><span style="font-size:11px;color:#888; font-weight:normal;">${x.d||''}</span></div></div>`).join(''); 
-        const typeEmoji = {scratch:'🥠', card:'💳️', lotto:'🕹️'};
-        document.getElementById('gl').innerHTML=db.gac.map((x,i)=>`<div class="asset" ondblclick="editG(${i})" oncontextmenu="tryGachaT(${i}); return false;"><div class="del-btn" onclick="event.stopPropagation();delG(${i})">×</div><div class="huge-emoji">${typeEmoji[x.t]}</div><div class="info">${x.n} ${x.spc?'✨':''}| ${x.c}🍭</div></div>`).join(''); 
+        document.getElementById('il').innerHTML=db.itm.map((x,i)=>`<div class="asset" onclick="editI(${i})"><div class="del-btn" onclick="event.stopPropagation();delI_T(${i})">×</div><div class="huge-emoji">${x.i}</div><div class="info">${x.n} | ${x.p} ${curEmoji[x.c||'cn']}${x.s?'':'(비매품)'}<br><span style="font-size:11px;color:#888; font-weight:normal;">${x.d||''}</span></div></div>`).join(''); 
+        const typeEmoji = {scratch:'🪙', card:'🗳️', lotto:'🕹️'};
+        document.getElementById('gl').innerHTML=db.gac.map((x,i)=>`<div class="asset" ondblclick="editG(${i})" oncontextmenu="tryGachaT(${i}); return false;"><div class="del-btn" onclick="event.stopPropagation();delG(${i})">×</div><div class="huge-emoji">${typeEmoji[x.t]}</div><div class="info">${x.n} ${x.spc?'✨':''}| ${x.c} ${curEmoji[x.cur||'cn']}</div></div>`).join(''); 
     }
     
     function addI(){ 
         const isSale = document.getElementById('isSale').checked;
         const desc = document.getElementById('id_desc').value;
-        db.itm.push({n:document.getElementById('in').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}); 
+        db.itm.push({n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}); 
         sv(); rSet(); 
         document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
     }
     
     function editI(i) { 
         const it = db.itm[i]; document.getElementById('in').value = it.n; document.getElementById('ip').value = it.p; document.getElementById('ii').value = it.i; document.getElementById('id_desc').value = it.d || ''; document.getElementById('isSale').checked = it.s !== false;
+        if(it.c) document.getElementById('ic').value = it.c;
         const btn = document.querySelector('#t_set .btn-org'); btn.innerText = "수정완료"; 
         btn.onclick = function() { 
             const isSale = document.getElementById('isSale').checked;
             const desc = document.getElementById('id_desc').value;
-            db.itm[i] = {n:document.getElementById('in').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}; 
+            db.itm[i] = {n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}; 
             sv(); rSet(); this.innerText = "등록"; this.onclick = addI; 
             document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
         } 
@@ -1011,23 +1496,24 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
     function mkG(){ 
         let rs=[]; document.querySelectorAll('#gr div').forEach(e=>{rs.push({n:e.querySelector('.gn').value, p:e.querySelector('.gp').value})}); 
         const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
-        db.gac.push({n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}); 
+        db.gac.push({n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}); 
         sv(); rSet(); document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
     }
     
     function editG(i) { 
         const g = db.gac[i]; document.getElementById('gn').value = g.n; document.getElementById('gc').value = g.c; document.getElementById('gy').value = g.t || 'scratch'; 
+        if(g.cur) document.getElementById('gc_cur').value = g.cur;
         if(document.getElementById('g_spc')) document.getElementById('g_spc').checked = g.spc || false;
         const grDiv = document.getElementById('gr'); grDiv.innerHTML = ''; g.r.forEach(r => { 
             const d = document.createElement('div');
-            d.innerHTML = `<input class="gn" value="${r.n}" style="width:80px"><input class="gp" value="${r.p}" type="number" style="width:50px"><button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
+            d.innerHTML = `<input class="gn" value="${r.n}" style="width:80px"><input class="gp" value="${r.p}" type="number" style="width:100px; margin-bottom:0;"><button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
             grDiv.appendChild(d);
         }); 
         const btn = document.querySelectorAll('#t_set .btn-org')[1]; btn.innerText = "수정완료"; 
         btn.onclick = function() { 
             let rs=[]; document.querySelectorAll('#gr div').forEach(e=>{rs.push({n:e.querySelector('.gn').value, p:e.querySelector('.gp').value})}); 
             const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
-            db.gac[i] = {n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}; 
+            db.gac[i] = {n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}; 
             sv(); rSet(); this.innerText = "생성"; this.onclick = mkG; 
             document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
         } 
@@ -1038,14 +1524,14 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
     function addGr(){ 
         const d = document.createElement('div'); d.style.marginBottom="5px"; d.style.display="flex"; d.style.gap="5px";
         let opts = `<option value="">아이템 선택</option>`; db.itm.forEach(i => { opts += `<option value="${i.n}">${i.n}</option>`; });
-        d.innerHTML = `<select class="gn" style="flex:1; margin-bottom:0;">${opts}</select><input class="gp" type="number" placeholder="%" style="width:80px; margin-bottom:0;"><button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
+        d.innerHTML = `<select class="gn" style="flex:1; margin-bottom:0;">${opts}</select><input class="gp" type="number" placeholder="%" style="width:100px; margin-bottom:0;"><button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:5px 10px;">×</button>`;
         document.getElementById('gr').appendChild(d);
     } 
     if(document.getElementById('gr') && document.getElementById('gr').innerHTML==="") addGr();
 
     function tryGachaT(i) {
         if(!confirm("테스트해보시겠습니까? (비용 차감 없음)")) return;
-        me = {cn: 9999, inv: [], col: [], kc: 9999, isTest: true}; 
+        me = {cn: 9999, tk: 999, co: 999, cookie: 999, usedCookie: 0, level: 99, inv: [], col: [], isTest: true}; 
         document.getElementById('appT').classList.add('hidden');
         runRNG(db.gac[i], true); 
         const restoreT = setInterval(() => {
@@ -1057,7 +1543,6 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
         }, 1000);
     }
     
-    // 학생 인벤토리 휴지통 토글
     window.toggleTrash = function(isTrash) {
         showTrash = isTrash;
         rBg();
@@ -1065,14 +1550,13 @@ document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
 
     function rBg(){ 
         if(!me) return;
-const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText = me.cn + ' 🍭';      
-        document.getElementById('s_bg').innerHTML = `
+        
+        let html = `
             <div class="stardew-tabs">
                 <div class="sd-tab ${!showTrash ? 'active' : ''}" onclick="toggleTrash(false)">🎒 가방</div>
                 <div class="sd-tab ${showTrash ? 'active' : ''}" onclick="toggleTrash(true)">🗑️ 완료</div>
             </div>
-            <div id="s_iv"></div>
-        `;
+            <div id="s_iv">`;
         
         if(!me.inv) me.inv = [];
         const counts = {};
@@ -1086,13 +1570,22 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
             counts[key].count++; 
         });
         
-        const itemList = Object.values(counts);
-        let slotsHtml = "";
+        let itemList = Object.values(counts);
+        
+        if(!showTrash) {
+            let pseudoItems = [];
+            if ((!db.cfg || db.cfg.show_cn !== false) && (me.cn > 0)) pseudoItems.push({ n: '캔디', i: '🍭', count: me.cn, pseudo: true, g: 'S' });
+            if ((!db.cfg || db.cfg.show_tk !== false) && (me.tk > 0)) pseudoItems.push({ n: '누구나 바구니', i: '🧺', count: me.tk, pseudo: true, g: 'S' });
+            if ((!db.cfg || db.cfg.show_co !== false) && (me.co > 0)) pseudoItems.push({ n: '동전', i: '🪙', count: me.co, pseudo: true, g: 'S' });
+            itemList = [...pseudoItems, ...itemList];
+        }
+
         itemList.forEach(item => {
-            const isReq = (item.st === 'req'); const tierCls = `c-${item.g||'C'}`;
-            const clickEvent = (!showTrash && !isReq) ? `showItemDetail('${item.n.replace(/'/g, "\\'")}')` : '';
+            const isReq = (item.st === 'req'); 
+            const tierCls = `c-${item.g||'C'}`;
+            const clickEvent = (!showTrash && !isReq && !item.pseudo) ? `showItemDetail('${item.n.replace(/'/g, "\\'")}')` : '';
             
-            slotsHtml += `<div class="inventory-slot has-item ${tierCls} ${showTrash ? 'is-used' : ''}" onclick="${clickEvent}">
+            html += `<div class="inventory-slot has-item ${tierCls} ${showTrash ? 'is-used' : ''}" onclick="${clickEvent}">
                 ${item.i.includes('http') ? `<img src="${item.i}">` : `<div class="slot-emoji">${item.i}</div>`}
                 <div style="font-size: 18px; font-weight: bold; margin-top: 10px; color: #5D4037; text-align: center; word-break: keep-all; line-height: 1.2;">${item.n}</div>
                 <div class="item-count">${item.count}</div>
@@ -1100,25 +1593,30 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
             </div>`;
         });
         
-        // 24에서 18로 변경
         const emptySlots = Math.max(0, 18 - itemList.length);
-        for(let i=0; i<emptySlots; i++) { slotsHtml += `<div class="inventory-slot"></div>`; }
-        document.getElementById('s_iv').innerHTML = slotsHtml;
+        for(let i=0; i<emptySlots; i++) { html += `<div class="inventory-slot"></div>`; }
+        html += `</div>`;
+
+        // 🌟 버그 수정 완료 (이 코드가 있어서 화면이 보입니다)
+        document.getElementById('s_bg').innerHTML = html;
     }
          
     function rCol(){ 
-        const total = db.itm.length; if(!me.col) me.col = []; 
-        const myCount = db.itm.filter(i => me.col.includes(i.n)).length; 
+        let itmList = Array.isArray(db.itm) ? db.itm : Object.values(db.itm || {});
+        const targetItms = itmList.filter(i => i.s === true); 
+        const total = targetItms.length; 
+        if(!me.col) me.col = []; 
+        const myCount = targetItms.filter(i => me.col.includes(i.n)).length; 
         const pct = total === 0 ? 0 : Math.round((myCount / total) * 100);
         
-        const gridHtml = db.itm.map(item => { 
+        const gridHtml = targetItms.map(item => { 
             const hasIt = me.col.includes(item.n); 
             if(!hasIt) { return `<div class="quest-slot"><div class="quest-icon unknown-icon">❓</div></div>`; }
             const itemIcon = item.i.includes('http') ? `<img src="${item.i}" style="width:100%;height:100%;object-fit:contain;">` : `${item.i}`;
             return `<div class="quest-slot achieved"><div class="stamp-clear">GET!</div><div class="quest-icon">${itemIcon}</div><div style="font-weight:bold; font-size:16px; margin-top:5px; color:#5D4037;">${item.n}</div></div>`; 
         }).join(''); 
         
-        document.getElementById('s_col').innerHTML = `
+        let html = `
         <div class="parchment-scroll">
             <div class="parchment-cap cap-tl"></div><div class="parchment-cap cap-tr"></div><div class="parchment-cap cap-bl"></div><div class="parchment-cap cap-br"></div>
             <h2 style="text-align:center; font-size:50px; color:#4E342E; margin-top:10px; margin-bottom:40px; border-bottom: 2px dashed #D7CCC8; padding-bottom:15px;">📜 전설의 도감</h2>
@@ -1136,28 +1634,29 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
             </div>
         </div>`;
 
+       
+
+        document.getElementById('s_col').innerHTML = html;
+
         const isColTabVisible = !document.getElementById('s_col').classList.contains('hidden');
         if (pct === 100 && total > 0 && isColTabVisible) {
-            if (!window.masterPopupShown) {
-                setTimeout(showMasterOverlay, 100);
-                window.masterPopupShown = true;
-            }
-        } else if (pct < 100) {
-            window.masterPopupShown = false;
-        }
+            if (!window.masterPopupShown) { setTimeout(showMasterOverlay, 100); window.masterPopupShown = true; }
+        } else if (pct < 100) { window.masterPopupShown = false; }
     }
 
     function rSh(){ 
-       const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText = me.cn + ' 🍭';
-
-        const saleItems = db.itm.filter(i => i.s === true);
+        let itmList = Array.isArray(db.itm) ? db.itm : Object.values(db.itm || {});
+        const saleItems = itmList.filter(i => i.s === true);
+        const hasNormalShop = saleItems.length > 0;
         
+        if(!hasNormalShop && currentShopTab === 'normal') currentShopTab = 'gacha';
+
         let normalShopHtml = "";
-        if(saleItems.length > 0) {
+        if(hasNormalShop) {
             normalShopHtml = `
-                <div id="shop-normal-sec" class="shop-section" style="display:block;">
+                <div id="shop-normal-sec" class="shop-section" style="display:none;">
                     <div id="s_sh_items" class="grid" style="margin-top: 20px !important;">
-                       ${saleItems.map((item, idx) => `
+                       ${saleItems.map((item) => `
     <div class="shop-card">
         <div class="click-catcher" onclick="window.showAskModal('${item.n.replace(/'/g, "\\'")}')"></div>
         <div class="shop-card-content">
@@ -1166,7 +1665,7 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
         </div>
         <div class="pedestal">
             <div class="pedestal-top"></div>
-            <div class="btn-price">${item.p} 🍭</div>
+            <div class="btn-price">${item.p} ${curEmoji[item.c||'cn']}</div>
         </div>
     </div>
 `).join('')}
@@ -1175,11 +1674,12 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
             `;
         }
 
-        const typeEmoji = {scratch:'🥠', card:'💳️', lotto:'🕹️'};
+        const typeEmoji = {scratch:'🪙', card:'🗳️', lotto:'🕹️'};
+        let gacList = Array.isArray(db.gac) ? db.gac : Object.values(db.gac || {});
         const gachaShopHtml = `
             <div id="shop-gacha-sec" class="shop-section" style="display:none;">
                 <div id="s_gl" class="grid" style="margin-top: 20px !important;">
-                    ${db.gac.map((x,i)=>`
+                    ${gacList.map((x)=>`
                         <div class="shop-card">
                             <div class="click-catcher" onclick="window.showGachaModal('${x.n.replace(/'/g, "\\'")}')"></div>
                             <div class="shop-card-content">
@@ -1188,7 +1688,7 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
                             </div>
                             <div class="pedestal ped-gold">
                                 <div class="pedestal-top"></div>
-                                <div class="btn-price">${x.c} 🍭</div>
+                                <div class="btn-price">${x.c} ${curEmoji[x.cur||'cn']}</div>
                             </div>
                         </div>
                     `).join('')}
@@ -1196,42 +1696,136 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
             </div>
         `;
 
+        let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
+        const activeAucs = aucList.filter(a => a.st === 'active');
+        
+        // 🌟 수정됨: 학생이 올린 '대기중/거절됨' 경매를 렌더링하고, '숨김(삭제) 처리된' 경매를 필터링
+        const myPendingAucs = aucList.filter(a => a.reqBy === me.cd && (a.st === 'req' || a.st === 'denied') && !(a.hiddenFor && a.hiddenFor.includes(me.cd)));
+        const doneAucs = aucList.filter(a => (a.st === 'done' || a.st === 'tie') && !(a.hiddenFor && a.hiddenFor.includes(me.cd))); 
+        
+        let aucHtml = `<div id="shop-auc-sec" class="shop-section" style="display:none;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; margin-top:20px;"><h2 style="color:#FFF; text-shadow:2px 2px 0 #3E2723; margin:0;">🔨 실시간 경매장</h2><button class="btn btn-wood" onclick="showAucReqModal()" style="box-shadow:0 4px 10px rgba(0,0,0,0.5);">경매 요청</button></div>`;
+        
+        // 🌟 내 요청 경매 렌더링
+        if(myPendingAucs.length > 0) {
+            aucHtml += `<div class="auc-grid">` + myPendingAucs.map(a => `
+                <div class="auc-card" style="background:${a.st==='denied'?'#FFEBEE':'#FFF8E1'}; border:2px solid ${a.st==='denied'?'#EF5350':'#FFB74D'}; position:relative; padding:15px; border-radius:15px; margin-bottom:15px;">
+                    <div class="auc-badge" style="background:${a.st==='denied'?'#D32F2F':'#FF9800'}; top:-10px; left:15px; right:auto;">${a.st==='denied'?'거절됨':'승인 대기중'}</div>
+                    <h3 style="margin:10px 0 5px 0; color:#5D4037; font-size:20px;">${a.n}</h3>
+                    <p style="font-size:13px; color:#795548; margin:5px 0 10px 0;">${a.st==='denied'?'⚠️ 선생님께서 요청을 거절하셨습니다.':'관리자의 승인을 기다리고 있습니다.'}</p>
+                    <button class="btn btn-gray" style="width:100%; padding:8px;" onclick="studentDelAuc(${a.id})">${a.st==='req' ? '취소' : '확인 및 삭제'}</button>
+                </div>
+            `).join('') + `</div>`;
+        }
+
+        if(activeAucs.length > 0) {
+            aucHtml += `<div class="auc-grid">` + activeAucs.map(a => {
+                const topBid = a.bids && a.bids.length > 0 ? Math.max(...a.bids.map(b=>b.amt)) : 0;
+                const topBidders = a.bids ? a.bids.filter(b=>b.amt === topBid) : [];
+                const topName = topBidders.length > 0 ? Array.from(new Set(topBidders.map(b=>b.nm))).join(', ') : '없음';
+                return `<div style="background: linear-gradient(135deg, #2c3e50, #34495e); border: 4px solid #1abc9c; border-radius: 20px; padding: 20px; color: white; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); position: relative;"><div style="position: absolute; top: -15px; left: 20px; background: #e74c3c; padding: 5px 15px; border-radius: 10px; font-weight: bold; border: 2px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.2); animation: pulse 1.5s infinite;">🔴 진행중</div><div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 10px;"><div><h3 style="margin: 0; font-size: 26px; color: #f1c40f;">${a.n}</h3><p style="margin: 5px 0 15px 0; color: #bdc3c7; font-size: 15px;">${a.desc||'설명이 없습니다.'}</p></div><div class="auc-timer" data-et="${a.et}" style="background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; color: #e74c3c; font-weight: bold; font-size: 18px; border: 2px solid #c0392b;">⏱️ 00:00</div></div><div style="display: flex; gap: 15px; margin-bottom: 15px;"><div style="flex: 1; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 15px; text-align: center; border: 2px solid #f39c12; display: flex; flex-direction: column; justify-content: center;"><div style="font-size: 14px; color: #f39c12; margin-bottom: 5px;">현재 최고가</div><div style="font-size: 32px; font-weight: bold; color: #fff;">${a.cp} ${curEmoji[a.cur]}</div><div style="margin-top: 10px; font-size: 16px; color: #1abc9c; background: rgba(26, 188, 156, 0.2); padding: 5px; border-radius: 8px; word-break: break-all;">👑 ${topName}</div></div><div class="auc-chat-container" style="flex: 1; height: 140px;">${a.bids && a.bids.length > 0 ? a.bids.map(b => `<div class="auc-chat-msg ${b.cd === me.cd ? 'my-bid' : ''}"><span class="auc-chat-name">${b.nm}</span><span class="auc-chat-amt">${b.amt} ${curEmoji[a.cur]}</span></div>`).join('') : '<div style="color:#7f8c8d; text-align:center; margin-top:40px; font-size:14px;">아직 입찰이 없습니다.<br>첫 입찰자가 되어보세요!</div>'}</div></div><button class="btn btn-org" style="width: 100%; font-size: 20px; padding: 15px;" onclick="showAucBidModal(${a.id})">💰 나도 입찰하기</button></div>`;
+            }).join('') + `</div>`;
+        }
+            
+        if(doneAucs.length > 0) {
+            aucHtml += `<h3 style="color:#FFF; border-bottom:2px dashed #BCAAA4; padding-bottom:5px; margin-top:30px;">✅ 종료된 경매 <span style="font-size:14px; font-weight:normal; color:#ddd;">(확인 후 삭제해주세요)</span></h3><div class="auc-grid">` + doneAucs.map(a => {
+                let resHtml = a.st === 'tie' ? `<div style="color:#FFC107; font-weight:bold; font-size:16px;">선생님께서 동점자 확인 중입니다!</div>` : `<div style="font-size:14px; color:#bdc3c7;">낙찰자: <b style="color:#2ecc71;">${a.winner ? a.winner.nm : '유찰'}</b></div><div style="font-size:14px; color:#bdc3c7;">낙찰가: <b style="color:#e67e22;">${a.cp} ${curEmoji[a.cur]}</b></div>`;
+                return `<div style="background: rgba(0,0,0,0.4); border: 2px solid #7f8c8d; border-radius: 15px; padding: 15px; color: white; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin: 0 0 5px 0; color: #bdc3c7; text-decoration: line-through;">${a.n}</h3>${resHtml}</div><button class="btn btn-gray" onclick="studentDelAuc(${a.id})">확인 및 삭제</button></div>`;
+            }).join('') + `</div>`;
+        }
+        
+        // 🌟 목록이 비어있을 때 안내 문구
+        if (myPendingAucs.length === 0 && activeAucs.length === 0 && doneAucs.length === 0) {
+            aucHtml += `<div style="color:#FFF; opacity:0.7; text-align:center; padding:20px; background: rgba(0,0,0,0.2); border-radius: 15px; border: 2px dashed #8D6E63; margin-top:20px; min-height:246px; display:flex; align-items:center; justify-content:center; font-size:18px;">현재 진행 중이거나 종료된 경매 내역이 없습니다.</div>`;
+        }
+        aucHtml += `</div>`;
+
+        const tabCount = hasNormalShop ? 3 : 2;
+        const sliderWidth = `calc(${100/tabCount}% - 6px)`;
+
         document.getElementById('s_sh').innerHTML = `
             <div class="npc-speech">
                 <div style="font-size: 65px; line-height: 1;">🧙‍♂️</div>
                 <div>"어서오게, 꼬마 용사여!<br><span style="color:#FF9800; font-size:22px;">오늘은 어떤 신기한 물건을 찾아왔는가?</span>"</div>
             </div>
             <div class="shop-toggle-bar">
-                <div id="tab-slider" class="tab-slider"></div>
-                <div id="tab-normal" class="shop-tab tab-active" onclick="toggleShopTab('normal')">일반 상점</div>
-                <div id="tab-gacha" class="shop-tab" onclick="toggleShopTab('gacha')">스페셜 뽑기</div>
+                <div id="tab-slider" class="tab-slider" style="width: ${sliderWidth};"></div>
+                ${hasNormalShop ? `<div id="tab-normal" class="shop-tab" onclick="toggleShopTab('normal')">일반 상점</div>` : ''}
+                <div id="tab-gacha" class="shop-tab" onclick="toggleShopTab('gacha')">뽑기</div>
+                <div id="tab-auc" class="shop-tab" onclick="toggleShopTab('auc')">경매</div>
             </div>
             ${normalShopHtml}
             ${gachaShopHtml}
+            ${aucHtml}
         `;
+        
+        toggleShopTab(currentShopTab);
+        updateAucTimersUI();
+
+        setTimeout(() => {
+            document.querySelectorAll('.auc-chat-container').forEach(el => el.scrollTop = el.scrollHeight);
+        }, 50);
     }
 
-    window.toggleShopTab = function(tabType) {
-        const slider = document.getElementById('tab-slider');
-        if(tabType === 'normal') {
-            document.getElementById('shop-normal-sec').style.display = 'block';
-            document.getElementById('shop-gacha-sec').style.display = 'none';
-            document.getElementById('tab-normal').classList.add('tab-active');
-            document.getElementById('tab-gacha').classList.remove('tab-active');
-            if(slider) slider.style.transform = 'translateX(0)';
-        } else {
-            document.getElementById('shop-normal-sec').style.display = 'none';
-            document.getElementById('shop-gacha-sec').style.display = 'block';
-            document.getElementById('tab-normal').classList.remove('tab-active');
-            document.getElementById('tab-gacha').classList.add('tab-active');
-            if(slider) slider.style.transform = 'translateX(100%)';
+    // 학생 화면에서 개별 종료 경매 삭제
+    window.studentDelAuc = function(id) {
+        let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
+        const a = aucList.find(x => x.id === id);
+        
+        if(a) {
+            if(a.st === 'req') {
+                // 승인 대기 중인 요청을 '취소'할 경우 완전히 삭제
+                aucList = aucList.filter(x => x.id !== id);
+            } else {
+                // 종료(done), 동점(tie), 거절(denied)된 경매를 '확인 및 삭제'할 경우 학생 화면에서만 숨김
+                if(!a.hiddenFor) a.hiddenFor = [];
+                if(!a.hiddenFor.includes(me.cd)) a.hiddenFor.push(me.cd);
+            }
         }
+        
+        db.auc = aucList;
+        sv(); 
+        rSh(); // 상점 화면 즉시 새로고침
+    };
+    window.toggleShopTab = function(tabType) {
+        currentShopTab = tabType;
+        const hasNormalShop = db.itm.filter(i => i.s === true).length > 0;
+        const slider = document.getElementById('tab-slider');
+        
+        // 전체 숨김
+        ['shop-normal-sec','shop-gacha-sec','shop-auc-sec'].forEach(id => {
+            if(document.getElementById(id)) document.getElementById(id).style.display = 'none';
+        });
+        ['tab-normal','tab-gacha','tab-auc'].forEach(id => {
+            if(document.getElementById(id)) document.getElementById(id).classList.remove('tab-active');
+        });
+        
+        let tabIndex = 0;
+        if(tabType === 'normal' && hasNormalShop) {
+            document.getElementById('shop-normal-sec').style.display = 'block';
+            document.getElementById('tab-normal').classList.add('tab-active');
+            tabIndex = 0;
+        } else if(tabType === 'gacha') {
+            document.getElementById('shop-gacha-sec').style.display = 'block';
+            document.getElementById('tab-gacha').classList.add('tab-active');
+            tabIndex = hasNormalShop ? 1 : 0;
+        } else if(tabType === 'auc') {
+            document.getElementById('shop-auc-sec').style.display = 'block';
+            document.getElementById('tab-auc').classList.add('tab-active');
+            tabIndex = hasNormalShop ? 2 : 1;
+            setTimeout(() => {
+                document.querySelectorAll('.auc-chat-container').forEach(el => el.scrollTop = el.scrollHeight);
+            }, 50);
+        }
+        
+        if(slider) slider.style.transform = `translateX(${tabIndex * 100}%)`;
     }
 
     window.showAskModal = function(itemName) {
         const item = db.itm.find(i => i.n === itemName);
         if (!item) return;
-        if (me.cn < item.p) return alert("🍭가 부족해요!");
+        
+        const myBal = item.c === 'kc' ? ((me.cookie||0) - (me.usedCookie||0)) : (me[item.c||'cn']||0);
+        if (myBal < item.p) return alert("화폐가 부족해요!");
 
         const old = document.getElementById('askModal'); if(old) old.remove();
         const itemIcon = item.i.includes('http') ? `<img src="${item.i}" style="width:70px; height:70px; object-fit:contain;">` : `<div style="font-size:70px;">${item.i}</div>`;
@@ -1245,7 +1839,7 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
                         <h2 class="modal-title">구매 하시겠습니까?</h2>
                         <div style="background:rgba(255,255,255,0.8); border: 2px dashed #A1887F; border-radius: 15px; padding: 15px; margin-bottom:20px;">
                             <div style="font-size:24px; font-weight:900; color:#FF6F00;">${item.n}</div>
-                            <div style="font-size:20px; color:#5D4037; margin-top:10px;">가격: <b style="color:#E65100; font-size:24px;">${item.p}</b> 🍭</div>
+                            <div style="font-size:20px; color:#5D4037; margin-top:10px;">가격: <b style="color:#E65100; font-size:24px;">${item.p}</b> ${curEmoji[item.c||'cn']}</div>
                         </div>
                         <div class="modal-btn-group" style="justify-content: center;">
                             <button class="btn btn-org" onclick="realBuyCurrent('${item.n.replace(/'/g, "\\'")}')" style="flex: none; width: 60%;">네, 살래요!</button>
@@ -1262,9 +1856,18 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
         if (modal) modal.remove();
 
         const item = db.itm.find(i => i.n === itemName);
-        if (!item || me.cn < item.p) return;
+        if (!item) return;
+        
+        const cType = item.c || 'cn';
+        const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0)) : (me[cType]||0);
+        if (myBal < item.p) return;
 
-        me.cn -= item.p;
+        if (cType === 'kc') {
+            me.usedCookie = (me.usedCookie || 0) + item.p;
+        } else {
+            me[cType] -= item.p;
+        }
+
         me.inv.push({n: item.n, i: item.i, st: 'active', g: item.g || 'C'});
         if (!me.col) me.col = [];
         if (!me.col.includes(item.n)) me.col.push(item.n);
@@ -1300,7 +1903,10 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
     window.showGachaModal = function(gachaName) {
         const g = db.gac.find(i => i.n === gachaName);
         if (!g) return;
-        if (me.cn < g.c) return alert("🍭가 부족해요!");
+        
+        const cType = g.cur || 'cn';
+        const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0)) : (me[cType]||0);
+        if (myBal < g.c) return alert("화폐가 부족해요!");
         
         const old = document.getElementById('gachaModal'); if(old) old.remove();
         const typeEmoji = {scratch:'🥠', card:'💳️', lotto:'🕹️'};
@@ -1314,7 +1920,7 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
                         <div class="modal-icon">${emo}</div>
                         <h2 class="modal-title">${g.n}</h2>
                         <div style="background:rgba(255,255,255,0.8); border: 2px dashed #A1887F; border-radius: 15px; padding: 15px; margin-bottom:20px;">
-                            <div style="font-size:22px; color:#5D4037; font-weight:bold;">비용: <b style="color:#FF6F00; font-size:26px;">${g.c}</b> 🍭</div>
+                            <div style="font-size:22px; color:#5D4037; font-weight:bold;">비용: <b style="color:#FF6F00; font-size:26px;">${g.c}</b> ${curEmoji[cType]}</div>
                         </div>
                         <div class="modal-btn-group" style="justify-content: center;">
                             <button class="btn btn-org" onclick="executeGachaCurrent('${g.n.replace(/'/g, "\\'")}')" style="flex: none; width: 60%;">뽑기 시작!</button>
@@ -1331,14 +1937,321 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
         if (modal) modal.remove();
 
         const g = db.gac.find(i => i.n === gachaName);
-        if (!g || me.cn < g.c) return;
+        if (!g) return;
 
-        me.cn -= g.c;
+        const cType = g.cur || 'cn';
+        if (cType === 'kc') {
+            me.usedCookie = (me.usedCookie || 0) + g.c;
+        } else {
+            me[cType] -= g.c;
+        }
+        
         upMe();
         rBg(); rSh();
         runRNG(g, true); 
     }
 
+    /* === 학생 경매 모달 함수 === */
+    window.showAucReqModal = function() {
+        const old = document.getElementById('aucReqModal'); if(old) old.remove();
+        const html = `
+        <div id="aucReqModal" class="modal-overlay" onclick="this.remove()">
+            <div class="modal-window" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="document.getElementById('aucReqModal').remove()">X</button>
+                <div class="modal-inner">
+                    <h2 class="modal-title">🙋 경매 등록 요청</h2>
+                    <input id="ar_n" placeholder="경매에 올릴 상품명" style="text-align:center;">
+                    <textarea id="ar_d" placeholder="상품에 대한 간단한 설명" rows="2" style="text-align:center; resize:none;"></textarea>
+                    
+                    <div style="background:rgba(255,255,255,0.6); padding:10px; border-radius:10px; margin-bottom:15px;">
+                        <div style="font-size:14px; color:#757575; margin-bottom:5px;">시작 가격 설정 (누구나 바구니만 가능)</div>
+                        <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                            <input id="ar_p" type="number" placeholder="최소 1" style="width:100px; text-align:center; margin-bottom:0;">
+                            <span style="font-size:20px;">🧺</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-org" style="width:100%;" onclick="submitAucReq()">요청 보내기</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+
+    window.submitAucReq = function() {
+        const n = document.getElementById('ar_n').value.trim();
+        const d = document.getElementById('ar_d').value.trim();
+        const p = parseInt(document.getElementById('ar_p').value);
+        if(!n || !p || p < 1) return alert("상품명과 시작 가격을 올바르게 입력하세요.");
+        
+        let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
+        aucList.push({
+            id: Date.now(),
+            n: n,
+            desc: d,
+            sp: p,
+            cp: p,
+            cur: 'tk', 
+            reqBy: me.cd,
+            reqNm: me.nm,
+            st: 'req',
+            et: 0,
+            bids: []
+        });
+        
+        db.auc = aucList;
+        sv();
+        document.getElementById('aucReqModal').remove();
+        alert("선생님께 경매 요청을 보냈습니다!");
+        rSh(); // 🌟 상점 화면을 즉시 새로고침하여 대기중 목록에 표시
+    };
+    window.showAucBidModal = function(aucId) {
+        const a = db.auc.find(x => x.id === aucId);
+        if(!a) return;
+        const old = document.getElementById('aucBidModal'); if(old) old.remove();
+        
+        const myBal = a.cur === 'kc' ? ((me.cookie||0) - (me.usedCookie||0)) : (me[a.cur]||0);
+        
+        const html = `
+        <div id="aucBidModal" class="modal-overlay" onclick="this.remove()">
+            <div class="modal-window" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="document.getElementById('aucBidModal').remove()">X</button>
+                <div class="modal-inner">
+                    <h2 class="modal-title">💰 경매 입찰</h2>
+                    <div style="font-size:20px; font-weight:bold; color:#2E7D32;">${a.n}</div>
+                    
+                    <div style="background:rgba(255,255,255,0.7); padding:15px; border-radius:10px; margin:15px 0;">
+                        <div style="font-size:14px; color:#555;">현재 최고가</div>
+                        <div style="font-size:24px; font-weight:bold; color:#E65100;">${a.cp} ${curEmoji[a.cur]}</div>
+                    </div>
+                    
+                    <div style="font-size:14px; color:#757575; text-align:right; margin-bottom:5px;">내 잔액: ${myBal} ${curEmoji[a.cur]}</div>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <input id="ab_p" type="number" placeholder="${a.cp} 이상 입력" style="text-align:center; margin-bottom:0;">
+                        <span style="font-size:20px;">${curEmoji[a.cur]}</span>
+                    </div>
+                    
+                    <button class="btn btn-org" style="width:100%; margin-top:20px;" onclick="submitAucBid(${a.id})">입찰하기</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+
+    window.submitAucBid = function(aucId) {
+        const a = db.auc.find(x => x.id === aucId);
+        if(!a) return;
+        
+        const bid = parseInt(document.getElementById('ab_p').value);
+        if(!bid || bid < a.cp) return alert(`현재 최고가(${a.cp})와 같거나 높은 금액이어야 합니다!`);
+        
+        const myBal = a.cur === 'kc' ? ((me.cookie||0) - (me.usedCookie||0)) : (me[a.cur]||0);
+        if(myBal < bid) return alert("화폐가 부족합니다!");
+        
+        a.cp = bid;
+        if(!a.bids) a.bids = [];
+        a.bids.push({cd: me.cd, nm: me.nm, amt: bid, ts: Date.now()});
+        
+        sv();
+        document.getElementById('aucBidModal').remove();
+    };
+
+    /* === 선생님 경매 관리 UI === */
+    function rAucT() {
+        if(!db.auc) db.auc = [];
+        
+        const reqList = db.auc.filter(a => a.st === 'req');
+        const actList = db.auc.filter(a => a.st === 'active');
+        const doneList = db.auc.filter(a => a.st === 'done' || a.st === 'tie');
+        
+        document.getElementById('t_auc_req').style.gridTemplateColumns = "repeat(auto-fill, minmax(320px, 1fr))";
+        
+        document.getElementById('t_auc_req').innerHTML = reqList.map(a => `
+            <div style="background:#FFFDF2; border:2px solid #FFB366; border-radius:15px; padding:15px; position:relative; display:flex; flex-direction:column; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                <div style="position:absolute; top:15px; right:15px; background:#FF9F43; color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">요청됨</div>
+                <div style="font-weight:bold; font-size:18px; color:#5D4037; padding-right:50px;">${a.n}</div>
+                <div style="font-size:13px; color:#555; margin:5px 0;">${a.desc||'-'}</div>
+                <div style="font-size:13px; color:#E65100;">요청자: ${a.reqNm}</div>
+                
+                <div style="background:white; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; margin:10px 0;">
+                    <span style="font-size:14px; font-weight:bold; color:#5D4037;">희망 시작가</span>
+                    <span style="font-size:18px; font-weight:bold; color:#E65100;">${a.sp} ${curEmoji[a.cur]}</span>
+                </div>
+                
+                <div style="display:flex; align-items:center; gap:5px; margin-top:auto;">
+                    <div style="display:flex; align-items:center; background:white; border:2px solid #FFE0B2; border-radius:8px; padding:4px 8px;">
+                        <input type="number" id="ar_m_${a.id}" value="3" style="width:35px; border:none; background:transparent; font-size:18px; font-weight:bold; text-align:right; padding:0; margin:0; outline:none;">
+                        <span style="font-size:15px; font-weight:bold; color:#5D4037; margin-left:3px;">분</span>
+                    </div>
+                    <div style="display:flex; gap:3px; flex:1;">
+                        <button class="btn btn-green" style="padding:10px 0; margin:0; flex:1; font-size:15px;" onclick="approveAuc(${a.id})">승인</button>
+                        <button class="btn btn-red" style="padding:10px 0; margin:0; flex:1; font-size:15px;" onclick="delAuc(${a.id})">거절</button>
+                    </div>
+                </div>
+            </div>
+        `).join('') || '<div style="color:#888; grid-column: 1/-1;">대기 중인 요청이 없습니다.</div>';
+
+        document.getElementById('t_auc_act').innerHTML = actList.map(a => {
+            const topBid = a.bids && a.bids.length > 0 ? Math.max(...a.bids.map(b=>b.amt)) : 0;
+            const topBidders = a.bids ? a.bids.filter(b=>b.amt === topBid) : [];
+            const topName = topBidders.length > 0 ? Array.from(new Set(topBidders.map(b=>b.nm))).join(', ') : '-';
+            return `
+            <div class="auc-card">
+                <div class="auc-badge badge-act">진행중</div>
+                <div style="font-weight:bold; font-size:18px;">${a.n}</div>
+                <div class="auc-info-row">
+                    <div>
+                        <div style="font-size:12px; color:#555;">현재가 / 최고 입찰</div>
+                        <div class="auc-val">${a.cp} ${curEmoji[a.cur]} <span style="font-size:14px; color:#333; word-break:break-all;">(${topName})</span></div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:12px; color:#555;">남은 시간</div>
+                        <div class="auc-timer" data-et="${a.et}" style="font-weight:bold; color:#D32F2F; font-size:18px;">⏱️ 계산중...</div>
+                    </div>
+                </div>
+                <button class="btn btn-red" style="margin-top:10px;" onclick="forceEndAuc(${a.id})">강제 종료</button>
+            </div>`;
+        }).join('') || '<div style="color:#888;">진행 중인 경매가 없습니다.</div>';
+
+        document.getElementById('t_auc_done').innerHTML = doneList.map(a => {
+            if(a.st === 'tie') {
+                return `
+                <div style="background:#FFF3E0; border:2px solid #FFB74D; border-radius:15px; padding:15px; position:relative; display:flex; flex-direction:column; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="position:absolute; top:-10px; left:15px; background:#FF9800; color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">동점 발생</div>
+                    <div style="font-weight:bold; font-size:18px; color:#5D4037; margin-top:5px;">${a.n}</div>
+                    <div style="color:#D32F2F; font-weight:bold; margin:10px 0; font-size:14px;">최고가 ${a.cp}${curEmoji[a.cur]} 동일 입찰자가 있습니다! 낙찰자를 선택해주세요.</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">
+                        ${a.tied.map(t => `<button class="btn btn-org" style="flex:1; padding:8px;" onclick="resolveTie(${a.id}, '${t.cd}')">${t.nm}</button>`).join('')}
+                    </div>
+                    <button class="btn btn-gray" style="padding:8px 0; width:100%; font-size:14px;" onclick="delAuc(${a.id})">경매 취소 (삭제)</button>
+                </div>`;
+            } else {
+                const winNm = a.winner ? a.winner.nm : '유찰 (입찰자 없음)';
+                return `
+                <div style="background:#F5F5F5; border:2px solid #BDBDBD; border-radius:15px; padding:15px; position:relative; display:flex; flex-direction:column; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+                    <div style="position:absolute; top:-10px; left:15px; background:#757575; color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">종료됨</div>
+                    <div style="font-weight:bold; font-size:18px; color:#424242; text-decoration:line-through; margin-top:5px;">${a.n}</div>
+                    
+                    <div style="background:white; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; margin:10px 0; border:1px solid #E0E0E0;">
+                        <span style="font-size:14px; color:#555;">낙찰자: <b style="color:#2E7D32;">${winNm}</b></span>
+                        <span style="font-size:14px; color:#555;">낙찰가: <b style="color:#D84315;">${a.cp} ${curEmoji[a.cur]}</b></span>
+                    </div>
+                    
+                    <button class="btn btn-gray" style="padding:8px 0; width:100%; font-size:14px;" onclick="delAuc(${a.id})">목록에서 삭제</button>
+                </div>`;
+            }
+        }).join('') || '<div style="color:#888; grid-column: 1/-1;">종료된 경매가 없습니다.</div>';
+        
+        updateAucTimersUI();
+    }
+
+    window.delAllDoneAuc = function() {
+        if(!confirm("종료된 경매 기록을 모두 삭제하시겠습니까?")) return;
+        db.auc = db.auc.filter(a => a.st !== 'done');
+        sv(); rAucT();
+    }
+
+    window.showAucRegModal = function() {
+        const old = document.getElementById('aucRegModal'); if(old) old.remove();
+        const html = `
+        <div id="aucRegModal" class="modal-overlay" onclick="this.remove()">
+            <div class="modal-window" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="document.getElementById('aucRegModal').remove()">X</button>
+                <div class="modal-inner">
+                    <h2 class="modal-title">🔨 경매 등록</h2>
+                    <input id="tr_n" placeholder="상품명">
+                    <input id="tr_d" placeholder="상품 설명 (선택)">
+                    
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <select id="tr_c" style="flex:1; margin-bottom:0;">
+                            <option value="cn">🍭 캔디</option>
+                            <option value="tk">🧺 누구나 바구니</option>
+                            <option value="co">🪙 동전</option>
+                            <option value="kc">🍪 쿠키</option>
+                        </select>
+                        <input id="tr_p" type="number" placeholder="시작 가격" style="flex:1; margin-bottom:0;">
+                    </div>
+                    
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px; background:rgba(255,255,255,0.7); padding:10px; border-radius:10px;">
+                        <span style="font-size:14px; color:#555;">경매 시간</span>
+                        <div style="display:flex; align-items:center; background:white; border:2px solid #FFE0B2; border-radius:10px; padding:2px 10px;">
+                            <input id="tr_m" type="number" value="3" style="width:50px; margin:0; text-align:center; border:none; background:transparent; font-size:16px; font-weight:bold; outline:none;">
+                            <span style="font-size:14px; font-weight:bold; color:#5D4037;">분</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-org" style="width:100%;" onclick="submitAucT()">경매 시작!</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    window.submitAucT = function() {
+        const n = document.getElementById('tr_n').value.trim();
+        const d = document.getElementById('tr_d').value.trim();
+        const p = parseInt(document.getElementById('tr_p').value);
+        const c = document.getElementById('tr_c').value;
+        const m = parseInt(document.getElementById('tr_m').value);
+        
+        if(!n || !p || p < 1) return alert("상품명과 시작 가격을 올바르게 입력하세요.");
+        if(!m || m < 1) return alert("경매 시간을 올바르게 입력하세요.");
+        
+        db.auc.unshift({
+            id: Date.now(), n: n, desc: d, sp: p, cp: p, cur: c, reqBy: 'teacher', st: 'active',
+            et: Date.now() + (m * 60 * 1000), bids: []
+        });
+        sv();
+        document.getElementById('aucRegModal').remove();
+        rAucT();
+    };
+
+    window.approveAuc = function(id) {
+        const a = db.auc.find(x => x.id === id);
+        if(!a) return;
+        const m = parseInt(document.getElementById(`ar_m_${id}`).value);
+        if(!m || m < 1) return alert("경매 시간을 제대로 입력해주세요.");
+        a.st = 'active';
+        a.et = Date.now() + (m * 60 * 1000);
+        sv(); rAucT();
+    };
+
+    window.forceEndAuc = function(id) {
+        if(!confirm("경매를 강제 종료하시겠습니까?")) return;
+        const a = db.auc.find(x => x.id === id);
+        if(a && a.st === 'active') {
+            resolveAuctionTimer(a);
+            sv(); rAucT();
+        }
+    }
+
+    window.delAuc = function(id) {
+    const a = db.auc.find(x => x.id === id);
+    if (a && a.st === 'req') {
+        // 승인 대기 중 거절 시 상태만 변경하여 학생에게 알림
+        a.st = 'denied';
+        sv();
+        rAucT();
+    } else {
+        // 이미 종료된 경매를 목록에서 지울 때는 데이터 영구 삭제
+        db.auc = db.auc.filter(x => x.id !== id);
+        sv();
+        rAucT();
+    }
+};
+
+    window.resolveTie = function(aucId, winnerCd) {
+        const a = db.auc.find(x => x.id === aucId);
+        if(!a || a.st !== 'tie') return;
+        
+        const winnerData = a.tied.find(t => t.cd === winnerCd);
+        a.winner = winnerData;
+        a.st = 'done';
+        processAuctionWin(a, winnerData);
+        sv(); rAucT();
+    }
+
+    /* 게임 공통 로직 유지 */
     function runRNG(g, isSpecial) {
         if (g.spc && me && me.inv) {
             let availableItems = g.r.map(r => r.n);
@@ -1513,92 +2426,197 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
         if(!me.isTest) rBg(); 
     }
 
+    /* 🎰 스크래치 복권 (나무 간판 디자인, 확률 조정, 60% 긁기 적용) */
+let isScratchDone = false;
+    let scratchBonus = 0;
+    let scratchMsg = "";
+    let slotCleared = { '0_t':false, '0_b':false, '1_t':false, '1_b':false, '2_t':false, '2_b':false };
+    let lastSoundTime = 0;
+    let scratchTop = [];
+    let scratchBot = [];
+
     function initScratch(realItem) {
-        document.getElementById('scrM').classList.remove('hidden');
-        document.getElementById('scrCloseBtn').classList.remove('hidden');
+        const resDiv = document.getElementById('scrM');
+        resDiv.classList.remove('hidden'); 
         if(ac.state==='suspended')ac.resume(); 
 
-        const resDiv = document.getElementById('scrRes');
-        const itemIcon = realItem.i.includes('http') ? `<img src="${realItem.i}" style="width:100px; margin-bottom:10px;">` : `<div style="font-size:80px; margin-bottom:10px;">${realItem.i}</div>`;
-        
-        resDiv.innerHTML = `${itemIcon}<div style="font-size:24px; font-weight:bold; color:#333;">${realItem.n}</div>`;
-        
-        scratchCanvas = document.getElementById('scratchCanvas'); 
-        scratchCtx = scratchCanvas.getContext('2d'); 
-        scratchCtx.globalCompositeOperation = 'source-over'; 
-        scratchCtx.fillStyle = '#CFD8DC'; 
-        scratchCtx.fillRect(0, 0, 300, 350);
-        scratchCtx.font = "30px Jua"; 
-        scratchCtx.fillStyle = "#546E7A"; 
-        scratchCtx.textAlign = "center";
-        scratchCtx.fillText("SCRATCH!", 150, 175);
-        
-        scratchCanvas.style.opacity = '1';
-        scratchCanvas.style.pointerEvents = 'auto';
+        // 🌟 버그 수정: 새로운 복권을 켤 때 이전 상태를 완벽하게 초기화
+        isScratchDone = false;
+        slotCleared = { '0_t':false, '0_b':false, '1_t':false, '1_b':false, '2_t':false, '2_b':false };
+        lastSoundTime = 0;
 
-        isScratching = false;
+        let bonusPoints = 0;
+        const rand = Math.random() * 100;
+        let win1 = false, win2 = false, win3 = false;
+
+        if (rand < 3) { win1 = true; win2 = true; win3 = true; bonusPoints = 30; } 
+        else if (rand < 10) { win2 = true; win3 = true; bonusPoints = 25; }
+        else if (rand < 25) { win1 = true; win3 = true; bonusPoints = 20; }
+        else if (rand < 45) { win3 = true; bonusPoints = 15; }
+        else if (rand < 70) { win2 = true; bonusPoints = 10; }
+        else { win1 = true; bonusPoints = 5; }
+
+        scratchTop = ['🍫', '🍬', '🍪'];
+        const dummies = ['🍩', '🍰', '🧁', '🍦', '🍧', '🍮', '🥧'].sort(() => Math.random() - 0.5);
         
-        const startScratch = () => { 
-            isScratching = true; 
-            if(ac.state==='suspended')ac.resume();
-            document.getElementById('scrCloseBtn').classList.add('hidden'); 
+        scratchBot = [
+            win1 ? '🍫' : dummies.pop(),
+            win2 ? '🍬' : dummies.pop(),
+            win3 ? '🍪' : dummies.pop()
+        ];
+
+        scratchBonus = bonusPoints;
+        scratchMsg = `+${bonusPoints} 당첨!`; // 🎁 이모지 제거됨
+
+        // 복권 바깥 영역 누르면 닫기
+        resDiv.onclick = (e) => { 
+            if(isScratchDone) clsScr(); 
         };
-        const endScratch = () => { isScratching = false; checkReveal(); };
+
+        resDiv.innerHTML = `
+            <div class="scratch-container" style="position:relative; z-index: 10;" onclick="event.stopPropagation()">
+                <div class="lottery-inner-border" style="position: absolute; top: 10px; left: 10px; right: 10px; bottom: 10px; border: 3px dashed #A1887F; border-radius: 12px; pointer-events: none; z-index: 1;"></div>
+                
+                <div style="width: 40%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 3px dashed rgba(141,110,99,0.4); padding-right: 3%; box-sizing: border-box; z-index: 2;">
+                    <div class="lottery-title" style="position: relative; background: #8D6E63; color: #FFF; font-size: clamp(28px, 4.5vw, 60px); font-weight: 900; padding: 4% 8%; border-radius: 20px; border: 5px solid #4E342E; box-shadow: 0 8px 0 #4E342E, 0 12px 15px rgba(0,0,0,0.2); text-shadow: 3px 3px 0px #4E342E; margin-bottom: 8%; letter-spacing: 2px; text-align: center; white-space: nowrap;">
+                        <div style="position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; border: 3px dashed rgba(255,255,255,0.4); border-radius: 12px; pointer-events: none;"></div>
+                        행운 복권
+                    </div>
+                    
+                    <div style="text-align: center; width: 95%; padding: 5%; border-radius: 15px; background: white; border: 2px dashed #BCAAA4; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
+                        <table style="width: 100%; border-collapse: collapse; font-weight: bold; color: #5D4037; font-size: clamp(16px, 2.5vw, 30px); text-align: center;">
+                            <tr>
+                                <td style="padding: 2% 0; border-bottom: 2px solid #EFEBE9;">🍫</td>
+                                <td style="padding: 2% 0; border-bottom: 2px solid #EFEBE9;">🍬</td>
+                                <td style="padding: 2% 0; border-bottom: 2px solid #EFEBE9;">🍪</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 2% 0; color: #E65100;">+5</td>
+                                <td style="padding: 2% 0; color: #E65100;">+10</td>
+                                <td style="padding: 2% 0; color: #E65100;">+15</td>
+                            </tr>
+                        </table>
+                        <div style="font-size: clamp(12px, 2vw, 22px); color:#D32F2F; margin-top:6%; white-space: nowrap; font-weight: 900;">♥위아래 같으면 당첨♥</div>
+                    </div>
+                </div>
+
+                <div style="width: 60%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding-left: 3%; box-sizing: border-box; z-index: 2;">
+                    <div style="display: flex; gap: 4%; height: 85%; justify-content: center; width: 100%;">
+                        ${[0, 1, 2].map(i => `
+                            <div class="slot-col" id="slot-wrap-${i}" style="display: flex; flex-direction: column; width: 31%; height: 100%; border-radius: 15px; overflow: hidden; background: #ECEFF1; border: 4px solid #90A4AE; box-shadow:inset 0 6px 12px rgba(0,0,0,0.1); transition: 0.3s;">
+                                <div style="position:relative; width: 100%; height: 50%; display: flex; align-items: center; justify-content: center; border-bottom: 3px dashed #B0BEC5;">
+                                    <div style="font-size: clamp(45px, 6.5vw, 100px);">${scratchTop[i]}</div>
+                                    <canvas id="sc${i}_t" class="slot-canvas" width="90" height="70" style="position:absolute; top:0; left:0; width: 100%; height: 100%;"></canvas>
+                                </div>
+                                <div style="position:relative; width: 100%; height: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <div style="font-size: clamp(45px, 6.5vw, 100px);">${scratchBot[i]}</div>
+                                    <canvas id="sc${i}_b" class="slot-canvas" width="90" height="70" style="position:absolute; top:0; left:0; width: 100%; height: 100%;"></canvas>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <div id="confetti" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index: 50;"></div>
+
+            <div id="scrWinPopup" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.5s; cursor: pointer;">
+                <div style="font-size: clamp(80px, 15vw, 150px); filter: drop-shadow(0 0 20px rgba(255,215,0,0.8));">🎉</div>
+                <div id="scrWinText" style="color: #FFD700; font-size: clamp(40px, 6vw, 80px); font-weight: 900; text-shadow: 0 5px 15px rgba(0,0,0,0.8); margin: 30px 0;"></div>
+                <div style="color: white; font-size: clamp(18px, 3vw, 30px); background: rgba(255,255,255,0.2); padding: 15px 30px; border-radius: 30px; font-weight: bold; border: 2px solid rgba(255,255,255,0.5); box-shadow: 0 4px 10px rgba(0,0,0,0.3); animation: pulse 1.5s infinite;">화면을 터치하면 닫힙니다</div>
+            </div>
+        `;
+        ['0_t', '0_b', '1_t', '1_b', '2_t', '2_b'].forEach(id => {
+            const cvs = document.getElementById(`sc${id}`);
+            if(!cvs) return;
+            const ctx = cvs.getContext('2d', { willReadFrequently: true });
+            ctx.fillStyle = '#CFD8DC'; ctx.fillRect(0, 0, 90, 70);
+            ctx.fillStyle = '#B0BEC5';
+            for(let j=10; j<90; j+=20) { for(let k=10; k<70; k+=20) { ctx.beginPath(); ctx.arc(j, k, 3, 0, Math.PI*2); ctx.fill(); } }
+
+            let isScratching = false;
+            const scratch = (e) => {
+                if(!isScratching || slotCleared[id]) return;
+                e.preventDefault();
+                const now = Date.now(); if(now - lastSoundTime > 100) { snd('s'); lastSoundTime = now; }
+                const rect = cvs.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const x = (clientX - rect.left) * (cvs.width / rect.width);
+                const y = (clientY - rect.top) * (cvs.height / rect.height);
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI * 2); ctx.fill(); 
+                checkSlotReveal(id, ctx, cvs);
+            };
+            cvs.onmousedown = (e) => { isScratching = true; scratch(e); };
+            cvs.ontouchstart = (e) => { isScratching = true; scratch(e); };
+            cvs.onmouseup = () => isScratching = false;
+            cvs.ontouchend = () => isScratching = false;
+            cvs.onmousemove = scratch;
+            cvs.ontouchmove = scratch;
+        });
+    }
+
+    function checkSlotReveal(id, ctx, cvs) {
+        if(slotCleared[id]) return;
+        const data = ctx.getImageData(0, 0, 90, 70).data;
+        let clearCount = 0;
+        for(let j=3; j<data.length; j+=4) { if(data[j] === 0) clearCount++; }
         
-        const doScratch = (e) => {
-            if(!isScratching) return; 
-            e.preventDefault();
+        if(clearCount / (90 * 70) > 0.60) { 
+            slotCleared[id] = true;
+            cvs.style.transition = 'opacity 0.5s';
+            cvs.style.opacity = '0';
+            cvs.style.pointerEvents = 'none';
             
-            const now = Date.now();
-            if (now - lastSoundTime > 50) { 
-                snd('s');
-                lastSoundTime = now;
+            const colIdx = id.split('_')[0];
+            if(slotCleared[`${colIdx}_t`] && slotCleared[`${colIdx}_b`]) {
+                if(scratchTop[colIdx] === scratchBot[colIdx]) {
+                    document.getElementById('slot-wrap-' + colIdx).classList.add('slot-win');
+                    snd('r'); // 🌟 중간 매칭 시 짧고 경쾌한 띠로롱 효과음!
+                }
             }
-
-            const rect = scratchCanvas.getBoundingClientRect();
-            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
-
-            scratchCtx.globalCompositeOperation = 'destination-out'; 
-            scratchCtx.beginPath(); 
-            scratchCtx.arc(x, y, 25, 0, Math.PI * 2); 
-            scratchCtx.fill();
-        };
-        
-        scratchCanvas.onmousedown = startScratch; 
-        scratchCanvas.ontouchstart = startScratch; 
-        scratchCanvas.onmouseup = endScratch; 
-        scratchCanvas.ontouchend = endScratch; 
-        scratchCanvas.onmousemove = doScratch; 
-        scratchCanvas.ontouchmove = doScratch;
+            if(Object.values(slotCleared).every(v => v === true)) {
+                // 🌟 "동전으로 슥슥..." 텍스트 변경 로직 완전 삭제 (계속 텍스트 유지됨)
+                setTimeout(checkReveal, 800); 
+            }
+        }
     }
 
     function checkReveal() {
-        const imageData = scratchCtx.getImageData(0, 0, 300, 350); 
-        let clearCount = 0;
-        for(let i=0; i<imageData.data.length; i+=4) { if(imageData.data[i+3] === 0) clearCount++; }
+        snd('f'); 
         
-        if(clearCount / (300*350) > 0.4) {
-            scratchCanvas.style.transition = 'opacity 1s';
-            scratchCanvas.style.opacity = '0'; 
-            scratchCanvas.style.pointerEvents = 'none';
-            document.getElementById('scrCloseBtn').classList.remove('hidden');
+        if(scratchBonus >= 25) {
+            fireConfetti('confetti'); setTimeout(() => fireConfetti('confetti'), 400); setTimeout(() => fireConfetti('confetti'), 800);
+        } else if(scratchItem.g === 'A' || scratchItem.g === 'B' || scratchBonus >= 10) {
+            fireConfetti('confetti');
+        }
+        
+        if (scratchBonus > 0 && me) me.co = (me.co || 0) + scratchBonus;
+        giveReward(scratchItem);
+
+        const popup = document.getElementById('scrWinPopup');
+        if (popup) {
+            document.getElementById('scrWinText').innerText = `${scratchMsg}`;
+            popup.classList.remove('hidden');
             
-            snd('f'); 
-            if(scratchItem.g === 'A' || scratchItem.g === 'B') fireConfetti('confetti');
-            giveReward(scratchItem);
+            setTimeout(() => {
+                popup.style.opacity = '1';
+                isScratchDone = true; 
+            }, 100);
         }
     }
 
     function clsScr() { 
+        isScratchDone = false; 
+        
+        // 🌟 완전 초기화 (이전 팝업이 뜨는 문제 원천 차단)
+        const p = document.getElementById('scrWinPopup'); 
+        if(p) p.remove(); 
+        
         document.getElementById('scrM').classList.add('hidden'); 
         document.getElementById('confetti').innerHTML = ''; 
-        if(!me.isTest) rBg(); 
+        if(me && !me.isTest) rBg(); 
     }
-
     function giveReward(item) {
         if(me.isTest) return; 
 
@@ -1623,7 +2641,6 @@ const sideCn = document.getElementById('side_cn'); if(sideCn) sideCn.innerText =
             container.appendChild(p);
         }
     }
-
-    </script>
+</script>
 </body>
 </html>
