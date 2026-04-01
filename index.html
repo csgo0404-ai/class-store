@@ -354,14 +354,19 @@
 }
 /* 📱 태블릿 가로 모드 (세로 높이가 850px 이하일 때) 자동 최적화 */
         @media (max-height: 850px) {
-            /* 1. 상점: NPC 말풍선 & 상점 탭 축소 */
-            .npc-speech { padding: 10px 20px !important; margin-bottom: 20px !important; }
+            /* 1. 상점: 세로 여백 대폭 축소 */
+            #s_sh { padding: 20px 20px !important; } /* 전체 상점 박스 상하 여백 줄임 */
+            .shop-section { margin-bottom: 20px !important; } /* 각 섹션 하단 여백 줄임 */
+            #s_sh .grid { margin-top: 10px !important; margin-bottom: 10px !important; gap: 15px 15px !important; }
+            #shop-auc-sec .auc-grid { margin-bottom: 10px !important; } /* 경매장 내부 여백 줄임 */
+
+            .npc-speech { padding: 10px 20px !important; margin-bottom: 15px !important; }
             .npc-speech > div:first-child { font-size: 45px !important; }
-            .shop-toggle-bar { margin: 0 auto 20px auto !important; width: 400px !important; padding: 4px !important; }
+            .shop-toggle-bar { margin: 0 auto 15px auto !important; width: 400px !important; padding: 4px !important; }
             .shop-tab { padding: 8px 0 !important; font-size: 18px !important; }
-            
+            .tablet-hide { display: none !important; }
+
             /* 상점 카드 비율 축소 */
-            #s_sh .grid { gap: 20px 15px !important; margin-top: 20px !important; }
             .shop-card { width: 170px !important; height: 250px !important; border-radius: 85px 85px 12px 12px !important; border-bottom: 8px solid #1A0F0D !important; }
             .shop-card-content { padding-top: 85px !important; }
             .item-shiny { width: 80px !important; height: 80px !important; font-size: 80px !important; }
@@ -1676,7 +1681,10 @@ window.appU = function(y, si, k) {
         });
         
         const emptySlots = Math.max(0, 18 - itemList.length);
-        for(let i=0; i<emptySlots; i++) { html += `<div class="inventory-slot"></div>`; }
+        for(let i=0; i<emptySlots; i++) { 
+            const hideClass = (itemList.length + i) >= 15 ? ' tablet-hide' : '';
+            html += `<div class="inventory-slot${hideClass}"></div>`; 
+        }
         html += `</div>`;
 
         // 🌟 버그 수정 완료 (이 코드가 있어서 화면이 보입니다)
