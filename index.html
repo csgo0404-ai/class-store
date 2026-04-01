@@ -594,7 +594,7 @@
         <div class="menu on" onclick="navS('s_bg',this)">🎒 가방</div>
         <div class="menu" onclick="navS('s_col',this)">📖 도감</div>
         <div class="menu" onclick="navS('s_sh',this)">🏪 상점</div>
-        <div id="s_kiosk_menu" class="menu hidden" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">🖥️ 키오스크</div>
+        <div id="s_kiosk_menu" class="menu" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">🖥️ 키오스크</div>
         
         <button class="btn btn-gray" onclick="location.reload()" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
@@ -1025,11 +1025,10 @@ const firebaseConfig = {
             if(document.getElementById('side_lv')) document.getElementById('side_lv').innerText = lv;
             if(document.getElementById('side_ck')) document.getElementById('side_ck').innerText = `${curCookie} / ${totalCookie}`;
             
-            // 🌟 매니저 권한 시 사이드바 키오스크 탭 보이기
+            // 🌟 키오스크 탭 항상 보이기 (if(me.mgr) 로직 제거)
             const kioskMenu = document.getElementById('s_kiosk_menu');
             if(kioskMenu) {
-                if(me.mgr) kioskMenu.classList.remove('hidden');
-                else kioskMenu.classList.add('hidden');
+                kioskMenu.classList.remove('hidden');
             }
         }
     }
@@ -1129,7 +1128,7 @@ const firebaseConfig = {
     
     function rst(){ if(confirm("초기화?")){db.stu=[]; db.log=[]; db.auc=[]; sv(); rTb();} }
     
-    function rTb(){ 
+  function rTb(){ 
         if(!db.stu) return;
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>c.value); 
@@ -1138,11 +1137,21 @@ const firebaseConfig = {
         const s_tk = db.cfg && db.cfg.show_tk !== false;
         const s_co = db.cfg && db.cfg.show_co !== false;
 
-        // 🌟 수정: [화폐 이름(클릭 시 초기화)] - [▲▼ 증감 화살표] 순서로 깔끔하게 재배치
+        // 🌟 수정: 테이블 헤더(제목) 순서를 쿠키 -> 동전 -> 캔디 -> 바구니 순으로 변경
         document.getElementById('t_stu').querySelector('table thead').innerHTML = `
             <tr>
                 <th><input type="checkbox" onchange="toggleAll(this)"></th>
                 <th>번호</th><th>이름</th><th>코드</th>
+                <th style="background:#4E342E; color:white;">🍪쿠키</th>
+                <th style="background:${s_co ? '#4E342E' : '#BDBDBD'}; color:${s_co ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🪙동전</span>
+                        <div style="display:flex; flex-direction:column; gap:1px;">
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',1)">▲</button>
+                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',-1)">▼</button>
+                        </div>
+                    </div>
+                </th>
                 <th style="background:${s_cn ? '#4E342E' : '#BDBDBD'}; color:${s_cn ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
                         <span onclick="bulkReset('cn')" oncontextmenu="toggleVis('cn'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🍭캔디</span>
@@ -1161,31 +1170,22 @@ const firebaseConfig = {
                         </div>
                     </div>
                 </th>
-                <th style="background:${s_co ? '#4E342E' : '#BDBDBD'}; color:${s_co ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
-                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🪙동전</span>
-                        <div style="display:flex; flex-direction:column; gap:1px;">
-                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',1)">▲</button>
-                            <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',-1)">▼</button>
-                        </div>
-                    </div>
-                </th>
-                <th style="background:#4E342E; color:white;">🍪쿠키</th>
-                <th style="background:#4E342E; color:white;">관리</th>
             </tr>
         `;
 
+        // 🌟 수정: 테이블 본문(내용) 순서도 쿠키 -> 동전 -> 캔디 -> 바구니 순으로 맞춤 (이전에 지운 관리 버튼/X버튼 미포함)
         document.getElementById('ttb').innerHTML = stuList.map((s,i)=>{
             const curCookie = Math.max(0, (s.cookie || 0) - (s.usedCookie || 0));
-            return `<tr><td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td><td>${s.no}</td><td>${s.nm}</td><td>${s.cd}</td>
+            return `<tr>
+            <td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td>
+            <td>${s.no}</td>
+            <td>${s.nm}</td>
+            <td>${s.cd}</td>
+            <td style="font-weight:bold; color:#8D6E63;" id="cookie_val_${i}">${curCookie}</td>
+            <td><input class="qty-input" type="number" value="${s.co||0}" onchange="upCk(${i},'co',this.value)" style="color:#FBC02D;"></td>
             <td><input class="qty-input" type="number" value="${s.cn||0}" onchange="upCk(${i},'cn',this.value)"></td>
             <td><input class="qty-input" type="number" value="${s.tk||0}" onchange="upCk(${i},'tk',this.value)" style="color:#42A5F5;"></td>
-            <td><input class="qty-input" type="number" value="${s.co||0}" onchange="upCk(${i},'co',this.value)" style="color:#FBC02D;"></td>
-            <td style="font-weight:bold; color:#8D6E63;" id="cookie_val_${i}">${curCookie}</td>
-            <td>
-                <button class="btn ${s.mgr ? 'btn-wood' : 'btn-gray'}" onclick="toggleMgr(${i})" style="padding:6px 10px; margin-right:4px;">매니저</button>
-                <button class="delete-btn" onclick="delS(${i})">☒</button>
-            </td></tr>`;
+            </tr>`;
         }).join(''); 
     }
    window.bulkCur = function(type, amt) {
