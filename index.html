@@ -594,7 +594,6 @@
         <div class="menu on" onclick="navS('s_bg',this)">🎒 가방</div>
         <div class="menu" onclick="navS('s_col',this)">📖 도감</div>
         <div class="menu" onclick="navS('s_sh',this)">🏪 상점</div>
-        <div id="s_kiosk_menu" class="menu" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">🖥️ 키오스크</div>
         
         <button class="btn btn-gray" onclick="location.reload()" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
@@ -1025,14 +1024,9 @@ const firebaseConfig = {
             if(document.getElementById('side_lv')) document.getElementById('side_lv').innerText = lv;
             if(document.getElementById('side_ck')) document.getElementById('side_ck').innerText = `${curCookie} / ${totalCookie}`;
             
-            // 🌟 키오스크 탭 항상 보이기 (if(me.mgr) 로직 제거)
-            const kioskMenu = document.getElementById('s_kiosk_menu');
-            if(kioskMenu) {
-                kioskMenu.classList.remove('hidden');
-            }
+            // 키오스크 사이드바 로직 삭제됨 (상점 탭으로 이동)
         }
     }
-
     window.showItemDetail = function(itemName) {
         const item = me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
         if(!item) return;
@@ -1749,18 +1743,18 @@ window.appU = function(y, si, k) {
                 <div id="shop-normal-sec" class="shop-section" style="display:none;">
                     <div id="s_sh_items" class="grid" style="margin-top: 20px !important;">
                        ${saleItems.map((item) => `
-    <div class="shop-card">
-        <div class="click-catcher" onclick="window.showAskModal('${item.n.replace(/'/g, "\\'")}')"></div>
-        <div class="shop-card-content">
-            <div class="shop-title">${item.n}</div>
-            ${item.i.includes('http') ? `<img src="${item.i}" class="item-shiny">` : `<div class="item-shiny">${item.i}</div>`}
-        </div>
-        <div class="pedestal">
-            <div class="pedestal-top"></div>
-            <div class="btn-price">${item.p} ${curEmoji[item.c||'cn']}</div>
-        </div>
-    </div>
-`).join('')}
+                        <div class="shop-card">
+                            <div class="click-catcher" onclick="window.showAskModal('${item.n.replace(/'/g, "\\'")}')"></div>
+                            <div class="shop-card-content">
+                                <div class="shop-title">${item.n}</div>
+                                ${item.i.includes('http') ? `<img src="${item.i}" class="item-shiny">` : `<div class="item-shiny">${item.i}</div>`}
+                            </div>
+                            <div class="pedestal">
+                                <div class="pedestal-top"></div>
+                                <div class="btn-price">${item.p} ${curEmoji[item.c||'cn']}</div>
+                            </div>
+                        </div>
+                        `).join('')}
                     </div>
                 </div>
             `;
@@ -1768,9 +1762,24 @@ window.appU = function(y, si, k) {
 
         const typeEmoji = {scratch:'🪙', card:'🗳️', lotto:'🕹️'};
         let gacList = Array.isArray(db.gac) ? db.gac : Object.values(db.gac || {});
+        
+        const kioskCardHtml = `
+            <div class="shop-card" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">
+                <div class="shop-card-content">
+                    <div class="shop-title" style="color:#FFF9C4;">키오스크</div>
+                    <div class="item-shiny gacha-shiny" style="filter:none !important;">🖥️</div>
+                </div>
+                <div class="pedestal ped-gold">
+                    <div class="pedestal-top"></div>
+                    <div class="btn-price" style="font-size: 20px !important;">예약하기</div>
+                </div>
+            </div>
+        `;
+
         const gachaShopHtml = `
             <div id="shop-gacha-sec" class="shop-section" style="display:none;">
                 <div id="s_gl" class="grid" style="margin-top: 20px !important;">
+                    ${kioskCardHtml}
                     ${gacList.map((x)=>`
                         <div class="shop-card">
                             <div class="click-catcher" onclick="window.showGachaModal('${x.n.replace(/'/g, "\\'")}')"></div>
@@ -1790,14 +1799,11 @@ window.appU = function(y, si, k) {
 
         let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
         const activeAucs = aucList.filter(a => a.st === 'active');
-        
-        // 🌟 수정됨: 학생이 올린 '대기중/거절됨' 경매를 렌더링하고, '숨김(삭제) 처리된' 경매를 필터링
         const myPendingAucs = aucList.filter(a => a.reqBy === me.cd && (a.st === 'req' || a.st === 'denied') && !(a.hiddenFor && a.hiddenFor.includes(me.cd)));
         const doneAucs = aucList.filter(a => (a.st === 'done' || a.st === 'tie') && !(a.hiddenFor && a.hiddenFor.includes(me.cd))); 
         
         let aucHtml = `<div id="shop-auc-sec" class="shop-section" style="display:none;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; margin-top:20px;"><h2 style="color:#FFF; text-shadow:2px 2px 0 #3E2723; margin:0;">🔨 실시간 경매장</h2><button class="btn btn-wood" onclick="showAucReqModal()" style="box-shadow:0 4px 10px rgba(0,0,0,0.5);">경매 요청</button></div>`;
         
-        // 🌟 내 요청 경매 렌더링
         if(myPendingAucs.length > 0) {
             aucHtml += `<div class="auc-grid">` + myPendingAucs.map(a => `
                 <div class="auc-card" style="background:${a.st==='denied'?'#FFEBEE':'#FFF8E1'}; border:2px solid ${a.st==='denied'?'#EF5350':'#FFB74D'}; position:relative; padding:15px; border-radius:15px; margin-bottom:15px;">
@@ -1825,13 +1831,12 @@ window.appU = function(y, si, k) {
             }).join('') + `</div>`;
         }
         
-        // 🌟 목록이 비어있을 때 안내 문구
         if (myPendingAucs.length === 0 && activeAucs.length === 0 && doneAucs.length === 0) {
             aucHtml += `<div style="color:#FFF; opacity:0.7; text-align:center; padding:20px; background: rgba(0,0,0,0.2); border-radius: 15px; border: 2px dashed #8D6E63; margin-top:20px; min-height:246px; display:flex; align-items:center; justify-content:center; font-size:18px;">현재 진행 중이거나 종료된 경매 내역이 없습니다.</div>`;
         }
         aucHtml += `</div>`;
 
-        const tabCount = hasNormalShop ? 3 : 2;
+        const tabCount = hasNormalShop ? 4 : 3;
         const sliderWidth = `calc(${100/tabCount}% - 6px)`;
 
         document.getElementById('s_sh').innerHTML = `
@@ -1844,6 +1849,7 @@ window.appU = function(y, si, k) {
                 ${hasNormalShop ? `<div id="tab-normal" class="shop-tab" onclick="toggleShopTab('normal')">일반 상점</div>` : ''}
                 <div id="tab-gacha" class="shop-tab" onclick="toggleShopTab('gacha')">뽑기</div>
                 <div id="tab-auc" class="shop-tab" onclick="toggleShopTab('auc')">경매</div>
+                <div id="tab-char" class="shop-tab" onclick="showCharModal()">캐릭터 제작</div>
             </div>
             ${normalShopHtml}
             ${gachaShopHtml}
@@ -1857,7 +1863,6 @@ window.appU = function(y, si, k) {
             document.querySelectorAll('.auc-chat-container').forEach(el => el.scrollTop = el.scrollHeight);
         }, 50);
     }
-
     // 학생 화면에서 개별 종료 경매 삭제
     window.studentDelAuc = function(id) {
         let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
@@ -1879,16 +1884,28 @@ window.appU = function(y, si, k) {
         rSh(); // 상점 화면 즉시 새로고침
     };
     window.toggleShopTab = function(tabType) {
-        currentShopTab = tabType;
         const hasNormalShop = db.itm.filter(i => i.s === true).length > 0;
         const slider = document.getElementById('tab-slider');
         
-        // 전체 숨김
+        // 전체 활성화 효과 초기화
+        ['tab-normal','tab-gacha','tab-auc','tab-char'].forEach(id => {
+            if(document.getElementById(id)) document.getElementById(id).classList.remove('tab-active');
+        });
+
+        // 🌟 수정: 캐릭터 탭을 누르면 슬라이더가 이동한 뒤 모달을 띄움
+        if(tabType === 'char') {
+            const tabIndex = hasNormalShop ? 3 : 2;
+            if(slider) slider.style.transform = `translateX(${tabIndex * 100}%)`;
+            if(document.getElementById('tab-char')) document.getElementById('tab-char').classList.add('tab-active');
+            
+            showCharModal();
+            return;
+        }
+
+        currentShopTab = tabType;
+        
         ['shop-normal-sec','shop-gacha-sec','shop-auc-sec'].forEach(id => {
             if(document.getElementById(id)) document.getElementById(id).style.display = 'none';
-        });
-        ['tab-normal','tab-gacha','tab-auc'].forEach(id => {
-            if(document.getElementById(id)) document.getElementById(id).classList.remove('tab-active');
         });
         
         let tabIndex = 0;
@@ -2757,6 +2774,116 @@ let isScratchDone = false;
             p.style.animationDuration = (Math.random() * 2 + 2) + 's';
             container.appendChild(p);
         }
+    }
+/* === 🌟 캐릭터 제작 모달 기능 === */
+    window.showCharModal = function() {
+        const old = document.getElementById('charModal'); if(old) old.remove();
+        const totalCookie = me.cookie || 0;
+        const curCookie = Math.max(0, totalCookie - (me.usedCookie || 0));
+        const lv = Math.floor(totalCookie / 10); 
+        
+        // 🌟 수정: 모달을 닫을 때(배경 클릭 또는 X 클릭) 이전 탭으로 슬라이더 복원
+        const html = `
+        <div id="charModal" class="modal-overlay" onclick="this.remove(); toggleShopTab(currentShopTab);">
+            <div class="modal-window" style="width: 550px !important;" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="document.getElementById('charModal').remove(); toggleShopTab(currentShopTab);">X</button>
+                <div class="modal-inner" style="background:#F8F9FA !important; border: 3px solid #CFD8DC !important;">
+                    <h2 class="modal-title" style="color:#37474F; margin-bottom: 25px; font-size:36px;">★ 캐릭터 제작 신청서 ★</h2>
+                    
+                    <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-size:18px; font-weight:bold; color:#455A64; padding:0 10px;">
+                        <div>1. 현재 레벨: <span style="color:#1976D2;">Lv.${lv}</span></div>
+                        <div>내 쿠키: <span style="color:#E65100;">${curCookie} 🍪</span></div>
+                    </div>
+                    <div style="text-align:left; font-size:16px; font-weight:bold; color:#455A64; margin-bottom:15px; padding:0 10px;">2. 캐릭터 제작은 <span style="text-decoration:underline;">매주 금요일에 한꺼번에</span> 진행됩니다.</div>
+                    
+                    <div style="background:white; border-radius:10px; border:2px solid #B0BEC5; overflow:hidden;">
+                        <div style="display:flex; background:#E3F2FD; border-bottom:2px solid #B0BEC5; font-weight:bold; color:#1565C0; font-size:22px;">
+                            <div style="flex:1; padding:12px; border-right:2px solid #B0BEC5;">부위</div>
+                            <div style="flex:1; padding:12px; border-right:2px solid #B0BEC5;">번호</div>
+                            <div style="flex:1; padding:12px;">비용</div>
+                        </div>
+                        <div id="char_form_rows">
+                            <div class="char-row" style="display:flex; border-bottom:1px solid #ECEFF1; align-items:center;">
+                                <input class="char_p" placeholder="예: 얼굴" style="flex:1; border:none; border-right:1px solid #ECEFF1; border-radius:0; margin:0; text-align:center; font-size:16px; padding:12px 5px; outline:none;">
+                                <input class="char_n" placeholder="예: 1-2" style="flex:1; border:none; border-right:1px solid #ECEFF1; border-radius:0; margin:0; text-align:center; font-size:16px; padding:12px 5px; outline:none;">
+                                <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:0 10px; background:white;">
+                                    <input class="char_c" type="number" placeholder="예: 10" style="width:60%; border:none; border-radius:0; margin:0; text-align:right; font-size:16px; padding:12px 0; outline:none;">
+                                    <span style="font-size:20px; margin-left:5px;">🍪</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-gray" style="width:100%; margin-top:10px; font-size:16px; padding:10px;" onclick="addCharRow()">+ 칸 추가하기</button>
+                    
+                    <button class="btn btn-org" style="width:100%; margin-top:20px; font-size:24px; padding:15px; box-shadow: 0 4px 10px rgba(255, 159, 67, 0.4);" onclick="submitCharReq()">제출하기 🚀</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    window.addCharRow = function() {
+        const rowHtml = `
+        <div class="char-row" style="display:flex; border-bottom:1px solid #ECEFF1; align-items:center;">
+            <input class="char_p" placeholder="예: 얼굴" style="flex:1; border:none; border-right:1px solid #ECEFF1; border-radius:0; margin:0; text-align:center; font-size:16px; padding:12px 5px; outline:none;">
+            <input class="char_n" placeholder="예: 1-2" style="flex:1; border:none; border-right:1px solid #ECEFF1; border-radius:0; margin:0; text-align:center; font-size:16px; padding:12px 5px; outline:none;">
+            <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:0 10px; background:white;">
+                <input class="char_c" type="number" placeholder="예: 10" style="width:60%; border:none; border-radius:0; margin:0; text-align:right; font-size:16px; padding:12px 0; outline:none;">
+                <span style="font-size:20px; margin-left:5px;">🍪</span>
+            </div>
+        </div>`;
+        document.getElementById('char_form_rows').insertAdjacentHTML('beforeend', rowHtml);
+    }
+
+window.addCharRow = function() {
+        const rowHtml = `
+        <div class="char-row" style="display:flex; border-bottom:1px solid #ECEFF1;">
+            <input class="char_p" placeholder="예: 머리" style="flex:1; border:none; border-right:1px solid #ECEFF1; border-radius:0; margin:0; text-align:center; font-size:16px; padding:12px 5px; outline:none;">
+            <input class="char_n" placeholder="예: 1-2" style="flex:1; border:none; border-right:1px solid #ECEFF1; border-radius:0; margin:0; text-align:center; font-size:16px; padding:12px 5px; outline:none;">
+            <input class="char_c" type="number" placeholder="🍪" style="flex:1; border:none; border-radius:0; margin:0; text-align:center; font-size:16px; padding:12px 5px; outline:none;">
+        </div>`;
+        document.getElementById('char_form_rows').insertAdjacentHTML('beforeend', rowHtml);
+    }
+
+  window.submitCharReq = function() {
+        const rows = document.querySelectorAll('.char-row');
+        let validCount = 0;
+        let reqs = [];
+        
+        rows.forEach(r => {
+            const p = r.querySelector('.char_p').value.trim();
+            const n = r.querySelector('.char_n').value.trim();
+            const cStr = r.querySelector('.char_c').value;
+            const c = parseInt(cStr) || 0;
+            
+            if (p && n) {
+                validCount++;
+                reqs.push({ p, n, c });
+            }
+        });
+        
+        if(validCount === 0) return alert("최소 한 개 이상의 부위와 번호를 입력해주세요!");
+        
+        reqs.forEach(req => {
+            me.inv.push({
+                n: `캐릭터 제작: ${req.p}(${req.n})`,
+                i: '👤',
+                st: 'req',
+                g: 'B',
+                tx: `비용: ${req.c} 🍪`
+            });
+        });
+        
+        upMe();
+        
+        document.getElementById('charModal').remove();
+        
+        // 🌟 수정: 폼 제출 성공 후 모달이 닫힐 때, 원래 보던 상점 탭으로 슬라이더 복구
+        toggleShopTab(currentShopTab);
+        
+        alert(`[총 ${validCount}개] 부위 신청서가 선생님께 성공적으로 전송되었습니다!`);
+        rBg();
     }
 </script>
 </body>
