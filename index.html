@@ -1122,7 +1122,15 @@ const firebaseConfig = {
     
     function rst(){ if(confirm("초기화?")){db.stu=[]; db.log=[]; db.auc=[]; sv(); rTb();} }
     
-  function rTb(){ 
+  Gemini의 응답
+요청하신 대로 학생 관리 테이블의 레이아웃을 다시 한번 정교하게 다듬었습니다.
+
+체크박스와 번호 칸은 고정된 최소 너비로 축소하고, **나머지 6개 칸(이름, 코드, 쿠키, 동전, 캔디, 바구니)**은 전체 너비를 정확히 균등하게 나누어 갖도록 설정했습니다. 또한, 입력창의 크기를 첨부해주신 이미지(image_f2188a.png)처럼 아담하고 깔끔한 알약 모양으로 디자인했습니다.
+
+아래 rTb 함수를 찾아 전체 교체해 주세요.
+
+JavaScript
+    function rTb(){ 
         if(!db.stu) return;
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>c.value); 
@@ -1131,33 +1139,35 @@ const firebaseConfig = {
         const s_tk = db.cfg && db.cfg.show_tk !== false;
         const s_co = db.cfg && db.cfg.show_co !== false;
 
-        // 🌟 수정: 테이블 헤더(제목) 순서를 쿠키 -> 동전 -> 캔디 -> 바구니 순으로 변경
+        // 🌟 수정: 체크/번호 최소화 + 나머지 6개 영역 정확히 균등 배분 (약 15%씩)
         document.getElementById('t_stu').querySelector('table thead').innerHTML = `
             <tr>
-                <th><input type="checkbox" onchange="toggleAll(this)"></th>
-                <th>번호</th><th>이름</th><th>코드</th>
-                <th style="background:#4E342E; color:white;">🍪쿠키</th>
-                <th style="background:${s_co ? '#4E342E' : '#BDBDBD'}; color:${s_co ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
+                <th style="width:35px;"><input type="checkbox" onchange="toggleAll(this)"></th>
+                <th style="width:45px;">번호</th>
+                <th style="width:15%;">이름</th>
+                <th style="width:15%;">코드</th>
+                <th style="background:#4E342E; color:white; width:15%;">🍪쿠키</th>
+                <th style="background:${s_co ? '#4E342E' : '#BDBDBD'}; color:${s_co ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap; width:15%;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🪙동전</span>
+                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;">🪙동전</span>
                         <div style="display:flex; flex-direction:column; gap:1px;">
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',1)">▲</button>
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',-1)">▼</button>
                         </div>
                     </div>
                 </th>
-                <th style="background:${s_cn ? '#4E342E' : '#BDBDBD'}; color:${s_cn ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
+                <th style="background:${s_cn ? '#4E342E' : '#BDBDBD'}; color:${s_cn ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap; width:15%;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('cn')" oncontextmenu="toggleVis('cn'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🍭캔디</span>
+                        <span onclick="bulkReset('cn')" oncontextmenu="toggleVis('cn'); return false;" style="cursor:pointer; font-weight:bold;">🍭캔디</span>
                         <div style="display:flex; flex-direction:column; gap:1px;">
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('cn',1)">▲</button>
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('cn',-1)">▼</button>
                         </div>
                     </div>
                 </th>
-                <th style="background:${s_tk ? '#4E342E' : '#BDBDBD'}; color:${s_tk ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap;">
+                <th style="background:${s_tk ? '#4E342E' : '#BDBDBD'}; color:${s_tk ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap; width:15%;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('tk')" oncontextmenu="toggleVis('tk'); return false;" style="cursor:pointer; font-weight:bold;" title="좌클릭: 0으로 초기화 / 우클릭: 가방에서 숨기기">🧺바구니</span>
+                        <span onclick="bulkReset('tk')" oncontextmenu="toggleVis('tk'); return false;" style="cursor:pointer; font-weight:bold;">🧺바구니</span>
                         <div style="display:flex; flex-direction:column; gap:1px;">
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('tk',1)">▲</button>
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('tk',-1)">▼</button>
@@ -1167,18 +1177,20 @@ const firebaseConfig = {
             </tr>
         `;
 
-        // 🌟 수정: 테이블 본문(내용) 순서도 쿠키 -> 동전 -> 캔디 -> 바구니 순으로 맞춤 (이전에 지운 관리 버튼/X버튼 미포함)
         document.getElementById('ttb').innerHTML = stuList.map((s,i)=>{
             const curCookie = Math.max(0, (s.cookie || 0) - (s.usedCookie || 0));
+            // 🌟 공통 스타일: 둥근 테두리 + 중앙 정렬 + 축소된 너비(65px)
+            const inputStyle = `width:65px; height:30px; border:2px solid #FFE0B2; border-radius:20px; text-align:center; font-family:'Jua'; outline:none;`;
+            
             return `<tr>
-            <td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td>
-            <td>${s.no}</td>
-            <td>${s.nm}</td>
-            <td>${s.cd}</td>
-            <td style="font-weight:bold; color:#8D6E63;" id="cookie_val_${i}">${curCookie}</td>
-            <td><input class="qty-input" type="number" value="${s.co||0}" onchange="upCk(${i},'co',this.value)" style="color:#FBC02D;"></td>
-            <td><input class="qty-input" type="number" value="${s.cn||0}" onchange="upCk(${i},'cn',this.value)"></td>
-            <td><input class="qty-input" type="number" value="${s.tk||0}" onchange="upCk(${i},'tk',this.value)" style="color:#42A5F5;"></td>
+                <td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td>
+                <td>${s.no}</td>
+                <td style="font-size:16px; font-weight:bold;">${s.nm}</td>
+                <td style="font-size:12px; color:#AAA; letter-spacing:-0.5px;">${s.cd}</td>
+                <td style="font-weight:bold; color:#8D6E63; font-size:18px;" id="cookie_val_${i}">${curCookie}</td>
+                <td><input class="qty-input" style="${inputStyle} color:#FBC02D;" type="number" value="${s.co||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'co',this.value)" onchange="upCk(${i},'co',this.value)"></td>
+                <td><input class="qty-input" style="${inputStyle}" type="number" value="${s.cn||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'cn',this.value)" onchange="upCk(${i},'cn',this.value)"></td>
+                <td><input class="qty-input" style="${inputStyle} color:#42A5F5;" type="number" value="${s.tk||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'tk',this.value)" onchange="upCk(${i},'tk',this.value)"></td>
             </tr>`;
         }).join(''); 
     }
@@ -1234,15 +1246,18 @@ const firebaseConfig = {
     function delS(i){ db.stu.splice(i,1); sv(); rTb(); }
     
     function upCk(i,k,v){ 
+        let newVal = parseInt(v);
+        if (isNaN(newVal)) newVal = 0; // 🌟 빈칸으로 지웠을 때 에러(NaN)가 뜨지 않게 0으로 자동 처리
+
         if(k === 'cn' || k === 'tk' || k === 'co') {
             const prev = db.stu[i][k] || 0;
-            const newVal = parseInt(v);
             const diff = newVal - prev;
             if(diff !== 0) logCandy(db.stu[i].nm, diff, `개별수정 (${curName[k]})`);
         }
-        db.stu[i][k]=parseInt(v); sv(); 
+        db.stu[i][k] = newVal; 
+        sv(); 
         if(k === 'rb' && me && db.stu[i].cd === me.cd) {
-            me.rb = parseInt(v);
+            me.rb = newVal;
             updateNameTag();
         }
     }
@@ -1441,7 +1456,7 @@ window.appU = function(y, si, k) {
             return `<tr class="${isDone ? 'col-row-done' : ''}">
                 <td>${s.no}</td>
                 <td><b>${s.nm}</b></td>
-                <td><input class="qty-input" type="number" value="${s.rb||0}" onchange="upCk(${s.orgIdx},'rb',this.value)" style="width:100px;"></td>
+                <td><input class="qty-input" type="number" value="${s.rb||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${s.orgIdx},'rb',this.value)" onchange="upCk(${s.orgIdx},'rb',this.value)" style="width:100px;"></td>
                 <td><div style="font-weight:bold; color:#5D4037; font-size:16px;">${s.pct}%</div></td>
                 <td style="text-align:left;"><div class="col-cell-wrap">${grids}</div></td>
             </tr>`;
