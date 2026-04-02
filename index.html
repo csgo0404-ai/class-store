@@ -1122,15 +1122,7 @@ const firebaseConfig = {
     
     function rst(){ if(confirm("초기화?")){db.stu=[]; db.log=[]; db.auc=[]; sv(); rTb();} }
     
-  Gemini의 응답
-요청하신 대로 학생 관리 테이블의 레이아웃을 다시 한번 정교하게 다듬었습니다.
-
-체크박스와 번호 칸은 고정된 최소 너비로 축소하고, **나머지 6개 칸(이름, 코드, 쿠키, 동전, 캔디, 바구니)**은 전체 너비를 정확히 균등하게 나누어 갖도록 설정했습니다. 또한, 입력창의 크기를 첨부해주신 이미지(image_f2188a.png)처럼 아담하고 깔끔한 알약 모양으로 디자인했습니다.
-
-아래 rTb 함수를 찾아 전체 교체해 주세요.
-
-JavaScript
-    function rTb(){ 
+  function rTb(){ 
         if(!db.stu) return;
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>c.value); 
