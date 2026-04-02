@@ -395,6 +395,48 @@
             .quest-icon { width: 55px !important; height: 55px !important; font-size: 50px !important; line-height: 55px !important; margin-bottom: 5px !important; }
             .quest-slot div:last-child { font-size: 14px !important; }
         }
+/* 아이템이 선택되었을 때의 스타일 (사용 완료된 아이템 포함) */
+.item.sel { 
+    border: 3px solid #ff4d4d !important; /* 진한 빨간색 테두리 */
+    background: #ffebee !important;      /* 밝은 빨간색 배경 */
+    box-shadow: 0 0 15px rgba(255, 77, 77, 0.5) !important; /* 붉은 광채 효과 */
+    
+    /* 👇 핵심: 회색 필터와 투명도를 강제로 초기화합니다 👇 */
+    filter: none !important;            
+    opacity: 1 !important;              
+    transform: translateY(-2px);         /* 살짝 위로 떠오르는 효과 */
+    z-index: 10;                         /* 다른 아이템보다 위에 표시 */
+}
+/* 사용 완료된 아이템이 선택되었을 때 회색 느낌을 없애기 위해 */
+.item.done.sel {
+    filter: none !important;             /* 회색 필터 제거 */
+    opacity: 1 !important;               /* 투명도 복구 */
+}
+/* [최종 수정] 선택된 아이템 스타일 - 사용 여부 상관없이 빨간색으로 고정 */
+.asset.sel {
+    background-color: #FFCDD2 !important; /* 연한 빨간색 배경 */
+    border: 4px solid #EF5350 !important;  /* 진한 빨간색 테두리 */
+    filter: none !important;               /* 회색 필터 제거 */
+    opacity: 1 !important;                 /* 투명도 복구 */
+    box-shadow: 0 0 15px rgba(239, 83, 80, 0.6) !important; /* 붉은 광채 */
+    transform: scale(1.05) translateY(-5px) !important;   /* 살짝 커지고 위로 이동 */
+    z-index: 999 !important;               /* 다른 아이템보다 무조건 위로 */
+}
+
+/* 마우스 드래그 선택 시 텍스트가 안 잡히도록 (선택 편의성) */
+.asset {
+    user-select: none;
+    -webkit-user-select: none;
+}
+/* 드래그 선택 영역 상자 */
+#selection-box {
+    position: absolute;
+    border: 1px solid #0078d7;
+    background-color: rgba(0, 120, 215, 0.2);
+    display: none;
+    z-index: 10000;
+    pointer-events: none; /* 상자가 마우스를 방해하지 않게 함 */
+}
     </style>
 </head>
 <body>
@@ -461,7 +503,7 @@
                 <button class="btn btn-red sort-btn" onclick="srt('req')">🚨 요청순 <span id="s_req"></span></button>
                 <button class="btn sort-btn" onclick="srt('num')">🔢 번호순 <span id="s_num"></span></button>
                 <button class="btn sort-btn" onclick="srt('typ')">🏷️ 종류순 <span id="s_typ"></span></button>
-                <button id="btnHide" class="btn btn-gray" onclick="toggleHide()">🙈 숨기기</button>
+                <button id="btnHide" class="btn btn-gray" onclick="toggleHide()">👁️ 보이기</button>
                 <button class="btn btn-red" onclick="delSel()" style="float:right;">🗑️ 삭제</button>
             </div>
             <div id="t_ag" class="grid"></div>
@@ -515,6 +557,9 @@
                     <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
                         <label style="font-size:14px; cursor:pointer; display:flex; align-items:center; gap:3px;">
                             <input type="checkbox" id="isSale" checked style="width:auto; margin:0;"> 판매
+                        </label>
+                        <label style="font-size:14px; cursor:pointer; display:flex; align-items:center; gap:3px; margin-right:5px;">
+                            <input type="checkbox" id="isReq" checked style="width:auto; margin:0;"> 사용요청 허용
                         </label>
                         <button class="btn btn-org" onclick="addI()" style="padding:10px 20px;">등록</button>
                     </div>
@@ -619,7 +664,7 @@
     <div id="lottoConfetti" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div>
     <button class="btn btn-org hidden" id="lottoCloseBtn" style="margin-top:20px; z-index:102; font-size:20px; padding:10px 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);" onclick="clsLotto()">확인</button>
 </div>
-
+<div id="selection-box"></div>
 <script>
     const ac = new (window.AudioContext||window.webkitAudioContext)();
     document.addEventListener('mousedown', () => { if(ac.state === 'suspended') ac.resume(); });
@@ -710,7 +755,7 @@ const firebaseConfig = {
 
     let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], ak:'', cfg: {hideCandy: false}};
 
-    let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = false;
+    let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = true;
     let cSort='no', cDir=1;
     let currentBuyItem = null;
     let currentGachaIndex = null;
@@ -1027,9 +1072,21 @@ const firebaseConfig = {
             // 키오스크 사이드바 로직 삭제됨 (상점 탭으로 이동)
         }
     }
-    window.showItemDetail = function(itemName) {
+   window.showItemDetail = function(itemName) {
         const item = me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
         if(!item) return;
+
+        // 상점 데이터에서 아이템 속성 찾기
+        const shopItem = db.itm.find(i => i.n === item.n);
+        
+        // '복권' 글자 체크는 삭제하고, 오로지 선생님의 설정값(rq)만 확인합니다.
+        const canReq = shopItem ? (shopItem.rq !== false) : true;
+
+        // 사용 요청이 비활성화된 경우에만 안내 모달을 띄웁니다.
+        if(!canReq) {
+            showNoReqModal(item.n, item.i);
+            return;
+        }
         
         const modalHtml = `
             <div id="itemModal" class="modal-overlay" onclick="this.remove()">
@@ -1050,6 +1107,34 @@ const firebaseConfig = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
+window.showNoReqModal = function(itemName, itemEmoji) {
+        const old = document.getElementById('noReqModal'); if(old) old.remove();
+        const iconHtml = itemEmoji.includes('http') ? `<img src="${itemEmoji}" style="width:80px; height:80px; object-fit:contain;">` : itemEmoji;
+
+        const modalHtml = `
+            <div id="noReqModal" class="modal-overlay" onclick="this.remove()">
+                <div class="modal-window" style="background:#FFFDF9 !important; border: 5px solid #BCAAA4 !important;" onclick="event.stopPropagation()">
+                    <button class="modal-close-btn" onclick="document.getElementById('noReqModal').remove()">X</button>
+                    <div class="modal-inner" style="background:#FFF !important; border:none !important;">
+                        <div class="modal-icon" style="font-size:80px;">${iconHtml}</div>
+                        <h2 class="modal-title" style="color:#5D4037; margin-top:10px;">${itemName}</h2>
+                        
+                        <div style="background:#F5F5F5; border-radius:15px; padding:15px; margin:15px 0; border: 2px dashed #D7CCC8;">
+                            <p style="color:#D84315; font-size:18px; font-weight:bold; margin:0 0 10px 0;">이 아이템은 사용 요청이 불가능해요! 🙅‍♀️</p>
+                            <p style="color:#795548; font-size:15px; margin:0; line-height:1.5; word-break:keep-all;">
+                                선생님께 확인받지 않고 바로 효과가 적용되거나,<br>
+                                가방에 가지고만 있어도 되는 특별한 아이템이랍니다. ✨
+                            </p>
+                        </div>
+                        
+                        <div class="modal-btn-group">
+                            <button class="btn btn-wood" onclick="document.getElementById('noReqModal').remove()" style="width:100%; font-size:20px;">확인했어요!</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
     function useQ(itemName){
     const idx = me.inv.findIndex(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
     if(idx === -1) return;
@@ -1515,22 +1600,27 @@ window.appU = function(y, si, k) {
     
     function addI(){ 
         const isSale = document.getElementById('isSale').checked;
+        const isReq = document.getElementById('isReq').checked; // 🌟 추가됨
         const desc = document.getElementById('id_desc').value;
-        db.itm.push({n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}); 
+        db.itm.push({n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale, rq:isReq}); // rq 추가됨
         sv(); rSet(); 
         document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
+        document.getElementById('isReq').checked = true; // 초기화
     }
     
     function editI(i) { 
         const it = db.itm[i]; document.getElementById('in').value = it.n; document.getElementById('ip').value = it.p; document.getElementById('ii').value = it.i; document.getElementById('id_desc').value = it.d || ''; document.getElementById('isSale').checked = it.s !== false;
+        document.getElementById('isReq').checked = it.rq !== false; // 🌟 추가됨 (기존에 등록된 건 기본 허용)
         if(it.c) document.getElementById('ic').value = it.c;
         const btn = document.querySelector('#t_set .btn-org'); btn.innerText = "수정완료"; 
         btn.onclick = function() { 
             const isSale = document.getElementById('isSale').checked;
+            const isReq = document.getElementById('isReq').checked; // 🌟 추가됨
             const desc = document.getElementById('id_desc').value;
-            db.itm[i] = {n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}; 
+            db.itm[i] = {n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale, rq:isReq}; // rq 추가됨
             sv(); rSet(); this.innerText = "등록"; this.onclick = addI; 
             document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
+            document.getElementById('isReq').checked = true; // 초기화
         } 
     }
     
@@ -2893,7 +2983,84 @@ window.addCharRow = function() {
         
         alert(`[총 ${validCount}개] 부위 신청서가 선생님께 성공적으로 전송되었습니다!`);
         rBg();
-    }
+
+let isDragging = false;
+let startX, startY;
+const selectionBox = document.getElementById('selection-box');
+
+document.addEventListener('mousedown', function(e) {
+    // 버튼, 입력창, 아이템 본체, 모달 등을 클릭하면 드래그 방지
+    if (e.target.closest('button, input, .asset, .modal-window, #t_set')) return;
+
+    isDragging = true;
+    // 스크롤 위치를 고려한 절대 좌표 저장
+    startX = e.pageX;
+    startY = e.pageY;
+
+    selectionBox.style.display = 'block';
+    selectionBox.style.width = '0px';
+    selectionBox.style.height = '0px';
+    selectionBox.style.left = startX + 'px';
+    selectionBox.style.top = startY + 'px';
+    
+    // 드래그 시작 시 기존 선택을 유지하고 싶지 않다면 아래 두 줄 주석 해제
+    // sel.clear(); 
+    // document.querySelectorAll('.asset').forEach(a => a.classList.remove('sel'));
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+
+    const currentX = e.pageX;
+    const currentY = e.pageY;
+
+    // 현재 사각형의 영역 계산
+    const left = Math.min(startX, currentX);
+    const top = Math.min(startY, currentY);
+    const width = Math.abs(startX - currentX);
+    const height = Math.abs(startY - currentY);
+
+    selectionBox.style.left = left + 'px';
+    selectionBox.style.top = top + 'px';
+    selectionBox.style.width = width + 'px';
+    selectionBox.style.height = height + 'px';
+
+    // 🌟 핵심: 현재 사각형의 경계값 (절대 좌표)
+    const boxLeft = left;
+    const boxTop = top;
+    const boxRight = left + width;
+    const boxBottom = top + height;
+
+    document.querySelectorAll('.asset').forEach(asset => {
+        const rect = asset.getBoundingClientRect();
+        // 아이템의 절대 좌표 (스크롤 포함)
+        const assetLeft = rect.left + window.scrollX;
+        const assetTop = rect.top + window.scrollY;
+        const assetRight = assetLeft + rect.width;
+        const assetBottom = assetTop + rect.height;
+
+        // 직사각형 충돌 검사: 영역 안에 완전히 혹은 일부라도 들어와 있는지 확인
+        const isInside = !(assetLeft > boxRight || 
+                          assetRight < boxLeft || 
+                          assetTop > boxBottom || 
+                          assetBottom < boxTop);
+
+        const rid = asset.getAttribute('data-rid');
+        if (isInside) {
+            asset.classList.add('sel');
+            if (rid) sel.add(rid);
+        } else {
+            // 🌟 궤적이 남지 않게 하는 핵심: 영역 밖이면 즉시 제거
+            asset.classList.remove('sel');
+            if (rid) sel.delete(rid);
+        }
+    });
+});
+
+document.addEventListener('mouseup', function() {
+    isDragging = false;
+    selectionBox.style.display = 'none';
+});   }
 </script>
 </body>
 </html>
