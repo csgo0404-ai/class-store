@@ -2722,8 +2722,10 @@ let isScratchDone = false;
             fireConfetti('confetti');
         }
         
-        if (scratchBonus > 0 && me) me.co = (me.co || 0) + scratchBonus;
-        giveReward(scratchItem);
+        // 🌟 수정: 기존에 동전(코인)을 보너스로 주던 로직 완전 삭제!
+        // if (scratchBonus > 0 && me) me.co = (me.co || 0) + scratchBonus; <-- 이 부분이 원인이었습니다.
+        
+        giveReward(scratchItem); // 설정한 아이템(개수 포함)만 깔끔하게 지급
 
         const popup = document.getElementById('scrWinPopup');
         if (popup) {
