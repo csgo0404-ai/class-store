@@ -92,8 +92,8 @@
       #s_sh .grid { position: relative; margin-top: 50px !important; z-index: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; gap: 50px 20px !important; justify-content: center; }
         
         .shop-toggle-bar { display: flex; width: 500px; margin: 0 auto 40px auto; background: repeating-linear-gradient(to bottom, #4E342E 0px, #4E342E 5px, #3E2723 5px, #3E2723 10px); border: 4px solid #2A1A17; border-radius: 40px; box-shadow: 0 8px 15px rgba(0,0,0,0.5), inset 0 2px 8px rgba(0,0,0,0.8); position: relative; z-index: 10; padding: 6px; }
-        .tab-slider { position: absolute; top: 6px; left: 6px; height: calc(100% - 12px); background: repeating-linear-gradient(to bottom, #D4A373 0px, #D4A373 5px, #BC8A5F 5px, #BC8A5F 10px); border: 2px solid #8D6E63; border-radius: 30px; box-shadow: 0 4px 0 #8D6E63, 0 5px 10px rgba(0,0,0,0.3); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1; }
-        .shop-tab { flex: 1; text-align: center; padding: 12px 0; font-size: 20px; font-weight: 900; cursor: pointer; z-index: 2; color: #A1887F; text-shadow: 1px 1px 1px rgba(0,0,0,0.5); transition: color 0.3s; }
+        .tab-slider { position: absolute; top: 6px; left: 6px; height: calc(100% - 12px); background: repeating-linear-gradient(to bottom, #D4A373 0px, #D4A373 5px, #BC8A5F 5px, #BC8A5F 10px); border: 2px solid #8D6E63; border-radius: 30px; box-shadow: 0 4px 0 #8D6E63, 0 5px 10px rgba(0,0,0,0.3); transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.3s; z-index: 1; }
+        .shop-tab { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px 0; font-size: 20px; font-weight: 900; cursor: pointer; z-index: 2; color: #A1887F; text-shadow: 1px 1px 1px rgba(0,0,0,0.5); transition: color 0.3s; }
         .shop-tab.tab-active { color: #4E342E; text-shadow: 1px 1px 0px rgba(255,255,255,0.4); }
     
 
@@ -138,6 +138,8 @@
 
         @keyframes popUp { from{transform:scale(0.8);opacity:0;} to{transform:scale(1);opacity:1;} }
         @keyframes floatTrophy { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+        @keyframes starGlow { 0%,100%{text-shadow:0 0 6px #FFD700, 0 0 14px #FFA000, 0 0 22px #FF8C00; transform:scale(1);} 50%{text-shadow:0 0 10px #FFD700, 0 0 22px #FF8C00, 0 0 38px #FFD700; transform:scale(1.15);} }
+        .trans-star { display:inline-block; color:#FFFFFF; font-size:1.1em; vertical-align:middle; animation:starGlow 2s ease-in-out infinite; margin-right:6px; margin-left:-4px; line-height:1; }
 
         /* 기타 아이템 관리 디자인 */
      /* 기타 아이템 관리 디자인 */
@@ -152,10 +154,13 @@
         .asset.sel { border-color:#EF5350; background:#FFCDD2; box-shadow: 0 0 10px rgba(239, 83, 80, 0.5); }
         .asset.req { border-color:#EF5350; background:#FFEBEE; animation:pulse 1s infinite; }
         .asset.used { background-color: #E0E0E0 !important; border-color: #BDBDBD !important; filter: grayscale(100%); opacity: 0.7; }
+        .asset.used.sel { background-color: #FFCDD2 !important; border-color: #EF5350 !important; filter: none !important; opacity: 1 !important; box-shadow: 0 0 10px rgba(239,83,80,0.5) !important; }
         .asset:hover .del-btn { display: block; }
         
-        #t_set .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } 
+        #t_set .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
         #t_set .asset { padding: 10px; overflow: hidden; justify-content: center; align-items: center; }
+        #t_ag { position: relative; }
+        #rubber-box { position: absolute; border: none; background: transparent; pointer-events: none; z-index: 1000; }
         .huge-emoji { font-size: 60px; line-height: 1; margin-bottom: 10px; }
         #t_set .asset .info { width: 100%; background: rgba(255,255,255,0.9); padding: 5px; font-size: 14px; font-weight: bold; border-top: 1px solid #eee; }
 
@@ -395,48 +400,22 @@
             .quest-icon { width: 55px !important; height: 55px !important; font-size: 50px !important; line-height: 55px !important; margin-bottom: 5px !important; }
             .quest-slot div:last-child { font-size: 14px !important; }
         }
-/* 아이템이 선택되었을 때의 스타일 (사용 완료된 아이템 포함) */
-.item.sel { 
-    border: 3px solid #ff4d4d !important; /* 진한 빨간색 테두리 */
-    background: #ffebee !important;      /* 밝은 빨간색 배경 */
-    box-shadow: 0 0 15px rgba(255, 77, 77, 0.5) !important; /* 붉은 광채 효과 */
-    
-    /* 👇 핵심: 회색 필터와 투명도를 강제로 초기화합니다 👇 */
-    filter: none !important;            
-    opacity: 1 !important;              
-    transform: translateY(-2px);         /* 살짝 위로 떠오르는 효과 */
-    z-index: 10;                         /* 다른 아이템보다 위에 표시 */
-}
-/* 사용 완료된 아이템이 선택되었을 때 회색 느낌을 없애기 위해 */
-.item.done.sel {
-    filter: none !important;             /* 회색 필터 제거 */
-    opacity: 1 !important;               /* 투명도 복구 */
-}
-/* [최종 수정] 선택된 아이템 스타일 - 사용 여부 상관없이 빨간색으로 고정 */
-.asset.sel {
-    background-color: #FFCDD2 !important; /* 연한 빨간색 배경 */
-    border: 4px solid #EF5350 !important;  /* 진한 빨간색 테두리 */
-    filter: none !important;               /* 회색 필터 제거 */
-    opacity: 1 !important;                 /* 투명도 복구 */
-    box-shadow: 0 0 15px rgba(239, 83, 80, 0.6) !important; /* 붉은 광채 */
-    transform: scale(1.05) translateY(-5px) !important;   /* 살짝 커지고 위로 이동 */
-    z-index: 999 !important;               /* 다른 아이템보다 무조건 위로 */
-}
 
-/* 마우스 드래그 선택 시 텍스트가 안 잡히도록 (선택 편의성) */
-.asset {
-    user-select: none;
-    -webkit-user-select: none;
-}
-/* 드래그 선택 영역 상자 */
-#selection-box {
-    position: absolute;
-    border: 1px solid #0078d7;
-    background-color: rgba(0, 120, 215, 0.2);
-    display: none;
-    z-index: 10000;
-    pointer-events: none; /* 상자가 마우스를 방해하지 않게 함 */
-}
+        /* === 🔔 알림 벨 === */
+        #notifBell { position: fixed; bottom: 28px; right: 28px; z-index: 5000; display: none; }
+        #notifBellBtn { width: 60px; height: 60px; border-radius: 50%; background: #5D4037; border: 3px solid #3E2723; box-shadow: 0 6px 15px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; transition: transform 0.2s; }
+        #notifBellBtn:hover { transform: scale(1.1); }
+        #notifBellBtn:active { transform: scale(0.95); }
+        #notifBadge { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; background: #EF5350; color: white; font-size: 12px; font-weight: bold; border-radius: 11px; display: none; align-items: center; justify-content: center; border: 2px solid white; padding: 0 4px; font-family: 'Jua'; }
+        #notifPanel { position: fixed; bottom: 100px; right: 28px; width: 320px; max-height: 420px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4999; display: none; overflow: hidden; flex-direction: column; border: 3px solid #FFE0B2; animation: slideUpIn 0.25s ease-out; }
+        @keyframes slideUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .notif-header { background: #5D4037; color: white; padding: 14px 18px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .notif-item { padding: 12px 16px; border-bottom: 1px solid #FFF3E0; display: flex; align-items: flex-start; gap: 10px; cursor: default; }
+        .notif-item:hover { background: #FFF8E1; }
+        .notif-item-time { font-size: 13px; color: #FF9800; font-weight: bold; white-space: nowrap; }
+        .notif-item-name { font-size: 15px; color: #5D4037; font-weight: bold; }
+        .notif-item-type { font-size: 13px; color: #8D6E63; }
+        .notif-empty { padding: 40px 20px; text-align: center; color: #BCAAA4; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -503,8 +482,10 @@
                 <button class="btn btn-red sort-btn" onclick="srt('req')">🚨 요청순 <span id="s_req"></span></button>
                 <button class="btn sort-btn" onclick="srt('num')">🔢 번호순 <span id="s_num"></span></button>
                 <button class="btn sort-btn" onclick="srt('typ')">🏷️ 종류순 <span id="s_typ"></span></button>
-                <button id="btnHide" class="btn btn-gray" onclick="toggleHide()">👁️ 보이기</button>
+                <button id="btnHide" class="btn btn-gray" onclick="toggleHide()">🙈 숨기기</button>
                 <button class="btn btn-red" onclick="delSel()" style="float:right;">🗑️ 삭제</button>
+                <button class="btn btn-blue" onclick="appSel()" style="float:right; margin-left:5px;">✅ 승인</button>
+                
             </div>
             <div id="t_ag" class="grid"></div>
             <div class="card" style="margin-top:20px; background:#E3F2FD;">
@@ -557,9 +538,6 @@
                     <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
                         <label style="font-size:14px; cursor:pointer; display:flex; align-items:center; gap:3px;">
                             <input type="checkbox" id="isSale" checked style="width:auto; margin:0;"> 판매
-                        </label>
-                        <label style="font-size:14px; cursor:pointer; display:flex; align-items:center; gap:3px; margin-right:5px;">
-                            <input type="checkbox" id="isReq" checked style="width:auto; margin:0;"> 사용요청 허용
                         </label>
                         <button class="btn btn-org" onclick="addI()" style="padding:10px 20px;">등록</button>
                     </div>
@@ -664,7 +642,7 @@
     <div id="lottoConfetti" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div>
     <button class="btn btn-org hidden" id="lottoCloseBtn" style="margin-top:20px; z-index:102; font-size:20px; padding:10px 40px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);" onclick="clsLotto()">확인</button>
 </div>
-<div id="selection-box"></div>
+
 <script>
     const ac = new (window.AudioContext||window.webkitAudioContext)();
     document.addEventListener('mousedown', () => { if(ac.state === 'suspended') ac.resume(); });
@@ -693,8 +671,57 @@
 
     let isDragging = false, dragMode = true, lastSelectedIndex = -1, currentRenderedItems = [];
     let currentShopTab = 'normal';
+    // rubber-band: rubberActive = 박스가 실제로 보이기 시작한 상태
+    let rubberBanding = false, rubberActive = false, rubberStartClient = {x:0,y:0}, rubberBox = null;
 
-document.addEventListener('mouseup', () => { isDragging = false; document.body.style.userSelect = ''; });
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+    if (rubberBox) { rubberBox.remove(); rubberBox = null; }
+    document.body.style.userSelect = '';
+});
+
+// 그리드 빈 공간에서 드래그 시작 (카드 밖)
+document.addEventListener('mousedown', function(e) {
+    const grid = document.getElementById('t_ag');
+    if (!grid || !grid.contains(e.target) || e.target.closest('.asset') || e.button !== 0) return;
+    e.preventDefault();
+    isDragging = true;
+    rubberStartClient = { x: e.clientX, y: e.clientY };
+    if (!e.ctrlKey && !e.metaKey) {
+        sel.clear();
+        document.querySelectorAll('#t_ag .asset').forEach(el => el.classList.remove('sel'));
+    }
+    document.body.style.userSelect = 'none';
+});
+
+// mousemove: isDragging이면 rubber-band 직사각형 선택 업데이트
+document.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    const grid = document.getElementById('t_ag');
+    if (!grid) return;
+    if (!rubberBox) {
+        rubberBox = document.createElement('div');
+        rubberBox.id = 'rubber-box';
+        grid.appendChild(rubberBox);
+    }
+    const rect = grid.getBoundingClientRect();
+    const sx = rubberStartClient.x - rect.left, sy = rubberStartClient.y - rect.top;
+    const ex = e.clientX - rect.left,            ey = e.clientY - rect.top;
+    const x1 = Math.min(sx,ex), y1 = Math.min(sy,ey);
+    const x2 = Math.max(sx,ex), y2 = Math.max(sy,ey);
+    rubberBox.style.left = x1+'px'; rubberBox.style.top = y1+'px';
+    rubberBox.style.width = (x2-x1)+'px'; rubberBox.style.height = (y2-y1)+'px';
+    sel.clear();
+    document.querySelectorAll('#t_ag .asset').forEach(card => {
+        const cr = card.getBoundingClientRect();
+        const cx1 = cr.left - rect.left, cy1 = cr.top - rect.top;
+        const cx2 = cx1 + cr.width,      cy2 = cy1 + cr.height;
+        const hits = cx1 < x2 && cx2 > x1 && cy1 < y2 && cy2 > y1;
+        const cid = card.id.replace('card_', '');
+        if (hits) { sel.add(cid); card.classList.add('sel'); }
+        else      { card.classList.remove('sel'); }
+    });
+});
 function startDrag(e, idx, id) {
     if(e.button !== 0) return;
     
@@ -715,6 +742,7 @@ function startDrag(e, idx, id) {
     }
 
     isDragging = true;
+    rubberStartClient = { x: e.clientX, y: e.clientY };
     lastSelectedIndex = idx;
 
     if (e.ctrlKey || e.metaKey) {
@@ -755,7 +783,7 @@ const firebaseConfig = {
 
     let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], ak:'', cfg: {hideCandy: false}};
 
-    let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = true;
+    let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = false;
     let cSort='no', cDir=1;
     let currentBuyItem = null;
     let currentGachaIndex = null;
@@ -894,6 +922,7 @@ const firebaseConfig = {
                 if(!document.getElementById('t_col').classList.contains('hidden')) rColT();
                 if(!document.getElementById('t_set').classList.contains('hidden')) rSet();
                 if(!document.getElementById('t_auc').classList.contains('hidden')) rAucT();
+                setTimeout(updateNotifBell, 0);
             }
         } else {
             if(!db.stu || db.stu.length === 0) {
@@ -1012,7 +1041,7 @@ const firebaseConfig = {
 
    function doDrag(e, id) {
         if (!isDragging) return;
-        // 🌟 수정: 마우스 왼쪽 버튼(1)을 떼면 드래그 모드를 즉시 종료 (창 밖으로 나가는 오류 방지)
+        if (rubberActive) return; // rubber-band 활성 중에는 onmouseenter 선택 비활성
         if (e.buttons !== 1) { isDragging = false; return; } 
         if (dragMode) {
             sel.add(id);
@@ -1023,15 +1052,15 @@ const firebaseConfig = {
         }
     }
 
-    function logT(){ 
+    function logT(){
         if(document.getElementById('tp').value==='csgo10'){
-            document.getElementById('login').classList.add('hidden'); 
-            document.getElementById('appT').classList.remove('hidden'); 
+            document.getElementById('login').classList.add('hidden');
+            document.getElementById('appT').classList.remove('hidden');
             document.getElementById('dahessni_api').value = localStorage.getItem('dahessni_api_key') || "";
             nav('t_stu');
-            // 🌟 수정: 오류를 일으키던 옛날 코드를 지우고 즉시 표를 강제 렌더링합니다!
             setTimeout(rTb, 50);
-        }else alert("비밀번호 오류"); 
+            setTimeout(updateNotifBell, 100);
+        }else alert("비밀번호 오류");
     }
 
     async function logS(){ 
@@ -1061,7 +1090,10 @@ const firebaseConfig = {
 
   function updateNameTag() {
         if(me) {
-            document.getElementById('snm').innerHTML = me.nm;
+            const starHtml = (me.rb && me.rb > 0)
+                ? `<span class="trans-star">${'★'.repeat(me.rb)}</span>`
+                : '';
+            document.getElementById('snm').innerHTML = starHtml + me.nm;
             const totalCookie = me.cookie || 0;
             const curCookie = Math.max(0, totalCookie - (me.usedCookie || 0));
             const lv = Math.floor(totalCookie / 10); 
@@ -1072,21 +1104,9 @@ const firebaseConfig = {
             // 키오스크 사이드바 로직 삭제됨 (상점 탭으로 이동)
         }
     }
-   window.showItemDetail = function(itemName) {
+    window.showItemDetail = function(itemName) {
         const item = me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
         if(!item) return;
-
-        // 상점 데이터에서 아이템 속성 찾기
-        const shopItem = db.itm.find(i => i.n === item.n);
-        
-        // '복권' 글자 체크는 삭제하고, 오로지 선생님의 설정값(rq)만 확인합니다.
-        const canReq = shopItem ? (shopItem.rq !== false) : true;
-
-        // 사용 요청이 비활성화된 경우에만 안내 모달을 띄웁니다.
-        if(!canReq) {
-            showNoReqModal(item.n, item.i);
-            return;
-        }
         
         const modalHtml = `
             <div id="itemModal" class="modal-overlay" onclick="this.remove()">
@@ -1107,34 +1127,6 @@ const firebaseConfig = {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
-window.showNoReqModal = function(itemName, itemEmoji) {
-        const old = document.getElementById('noReqModal'); if(old) old.remove();
-        const iconHtml = itemEmoji.includes('http') ? `<img src="${itemEmoji}" style="width:80px; height:80px; object-fit:contain;">` : itemEmoji;
-
-        const modalHtml = `
-            <div id="noReqModal" class="modal-overlay" onclick="this.remove()">
-                <div class="modal-window" style="background:#FFFDF9 !important; border: 5px solid #BCAAA4 !important;" onclick="event.stopPropagation()">
-                    <button class="modal-close-btn" onclick="document.getElementById('noReqModal').remove()">X</button>
-                    <div class="modal-inner" style="background:#FFF !important; border:none !important;">
-                        <div class="modal-icon" style="font-size:80px;">${iconHtml}</div>
-                        <h2 class="modal-title" style="color:#5D4037; margin-top:10px;">${itemName}</h2>
-                        
-                        <div style="background:#F5F5F5; border-radius:15px; padding:15px; margin:15px 0; border: 2px dashed #D7CCC8;">
-                            <p style="color:#D84315; font-size:18px; font-weight:bold; margin:0 0 10px 0;">이 아이템은 사용 요청이 불가능해요! 🙅‍♀️</p>
-                            <p style="color:#795548; font-size:15px; margin:0; line-height:1.5; word-break:keep-all;">
-                                선생님께 확인받지 않고 바로 효과가 적용되거나,<br>
-                                가방에 가지고만 있어도 되는 특별한 아이템이랍니다. ✨
-                            </p>
-                        </div>
-                        
-                        <div class="modal-btn-group">
-                            <button class="btn btn-wood" onclick="document.getElementById('noReqModal').remove()" style="width:100%; font-size:20px;">확인했어요!</button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    }
     function useQ(itemName){
     const idx = me.inv.findIndex(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
     if(idx === -1) return;
@@ -1354,6 +1346,7 @@ window.showNoReqModal = function(itemName, itemEmoji) {
     
     function rAs(){
         if(!db.stu) return;
+        setTimeout(updateNotifBell, 0);
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         let l=[]; 
         stuList.forEach((s,si)=>{ 
@@ -1384,10 +1377,9 @@ window.showNoReqModal = function(itemName, itemEmoji) {
                     ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div><button class="btn btn-org" style="width:100%;margin-top:5px; padding:6px; font-size:14px; pointer-events:auto;" onclick="appU('${x.y}',${x.si},${x.k})">✔️ 강제 사용</button>` 
                     : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div><button class="btn btn-green" style="width:100%;margin-top:5px;padding:6px;font-size:14px; pointer-events:auto;" onclick="resU('${x.y}',${x.si},${x.k})">🔄 복구</button>`);
             
-            return `<div id="card_${id}" class="asset ${seld?'sel':''} ${x.t.st==='req'?'req':''} ${x.t.st==='used' || x.t.st==='usd'?'used':''}" 
+            return `<div id="card_${id}" class="asset ${seld?'sel':''} ${x.t.st==='req'?'req':''} ${x.t.st==='used' || x.t.st==='usd'?'used':''}"
                 draggable="false" ondragstart="return false;"
-                onmousedown="startDrag(event, ${visualIdx}, '${id}')" 
-                onmouseenter="doDrag(event, '${id}')" 
+                onmousedown="startDrag(event, ${visualIdx}, '${id}')"
                 ondblclick="useOne('${x.y}',${x.si},${x.k})"> ${statusBadge} ${img} ${itemTitle} ${content} ${actionBtn} </div>`;
         }).join('');
     }
@@ -1407,17 +1399,34 @@ window.showNoReqModal = function(itemName, itemEmoji) {
             alert("복구되었습니다!");
         }
     }
-window.appU = function(y, si, k) { 
+window.appU = function(y, si, k) {
         if(confirm("이 아이템을 사용(승인) 처리하시겠습니까?")) {
             let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
             let s = stuList[si];
-            
-            if(y === 'c' && s.inv && s.inv[k]) s.inv[k].st = 'used'; 
-            else if(y === 'l' && s.ibx && s.ibx[k]) s.ibx[k].st = 'used'; 
-            
+
+            if(y === 'c' && s.inv && s.inv[k]) s.inv[k].st = 'used';
+            else if(y === 'l' && s.ibx && s.ibx[k]) s.ibx[k].st = 'used';
+
             db.stu = stuList;
-            sv(); rAs(); 
+            sv(); rAs();
         }
+    }
+    function appSel() {
+        if(sel.size === 0) return alert("승인할 쿠폰을 먼저 선택하세요!");
+        if(!confirm(`선택한 ${sel.size}개 쿠폰을 일괄 승인하시겠습니까?`)) return;
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        sel.forEach(id => {
+            const parts = id.split('_');
+            const y = parts[0], si = parseInt(parts[1]), k = parseInt(parts[2]);
+            const s = stuList[si];
+            if (!s) return;
+            if (y === 'c' && s.inv && s.inv[k]) s.inv[k].st = 'used';
+            else if (y === 'l' && s.ibx && s.ibx[k]) s.ibx[k].st = 'used';
+        });
+        db.stu = stuList;
+        sv();
+        sel.clear();
+        rAs();
     }
     window.useOne = function(y, si, k) { 
         if(confirm("아이템을 목록에서 완전히 삭제하시겠습니까?")){
@@ -1600,27 +1609,22 @@ window.appU = function(y, si, k) {
     
     function addI(){ 
         const isSale = document.getElementById('isSale').checked;
-        const isReq = document.getElementById('isReq').checked; // 🌟 추가됨
         const desc = document.getElementById('id_desc').value;
-        db.itm.push({n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale, rq:isReq}); // rq 추가됨
+        db.itm.push({n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}); 
         sv(); rSet(); 
         document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
-        document.getElementById('isReq').checked = true; // 초기화
     }
     
     function editI(i) { 
         const it = db.itm[i]; document.getElementById('in').value = it.n; document.getElementById('ip').value = it.p; document.getElementById('ii').value = it.i; document.getElementById('id_desc').value = it.d || ''; document.getElementById('isSale').checked = it.s !== false;
-        document.getElementById('isReq').checked = it.rq !== false; // 🌟 추가됨 (기존에 등록된 건 기본 허용)
         if(it.c) document.getElementById('ic').value = it.c;
         const btn = document.querySelector('#t_set .btn-org'); btn.innerText = "수정완료"; 
         btn.onclick = function() { 
             const isSale = document.getElementById('isSale').checked;
-            const isReq = document.getElementById('isReq').checked; // 🌟 추가됨
             const desc = document.getElementById('id_desc').value;
-            db.itm[i] = {n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale, rq:isReq}; // rq 추가됨
+            db.itm[i] = {n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}; 
             sv(); rSet(); this.innerText = "등록"; this.onclick = addI; 
             document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
-            document.getElementById('isReq').checked = true; // 초기화
         } 
     }
     
@@ -1934,7 +1938,7 @@ window.appU = function(y, si, k) {
         aucHtml += `</div>`;
 
         const tabCount = hasNormalShop ? 4 : 3;
-        const sliderWidth = `calc(${100/tabCount}% - 6px)`;
+        const sliderWidth = `calc((100% - 12px) / ${tabCount})`;
 
         document.getElementById('s_sh').innerHTML = `
             <div class="npc-speech">
@@ -1946,7 +1950,7 @@ window.appU = function(y, si, k) {
                 ${hasNormalShop ? `<div id="tab-normal" class="shop-tab" onclick="toggleShopTab('normal')">일반 상점</div>` : ''}
                 <div id="tab-gacha" class="shop-tab" onclick="toggleShopTab('gacha')">뽑기</div>
                 <div id="tab-auc" class="shop-tab" onclick="toggleShopTab('auc')">경매</div>
-                <div id="tab-char" class="shop-tab" onclick="showCharModal()">캐릭터 제작</div>
+                <div id="tab-char" class="shop-tab" onclick="toggleShopTab('char')">캐릭터 제작</div>
             </div>
             ${normalShopHtml}
             ${gachaShopHtml}
@@ -1982,29 +1986,36 @@ window.appU = function(y, si, k) {
     };
     window.toggleShopTab = function(tabType) {
         const hasNormalShop = db.itm.filter(i => i.s === true).length > 0;
+        const tabCount = hasNormalShop ? 4 : 3;
         const slider = document.getElementById('tab-slider');
-        
+
+        // 슬라이더를 tabIndex 위치로 정확히 이동 (left 기반, 픽셀 단위 정확 계산)
+        function moveSlider(tabIndex) {
+            if (!slider) return;
+            slider.style.transform = '';
+            slider.style.left = `calc(6px + ${tabIndex} * (100% - 12px) / ${tabCount})`;
+            slider.style.width = `calc((100% - 12px) / ${tabCount})`;
+        }
+
         // 전체 활성화 효과 초기화
         ['tab-normal','tab-gacha','tab-auc','tab-char'].forEach(id => {
             if(document.getElementById(id)) document.getElementById(id).classList.remove('tab-active');
         });
 
-        // 🌟 수정: 캐릭터 탭을 누르면 슬라이더가 이동한 뒤 모달을 띄움
         if(tabType === 'char') {
             const tabIndex = hasNormalShop ? 3 : 2;
-            if(slider) slider.style.transform = `translateX(${tabIndex * 100}%)`;
+            moveSlider(tabIndex);
             if(document.getElementById('tab-char')) document.getElementById('tab-char').classList.add('tab-active');
-            
             showCharModal();
             return;
         }
 
         currentShopTab = tabType;
-        
+
         ['shop-normal-sec','shop-gacha-sec','shop-auc-sec'].forEach(id => {
             if(document.getElementById(id)) document.getElementById(id).style.display = 'none';
         });
-        
+
         let tabIndex = 0;
         if(tabType === 'normal' && hasNormalShop) {
             document.getElementById('shop-normal-sec').style.display = 'block';
@@ -2022,8 +2033,8 @@ window.appU = function(y, si, k) {
                 document.querySelectorAll('.auc-chat-container').forEach(el => el.scrollTop = el.scrollHeight);
             }, 50);
         }
-        
-        if(slider) slider.style.transform = `translateX(${tabIndex * 100}%)`;
+
+        moveSlider(tabIndex);
     }
 
     window.showAskModal = function(itemName) {
@@ -2271,7 +2282,8 @@ window.appU = function(y, si, k) {
     /* === 선생님 경매 관리 UI === */
     function rAucT() {
         if(!db.auc) db.auc = [];
-        
+        setTimeout(updateNotifBell, 0);
+
         const reqList = db.auc.filter(a => a.st === 'req');
         const actList = db.auc.filter(a => a.st === 'active');
         const doneList = db.auc.filter(a => a.st === 'done' || a.st === 'tie');
@@ -2983,84 +2995,83 @@ window.addCharRow = function() {
         
         alert(`[총 ${validCount}개] 부위 신청서가 선생님께 성공적으로 전송되었습니다!`);
         rBg();
+    }
 
-let isDragging = false;
-let startX, startY;
-const selectionBox = document.getElementById('selection-box');
+    /* === 🔔 알림 벨 기능 === */
+    function getNotifList() {
+        const list = [];
+        (db.auc || []).forEach(a => {
+            if (a.st === 'req') {
+                const t = new Date(a.id);
+                const timeStr = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+                list.push({ time: timeStr, nm: a.reqNm || '?', label: '경매 요청', type: 'auc' });
+            }
+        });
+        (db.stu || []).forEach(s => {
+            (s.inv || []).forEach(item => {
+                if (item.st === 'req') {
+                    list.push({ time: '', nm: s.nm, label: `아이템 승인 요청 (${item.n})`, type: 'item' });
+                }
+            });
+        });
+        return list;
+    }
 
-document.addEventListener('mousedown', function(e) {
-    // 버튼, 입력창, 아이템 본체, 모달 등을 클릭하면 드래그 방지
-    if (e.target.closest('button, input, .asset, .modal-window, #t_set')) return;
-
-    isDragging = true;
-    // 스크롤 위치를 고려한 절대 좌표 저장
-    startX = e.pageX;
-    startY = e.pageY;
-
-    selectionBox.style.display = 'block';
-    selectionBox.style.width = '0px';
-    selectionBox.style.height = '0px';
-    selectionBox.style.left = startX + 'px';
-    selectionBox.style.top = startY + 'px';
-    
-    // 드래그 시작 시 기존 선택을 유지하고 싶지 않다면 아래 두 줄 주석 해제
-    // sel.clear(); 
-    // document.querySelectorAll('.asset').forEach(a => a.classList.remove('sel'));
-});
-
-document.addEventListener('mousemove', function(e) {
-    if (!isDragging) return;
-
-    const currentX = e.pageX;
-    const currentY = e.pageY;
-
-    // 현재 사각형의 영역 계산
-    const left = Math.min(startX, currentX);
-    const top = Math.min(startY, currentY);
-    const width = Math.abs(startX - currentX);
-    const height = Math.abs(startY - currentY);
-
-    selectionBox.style.left = left + 'px';
-    selectionBox.style.top = top + 'px';
-    selectionBox.style.width = width + 'px';
-    selectionBox.style.height = height + 'px';
-
-    // 🌟 핵심: 현재 사각형의 경계값 (절대 좌표)
-    const boxLeft = left;
-    const boxTop = top;
-    const boxRight = left + width;
-    const boxBottom = top + height;
-
-    document.querySelectorAll('.asset').forEach(asset => {
-        const rect = asset.getBoundingClientRect();
-        // 아이템의 절대 좌표 (스크롤 포함)
-        const assetLeft = rect.left + window.scrollX;
-        const assetTop = rect.top + window.scrollY;
-        const assetRight = assetLeft + rect.width;
-        const assetBottom = assetTop + rect.height;
-
-        // 직사각형 충돌 검사: 영역 안에 완전히 혹은 일부라도 들어와 있는지 확인
-        const isInside = !(assetLeft > boxRight || 
-                          assetRight < boxLeft || 
-                          assetTop > boxBottom || 
-                          assetBottom < boxTop);
-
-        const rid = asset.getAttribute('data-rid');
-        if (isInside) {
-            asset.classList.add('sel');
-            if (rid) sel.add(rid);
+    function updateNotifBell() {
+        const bell = document.getElementById('notifBell');
+        if (!bell) return;
+        const isTeacher = !document.getElementById('appT').classList.contains('hidden');
+        bell.style.display = isTeacher ? 'block' : 'none';
+        if (!isTeacher) return;
+        const list = getNotifList();
+        const badge = document.getElementById('notifBadge');
+        if (list.length > 0) {
+            badge.textContent = list.length > 9 ? '9+' : list.length;
+            badge.style.display = 'flex';
         } else {
-            // 🌟 궤적이 남지 않게 하는 핵심: 영역 밖이면 즉시 제거
-            asset.classList.remove('sel');
-            if (rid) sel.delete(rid);
+            badge.style.display = 'none';
         }
-    });
-});
+    }
 
-document.addEventListener('mouseup', function() {
-    isDragging = false;
-    selectionBox.style.display = 'none';
-});   }
+    function toggleNotifPanel() {
+        const panel = document.getElementById('notifPanel');
+        if (!panel) return;
+        if (panel.style.display === 'flex') {
+            panel.style.display = 'none';
+            return;
+        }
+        const list = getNotifList();
+        const listHtml = list.length === 0
+            ? `<div class="notif-empty">📭 요청이 없습니다</div>`
+            : list.map(item => `
+                <div class="notif-item">
+                    <div style="flex:1;">
+                        <div style="display:flex; gap:8px; align-items:center; margin-bottom:2px;">
+                            ${item.time ? `<span class="notif-item-time">${item.time}</span>` : ''}
+                            <span class="notif-item-name">${item.nm}</span>
+                        </div>
+                        <div class="notif-item-type">${item.type === 'auc' ? '🔨 경매 요청' : '🎁 아이템 승인 요청'} · ${item.label.includes('(') ? item.label.match(/\(([^)]+)\)/)?.[1] || '' : ''}</div>
+                    </div>
+                </div>`).join('');
+        panel.innerHTML = `
+            <div class="notif-header">
+                🔔 요청 목록
+                <span style="font-size:14px; opacity:0.7; font-weight:normal; cursor:pointer;" onclick="document.getElementById('notifPanel').style.display='none'">✕</span>
+            </div>
+            <div style="overflow-y:auto; max-height:360px;">${listHtml}</div>`;
+        panel.style.display = 'flex';
+        panel.style.flexDirection = 'column';
+    }
+
+
 </script>
+
+<!-- 🔔 알림 벨 -->
+<div id="notifBell">
+    <div id="notifBadge"></div>
+    <div id="notifBellBtn" onclick="toggleNotifPanel()">🔔</div>
+</div>
+<div id="notifPanel"></div>
+
 </body>
 </html>
