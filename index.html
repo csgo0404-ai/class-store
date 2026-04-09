@@ -401,24 +401,28 @@
             .quest-slot div:last-child { font-size: 14px !important; }
         }
 
-        /* === 🔔 알림 벨 === */
-        #notifBell { position: fixed; bottom: 28px; right: 28px; z-index: 5000; display: none; }
-        #notifBellBtn { width: 60px; height: 60px; border-radius: 50%; background: #5D4037; border: 3px solid #3E2723; box-shadow: 0 6px 15px rgba(0,0,0,0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 28px; transition: transform 0.2s; }
-        #notifBellBtn:hover { transform: scale(1.1); }
-        #notifBellBtn:active { transform: scale(0.95); }
-        #notifBadge { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; background: #EF5350; color: white; font-size: 12px; font-weight: bold; border-radius: 11px; display: none; align-items: center; justify-content: center; border: 2px solid white; padding: 0 4px; font-family: 'Jua'; }
-        #notifPanel { position: fixed; bottom: 100px; right: 28px; width: 320px; max-height: 420px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 4999; display: none; overflow: hidden; flex-direction: column; border: 3px solid #FFE0B2; animation: slideUpIn 0.25s ease-out; }
-        @keyframes slideUpIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .notif-header { background: #5D4037; color: white; padding: 14px 18px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .notif-item { padding: 12px 16px; border-bottom: 1px solid #FFF3E0; display: flex; align-items: flex-start; gap: 10px; cursor: default; }
-        .notif-item:hover { background: #FFF8E1; }
-        .notif-item-time { font-size: 13px; color: #FF9800; font-weight: bold; white-space: nowrap; }
-        .notif-item-name { font-size: 15px; color: #5D4037; font-weight: bold; }
-        .notif-item-type { font-size: 13px; color: #8D6E63; }
-        .notif-empty { padding: 40px 20px; text-align: center; color: #BCAAA4; font-size: 16px; }
+        /* === 아이템 툴팁 === */
+        #itemTooltip {
+            position: fixed;
+            background: rgba(62, 39, 35, 0.95);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            pointer-events: none;
+            z-index: 9999;
+            max-width: 200px;
+            text-align: center;
+            word-break: keep-all;
+            line-height: 1.4;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: none;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
+<div id="itemTooltip"></div>
 <div id="login">
     <div class="login-box">
         <div class="cookie-logo">🍪</div>
@@ -482,7 +486,7 @@
                 <button class="btn btn-red sort-btn" onclick="srt('req')">🚨 요청순 <span id="s_req"></span></button>
                 <button class="btn sort-btn" onclick="srt('num')">🔢 번호순 <span id="s_num"></span></button>
                 <button class="btn sort-btn" onclick="srt('typ')">🏷️ 종류순 <span id="s_typ"></span></button>
-                <button id="btnHide" class="btn btn-gray" onclick="toggleHide()">🙈 숨기기</button>
+                <button id="btnHide" class="btn btn-gray" onclick="toggleHide()">👁️ 보이기</button>
                 <button class="btn btn-red" onclick="delSel()" style="float:right;">🗑️ 삭제</button>
                 <button class="btn btn-blue" onclick="appSel()" style="float:right; margin-left:5px;">✅ 승인</button>
                 
@@ -490,9 +494,10 @@
             <div id="t_ag" class="grid"></div>
             <div class="card" style="margin-top:20px; background:#E3F2FD;">
                 <h3>🎁 쿠폰 지급</h3>
-                <div style="display:flex; gap:5px;">
+                <div style="display:flex; gap:5px; align-items:center;">
                     <select id="gt"></select>
                     <select id="gi"></select>
+                    <input id="gq_cnt" type="number" min="1" value="1" style="width:70px; margin-bottom:0; text-align:center;">
                     <button class="btn btn-blue" onclick="giv()">지급</button>
                 </div>
             </div>
@@ -549,7 +554,8 @@
                 <h3>🔮 뽑기 기계</h3>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <input id="gn" placeholder="기계명" style="flex:1; min-width:150px; margin-bottom:5px;">
-                    
+                    <input id="gd_desc" placeholder="설명" style="flex:1; min-width:150px; margin-bottom:5px;">
+
                     <select id="gc_cur" style="width:140px; margin-bottom:5px;">
                         <option value="cn">🍭 캔디</option>
                         <option value="tk">🧺 누구나 바구니</option>
@@ -783,7 +789,7 @@ const firebaseConfig = {
 
     let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], ak:'', cfg: {hideCandy: false}};
 
-    let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = false;
+    let me=null, rid=null, asort='req', sdir=1, sel=new Set(), hideCompleted = true, currentGroups=[];
     let cSort='no', cDir=1;
     let currentBuyItem = null;
     let currentGachaIndex = null;
@@ -904,7 +910,7 @@ const firebaseConfig = {
                 const updatedMe = db.stu.find(x => String(x.cd).trim() === String(me.cd).trim());
                 if (updatedMe) {
                     me = updatedMe;
-                    if(!me.inv) me.inv = [];
+                    if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                     if(!me.col) me.col = [];
                     updateNameTag();
                     if(!document.getElementById('s_bg').classList.contains('hidden')) rBg();
@@ -1009,8 +1015,25 @@ const firebaseConfig = {
     }
 
     function sv(){
-        dbRef.set(db); 
+        dbRef.set(db);
     }
+
+    window.showTip = function(e, text) {
+        if (!text) return;
+        const tip = document.getElementById('itemTooltip');
+        tip.textContent = text;
+        tip.style.display = 'block';
+        tip.style.left = (e.clientX + 14) + 'px';
+        tip.style.top = (e.clientY - 50) + 'px';
+    };
+    window.moveTip = function(e) {
+        const tip = document.getElementById('itemTooltip');
+        tip.style.left = (e.clientX + 14) + 'px';
+        tip.style.top = (e.clientY - 50) + 'px';
+    };
+    window.hideTip = function() {
+        document.getElementById('itemTooltip').style.display = 'none';
+    };
 
     window.toggleHideCandy = function(val) {
         if(!db.cfg) db.cfg = {};
@@ -1107,7 +1130,8 @@ const firebaseConfig = {
     window.showItemDetail = function(itemName) {
         const item = me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
         if(!item) return;
-        
+        const totalCount = me.inv.filter(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo).length;
+        const safeN = itemName.replace(/'/g, "\\'");
         const modalHtml = `
             <div id="itemModal" class="modal-overlay" onclick="this.remove()">
                 <div class="modal-window" style="background:white !important; border: 5px solid #FFE0B2 !important;" onclick="event.stopPropagation()">
@@ -1117,36 +1141,41 @@ const firebaseConfig = {
                             ${item.i.includes('http') ? `<img src="${item.i}" style="width:80px; height:80px; object-fit:contain;">` : item.i}
                         </div>
                         <h2 class="modal-title" style="color:#5D4037; margin-top:10px;">${item.n}</h2>
-                        <p style="color:#8D6E63; font-size:18px;">선생님께 사용 승인을 요청할까요?</p>
+                        <p style="color:#8D6E63; font-size:16px; margin:0 0 10px;">사용할 개수를 선택하세요 (보유: ${totalCount}개)</p>
+                        <input id="itemUseQty" type="number" min="1" max="${totalCount}" value="1" style="text-align:center;font-size:22px;font-weight:bold;margin-bottom:5px;">
                         <div class="modal-btn-group">
-                            <button class="btn btn-org" onclick="useQ('${item.n.replace(/'/g, "\\'")}')" style="width:100%; font-size:20px;">사용하기</button>
+                            <button class="btn btn-org" onclick="useQ('${safeN}')" style="width:100%; font-size:20px;">사용하기</button>
                         </div>
                     </div>
                 </div>
             </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('itemUseQty').focus();
     }
 
     function useQ(itemName){
-    const idx = me.inv.findIndex(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo);
-    if(idx === -1) return;
-    
-    me.inv[idx].st = 'req'; 
-    upMe(); 
-    rBg(); 
-    
-    const modal = document.getElementById('itemModal');
-    if(modal) modal.remove();
-    
-    alert("선생님께 사용 요청을 보냈습니다! 잠시만 기다려주세요. 🍭");
-}
+        const qtyEl = document.getElementById('itemUseQty');
+        const totalAvail = me.inv.filter(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo).length;
+        const qty = Math.max(1, Math.min(parseInt(qtyEl ? qtyEl.value : 1)||1, totalAvail));
+        let used = 0;
+        for(let i = 0; i < me.inv.length && used < qty; i++){
+            if(me.inv[i].n.trim() === itemName.trim() && me.inv[i].st === 'active' && !me.inv[i].pseudo){
+                me.inv[i].st = 'req';
+                used++;
+            }
+        }
+        upMe(); rBg();
+        const modal = document.getElementById('itemModal');
+        if(modal) modal.remove();
+        alert(`선생님께 사용 요청을 보냈습니다! (${used}개) 잠시만 기다려주세요. 🍭`);
+    }
 
-    function upMe(){ 
+    function upMe(){
         if (!me || !me.cd) return;
-        const i = db.stu.findIndex(x => String(x.cd).trim() === String(me.cd).trim()); 
+        const i = db.stu.findIndex(x => String(x.cd).trim() === String(me.cd).trim());
         if (i !== -1) {
-            Object.assign(db.stu[i], me); 
-            sv(); 
+            Object.assign(db.stu[i], me);
+            dbRef.child('stu/' + i).set(db.stu[i]);
             updateNameTag();
         }
     }
@@ -1348,39 +1377,67 @@ const firebaseConfig = {
         if(!db.stu) return;
         setTimeout(updateNotifBell, 0);
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
-        let l=[]; 
-        stuList.forEach((s,si)=>{ 
+        let l=[];
+        stuList.forEach((s,si)=>{
             (s.inv||[]).forEach((t,k)=>l.push({y:'c',si,k,t,sn:s.nm,no:s.no}));
-            (s.ibx||[]).forEach((t,k)=> { if(t.y==='sys') return; l.push({y:'l',si,k,t,sn:s.nm,no:s.no}); });
+            (s.ibx||[]).forEach((t,k)=>{ if(t.y==='sys') return; l.push({y:'l',si,k,t,sn:s.nm,no:s.no}); });
         });
-        
+
         if(hideCompleted) {
             l = l.filter(x => x.t.st !== 'used' && x.t.st !== 'usd');
         }
 
-        const getW = (st) => { if(st==='req') return 0; if(st==='used' || st==='usd') return 2; return 1; };
-        l.sort((a,b)=>{ let val = 0; if(asort==='req') val = getW(a.t.st) - getW(b.t.st); else if(asort==='num') val = parseInt(a.no)-parseInt(b.no); else if(asort==='typ') val = (a.t.n||"").localeCompare(b.t.n||""); return val * sdir; });
-        
-        currentRenderedItems = l.map(x => `${x.y}_${x.si}_${x.k}`); 
+        // 같은 학생의 같은 아이템끼리 그룹핑
+        const groupMap = new Map();
+        l.forEach(x => {
+            const gKey = `${x.y}|${x.si}|${x.t.n||''}`;
+            if(!groupMap.has(gKey)) {
+                groupMap.set(gKey, {gKey, y:x.y, si:x.si, sn:x.sn, no:x.no, n:x.t.n, i:x.t.i, ty:x.t.y, items:[]});
+            }
+            groupMap.get(gKey).items.push(x);
+        });
 
-        document.getElementById('t_ag').innerHTML = l.map((x, visualIdx) => {
-            const id=`${x.y}_${x.si}_${x.k}`, seld=sel.has(id); 
-            const img=x.y==='c'?(x.t.i.includes('http')?`<img src="${x.t.i}" style="width:70px;height:70px;object-fit:contain;margin-bottom:5px;">`:`<div class="huge-emoji" style="font-size:70px;">${x.t.i}</div>`):`<div class="huge-emoji" style="font-size:70px;">${x.t.y==='d'?'🍭':'💌'}</div>`; 
-            const statusBadge = x.t.st==='req' ? '<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:5px">🚨 사용요청</div>' : ''; 
-            const itemTitle = `<div style="font-weight:bold;font-size:14px;margin-top:5px;">${x.sn}의 ${x.t.n||'아이템'}<br><span style="font-size:11px;color:#5D4037;">${x.y==='l'?`(From. ${x.t.f})`:''}</span></div>`; 
-            const content = x.t.tx ? `<div style="font-size:12px;color:#666;margin:5px 0;background:#f9f9f9;padding:3px;border-radius:5px;">${x.t.tx}</div>` : ''; 
-            
-            // 🌟 수정: 학생 요청이 없어도(active/new 상태) 교사가 강제로 승인(사용)할 수 있는 버튼 추가
-            const actionBtn = x.t.st==='req' 
-                ? `<button class="btn btn-blue" style="width:100%;margin-top:5px; pointer-events:auto;" onclick="appU('${x.y}',${x.si},${x.k})">요청 승인</button>` 
-                : (x.t.st==='active' || x.t.st==='new' 
-                    ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div><button class="btn btn-org" style="width:100%;margin-top:5px; padding:6px; font-size:14px; pointer-events:auto;" onclick="appU('${x.y}',${x.si},${x.k})">✔️ 강제 사용</button>` 
-                    : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div><button class="btn btn-green" style="width:100%;margin-top:5px;padding:6px;font-size:14px; pointer-events:auto;" onclick="resU('${x.y}',${x.si},${x.k})">🔄 복구</button>`);
-            
-            return `<div id="card_${id}" class="asset ${seld?'sel':''} ${x.t.st==='req'?'req':''} ${x.t.st==='used' || x.t.st==='usd'?'used':''}"
+        let groups = Array.from(groupMap.values());
+        groups.forEach(g => {
+            g.hasReq    = g.items.some(x => x.t.st === 'req');
+            g.hasActive = g.items.some(x => x.t.st === 'active' || x.t.st === 'new');
+            g.status    = g.hasReq ? 'req' : (g.hasActive ? 'active' : 'used');
+        });
+
+        const getW = (st) => { if(st==='req') return 0; if(st==='used'||st==='usd') return 2; return 1; };
+        groups.sort((a,b) => {
+            let val = 0;
+            if(asort==='req')      val = getW(a.status) - getW(b.status);
+            else if(asort==='num') val = parseInt(a.no) - parseInt(b.no);
+            else if(asort==='typ') val = (a.n||'').localeCompare(b.n||'');
+            return val * sdir;
+        });
+
+        currentGroups = groups;
+        currentRenderedItems = groups.map(g => g.gKey);
+
+        document.getElementById('t_ag').innerHTML = groups.map((g, visualIdx) => {
+            const seld = sel.has(g.gKey);
+            const img = g.y==='c'
+                ? (g.i && g.i.includes('http') ? `<img src="${g.i}" style="width:70px;height:70px;object-fit:contain;margin-bottom:5px;">` : `<div class="huge-emoji" style="font-size:70px;">${g.i||'🎁'}</div>`)
+                : `<div class="huge-emoji" style="font-size:70px;">${g.ty==='d'?'🍭':'💌'}</div>`;
+            const cnt = g.items.length;
+            const cntBadge = cnt > 1 ? `<div style="position:absolute;top:6px;right:8px;background:rgba(0,0,0,0.7);color:white;padding:2px 9px;border-radius:8px;font-size:14px;font-weight:bold;">×${cnt}</div>` : '';
+            const statusBadge = g.hasReq ? '<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:5px">🚨 사용요청</div>' : '';
+            const itemTitle = `<div style="font-weight:bold;font-size:14px;margin-top:5px;">${g.sn}의 ${g.n||'아이템'}</div>`;
+            const reqCnt = g.items.filter(x=>x.t.st==='req').length;
+            const actCnt = g.items.filter(x=>x.t.st==='active'||x.t.st==='new').length;
+            const actionBtn = g.hasReq
+                ? `<button class="btn btn-blue" style="width:100%;margin-top:5px;pointer-events:auto;" onclick="appGrp(${visualIdx})">요청 승인 (${reqCnt}개)</button>`
+                : (g.hasActive
+                    ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div><button class="btn btn-org" style="width:100%;margin-top:5px;padding:6px;font-size:14px;pointer-events:auto;" onclick="appGrp(${visualIdx})">✔️ 강제 사용 (${actCnt}개)</button>`
+                    : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div><button class="btn btn-green" style="width:100%;margin-top:5px;padding:6px;font-size:14px;pointer-events:auto;" onclick="resGrp(${visualIdx})">🔄 복구 (${cnt}개)</button>`);
+            const isUsed = !g.hasReq && !g.hasActive;
+            const escapedKey = g.gKey.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            return `<div id="card_${g.gKey}" class="asset ${seld?'sel':''} ${g.hasReq?'req':''} ${isUsed?'used':''}"
                 draggable="false" ondragstart="return false;"
-                onmousedown="startDrag(event, ${visualIdx}, '${id}')"
-                ondblclick="useOne('${x.y}',${x.si},${x.k})"> ${statusBadge} ${img} ${itemTitle} ${content} ${actionBtn} </div>`;
+                onmousedown="startDrag(event, ${visualIdx}, '${escapedKey}')"
+                ondblclick="delGrp(${visualIdx})"> ${statusBadge} ${img} ${itemTitle} ${actionBtn} ${cntBadge} </div>`;
         }).join('');
     }
 
@@ -1413,15 +1470,19 @@ window.appU = function(y, si, k) {
     }
     function appSel() {
         if(sel.size === 0) return alert("승인할 쿠폰을 먼저 선택하세요!");
-        if(!confirm(`선택한 ${sel.size}개 쿠폰을 일괄 승인하시겠습니까?`)) return;
+        let totalCnt = 0;
+        sel.forEach(gKey => { const g = currentGroups.find(x=>x.gKey===gKey); if(g) totalCnt += g.items.length; });
+        if(!confirm(`선택한 그룹(총 ${totalCnt}개)을 일괄 승인하시겠습니까?`)) return;
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
-        sel.forEach(id => {
-            const parts = id.split('_');
-            const y = parts[0], si = parseInt(parts[1]), k = parseInt(parts[2]);
-            const s = stuList[si];
-            if (!s) return;
-            if (y === 'c' && s.inv && s.inv[k]) s.inv[k].st = 'used';
-            else if (y === 'l' && s.ibx && s.ibx[k]) s.ibx[k].st = 'used';
+        sel.forEach(gKey => {
+            const g = currentGroups.find(x => x.gKey === gKey);
+            if(!g) return;
+            g.items.forEach(x => {
+                const s = stuList[x.si];
+                if(!s) return;
+                if(x.y === 'c' && s.inv && s.inv[x.k]) s.inv[x.k].st = 'used';
+                else if(x.y === 'l' && s.ibx && s.ibx[x.k]) s.ibx[x.k].st = 'used';
+            });
         });
         db.stu = stuList;
         sv();
@@ -1449,53 +1510,130 @@ window.appU = function(y, si, k) {
             sv(); rAs();
         } 
     }
-    function delSel(){ 
+    function delSel(){
         if(!confirm("선택 항목을 정말 삭제하시겠습니까? (영구 삭제)")){ return; }
-        sel.forEach(id=>{
-            const [type, stuIdx, itemIdx] = id.split('_');
-            const s = db.stu[stuIdx];
-            let targetItem = null;
-            if(type === 'c') targetItem = s.inv[itemIdx];
-            else targetItem = s.ibx[itemIdx];
-
-            if(targetItem) {
-                targetItem.del = true; 
-                const iName = targetItem.n; 
-                const remainInv = (s.inv || []).filter(x => x.n === iName && !x.del).length;
-                const remainIbx = (s.ibx || []).filter(x => x.n === iName && !x.del).length;
-                if (remainInv + remainIbx === 0 && iName && s.col) {
-                    s.col = s.col.filter(cName => cName !== iName);
+        sel.forEach(gKey => {
+            const g = currentGroups.find(x => x.gKey === gKey);
+            if(!g) return;
+            g.items.forEach(x => {
+                const s = db.stu[x.si];
+                if(!s) return;
+                const arr = x.y === 'c' ? s.inv : s.ibx;
+                if(arr && arr[x.k]) {
+                    const iName = arr[x.k].n;
+                    arr[x.k].del = true;
+                    const remainInv = (s.inv||[]).filter(it=>it.n===iName&&!it.del).length;
+                    const remainIbx = (s.ibx||[]).filter(it=>it.n===iName&&!it.del).length;
+                    if(remainInv+remainIbx===0 && iName && s.col) s.col = s.col.filter(cn=>cn!==iName);
                 }
-            }
+            });
         });
         db.stu.forEach(s=>{
             if(s.inv) s.inv = s.inv.filter(x => !x.del);
             if(s.ibx) s.ibx = s.ibx.filter(x => !x.del);
         });
-        sel.clear(); 
-        sv(); rAs(); rColT(); 
+        sel.clear();
+        sv(); rAs(); rColT();
     }
     
     function appU(y,si,k){ if(y==='c')db.stu[si].inv[k].st='used'; else db.stu[si].ibx[k].st='used'; sv(); rAs(); }
     function useOne(y,si,k){ if(confirm("사용처리/삭제?")){if(y==='c')db.stu[si].inv.splice(k,1);else db.stu[si].ibx.splice(k,1); sv(); rAs();} }
+
+    window.appGrp = function(idx) {
+        const g = currentGroups[idx];
+        if(!g) return;
+        const targets = g.hasReq ? g.items.filter(x=>x.t.st==='req') : g.items.filter(x=>x.t.st==='active'||x.t.st==='new');
+        const maxCnt = targets.length;
+        if(maxCnt === 0) return;
+
+        const old = document.getElementById('appGrpModal'); if(old) old.remove();
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="appGrpModal" class="modal-overlay" onclick="document.getElementById('appGrpModal').remove()">
+                <div class="modal-window" style="width:360px!important;" onclick="event.stopPropagation()">
+                    <div class="modal-inner">
+                        <div class="modal-title" style="font-size:20px!important;">${g.sn}의 [${g.n}]</div>
+                        <p style="color:#8D6E63;font-size:16px;margin:0 0 15px;">승인할 개수를 입력하세요 (최대 ${maxCnt}개)</p>
+                        <input id="appGrpQty" type="number" min="1" max="${maxCnt}" value="${maxCnt}" style="text-align:center;font-size:22px;font-weight:bold;">
+                        <div class="modal-btn-group">
+                            <button class="btn btn-blue" onclick="doAppGrp(${idx})" style="width:100%;font-size:18px;">✅ 승인</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`);
+        document.getElementById('appGrpQty').focus();
+    };
+
+    window.doAppGrp = function(idx) {
+        const g = currentGroups[idx];
+        if(!g) return;
+        const allTargets = g.hasReq ? g.items.filter(x=>x.t.st==='req') : g.items.filter(x=>x.t.st==='active'||x.t.st==='new');
+        const qty = Math.max(1, Math.min(parseInt(document.getElementById('appGrpQty').value)||1, allTargets.length));
+        document.getElementById('appGrpModal').remove();
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        allTargets.slice(0, qty).forEach(x => {
+            const s = stuList[x.si];
+            if(!s) return;
+            if(x.y==='c' && s.inv && s.inv[x.k]) s.inv[x.k].st = 'used';
+            else if(x.y==='l' && s.ibx && s.ibx[x.k]) s.ibx[x.k].st = 'used';
+        });
+        db.stu = stuList; sv(); rAs();
+    };
+
+    window.resGrp = function(idx) {
+        const g = currentGroups[idx];
+        if(!g) return;
+        if(!confirm(`${g.sn}의 [${g.n}] ${g.items.length}개를 복구하시겠습니까?`)) return;
+        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        g.items.forEach(x => {
+            const s = stuList[x.si];
+            if(!s) return;
+            if(x.y==='c' && s.inv && s.inv[x.k]) s.inv[x.k].st = 'active';
+            else if(x.y==='l' && s.ibx && s.ibx[x.k]) s.ibx[x.k].st = 'new';
+        });
+        db.stu = stuList; sv(); setTimeout(()=>{ rAs(); rColT(); }, 100);
+    };
+
+    window.delGrp = function(idx) {
+        const g = currentGroups[idx];
+        if(!g) return;
+        if(!confirm(`${g.sn}의 [${g.n}] ${g.items.length}개를 목록에서 완전히 삭제하시겠습니까?`)) return;
+        g.items.forEach(x => {
+            const s = db.stu[x.si];
+            if(!s) return;
+            const arr = x.y==='c' ? s.inv : s.ibx;
+            if(arr && arr[x.k]) {
+                const iName = arr[x.k].n;
+                arr[x.k].del = true;
+                const remainInv = (s.inv||[]).filter(it=>it.n===iName&&!it.del).length;
+                const remainIbx = (s.ibx||[]).filter(it=>it.n===iName&&!it.del).length;
+                if(remainInv+remainIbx===0 && iName && s.col) s.col = s.col.filter(cn=>cn!==iName);
+            }
+        });
+        db.stu.forEach(s=>{
+            if(s.inv) s.inv = s.inv.filter(x=>!x.del);
+            if(s.ibx) s.ibx = s.ibx.filter(x=>!x.del);
+        });
+        sel.clear(); sv(); rAs(); rColT();
+    };
     
     function upGiv(){ document.getElementById('gt').innerHTML=`<option value="all">📢 전체 학생</option>`+db.stu.map((s,i)=>`<option value="${i}">${s.no}번 ${s.nm}</option>`).join(''); document.getElementById('gi').innerHTML=db.itm.map((t,i)=>`<option value="${i}">${t.n}</option>`).join(''); }
     
-    function giv(){ 
-        const ti=document.getElementById('gt').value, ii=document.getElementById('gi').value, it=db.itm[ii]; 
-        const o={n:it.n, i:it.i, st:'active', g:it.g||'C'}; 
-        
+    function giv(){
+        const ti=document.getElementById('gt').value, ii=document.getElementById('gi').value, it=db.itm[ii];
+        const qty = Math.max(1, parseInt(document.getElementById('gq_cnt').value) || 1);
+        const o={n:it.n, i:it.i, st:'active', g:it.g||'C'};
+
         if(ti==='all') {
             db.stu.forEach(s => {
                 if(!s.inv) s.inv=[];
-                s.inv.push({...o});
+                for(let k=0; k<qty; k++) s.inv.push({...o});
                 if(!s.col) s.col = [];
                 if(!s.col.includes(it.n)) s.col.push(it.n);
             });
         } else {
             const s = db.stu[ti];
             if(!s.inv) s.inv=[];
-            s.inv.push({...o});
+            for(let k=0; k<qty; k++) s.inv.push({...o});
             if(!s.col) s.col = [];
             if(!s.col.includes(it.n)) s.col.push(it.n);
         }
@@ -1640,12 +1778,14 @@ window.appU = function(y, si, k) {
             });
         }); 
         const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
-        db.gac.push({n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}); 
-        sv(); rSet(); document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
+        const gDesc = document.getElementById('gd_desc').value;
+        db.gac.push({n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc, d:gDesc});
+        sv(); rSet(); document.getElementById('gn').value=''; document.getElementById('gc').value=''; document.getElementById('gd_desc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
     }
     
-    function editG(i) { 
-        const g = db.gac[i]; document.getElementById('gn').value = g.n; document.getElementById('gc').value = g.c; document.getElementById('gy').value = g.t || 'scratch'; 
+    function editG(i) {
+        const g = db.gac[i]; document.getElementById('gn').value = g.n; document.getElementById('gc').value = g.c; document.getElementById('gy').value = g.t || 'scratch';
+        document.getElementById('gd_desc').value = g.d || '';
         if(g.cur) document.getElementById('gc_cur').value = g.cur;
         if(document.getElementById('g_spc')) document.getElementById('g_spc').checked = g.spc || false;
         
@@ -1684,9 +1824,10 @@ window.appU = function(y, si, k) {
                 });
             }); 
             const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
-            db.gac[i] = {n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc}; 
-            sv(); rSet(); this.innerText = "생성"; this.onclick = mkG; 
-            document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
+            const gDesc = document.getElementById('gd_desc').value;
+            db.gac[i] = {n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc, d:gDesc};
+            sv(); rSet(); this.innerText = "생성"; this.onclick = mkG;
+            document.getElementById('gn').value=''; document.getElementById('gc').value=''; document.getElementById('gd_desc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
         } 
     }
     
@@ -1744,18 +1885,21 @@ window.appU = function(y, si, k) {
         
         if(!me.inv) me.inv = [];
         const counts = {};
-        me.inv.forEach(i => { 
+        me.inv.forEach(i => {
             const isUsed = (i.st === 'used' || i.st === 'usd');
-            if (showTrash && !isUsed) return; 
+            if (showTrash && !isUsed) return;
             if (!showTrash && isUsed) return;
 
-            const key = `${i.n}_${i.st}`; 
-            if(!counts[key]) counts[key] = { ...i, count: 0 }; 
-            counts[key].count++; 
+            const key = `${i.n}_${i.st}`;
+            if(!counts[key]) counts[key] = { ...i, count: 0 };
+            counts[key].count++;
         });
-        
+
         let itemList = Object.values(counts);
-        
+
+        const itmDescMap = {};
+        (Array.isArray(db.itm) ? db.itm : Object.values(db.itm || {})).forEach(it => { itmDescMap[it.n] = it.d || ''; });
+
         if(!showTrash) {
             let pseudoItems = [];
             if ((!db.cfg || db.cfg.show_cn !== false) && (me.cn > 0)) pseudoItems.push({ n: '캔디', i: '🍭', count: me.cn, pseudo: true, g: 'S' });
@@ -1765,11 +1909,13 @@ window.appU = function(y, si, k) {
         }
 
         itemList.forEach(item => {
-            const isReq = (item.st === 'req'); 
+            const isReq = (item.st === 'req');
             const tierCls = `c-${item.g||'C'}`;
             const clickEvent = (!showTrash && !isReq && !item.pseudo) ? `showItemDetail('${item.n.replace(/'/g, "\\'")}')` : '';
-            
-            html += `<div class="inventory-slot has-item ${tierCls} ${showTrash ? 'is-used' : ''}" onclick="${clickEvent}">
+            const desc = item.pseudo ? '' : (itmDescMap[item.n] || '');
+            const tipAttr = desc ? `onmouseenter="showTip(event,'${desc.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n')}')" onmousemove="moveTip(event)" onmouseleave="hideTip()"` : '';
+
+            html += `<div class="inventory-slot has-item ${tierCls} ${showTrash ? 'is-used' : ''}" ${tipAttr} onclick="${clickEvent}">
                 ${item.i.includes('http') ? `<img src="${item.i}">` : `<div class="slot-emoji">${item.i}</div>`}
                 <div style="font-size: 18px; font-weight: bold; margin-top: 10px; color: #5D4037; text-align: center; word-break: keep-all; line-height: 1.2;">${item.n}</div>
                 <div class="item-count">${item.count}</div>
@@ -1843,8 +1989,10 @@ window.appU = function(y, si, k) {
             normalShopHtml = `
                 <div id="shop-normal-sec" class="shop-section" style="display:none;">
                     <div id="s_sh_items" class="grid" style="margin-top: 20px !important;">
-                       ${saleItems.map((item) => `
-                        <div class="shop-card">
+                       ${saleItems.map((item) => {
+                        const tipAttr = item.d ? `onmouseenter="showTip(event,'${item.d.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n')}')" onmousemove="moveTip(event)" onmouseleave="hideTip()"` : '';
+                        return `
+                        <div class="shop-card" ${tipAttr}>
                             <div class="click-catcher" onclick="window.showAskModal('${item.n.replace(/'/g, "\\'")}')"></div>
                             <div class="shop-card-content">
                                 <div class="shop-title">${item.n}</div>
@@ -1855,7 +2003,7 @@ window.appU = function(y, si, k) {
                                 <div class="btn-price">${item.p} ${curEmoji[item.c||'cn']}</div>
                             </div>
                         </div>
-                        `).join('')}
+                        `; }).join('')}
                     </div>
                 </div>
             `;
@@ -1865,7 +2013,7 @@ window.appU = function(y, si, k) {
         let gacList = Array.isArray(db.gac) ? db.gac : Object.values(db.gac || {});
         
         const kioskCardHtml = `
-            <div class="shop-card" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')">
+            <div class="shop-card" onclick="window.open('https://csgo0404-ai.github.io/class-koisk/', '_blank')" onmouseenter="showTip(event,'클릭하면 키오스크로 이동합니다.')" onmousemove="moveTip(event)" onmouseleave="hideTip()">
                 <div class="shop-card-content">
                     <div class="shop-title" style="color:#FFF9C4;">키오스크</div>
                     <div class="item-shiny gacha-shiny" style="filter:none !important;">🖥️</div>
@@ -1881,8 +2029,10 @@ window.appU = function(y, si, k) {
             <div id="shop-gacha-sec" class="shop-section" style="display:none;">
                 <div id="s_gl" class="grid" style="margin-top: 20px !important;">
                     ${kioskCardHtml}
-                    ${gacList.map((x)=>`
-                        <div class="shop-card">
+                    ${gacList.map((x) => {
+                        const gTipAttr = x.d ? `onmouseenter="showTip(event,'${x.d.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n')}')" onmousemove="moveTip(event)" onmouseleave="hideTip()"` : '';
+                        return `
+                        <div class="shop-card" ${gTipAttr}>
                             <div class="click-catcher" onclick="window.showGachaModal('${x.n.replace(/'/g, "\\'")}')"></div>
                             <div class="shop-card-content">
                                 <div class="shop-title" style="color:#FFF9C4;">${x.n}</div>
@@ -1893,7 +2043,7 @@ window.appU = function(y, si, k) {
                                 <div class="btn-price">${x.c} ${curEmoji[x.cur||'cn']}</div>
                             </div>
                         </div>
-                    `).join('')}
+                    `; }).join('')}
                 </div>
             </div>
         `;
@@ -2493,8 +2643,8 @@ window.appU = function(y, si, k) {
             pkName = pick.n;
             qty = pick.q || 1; // 🌟 설정된 개수 불러오기
         } else {
-            // 일반 확률 뽑기 로직
-            let rnd=Math.random()*100, acc=0, pk=g.r[0]; 
+            // 일반 확률 뽑기 로직 (확률 합이 100 미만이면 마지막 항목이 나머지를 흡수)
+            let rnd=Math.random()*100, acc=0, pk=g.r[g.r.length-1];
             for(let r of g.r){ acc+=parseFloat(r.p); if(rnd<=acc){ pk=r; break; } }
             
             pkName = pk.n;
@@ -2681,18 +2831,18 @@ let isScratchDone = false;
         slotCleared = { '0_t':false, '0_b':false, '1_t':false, '1_b':false, '2_t':false, '2_b':false };
         lastSoundTime = 0;
 
-        // 🌟 수정: 아이템 개수(qty)에 맞춰 복권 점수 시각화를 완벽하게 동기화!
-        // 이제 4개 당첨이면 무조건 초코(5)+쿠키(15) 조합으로 20점이 뜨게 됩니다.
+        // 아이템 개수(qty) 값 자체를 포인트로 직접 매핑
+        // 예) qty=10 → 🍬 일치(+10pts), qty=30 → 전부 일치(+30pts)
         let q = realItem._qty || 1;
         let bonusPoints = 0;
         let win1 = false, win2 = false, win3 = false;
-        
-        if (q === 1) { win1 = true; bonusPoints = 5; }
-        else if (q === 2) { win2 = true; bonusPoints = 10; }
-        else if (q === 3) { win3 = true; bonusPoints = 15; }
-        else if (q === 4) { win1 = true; win3 = true; bonusPoints = 20; }
-        else if (q === 5) { win2 = true; win3 = true; bonusPoints = 25; }
-        else { win1 = true; win2 = true; win3 = true; bonusPoints = 30; }
+
+        if      (q >= 30) { win1 = true; win2 = true; win3 = true; bonusPoints = 30; }
+        else if (q >= 25) { win2 = true; win3 = true; bonusPoints = 25; }
+        else if (q >= 20) { win1 = true; win3 = true; bonusPoints = 20; }
+        else if (q >= 15) { win3 = true; bonusPoints = 15; }
+        else if (q >= 10) { win2 = true; bonusPoints = 10; }
+        else              { win1 = true; bonusPoints = 5; }
 
         scratchTop = ['🍫', '🍬', '🍪'];
         const dummies = ['🍩', '🍰', '🧁', '🍦', '🍧', '🍮', '🥧'].sort(() => Math.random() - 0.5);
@@ -2720,7 +2870,7 @@ let isScratchDone = false;
                 <div style="width: 40%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 3px dashed rgba(141,110,99,0.4); padding-right: 3%; box-sizing: border-box; z-index: 2;">
                     <div class="lottery-title" style="position: relative; background: #8D6E63; color: #FFF; font-size: clamp(28px, 4.5vw, 60px); font-weight: 900; padding: 4% 8%; border-radius: 20px; border: 5px solid #4E342E; box-shadow: 0 8px 0 #4E342E, 0 12px 15px rgba(0,0,0,0.2); text-shadow: 3px 3px 0px #4E342E; margin-bottom: 8%; letter-spacing: 2px; text-align: center; white-space: nowrap;">
                         <div style="position: absolute; top: 5px; left: 5px; right: 5px; bottom: 5px; border: 3px dashed rgba(255,255,255,0.4); border-radius: 12px; pointer-events: none;"></div>
-                        행운 복권
+                        상점 이용권
                     </div>
                     
                     <div style="text-align: center; width: 95%; padding: 5%; border-radius: 15px; background: white; border: 2px dashed #BCAAA4; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
@@ -2816,29 +2966,31 @@ let isScratchDone = false;
                 }
             }
             if(Object.values(slotCleared).every(v => v === true)) {
-                // 🌟 "동전으로 슥슥..." 텍스트 변경 로직 완전 삭제 (계속 텍스트 유지됨)
-                setTimeout(checkReveal, 800); 
+                const _capturedItem = scratchItem;
+                const _capturedMsg  = scratchMsg;
+                const _capturedBonus = scratchBonus;
+                setTimeout(() => checkReveal(_capturedItem, _capturedMsg, _capturedBonus), 800);
             }
         }
     }
 
-    function checkReveal() {
-        snd('f'); 
-        
-        if(scratchBonus >= 25) {
+    function checkReveal(capturedItem, capturedMsg, capturedBonus) {
+        const item  = capturedItem  || scratchItem;
+        const msg   = capturedMsg   || scratchMsg;
+        const bonus = capturedBonus !== undefined ? capturedBonus : scratchBonus;
+        snd('f');
+
+        if(bonus >= 25) {
             fireConfetti('confetti'); setTimeout(() => fireConfetti('confetti'), 400); setTimeout(() => fireConfetti('confetti'), 800);
-        } else if(scratchItem.g === 'A' || scratchItem.g === 'B' || scratchBonus >= 10) {
+        } else if(item.g === 'A' || item.g === 'B' || bonus >= 10) {
             fireConfetti('confetti');
         }
-        
-        // 🌟 수정: 기존에 동전(코인)을 보너스로 주던 로직 완전 삭제!
-        // if (scratchBonus > 0 && me) me.co = (me.co || 0) + scratchBonus; <-- 이 부분이 원인이었습니다.
-        
-        giveReward(scratchItem); // 설정한 아이템(개수 포함)만 깔끔하게 지급
+
+        giveReward(item);
 
         const popup = document.getElementById('scrWinPopup');
         if (popup) {
-            document.getElementById('scrWinText').innerText = `${scratchMsg}`;
+            document.getElementById('scrWinText').innerText = msg;
             popup.classList.remove('hidden');
             
             setTimeout(() => {
@@ -2860,7 +3012,9 @@ let isScratchDone = false;
         if(me && !me.isTest) rBg(); 
     }
     function giveReward(item) {
-        if(me.isTest) return; 
+        if(me.isTest) return;
+
+        if(!Array.isArray(me.inv)) me.inv = me.inv ? Object.values(me.inv) : [];
 
         const qty = item._qty || 1;
         for(let k=0; k<qty; k++){
@@ -3017,61 +3171,12 @@ window.addCharRow = function() {
         return list;
     }
 
-    function updateNotifBell() {
-        const bell = document.getElementById('notifBell');
-        if (!bell) return;
-        const isTeacher = !document.getElementById('appT').classList.contains('hidden');
-        bell.style.display = isTeacher ? 'block' : 'none';
-        if (!isTeacher) return;
-        const list = getNotifList();
-        const badge = document.getElementById('notifBadge');
-        if (list.length > 0) {
-            badge.textContent = list.length > 9 ? '9+' : list.length;
-            badge.style.display = 'flex';
-        } else {
-            badge.style.display = 'none';
-        }
-    }
-
-    function toggleNotifPanel() {
-        const panel = document.getElementById('notifPanel');
-        if (!panel) return;
-        if (panel.style.display === 'flex') {
-            panel.style.display = 'none';
-            return;
-        }
-        const list = getNotifList();
-        const listHtml = list.length === 0
-            ? `<div class="notif-empty">📭 요청이 없습니다</div>`
-            : list.map(item => `
-                <div class="notif-item">
-                    <div style="flex:1;">
-                        <div style="display:flex; gap:8px; align-items:center; margin-bottom:2px;">
-                            ${item.time ? `<span class="notif-item-time">${item.time}</span>` : ''}
-                            <span class="notif-item-name">${item.nm}</span>
-                        </div>
-                        <div class="notif-item-type">${item.type === 'auc' ? '🔨 경매 요청' : '🎁 아이템 승인 요청'} · ${item.label.includes('(') ? item.label.match(/\(([^)]+)\)/)?.[1] || '' : ''}</div>
-                    </div>
-                </div>`).join('');
-        panel.innerHTML = `
-            <div class="notif-header">
-                🔔 요청 목록
-                <span style="font-size:14px; opacity:0.7; font-weight:normal; cursor:pointer;" onclick="document.getElementById('notifPanel').style.display='none'">✕</span>
-            </div>
-            <div style="overflow-y:auto; max-height:360px;">${listHtml}</div>`;
-        panel.style.display = 'flex';
-        panel.style.flexDirection = 'column';
-    }
+    function updateNotifBell() { /* 알림 벨 제거됨 */ }
+    function toggleNotifPanel() {}
 
 
 </script>
 
-<!-- 🔔 알림 벨 -->
-<div id="notifBell">
-    <div id="notifBadge"></div>
-    <div id="notifBellBtn" onclick="toggleNotifPanel()">🔔</div>
-</div>
-<div id="notifPanel"></div>
 
 </body>
 </html>
