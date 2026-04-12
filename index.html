@@ -158,7 +158,11 @@
         .asset:hover .del-btn { display: block; }
         
         #t_set .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-        #t_set .asset { padding: 10px; overflow: hidden; justify-content: center; align-items: center; }
+        #t_set .asset { padding: 10px; overflow: visible; justify-content: center; align-items: center; }
+        .asset-wrap { position: relative; }
+        .asset-wrap .asset { width: 100%; height: 100%; }
+        .add-card { border: 2.5px dashed #4CAF50; background: #F1F8E9; color: #4CAF50; font-size: 36px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 20px; transition: 0.2s; aspect-ratio: 1 / 1; }
+        .add-card:hover { background: #DCEDC8; border-color: #388E3C; color: #388E3C; transform: translateY(-3px); }
         #t_ag { position: relative; }
         #rubber-box { position: absolute; border: none; background: transparent; pointer-events: none; z-index: 1000; }
         .huge-emoji { font-size: 60px; line-height: 1; margin-bottom: 10px; }
@@ -247,7 +251,7 @@
             padding: 3% !important; box-sizing: border-box; overflow: hidden; user-select: none; -webkit-user-select: none; 
         }
         .slot-wrapper { position: relative; width: 90px; height: 160px; border-radius: 12px; overflow: hidden; background: #ECEFF1; border: 3px solid #90A4AE; display:flex; flex-direction: column; align-items:center; justify-content:space-evenly; font-size:45px; box-shadow:inset 0 4px 8px rgba(0,0,0,0.1); user-select: none; -webkit-user-select: none; }
-        /* 🌟 스크래치 복권 이모지 변경 🪙 */
+        /* 🌟 스크래치 복권 이모지 변경 🍯 */
         .slot-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; touch-action: none; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewport="0 0 40 40"><circle cx="20" cy="20" r="16" fill="%23FFC107" stroke="%23FF9800" stroke-width="2"/><text x="50%" y="50%" dy=".35em" text-anchor="middle" font-size="20" font-weight="bold" fill="%23FF9800">₩</text></svg>') 20 20, auto; user-select: none; -webkit-user-select: none; }
         .ticket-title { font-family: 'Jua', sans-serif; font-size: 38px; color: #5D4037; line-height: 1.1; text-align: center; margin-bottom: 10px; word-break: keep-all; }
         .ticket-info { font-size: 15px; background: white; color: #5D4037; padding: 12px; border-radius: 12px; font-weight: bold; line-height: 1.6; text-align: left; border: 2px dashed #BCAAA4; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -268,15 +272,44 @@
         .lotto-ball.paused { animation-play-state: paused !important; }
         .lotto-shaking { animation: machineShake 0.1s infinite; }
         @keyframes machineShake { 0% { transform: rotate(0deg); } 25% { transform: rotate(1deg); } 75% { transform: rotate(-1deg); } 100% { transform: rotate(0deg); } }
-        @keyframes chaos1 { 0% {top:80%; left:50%;} 25% {top:20%; left:20%;} 50% {top:70%; left:80%;} 75% {top:30%; left:60%;} 100% {top:80%; left:40%;} }
-        @keyframes chaos2 { 0% {top:80%; left:40%;} 25% {top:10%; left:70%;} 50% {top:60%; left:10%;} 75% {top:50%; left:50%;} 100% {top:80%; left:60%;} }
-        @keyframes chaos3 { 0% {top:70%; left:20%;} 25% {top:50%; left:80%;} 50% {top:10%; left:40%;} 75% {top:70%; left:10%;} 100% {top:70%; left:30%;} }
-        @keyframes chaos4 { 0% {top:70%; left:80%;} 25% {top:30%; left:10%;} 50% {top:60%; left:50%;} 75% {top:10%; left:80%;} 100% {top:70%; left:70%;} }
-        .ball-moving-1 { animation: chaos1 1.2s infinite alternate ease-in-out; }
-        .ball-moving-2 { animation: chaos2 1.5s infinite alternate ease-in-out; }
-        .ball-moving-3 { animation: chaos3 1.0s infinite alternate ease-in-out; }
-        .ball-moving-4 { animation: chaos4 1.8s infinite alternate ease-in-out; }
-        .ball-drop { position: absolute!important; transition: top 0.5s cubic-bezier(0.5, 0, 0.75, 0); z-index: 100!important; } 
+        @keyframes chaos1  { 0%{top:41%;left:78%;} 25%{top:78%;left:41%;} 50%{top:41%;left:4%;} 75%{top:4%;left:41%;} 100%{top:41%;left:78%;} }
+        @keyframes chaos2  { 0%{top:15%;left:67%;} 25%{top:67%;left:15%;} 50%{top:4%;left:41%;} 75%{top:67%;left:67%;} 100%{top:15%;left:67%;} }
+        @keyframes chaos3  { 0%{top:15%;left:15%;} 25%{top:41%;left:78%;} 50%{top:78%;left:41%;} 75%{top:41%;left:4%;} 100%{top:15%;left:15%;} }
+        @keyframes chaos4  { 0%{top:67%;left:67%;} 25%{top:4%;left:41%;} 50%{top:67%;left:15%;} 75%{top:41%;left:78%;} 100%{top:67%;left:67%;} }
+        @keyframes chaos5  { 0%{top:78%;left:41%;} 25%{top:15%;left:67%;} 50%{top:41%;left:4%;} 75%{top:67%;left:67%;} 100%{top:78%;left:41%;} }
+        @keyframes chaos6  { 0%{top:41%;left:4%;} 25%{top:4%;left:41%;} 50%{top:67%;left:67%;} 75%{top:78%;left:41%;} 100%{top:41%;left:4%;} }
+        @keyframes chaos7  { 0%{top:4%;left:41%;} 25%{top:67%;left:15%;} 50%{top:41%;left:78%;} 75%{top:15%;left:15%;} 100%{top:4%;left:41%;} }
+        @keyframes chaos8  { 0%{top:67%;left:15%;} 25%{top:15%;left:67%;} 50%{top:78%;left:41%;} 75%{top:41%;left:78%;} 100%{top:67%;left:15%;} }
+        @keyframes chaos9  { 0%{top:41%;left:78%;} 25%{top:15%;left:15%;} 50%{top:78%;left:41%;} 75%{top:15%;left:67%;} 100%{top:41%;left:78%;} }
+        @keyframes chaos10 { 0%{top:15%;left:15%;} 25%{top:78%;left:41%;} 50%{top:41%;left:78%;} 75%{top:4%;left:41%;} 100%{top:15%;left:15%;} }
+        @keyframes chaos11 { 0%{top:67%;left:67%;} 25%{top:41%;left:4%;} 50%{top:4%;left:41%;} 75%{top:67%;left:15%;} 100%{top:67%;left:67%;} }
+        @keyframes chaos12 { 0%{top:4%;left:41%;} 25%{top:67%;left:67%;} 50%{top:41%;left:4%;} 75%{top:15%;left:67%;} 100%{top:4%;left:41%;} }
+        @keyframes chaos13 { 0%{top:15%;left:67%;} 25%{top:67%;left:15%;} 50%{top:41%;left:78%;} 75%{top:78%;left:41%;} 100%{top:15%;left:67%;} }
+        @keyframes chaos14 { 0%{top:41%;left:4%;} 25%{top:15%;left:67%;} 50%{top:78%;left:41%;} 75%{top:15%;left:15%;} 100%{top:41%;left:4%;} }
+        @keyframes chaos15 { 0%{top:67%;left:15%;} 25%{top:4%;left:41%;} 50%{top:67%;left:67%;} 75%{top:41%;left:4%;} 100%{top:67%;left:15%;} }
+        @keyframes chaos16 { 0%{top:80%;left:70%;} 20%{top:20%;left:30%;} 40%{top:60%;left:80%;} 60%{top:30%;left:50%;} 80%{top:70%;left:10%;} 100%{top:80%;left:65%;} }
+        @keyframes chaos17 { 0%{top:45%;left:10%;} 20%{top:75%;left:50%;} 40%{top:10%;left:70%;} 60%{top:65%;left:30%;} 80%{top:25%;left:75%;} 100%{top:45%;left:15%;} }
+        @keyframes chaos18 { 0%{top:60%;left:60%;} 20%{top:10%;left:20%;} 40%{top:80%;left:35%;} 60%{top:40%;left:80%;} 80%{top:15%;left:55%;} 100%{top:60%;left:55%;} }
+        @keyframes chaos19 { 0%{top:25%;left:45%;} 20%{top:65%;left:75%;} 40%{top:15%;left:30%;} 60%{top:70%;left:10%;} 80%{top:50%;left:60%;} 100%{top:25%;left:40%;} }
+        @keyframes chaos20 { 0%{top:70%;left:15%;} 20%{top:30%;left:65%;} 40%{top:65%;left:40%;} 60%{top:20%;left:80%;} 80%{top:55%;left:25%;} 100%{top:70%;left:20%;} }
+        .ball-moving-1  { animation: chaos1  1.6s  infinite linear; }
+        .ball-moving-2  { animation: chaos2  1.9s  infinite linear; }
+        .ball-moving-3  { animation: chaos3  1.35s infinite linear; }
+        .ball-moving-4  { animation: chaos4  2.1s  infinite linear; }
+        .ball-moving-5  { animation: chaos5  1.7s  infinite linear; }
+        .ball-moving-6  { animation: chaos6  1.3s  infinite linear; }
+        .ball-moving-7  { animation: chaos7  2.4s  infinite linear; }
+        .ball-moving-8  { animation: chaos8  1.6s  infinite linear; }
+        .ball-moving-9  { animation: chaos9  2.0s  infinite linear; }
+        .ball-moving-10 { animation: chaos10 1.45s infinite linear; }
+        .ball-moving-11 { animation: chaos11 1.8s  infinite linear; }
+        .ball-moving-12 { animation: chaos12 1.25s infinite linear; }
+        .ball-moving-13 { animation: chaos13 2.25s infinite linear; }
+        .ball-moving-14 { animation: chaos14 1.65s infinite linear; }
+        .ball-moving-15 { animation: chaos15 1.35s infinite linear; }
+        @keyframes lottoExitPop { 0%{transform:translateX(-50%) scale(0.15);opacity:0;} 45%{transform:translateX(-50%) scale(1.22);opacity:1;} 65%{transform:translateX(-50%) scale(0.9);} 82%{transform:translateX(-50%) scale(1.07);} 100%{transform:translateX(-50%) scale(1);opacity:1;} }
+        .ball-drop { position: absolute!important; z-index: 100!important; }
+        .ball-drop.exiting { animation: lottoExitPop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards; } 
         .ball-center { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 99999!important; width: 300px; height: 300px; border-radius: 50%; border: 5px solid rgba(255,255,255,0.5); background-color: white; box-shadow: inset -10px -10px 30px rgba(0,0,0,0.2), 0 0 100px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; color: #333; text-align: center; }
         .ball-center.show { transform: translate(-50%, -50%) scale(1); }
         .ball-center::after { content: ''; width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, rgba(255,255,255,0.9) 50%, transparent 50%); position: absolute; top: 0; left: 0; transform: rotate(45deg); pointer-events: none; }
@@ -478,7 +511,7 @@
                     <button class="btn btn-blue" onclick="showLogModal()">📜 지급 기록</button>
                 </div>
             </div>
-            <table><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th>코드</th><th>🍭캔디</th><th>🧺누구나 바구니</th><th>🪙코인</th><th>🍪쿠키</th><th>관리</th></tr></thead><tbody id="ttb"></tbody></table>
+            <table><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th>코드</th><th>🍭캔디</th><th>🧺누구나 바구니</th><th>🍯코인</th><th>🍪쿠키</th><th>관리</th></tr></thead><tbody id="ttb"></tbody></table>
         </div>
         <div id="t_mgr" class="hidden">
             <h2>📦 쿠폰 관리</h2>
@@ -531,7 +564,7 @@
                     <select id="ic" style="width:140px; margin-bottom:5px;">
                         <option value="cn">🍭 캔디</option>
                         <option value="tk">🧺 누구나 바구니</option>
-                        <option value="co">🪙 동전</option>
+                        <option value="co">🍯 꿀</option>
                         <option value="kc">🍪 쿠키</option>
                     </select>
         
@@ -559,7 +592,7 @@
                     <select id="gc_cur" style="width:140px; margin-bottom:5px;">
                         <option value="cn">🍭 캔디</option>
                         <option value="tk">🧺 누구나 바구니</option>
-                        <option value="co">🪙 동전</option>
+                        <option value="co">🍯 꿀</option>
                         <option value="kc">🍪 쿠키</option>
                     </select>
         
@@ -671,7 +704,30 @@
             }
             if(t==='master') { o.type='square'; o.frequency.setValueAtTime(261.63, ac.currentTime); o.frequency.setValueAtTime(329.63, ac.currentTime+0.2); o.frequency.setValueAtTime(392.00, ac.currentTime+0.4); o.frequency.setValueAtTime(523.25, ac.currentTime+0.6); g.gain.setValueAtTime(0.3, ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime+1.5); o.start(); o.stop(ac.currentTime+1.5); }
             if(t==='s'){ const bufferSize = ac.sampleRate * 0.1; const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1; const noise = ac.createBufferSource(); noise.buffer = buffer; const noiseGain = ac.createGain(); noiseGain.gain.value = 0.2; noise.connect(noiseGain); noiseGain.connect(ac.destination); noise.start(); }
-            if(t==='r'){ o.type='triangle'; o.frequency.setValueAtTime(150,ac.currentTime); o.frequency.exponentialRampToValueAtTime(600,ac.currentTime+0.3); g.gain.linearRampToValueAtTime(0,ac.currentTime+0.4); o.start(); o.stop(ac.currentTime+0.4); } 
+            if(t==='r'){ o.type='triangle'; o.frequency.setValueAtTime(150,ac.currentTime); o.frequency.exponentialRampToValueAtTime(600,ac.currentTime+0.3); g.gain.linearRampToValueAtTime(0,ac.currentTime+0.4); o.start(); o.stop(ac.currentTime+0.4); }
+            if(t==='lotto'){
+                // Phase 1 (0–1s): Rapid capsule clinking
+                for(let i=0;i<13;i++){
+                    const bt=i*0.077;
+                    const oc=ac.createOscillator(),gc2=ac.createGain();
+                    oc.type='triangle'; oc.connect(gc2); gc2.connect(ac.destination);
+                    oc.frequency.setValueAtTime(380+i*22+Math.random()*60, ac.currentTime+bt);
+                    oc.frequency.exponentialRampToValueAtTime(90, ac.currentTime+bt+0.07);
+                    gc2.gain.setValueAtTime(0.18, ac.currentTime+bt);
+                    gc2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+bt+0.09);
+                    oc.start(ac.currentTime+bt); oc.stop(ac.currentTime+bt+0.1);
+                }
+                // Phase 2 (1.85–2.45s): Rising musical cascade (midpoint hits ball pop at ~2.15s)
+                [300,360,420,480,540,600,700,840,1000].forEach((freq,i)=>{
+                    const bt=1.85+i*0.075;
+                    const oc=ac.createOscillator(),gc2=ac.createGain();
+                    oc.type='square'; oc.connect(gc2); gc2.connect(ac.destination);
+                    oc.frequency.setValueAtTime(freq, ac.currentTime+bt);
+                    gc2.gain.setValueAtTime(0.2, ac.currentTime+bt);
+                    gc2.gain.exponentialRampToValueAtTime(0.001, ac.currentTime+bt+0.11);
+                    oc.start(ac.currentTime+bt); oc.stop(ac.currentTime+bt+0.13);
+                });
+            }
         }catch(e){}
     }
 
@@ -795,9 +851,9 @@ const firebaseConfig = {
     let currentGachaIndex = null;
     let showTrash = false; 
 
-    // 🪙 화폐 아이콘 매핑
-    const curEmoji = {cn: '🍭', tk: '🧺', kc: '🍪', co: '🪙'};
-    const curName = {cn: '캔디', tk: '누구나 바구니', kc: '쿠키', co: '동전'};
+    // 🍯 화폐 아이콘 매핑
+    const curEmoji = {cn: '🍭', tk: '🧺', kc: '🍪', co: '🍯'};
+    const curName = {cn: '캔디', tk: '누구나 바구니', kc: '쿠키', co: '꿀'};
 
     // 다했니 API 동기화 설정
     function saveDahessniKey(val) {
@@ -926,7 +982,7 @@ const firebaseConfig = {
                 }
                 if(!document.getElementById('t_mgr').classList.contains('hidden')) { rAs(); upGiv(); }
                 if(!document.getElementById('t_col').classList.contains('hidden')) rColT();
-                if(!document.getElementById('t_set').classList.contains('hidden')) rSet();
+                if(!document.getElementById('t_set').classList.contains('hidden') && !_localSaving) rSet();
                 if(!document.getElementById('t_auc').classList.contains('hidden')) rAucT();
                 setTimeout(updateNotifBell, 0);
             }
@@ -1014,7 +1070,12 @@ const firebaseConfig = {
         });
     }
 
+    let _localSaving = false;
+    let _localSavingTimer = null;
     function sv(){
+        _localSaving = true;
+        clearTimeout(_localSavingTimer);
+        _localSavingTimer = setTimeout(() => { _localSaving = false; }, 3000);
         dbRef.set(db);
     }
 
@@ -1247,7 +1308,7 @@ const firebaseConfig = {
                 <th style="background:#4E342E; color:white; width:15%;">🍪쿠키</th>
                 <th style="background:${s_co ? '#4E342E' : '#BDBDBD'}; color:${s_co ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap; width:15%;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;">🪙동전</span>
+                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;">🍯꿀</span>
                         <div style="display:flex; flex-direction:column; gap:1px;">
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',1)">▲</button>
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',-1)">▼</button>
@@ -1739,17 +1800,37 @@ window.appU = function(y, si, k) {
         alert(me.rb + "단계 진화 성공! 캐릭터가 다음 단계로 성장했습니다! 👑");
     }
 
-    function rSet(){ 
-        document.getElementById('il').innerHTML=db.itm.map((x,i)=>`<div class="asset" onclick="editI(${i})"><div class="del-btn" onclick="event.stopPropagation();delI_T(${i})">×</div><div class="huge-emoji">${x.i}</div><div class="info">${x.n} | ${x.p} ${curEmoji[x.c||'cn']}${x.s?'':'(비매품)'}<br><span style="font-size:11px;color:#888; font-weight:normal;">${x.d||''}</span></div></div>`).join(''); 
-        const typeEmoji = {scratch:'🪙', card:'🗳️', lotto:'🕹️'};
-        document.getElementById('gl').innerHTML=db.gac.map((x,i)=>`<div class="asset" ondblclick="editG(${i})" oncontextmenu="tryGachaT(${i}); return false;"><div class="del-btn" onclick="event.stopPropagation();delG(${i})">×</div><div class="huge-emoji">${typeEmoji[x.t]}</div><div class="info">${x.n} ${x.spc?'✨':''}| ${x.c} ${curEmoji[x.cur||'cn']}</div></div>`).join(''); 
+    function rSet(scrollToIdx){
+        document.getElementById('il').innerHTML=db.itm.map((x,i)=>`
+            <div class="asset-wrap">
+                <div class="asset" onclick="editI(${i})">
+                    <div class="del-btn" onclick="event.stopPropagation();delI_T(${i})">×</div>
+                    <div class="huge-emoji">${x.i}</div>
+                    <div class="info">${x.n} | ${x.p} ${curEmoji[x.c||'cn']}${x.s?'':'(비매품)'}<br><span style="font-size:11px;color:#888; font-weight:normal;">${x.d||''}</span></div>
+                </div>
+            </div>`).join('') +
+            `<div class="add-card" onclick="document.getElementById('in').focus()">+</div>`;
+        const tEmo = {scratch:'🥠', card:'🗳️', lotto:'🕹️'};
+        document.getElementById('gl').innerHTML=db.gac.map((x,i)=>`
+            <div class="asset-wrap">
+                <div class="asset" id="gcard_${i}" ondblclick="editG(${i})" oncontextmenu="tryGachaT(${i}); return false;">
+                    <div class="del-btn" onclick="event.stopPropagation();delG(${i})">×</div>
+                    <div class="huge-emoji">${x.em||tEmo[x.t]||'🎁'}</div>
+                    <div class="info">${x.n} ${x.spc?'✨':''}| ${x.c} ${curEmoji[x.cur||'cn']}</div>
+                </div>
+            </div>`).join('') +
+            `<div class="add-card" onclick="document.getElementById('gn').focus()">+</div>`;
+        if(scrollToIdx !== undefined) {
+            const el = document.getElementById('gcard_' + scrollToIdx);
+            if(el) setTimeout(() => el.scrollIntoView({behavior:'smooth', block:'center'}), 50);
+        }
     }
     
     function addI(){ 
         const isSale = document.getElementById('isSale').checked;
         const desc = document.getElementById('id_desc').value;
-        db.itm.push({n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}); 
-        sv(); rSet(); 
+        db.itm.push({n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale});
+        rSet(); sv();
         document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
     }
     
@@ -1760,13 +1841,13 @@ window.appU = function(y, si, k) {
         btn.onclick = function() { 
             const isSale = document.getElementById('isSale').checked;
             const desc = document.getElementById('id_desc').value;
-            db.itm[i] = {n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale}; 
-            sv(); rSet(); this.innerText = "등록"; this.onclick = addI; 
+            db.itm[i] = {n:document.getElementById('in').value, c:document.getElementById('ic').value, p:parseInt(document.getElementById('ip').value), i:document.getElementById('ii').value||"🎁", d:desc, s:isSale};
+            rSet(); sv(); this.innerText = "등록"; this.onclick = addI; 
             document.getElementById('in').value=''; document.getElementById('ip').value=''; document.getElementById('ii').value=''; document.getElementById('id_desc').value='';
         } 
     }
     
-    function delI_T(i) { if(confirm("아이템을 삭제하시겠습니까?")) { db.itm.splice(i,1); sv(); rSet(); } }
+    function delI_T(i) { if(confirm("아이템을 삭제하시겠습니까?")) { db.itm.splice(i,1); rSet(); sv(); } }
     
     function mkG(){ 
         let rs=[]; 
@@ -1779,12 +1860,16 @@ window.appU = function(y, si, k) {
         }); 
         const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
         const gDesc = document.getElementById('gd_desc').value;
-        db.gac.push({n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc, d:gDesc});
-        sv(); rSet(); document.getElementById('gn').value=''; document.getElementById('gc').value=''; document.getElementById('gd_desc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
+        const gEm = (document.getElementById('gi') || {}).value?.trim() || '';
+        db.gac.push({n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', em:gEm, t:document.getElementById('gy').value, r:rs, spc:isSpc, d:gDesc});
+        const newIdx = db.gac.length - 1;
+        rSet(newIdx); sv();
+        document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('gi')) document.getElementById('gi').value=''; document.getElementById('gd_desc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
     }
-    
+
     function editG(i) {
         const g = db.gac[i]; document.getElementById('gn').value = g.n; document.getElementById('gc').value = g.c; document.getElementById('gy').value = g.t || 'scratch';
+        if(document.getElementById('gi')) document.getElementById('gi').value = g.em || '';
         document.getElementById('gd_desc').value = g.d || '';
         if(g.cur) document.getElementById('gc_cur').value = g.cur;
         if(document.getElementById('g_spc')) document.getElementById('g_spc').checked = g.spc || false;
@@ -1825,13 +1910,23 @@ window.appU = function(y, si, k) {
             }); 
             const isSpc = document.getElementById('g_spc') ? document.getElementById('g_spc').checked : false;
             const gDesc = document.getElementById('gd_desc').value;
-            db.gac[i] = {n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', t:document.getElementById('gy').value, r:rs, spc:isSpc, d:gDesc};
-            sv(); rSet(); this.innerText = "생성"; this.onclick = mkG;
-            document.getElementById('gn').value=''; document.getElementById('gc').value=''; document.getElementById('gd_desc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
+            const gEm2 = (document.getElementById('gi') || {}).value?.trim() || '';
+            db.gac[i] = {n:document.getElementById('gn').value, c:parseInt(document.getElementById('gc').value), cur:document.getElementById('gc_cur').value, i:'', em:gEm2, t:document.getElementById('gy').value, r:rs, spc:isSpc, d:gDesc};
+            rSet(i); sv(); this.innerText = "생성"; this.onclick = mkG;
+            document.getElementById('gn').value=''; document.getElementById('gc').value=''; if(document.getElementById('gi')) document.getElementById('gi').value=''; document.getElementById('gd_desc').value=''; if(document.getElementById('g_spc')) document.getElementById('g_spc').checked=false; document.getElementById('gr').innerHTML = ''; addGr();
         } 
     }
     
-    function delG(i) { if(confirm("뽑기 기계를 삭제하시겠습니까?")) { db.gac.splice(i,1); sv(); rSet(); } }
+    function delG(i) { if(confirm("뽑기 기계를 삭제하시겠습니까?")) { db.gac.splice(i,1); rSet(); sv(); } }
+
+    function dupG(i) {
+        const src = db.gac[i];
+        const copy = JSON.parse(JSON.stringify(src));
+        copy.n = src.n + ' (복사)';
+        db.gac.push(copy);
+        const newIdx = db.gac.length - 1;
+        rSet(newIdx); sv();
+    }
 
     function addGr(){ 
         const d = document.createElement('div'); d.style.marginBottom="8px"; d.style.display="flex"; d.style.gap="6px"; d.style.alignItems="center";
@@ -1904,7 +1999,7 @@ window.appU = function(y, si, k) {
             let pseudoItems = [];
             if ((!db.cfg || db.cfg.show_cn !== false) && (me.cn > 0)) pseudoItems.push({ n: '캔디', i: '🍭', count: me.cn, pseudo: true, g: 'S' });
             if ((!db.cfg || db.cfg.show_tk !== false) && (me.tk > 0)) pseudoItems.push({ n: '누구나 바구니', i: '🧺', count: me.tk, pseudo: true, g: 'S' });
-            if ((!db.cfg || db.cfg.show_co !== false) && (me.co > 0)) pseudoItems.push({ n: '동전', i: '🪙', count: me.co, pseudo: true, g: 'S' });
+            if ((!db.cfg || db.cfg.show_co !== false) && (me.co > 0)) pseudoItems.push({ n: '꿀', i: '🍯', count: me.co, pseudo: true, g: 'S' });
             itemList = [...pseudoItems, ...itemList];
         }
 
@@ -2009,7 +2104,7 @@ window.appU = function(y, si, k) {
             `;
         }
 
-        const typeEmoji = {scratch:'🪙', card:'🗳️', lotto:'🕹️'};
+        const typeEmoji = {scratch:'🍯', card:'🗳️', lotto:'🕹️'};
         let gacList = Array.isArray(db.gac) ? db.gac : Object.values(db.gac || {});
         
         const kioskCardHtml = `
@@ -2540,7 +2635,7 @@ window.appU = function(y, si, k) {
                         <select id="tr_c" style="flex:1; margin-bottom:0;">
                             <option value="cn">🍭 캔디</option>
                             <option value="tk">🧺 누구나 바구니</option>
-                            <option value="co">🪙 동전</option>
+                            <option value="co">🍯 꿀</option>
                             <option value="kc">🍪 쿠키</option>
                         </select>
                         <input id="tr_p" type="number" placeholder="시작 가격" style="flex:1; margin-bottom:0;">
@@ -2655,12 +2750,14 @@ window.appU = function(y, si, k) {
         if(!winItem) winItem = {n:pkName, i:'🎁', g:'C'};
         winItem = {...winItem, _qty: qty}; // 🌟 당첨 아이템에 개수 정보 추가
         
-        const others = db.itm.filter(it => it.n !== winItem.n);
+        // 더미는 이 뽑기의 g.r 목록에서만 선택 (설정 안 된 아이템 노출 방지)
+        const poolNames = (g.r || []).map(r => r.n).filter(n => n !== winItem.n);
+        const others = poolNames.map(n => db.itm.find(it => it.n === n) || {n, i:'🎁', g:'C'});
         if(others.length >= 2) {
             const shuffled = others.sort(() => 0.5 - Math.random());
             dummy1 = {...shuffled[0]}; dummy2 = {...shuffled[1]};
-        } else if (others.length === 1) {
-            dummy1 = {...others[0]}; dummy2 = Math.random() > 0.5 ? {...others[0]} : {...winItem};
+        } else if(others.length === 1) {
+            dummy1 = {...others[0]}; dummy2 = {...winItem};
         } else {
             dummy1 = {...winItem}; dummy2 = {...winItem};
         }
@@ -2682,37 +2779,51 @@ window.appU = function(y, si, k) {
         document.querySelectorAll('.ball-drop').forEach(el => el.remove());
         document.querySelectorAll('.ball-center').forEach(el => el.remove()); 
 
-        const colors = ['#4DD0E1', '#81C784', '#42A5F5', '#9575CD', '#EF5350', '#FFCA28'];
-        for(let i=0; i<6; i++) {
+        const colors = ['#4DD0E1','#81C784','#42A5F5','#9575CD','#EF5350','#FFCA28','#FF8A65','#A5D6A7','#CE93D8','#80DEEA','#F06292','#AED581','#FFB74D','#4FC3F7','#BA68C8'];
+        const dur = [1.6,1.9,1.35,2.1,1.7,1.3,2.4,1.6,2.0,1.45,1.8,1.25,2.25,1.65,1.35];
+        for(let i=0; i<15; i++) {
             let b = document.createElement('div');
-            b.className = `lotto-ball ball-moving-${(i%4)+1}`;
+            b.className = `lotto-ball ball-moving-${i+1}`;
+            b.style.animationDelay = `-${(Math.random() * dur[i]).toFixed(2)}s`;
             b.style.background = colors[i % colors.length];
             b.style.left = (Math.random() * 200 + 10) + 'px';
-            b.style.top = (Math.random() * 200 + 10) + 'px';
-            b.style.transform = `rotate(${Math.random() * 360}deg)`;
+            b.style.top  = (Math.random() * 200 + 10) + 'px';
+            b.style.transform = `rotate(${Math.random()*360}deg)`;
             bowl.appendChild(b);
         }
         document.querySelector('.gumball-machine').classList.add('lotto-shaking');
         document.getElementById('gKnob').classList.add('spin');
-        snd('s');
+        snd('lotto');
 
         setTimeout(() => {
-            document.querySelector('.gumball-machine').classList.remove('lotto-shaking');
+            const machine = document.querySelector('.gumball-machine');
+            machine.classList.remove('lotto-shaking');
+            machine.style.animation = 'none'; // popUp 재실행 방지
             const movingBalls = document.querySelectorAll('.lotto-ball');
             movingBalls.forEach(ball => {
                 ball.classList.add('paused');
-                const computedStyle = window.getComputedStyle(ball);
-                ball.style.top = computedStyle.top; ball.style.left = computedStyle.left;
+                const cs = window.getComputedStyle(ball);
+                ball.style.top = cs.top; ball.style.left = cs.left;
             });
+            // 정지 후 하단에 5×3 격자로 골고루 모이기
+            setTimeout(() => {
+                const ballArr = Array.from(movingBalls).sort(() => Math.random() - 0.5);
+                ballArr.forEach((ball, idx) => {
+                    ball.style.transition = 'top 0.45s ease-out, left 0.45s ease-out';
+                    const col = idx % 5, row = Math.floor(idx / 5);
+                    ball.style.left = (5 + col * 50 + Math.random() * 8) + 'px';
+                    ball.style.top  = (148 + row * 32 + Math.random() * 8) + 'px';
+                });
+            }, 30);
 
             let chosen = document.createElement('div');
             chosen.className = 'lotto-ball ball-drop';
-            chosen.style.left = '50%'; chosen.style.transform = 'translateX(-50%)'; chosen.style.top = '160px'; 
+            chosen.style.left = '50%'; chosen.style.transform = 'translateX(-50%)'; chosen.style.top = '400px';
             const winColor = colors[Math.floor(Math.random()*colors.length)];
             chosen.style.background = winColor;
             document.querySelector('.gumball-machine').appendChild(chosen);
 
-            setTimeout(() => { chosen.style.top = '380px'; }, 50);
+            setTimeout(() => { chosen.classList.add('exiting'); }, 150);
 
             setTimeout(() => {
                 setTimeout(() => {
@@ -2739,9 +2850,9 @@ window.appU = function(y, si, k) {
                     document.getElementById('lottoCloseBtn').onclick = () => {
                         centerBall.remove(); chosen.remove(); clsLotto();
                     };
-                }, 600); 
-            }, 600);
-        }, 2000); 
+                }, 500);
+            }, 900);
+        }, 2000);
     }
 
     function clsLotto() { 
