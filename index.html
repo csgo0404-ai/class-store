@@ -1715,8 +1715,10 @@ let _renderLock = false; // 재진입 방지
 
             // 아바타 이미지 백그라운드 프리로드 (첫 로그인 느린 이미지 해결)
             requestIdleCallback(()=>{
-                (db.avt||[]).forEach(a=>{ if(a.img && a.img.startsWith('http')){ const _i=new Image(); _i.src=a.img; } });
-            }, {timeout:3000});
+    (db.avt||[]).forEach(a=>{ if(a.img){ const _i=new Image(); _i.src=a.img; } });
+}, {timeout:3000});
+
+
 
             // 강제 새로고침 체크
             if(db.cfg.reloadAt && db.cfg.reloadAt > window._pageLoadTime) {
@@ -1850,7 +1852,7 @@ if (_renderLock) return;
                 if(!document.getElementById('t_set').classList.contains('hidden') && !_localSaving) { rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); }
                 if(!document.getElementById('t_auc').classList.contains('hidden')) { rAucT(); rGacQueue(); }
 _renderLock = true;
-setTimeout(() => { _renderLock = false; }, 50);
+setTimeout(() => { _renderLock = false; }, 100);
                 setTimeout(updateNotifBell, 0);
                 setTimeout(updateMenuBadges, 0);
                 setTimeout(window._updateShopBadge||function(){}, 0);
@@ -2407,7 +2409,8 @@ setTimeout(() => { _renderLock = false; }, 50);
             return `<tr>
                 <td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td>
                 <td>${s.no}</td>
-                <td style="font-size:16px; font-weight:bold; cursor:pointer; color:#1976D2;" onclick="window.open(location.pathname+'?cd=${s.cd}','_blank')" title="클릭하여 학생 화면으로 열기">${s.nm}</td>
+                <td style="font-size:16px; font-weight:bold; cursor:pointer; color:#1976D2;" onclick="me=null; localStorage.removeItem('stuCode'); location.href=location.pathname+'?cd=${s.cd}';" title="클릭하여 학생 화면으로 열기">${s.nm}</td>
+
                 <td style="font-weight:bold; color:#8D6E63; font-size:18px;" id="cookie_val_${i}">${curCookie}${s.shopUsed?`<div style="font-size:10px;color:#E65100;font-weight:normal;cursor:pointer;" onclick="showShopUsedReport()">-${s.shopUsed}🍪 차감</div>`:''}</td>
                 <td><input class="qty-input" style="${inputStyle} color:#FBC02D;" type="number" value="${s.co||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'co',this.value)" onchange="upCk(${i},'co',this.value)"></td>
                 <td><input class="qty-input" style="${inputStyle}" type="number" value="${s.cn||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'cn',this.value)" onchange="upCk(${i},'cn',this.value)"></td>
