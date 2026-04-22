@@ -747,7 +747,7 @@
         .plz-chat-row .chat-who { color:#90CAF9; font-weight:bold; }
         .plz-chat-row .chat-time { color:rgba(255,255,255,0.28); font-size:10px; }
         .plz-map-bg { position:absolute; inset:0; background-size:cover; background-position:center; }
-        .plz-char { position:absolute; transform:translate(-50%,-100%); transition:left 0.15s ease-out, top 0.15s ease-out; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
+        .plz-char { position:absolute; transform:translate(-50%,-100%); transition:left 0.08s linear, top 0.08s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
         .plz-char.me { transition:none; }
         .plz-tit-slot { display:flex; justify-content:center; }
         .plz-nm-slot { display:flex; justify-content:center; margin-top:-4px; }
@@ -767,6 +767,7 @@
         .plz-bubble::before { content:''; position:absolute; bottom:-10px; left:10px; width:5px; height:5px; background:#1a1a1a; box-shadow:0 5px 0 #1a1a1a,-5px 10px 0 #1a1a1a; }
         .plz-bubble::after  { content:''; position:absolute; bottom:-8px;  left:11px; width:3px; height:3px; background:white; box-shadow:0 5px 0 white,-5px 10px 0 white; }
         @keyframes bubbleFade { 0%{opacity:0;transform:scale(0.85);} 5%{opacity:1;transform:scale(1);} 80%{opacity:1;} 100%{opacity:0;} }
+        @keyframes dustFade { 0%{opacity:0.8;transform:translate(-50%,-50%) scale(1);} 100%{opacity:0;transform:translate(-50%,-150%) scale(0.3);} }
         .plz-chat-bar { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); width:min(400px,80%); display:flex; gap:8px; z-index:30; }
         .plz-chat-bar input { flex:1; padding:10px 16px; border-radius:25px; border:none; box-shadow:0 2px 12px rgba(0,0,0,0.2); font-family:'Jua'; font-size:15px; outline:none; }
         .plz-chat-bar button { padding:10px 18px; border-radius:25px; border:none; background:var(--act); color:white; font-family:'Jua'; font-size:15px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.15); }
@@ -858,11 +859,14 @@
     </div>
 </div>
 <script>
-    if(localStorage.getItem('teacherLogged')==='1') {
+    const _urlCdParam = new URLSearchParams(location.search).get('cd');
+    if(_urlCdParam) {
+        // URL에 학생 코드가 있으면 학생 화면 우선 (교사 탭에서 학생 이름 클릭 시)
         document.getElementById('autoLoginLoader').style.display = 'flex';
-        // DB 로드 후 교사 화면으로 전환 (onValue 콜백에서 처리)
+    } else if(localStorage.getItem('teacherLogged')==='1') {
+        document.getElementById('autoLoginLoader').style.display = 'flex';
         window._autoTeacher = true;
-    } else if(localStorage.getItem('stuCode') || new URLSearchParams(location.search).get('cd')) {
+    } else if(localStorage.getItem('stuCode')) {
         document.getElementById('autoLoginLoader').style.display = 'flex';
     } else {
         document.getElementById('loginBox').style.display = '';
@@ -871,10 +875,9 @@
 
 <div id="appT" class="app hidden">
     <div class="side">
-        <div class="menu on" onclick="nav('t_stu',this)">📜 학생 관리<span id="shopUsedBadge" style="display:none;background:#E53935;color:white;border-radius:10px;font-size:11px;font-weight:bold;padding:1px 6px;margin-left:5px;vertical-align:middle;cursor:pointer;" onclick="event.stopPropagation();showShopUsedReport()"></span></div>
-        <div id="menu_mgr" class="menu" onclick="nav('t_mgr',this)" style="position:relative;">✔️ 승인 및 지급</div>
-        <div class="menu" onclick="nav('t_set',this)">📋 아이템 등록</div>
-        <div class="menu" id="menu_auc" onclick="nav('t_auc',this)" style="position:relative;">🔨 경매 관리</div>
+        <div class="menu on" onclick="nav('t_stu',this)" style="position:relative;">📜 학생 관리<span id="shopUsedBadge" style="display:none;position:absolute;top:6px;right:6px;background:#E53935;color:white;border-radius:50%;width:20px;height:20px;font-size:11px;font-weight:bold;line-height:20px;text-align:center;cursor:pointer;z-index:5;" onclick="event.stopPropagation();showShopUsedReport()"></span></div>
+        <div class="menu" id="menu_set" onclick="nav('t_set',this)" style="position:relative;">📦 아이템 관리</div>
+        <div class="menu" id="menu_auc" onclick="nav('t_auc',this)" style="position:relative;">📋 요청사항</div>
         <div class="menu" onclick="nav('t_col',this)">📖 도감 관리</div>
         <div id="menu_avt" class="menu" onclick="nav('t_avt',this)" style="position:relative;">👤 아바타 관리</div>
         <div class="menu" onclick="nav('t_plz',this)">🏫 광장 관리</div>
@@ -887,25 +890,26 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2 style="margin:0;cursor:pointer;" onclick="showLogModal()">📜 학생 관리</h2>
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <input id="dahessni_api" placeholder="다했니 API Key (쿠키 연동용)" style="width:250px; margin:0;" onchange="saveDahessniKey(this.value)">
-                    <button class="btn btn-wood" id="syncBtn" onclick="syncAllCookies()" style="padding:8px 15px;">쿠키 수동 동기화</button>
+                    <button class="btn btn-gray" onclick="showAllPurchaseLog()" style="padding:8px 15px;">📋 구매 내역</button>
                     <button class="btn btn-org" onclick="showShopUsedReport()" style="padding:8px 15px;">🍪 상점 차감 정산</button>
                     <button class="btn btn-green" onclick="backupDB()" style="padding:8px 15px;">📤 내보내기</button>
                     <button class="btn btn-blue" onclick="document.getElementById('_restoreInput').click()" style="padding:8px 15px;">📥 불러오기</button>
                     <input type="file" id="_restoreInput" accept=".json" style="display:none" onchange="restoreDB(this)">
-                    <button class="btn btn-red" onclick="rst()" style="padding:8px 15px;">⚠️ 초기화</button>
+                    <button class="btn btn-red" onclick="forceReloadAll()" style="padding:8px 15px;">🔄 업데이트</button>
+                    <button id="maintenanceBtn" onclick="toggleMaintenance()" style="padding:8px 15px;" class="btn btn-gray">🚧 영업 중지</button>
+                    <button class="btn btn-blue" onclick="showSettings()" style="padding:8px 15px;">⚙️ 설정</button>
                 </div>
             </div>
 
-            <table style="margin-top:14px;"><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th style="color:#9E9E9E;font-size:11px;">🍪쿠키</th><th>🍯코인</th><th>🍭캔디</th><th>🧺바구니</th><th style="color:#8D6E63;font-size:12px;">삭제</th></tr></thead><tbody id="ttb"></tbody><tfoot><tr><td colspan="8" onclick="showAddStuModal()" style="text-align:center;padding:10px;cursor:pointer;background:#FFF8E1;color:#8D6E63;font-size:20px;font-weight:bold;letter-spacing:2px;border-radius:0 0 10px 10px;transition:background 0.15s;" onmouseover="this.style.background='#FFE082'" onmouseout="this.style.background='#FFF8E1'">＋</td></tr></tfoot></table>
+            <table style="margin-top:14px;"><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th style="color:#9E9E9E;font-size:11px;">🍪쿠키</th><th>🍯코인</th><th>🍭캔디</th><th>🧺바구니</th><th style="color:#8D6E63;font-size:12px;cursor:pointer;" onclick="deleteAllStudents()" title="전체 학생 삭제">🗑️</th></tr></thead><tbody id="ttb"></tbody><tfoot><tr><td colspan="8" onclick="showAddStuModal()" style="text-align:center;padding:10px;cursor:pointer;background:#FFF8E1;color:#8D6E63;font-size:20px;font-weight:bold;letter-spacing:2px;border-radius:0 0 10px 10px;transition:background 0.15s;" onmouseover="this.style.background='#FFE082'" onmouseout="this.style.background='#FFF8E1'">＋</td></tr></tfoot></table>
         </div>
-        <div id="t_mgr" class="hidden">
-            <h2 id="t_mgr_h2" style="cursor:pointer;user-select:none;" onclick="toggleTypFilter()" title="클릭하여 종류별 보기">📋 승인 및 지급 <span style="font-size:14px;color:#A1887F;">▼</span></h2>
+        <div id="t_mgr" class="hidden"></div>
+        <div id="t_set" class="hidden">
+            <h2 id="t_mgr_h2" style="cursor:pointer;user-select:none;margin-bottom:8px;" onclick="toggleTypFilter()" title="클릭하여 종류별 보기">👥 승인 및 지급 <span style="font-size:14px;color:#A1887F;">▼</span></h2>
             <div id="ras-type-filter-row" style="display:none;overflow:hidden;margin-bottom:8px;background:#FFF8E1;border-radius:12px;padding:10px 12px;border:1px solid #FFE082;">
                 <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1;" id="ras-type-chips"></div>
                     <div style="display:flex;gap:5px;flex-shrink:0;">
-                        <button id="btnHide" class="btn btn-gray" onclick="toggleHide()" style="font-size:12px;padding:5px 10px;">👁️ 보이기</button>
                         <button class="btn btn-blue" onclick="appSel()" style="font-size:12px;padding:5px 10px;">✅ 승인</button>
                         <button class="btn btn-red" onclick="delSel()" style="font-size:12px;padding:5px 10px;">🗑️ 삭제</button>
                     </div>
@@ -924,6 +928,21 @@
                     <button class="btn btn-org" style="padding:6px 18px;font-size:13px;" onclick="openGivMultiStuPop()">🎁 지급하기</button>
                     <button class="btn btn-gray" style="padding:6px 14px;font-size:13px;" onclick="clearGivSel()">✕ 선택 해제</button>
                 </div>
+                <div style="font-size:14px;font-weight:bold;color:#5D4037;margin-bottom:8px;">💰 화폐 지급</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:16px;">
+                    <div onclick="window._openGivCoin('co')" style="background:white;border:2px solid #E0E0E0;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#FF9F43'" onmouseout="this.style.borderColor='#E0E0E0'">
+                        <div style="font-size:28px;line-height:1.2;">🍯</div>
+                        <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-top:4px;">꿀</div>
+                    </div>
+                    <div onclick="window._openGivCoin('cn')" style="background:white;border:2px solid #E0E0E0;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#FF9F43'" onmouseout="this.style.borderColor='#E0E0E0'">
+                        <div style="font-size:28px;line-height:1.2;">🍭</div>
+                        <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-top:4px;">캔디</div>
+                    </div>
+                    <div onclick="window._openGivCoin('tk')" style="background:white;border:2px solid #E0E0E0;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#FF9F43'" onmouseout="this.style.borderColor='#E0E0E0'">
+                        <div style="font-size:28px;line-height:1.2;">🧺</div>
+                        <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-top:4px;">바구니</div>
+                    </div>
+                </div>
                 <div style="font-size:14px;font-weight:bold;color:#5D4037;margin-bottom:8px;">🎁 일반 아이템</div>
                 <div id="giv_itm_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;margin-bottom:16px;"></div>
                 <div style="font-size:14px;font-weight:bold;color:#5D4037;margin-bottom:8px;">🎨 아바타 아이템</div>
@@ -934,18 +953,9 @@
                 <div style="font-size:14px;font-weight:bold;color:#5D4037;margin-bottom:8px;">🏆️ 칭호</div>
                 <div id="giv_tit_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;"></div>
             </div>
-
-        </div>
-        <div id="t_set" class="hidden">
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:15px;">
-                <h2 style="margin:0;">📦 아이템 등록</h2>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-green" onclick="exportShopData()" style="padding:8px 16px;font-size:14px;">📤 내보내기</button>
-                    <button class="btn btn-blue" onclick="document.getElementById('importShopFile').click()" style="padding:8px 16px;font-size:14px;">📥 불러오기</button>
-                    <input type="file" id="importShopFile" accept=".json" style="display:none" onchange="importShopData(this)">
-                    <button class="btn btn-red" onclick="forceReloadAll()" style="padding:8px 16px;font-size:14px;">🔄 업데이트</button>
-                    <button class="btn btn-blue" onclick="showGhSettings()" style="padding:8px 16px;font-size:14px;">⚙️ GitHub 설정</button>
-                </div>
+            <hr style="margin:24px 0;border:none;border-top:2px solid #E0E0E0;">
+            <div style="margin-bottom:15px;">
+                <h2 style="margin:0;">📦 아이템 관리</h2>
             </div>
 
             <!-- 쿠폰 등록 -->
@@ -1016,6 +1026,13 @@
         </div>
 
         <div id="t_auc" class="hidden">
+            <div id="reqDateSection" style="background:#E8F5E9;border-radius:12px;padding:12px 14px;margin-bottom:16px;border:1px solid #A5D6A7;">
+                <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="document.getElementById('_reqDateBody').style.display=document.getElementById('_reqDateBody').style.display==='none'?'':'none'">
+                    <div style="font-size:15px;font-weight:bold;color:#2E7D32;">📋 요청사항</div>
+                    <span style="font-size:13px;color:#888;">▼</span>
+                </div>
+                <div id="_reqDateBody" style="margin-top:10px;"></div>
+            </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h2 style="margin:0;">🔨 경매 관리</h2>
                 <button class="btn btn-org" onclick="showAucRegModal()">+ 경매 등록</button>
@@ -1035,6 +1052,11 @@
                 </div>
             </div>
             <div id="t_auc_done" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px; display:none;"></div>
+            <div style="display:flex;align-items:center;gap:10px;border-bottom:2px dashed #CE93D8;padding-bottom:5px;margin-top:10px;margin-bottom:10px;">
+                <h3 style="color:#7B1FA2;margin:0;flex-shrink:0;">🧸 인형뽑기 대기열</h3>
+                <div id="t_auc_gac_stats" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;"></div>
+            </div>
+            <div id="t_auc_gac_queue" style="margin-bottom:20px;"></div>
         </div>
         <div id="t_col" class="hidden">
             <h2>📖 도감 및 초월 관리 <span style="font-size:14px; color:#888;">(※초월 숫자를 0으로 변경하면 별이 삭제됩니다)</span></h2>
@@ -1522,8 +1544,13 @@ let _renderLock = false; // 재진입 방지
     }
 
     async function syncAllCookies() {
-        const key = localStorage.getItem('dahessni_api_key');
-        if(!key) return alert("다했니 API Key를 먼저 입력해주세요.");
+        let key = localStorage.getItem('dahessni_api_key');
+        if(!key) {
+            key = prompt('다했니 API Key를 입력해주세요:');
+            if(!key) return;
+            localStorage.setItem('dahessni_api_key', key.trim());
+            key = key.trim();
+        }
         
         const btn = document.getElementById('syncBtn');
         btn.innerText = "동기화 중...";
@@ -1554,19 +1581,24 @@ let _renderLock = false; // 재진입 방지
         else el.style.display = 'none';
     };
 
-    window.showShopUsedReport = function() {
+    window.showShopUsedReport = function(initTab) {
         document.getElementById('shopUsedModal')?.remove();
-        const rows = (db.stu||[]).map((s,i) => ({nm:s.nm, no:s.no, shopUsed:s.shopUsed||0, i}))
+        const stuList = db.stu||[];
+
+        // ── 탭1: 쿠키 정산 ──
+        const rows = stuList.map((s,i) => ({nm:s.nm, no:s.no, shopUsed:s.shopUsed||0, i}))
             .filter(r => r.shopUsed > 0).sort((a,b) => a.no - b.no);
         const total = rows.reduce((acc,r) => acc + r.shopUsed, 0);
         const rowsHtml = rows.length > 0
             ? rows.map(r => {
-                const log = Array.isArray(db.stu[r.i]?.shopLog) ? db.stu[r.i].shopLog : Object.values(db.stu[r.i]?.shopLog||{});
+                const log = Array.isArray(stuList[r.i]?.shopLog) ? stuList[r.i].shopLog : Object.values(stuList[r.i]?.shopLog||{});
                 const logHtml = log.length > 0
                     ? log.slice().reverse().map(e => {
                         const d = new Date(e.ts||0);
                         const ts = e.ts ? `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}` : '';
-                        return `<div style="font-size:11px;color:#795548;padding:1px 0;">${ts ? `<span style="color:#aaa;margin-right:4px;">${ts}</span>` : ''}${e.type||''} · ${e.name||''} <span style="color:#E65100;">-${e.cost||0}🍪</span></div>`;
+                        const passStr = e.passUsed>0 ? ` <span style="color:#FF8F00;">(이용권${e.passUsed}개)</span>` : '';
+                        const curEmoji2 = {cn:'🍯',cd:'🍭',kc:'🍪'}[e.cur||'cn']||'🍪';
+                        return `<div style="font-size:11px;color:#795548;padding:1px 0;">${ts?`<span style="color:#aaa;margin-right:4px;">${ts}</span>`:''} ${e.type||''} · ${e.name||''} <span style="color:#E65100;">-${e.cost||0}${curEmoji2}</span>${passStr}</div>`;
                     }).join('')
                     : `<div style="font-size:11px;color:#ccc;">내역 없음</div>`;
                 return `<tr style="border-bottom:1px solid #FFF3E0;">
@@ -1582,27 +1614,63 @@ let _renderLock = false; // 재진입 방지
               </tr>`;
             }).join('')
             : `<tr><td colspan="4" style="padding:20px;text-align:center;color:#aaa;">상점 차감 내역이 없습니다</td></tr>`;
+
+        // ── 탭2: 전체 구매 내역 ──
+        const allLogs = [];
+        stuList.forEach((s,si) => {
+            const log = Array.isArray(s.shopLog) ? s.shopLog : Object.values(s.shopLog||{});
+            log.forEach(e => allLogs.push({...e, nm:s.nm, no:s.no, si}));
+        });
+        allLogs.sort((a,b)=>(b.ts||0)-(a.ts||0));
+        const allLogsHtml = allLogs.length > 0
+            ? allLogs.map(e => {
+                const d = new Date(e.ts||0);
+                const ts = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                const passStr = e.passUsed>0 ? `<span style="color:#FF8F00;font-size:11px;"> (이용권 ${e.passUsed}개)</span>` : '';
+                const curEmoji2 = {cn:'🍯',cd:'🍭',kc:'🍪'}[e.cur||'cn']||'🍪';
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #FFF3E0;font-size:12px;">
+                    <span style="color:#aaa;white-space:nowrap;min-width:72px;">${ts}</span>
+                    <span style="font-weight:bold;color:#5D4037;min-width:55px;">${e.no}번 ${e.nm}</span>
+                    <span style="flex:1;color:#424242;">${e.type||''} · <b>${e.name||''}</b>${passStr}</span>
+                    <span style="color:#E65100;font-weight:bold;white-space:nowrap;">-${e.cost||0}${curEmoji2}</span>
+                </div>`;
+            }).join('')
+            : `<div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">구매 내역이 없습니다</div>`;
+
+        // ── 탭3: 사용 날짜별 조회 ──
+        const dateMap = {};
+        stuList.forEach(s => {
+            (Array.isArray(s.inv)?s.inv:Object.values(s.inv||{})).forEach(it => {
+                if((it.st==='req'||it.st==='used'||it.st==='usd') && it.useDate) {
+                    if(!dateMap[it.useDate]) dateMap[it.useDate]=[];
+                    dateMap[it.useDate].push({nm:s.nm, no:s.no, n:it.n, st:it.st});
+                }
+            });
+        });
+        const sortedDates = Object.keys(dateMap).sort().reverse();
+        const dateHtml = sortedDates.length > 0
+            ? sortedDates.map(dt => {
+                const items = dateMap[dt];
+                return `<div style="margin-bottom:10px;">
+                    <div style="background:#E3F2FD;border-radius:8px;padding:5px 10px;font-size:13px;font-weight:bold;color:#1565C0;margin-bottom:4px;">📅 ${dt}</div>
+                    ${items.map(it=>`<div style="padding:3px 14px;font-size:12px;color:#424242;">
+                        ${it.no}번 <b>${it.nm}</b> — ${it.n} <span style="color:${it.st==='req'?'#E65100':'#388E3C'};font-size:11px;">${it.st==='req'?'(승인 대기)':'(완료)'}</span>
+                    </div>`).join('')}
+                </div>`;
+            }).join('')
+            : `<div style="padding:20px;text-align:center;color:#aaa;font-size:13px;">날짜 지정 사용 요청이 없습니다</div>`;
+
         const html = `<div id="shopUsedModal" class="modal-overlay" onclick="if(event.target===this)this.remove()">
-            <div class="modal-window" style="width:460px;" onclick="event.stopPropagation()">
+            <div class="modal-window" style="width:min(520px,96vw);max-height:88vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
                 <button class="modal-close-btn" onclick="document.getElementById('shopUsedModal').remove()">X</button>
-                <div class="modal-inner">
-                    <h3 style="margin-top:0;">🍪 상점 쿠키 차감 정산</h3>
-                    <p style="font-size:13px;color:#888;margin-bottom:12px;">개별 [차감] 또는 [일괄 차감]으로 쿠키를 즉시 삭제합니다.</p>
+                <div class="modal-inner" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;">
+                    <div style="font-size:15px;font-weight:bold;color:#3E2723;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #EEE;">🍪 상점 차감 정산</div>
                     <table style="width:100%;border-collapse:collapse;font-family:'Jua';font-size:14px;">
-                        <thead><tr style="background:#FFF3E0;">
-                            <th style="padding:6px 10px;text-align:left;">번호</th>
-                            <th style="padding:6px 10px;text-align:left;">이름</th>
-                            <th style="padding:6px 10px;text-align:left;">차감 쿠키</th>
-                            <th style="padding:6px 10px;text-align:left;"></th>
-                        </tr></thead>
+                        <thead><tr style="background:#FFF3E0;"><th style="padding:6px 10px;text-align:left;">번호</th><th style="padding:6px 10px;text-align:left;">이름</th><th style="padding:6px 10px;text-align:left;">차감 쿠키</th><th></th></tr></thead>
                         <tbody>${rowsHtml}</tbody>
-                        <tfoot><tr style="border-top:2px solid #FFE0B2;">
-                            <td colspan="2" style="padding:7px 10px;font-weight:bold;">합계</td>
-                            <td style="padding:7px 10px;font-weight:bold;color:#E65100;">${total} 🍪</td>
-                            <td></td>
-                        </tr></tfoot>
+                        <tfoot><tr style="border-top:2px solid #FFE0B2;"><td colspan="2" style="padding:7px 10px;font-weight:bold;">합계</td><td style="padding:7px 10px;font-weight:bold;color:#E65100;">${total} 🍪</td><td></td></tr></tfoot>
                     </table>
-                    <div style="display:flex;gap:8px;margin-top:16px;">
+                    <div style="display:flex;gap:8px;margin-top:14px;">
                         <button class="btn btn-red" style="flex:1;" onclick="confirmShopSettlement()">🗑️ 일괄 차감 (전체)</button>
                         <button class="btn btn-gray" style="flex:1;" onclick="document.getElementById('shopUsedModal').remove()">닫기</button>
                     </div>
@@ -1637,6 +1705,15 @@ let _renderLock = false; // 재진입 방지
         _updateShopBadge();
         document.getElementById('shopUsedModal')?.remove();
         rTb();
+    };
+
+    window._srSwitch = function(tab) {
+        ['settle','all'].forEach(t => {
+            const p = document.getElementById('_srPanel'+t.charAt(0).toUpperCase()+t.slice(1));
+            const b = document.getElementById('_srTab'+(t==='all'?2:1));
+            if(p) p.style.display = t===tab ? '' : 'none';
+            if(b) { b.style.background = t===tab ? '#6D4C41' : '#EEE'; b.style.color = t===tab ? 'white' : '#555'; }
+        });
     };
 
     // 🚀 5초마다 조용히 API에서 쿠키 정보 최신화
@@ -1695,7 +1772,18 @@ let _renderLock = false; // 재진입 방지
         if(e.target.closest('[data-tooltip]')) document.getElementById('_gtip')?.remove();
     });
 
+    let _dbDebounceTimer = null;
+    let _prevMeHash = null;
+    let _prevCfgHash = null;
+
     dbRef.on('value', (snapshot) => {
+        // 디바운스: 150ms 내 연속 업데이트는 마지막 것만 처리
+        if(_dbDebounceTimer) clearTimeout(_dbDebounceTimer);
+        _dbDebounceTimer = setTimeout(() => _handleDbUpdate(snapshot), 150);
+    });
+
+    function _handleDbUpdate(snapshot) {
+        if(window._gachaInProgress) return; // 뽑기 진행 중엔 DB 덮어쓰기 방지
         const data = snapshot.val();
         if (data) {
             db = data;
@@ -1710,21 +1798,52 @@ let _renderLock = false; // 재진입 방지
             if(!db.avt) db.avt = []; else if(!Array.isArray(db.avt)) db.avt = Object.values(db.avt);
             if(!db.bdg) db.bdg = []; else if(!Array.isArray(db.bdg)) db.bdg = Object.values(db.bdg);
             if(!db.tit) db.tit = []; else if(!Array.isArray(db.tit)) db.tit = Object.values(db.tit);
+            // 각 학생의 inv/ibx도 배열로 정규화 (Firebase 객체 반환 시 .some/.filter 오류 방지)
+            db.stu.forEach(s => {
+                if(s.inv && !Array.isArray(s.inv)) s.inv = Object.values(s.inv).filter(Boolean);
+                else if(!s.inv) s.inv = [];
+                if(s.ibx && !Array.isArray(s.ibx)) s.ibx = Object.values(s.ibx).filter(Boolean);
+                else if(!s.ibx) s.ibx = [];
+            });
             if(!db.cfg.gh) db.cfg.gh = {token:'',owner:'',repo:''};
             if(!db.cfg.baseChar) db.cfg.baseChar = '';
 
             // 아바타 이미지 백그라운드 프리로드 (첫 로그인 느린 이미지 해결)
             requestIdleCallback(()=>{
-    (db.avt||[]).forEach(a=>{ if(a.img){ const _i=new Image(); _i.src=a.img; } });
-}, {timeout:3000});
-
-
+                (db.avt||[]).forEach(a=>{ if(a.img && a.img.startsWith('http')){ const _i=new Image(); _i.src=a.img; } });
+            }, {timeout:3000});
 
             // 강제 새로고침 체크
             if(db.cfg.reloadAt && db.cfg.reloadAt > window._pageLoadTime) {
                 document.body.insertAdjacentHTML('beforeend','<div style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;"><div style="background:white;border-radius:20px;padding:36px 40px;text-align:center;font-size:18px;"><div style="font-size:40px;margin-bottom:12px;">🔄</div><div style="font-weight:bold;margin-bottom:8px;">새 버전이 배포되었습니다</div><div style="color:#888;font-size:14px;">잠시 후 자동으로 새로고침됩니다...</div></div></div>');
                 setTimeout(()=>location.reload(true), 2000);
                 return;
+            }
+
+            // 영업 중지(공사중) 체크 — 학생 화면에서만 막음
+            const isMaintenance = !!db.cfg.maintenance;
+            const isTeacherView = !document.getElementById('appT').classList.contains('hidden');
+            if(isMaintenance && !isTeacherView && !window._autoTeacher) {
+                document.getElementById('autoLoginLoader').style.display = 'none';
+                document.getElementById('loginBox').style.display = 'none';
+                let _mDiv = document.getElementById('_maintenanceOverlay');
+                if(!_mDiv) {
+                    _mDiv = document.createElement('div');
+                    _mDiv.id = '_maintenanceOverlay';
+                    _mDiv.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#16213e);z-index:99990;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:\'Jua\',sans-serif;';
+                    _mDiv.innerHTML = '<div style="font-size:72px;margin-bottom:20px;">🚧</div><div style="font-size:28px;color:white;font-weight:bold;margin-bottom:12px;">공사 중입니다</div><div style="font-size:16px;color:rgba(255,255,255,0.65);">잠시 후 다시 방문해 주세요!</div>';
+                    document.body.appendChild(_mDiv);
+                }
+                return;
+            } else {
+                document.getElementById('_maintenanceOverlay')?.remove();
+            }
+
+            // 교사 버튼 상태 동기화
+            const _mb = document.getElementById('maintenanceBtn');
+            if(_mb) {
+                _mb.textContent = isMaintenance ? '✅ 영업 재개' : '🚧 영업 중지';
+                _mb.className = isMaintenance ? 'btn btn-green' : 'btn btn-gray';
             }
 
             db.itm.forEach(i => { if(!i.c) i.c = 'cn'; });
@@ -1768,7 +1887,6 @@ let _renderLock = false; // 재진입 방지
                 window._autoTeacher = false;
                 document.getElementById('login').classList.add('hidden');
                 document.getElementById('appT').classList.remove('hidden');
-                document.getElementById('dahessni_api').value = localStorage.getItem('dahessni_api_key') || "";
                 nav('t_stu');
                 setTimeout(rTb, 50);
                 setTimeout(updateNotifBell, 100);
@@ -1782,6 +1900,7 @@ let _renderLock = false; // 재진입 방지
                 if (_urlCd) {
                     const _urlS = db.stu.find(x => String(x.cd).trim() === _urlCd.trim());
                     if (_urlS) {
+                        if(_urlS.shopRestrict){const _td2=new Date().toISOString().slice(0,10);const {from:_f2,to:_t2}=_urlS.shopRestrict;if(_f2&&_t2&&_td2>=_f2&&_td2<=_t2){_showShopRestrictScreen(_urlS.nm,_f2,_t2);return;}}
                         me = _urlS;
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
@@ -1803,6 +1922,7 @@ let _renderLock = false; // 재진입 방지
                 if (_savedCd) {
                     const _autoS = db.stu.find(x => String(x.cd).trim() === _savedCd);
                     if (_autoS) {
+                        if(_autoS.shopRestrict){const _td3=new Date().toISOString().slice(0,10);const {from:_f3,to:_t3}=_autoS.shopRestrict;if(_f3&&_t3&&_td3>=_f3&&_td3<=_t3){_showShopRestrictScreen(_autoS.nm,_f3,_t3);return;}}
                         me = _autoS;
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
@@ -1823,36 +1943,59 @@ let _renderLock = false; // 재진입 방지
             if (me && me.cd) {
                 const updatedMe = db.stu.find(x => String(x.cd).trim() === String(me.cd).trim());
                 if (updatedMe) {
-                    me = updatedMe;
-                    if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
-                    if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
-                    if(!me.col) me.col = [];
-                    updateNameTag();
-                    window._applyColTabVisibility();
-                    if(!document.getElementById('s_char').classList.contains('hidden')) rChar();
-                    if(!document.getElementById('s_bg').classList.contains('hidden')) rBg();
+                    // 상점 이용 제한 실시간 체크
+                    if(updatedMe.shopRestrict) {
+                        const _tdc = new Date().toISOString().slice(0,10);
+                        const {from:_fc, to:_tc} = updatedMe.shopRestrict;
+                        if(_fc && _tc && _tdc >= _fc && _tdc <= _tc) {
+                            me = null; localStorage.removeItem('stuCode');
+                            document.getElementById('appS').classList.add('hidden');
+                            document.getElementById('login').classList.remove('hidden');
+                            _showShopRestrictScreen(updatedMe.nm, _fc, _tc);
+                            return;
+                        }
+                    }
+                    const newMeHash = JSON.stringify(updatedMe);
+                    const newCfgHash = JSON.stringify(db.cfg);
+                    const meChanged = newMeHash !== _prevMeHash;
+                    const cfgChanged = newCfgHash !== _prevCfgHash;
+                    _prevMeHash = newMeHash;
+                    _prevCfgHash = newCfgHash;
 
-                    if(!document.getElementById('s_sh').classList.contains('hidden')) rSh();
-                    if(!document.getElementById('s_col').classList.contains('hidden')) rCol();
-                    checkOfflineGacDone();
+                    // 자신의 데이터 또는 설정이 변경된 경우에만 학생 화면 재렌더
+                    if(meChanged || cfgChanged) {
+                        me = updatedMe;
+                        if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
+                        if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
+                        if(!me.col) me.col = [];
+                        updateNameTag();
+                        window._applyColTabVisibility();
+                        if(!document.getElementById('s_char').classList.contains('hidden')) rChar();
+                        if(!document.getElementById('s_bg').classList.contains('hidden')) rBg();
+                        if(!document.getElementById('s_sh').classList.contains('hidden')) rSh();
+                        if(!document.getElementById('s_col').classList.contains('hidden')) rCol();
+                        checkOfflineGacDone();
+                    }
                 }
             }
             
             if (!document.getElementById('appT').classList.contains('hidden')) {
                 if(!document.getElementById('t_stu').classList.contains('hidden')) {
-                    document.getElementById('dahessni_api').value = localStorage.getItem('dahessni_api_key') || "";
-
-if (_renderLock) return;
-
-
-                    rTb();
+    
+                    // 입력 중이면 rTb 스킵 (타이핑 끊김 방지)
+                    const _focused = document.activeElement;
+                    const _tStu = document.getElementById('t_stu');
+                    const _inputFocused = _focused && (_focused.tagName==='INPUT'||_focused.tagName==='TEXTAREA'||_focused.contentEditable==='true') && _tStu && _tStu.contains(_focused);
+                    if(!_renderLock && !_inputFocused) {
+                        rTb();
+                        _renderLock = true;
+                        setTimeout(() => { _renderLock = false; }, 300);
+                    }
                 }
                 if(!document.getElementById('t_mgr').classList.contains('hidden')) { rAs(); renderGivGrids(); }
                 if(!document.getElementById('t_col').classList.contains('hidden')) rColT();
-                if(!document.getElementById('t_set').classList.contains('hidden') && !_localSaving) { rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); }
-                if(!document.getElementById('t_auc').classList.contains('hidden')) { rAucT(); rGacQueue(); }
-_renderLock = true;
-setTimeout(() => { _renderLock = false; }, 100);
+                if(!document.getElementById('t_set').classList.contains('hidden') && !_localSaving) { rAs(); renderGivGrids(); rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); }
+                if(!document.getElementById('t_auc').classList.contains('hidden')) { rAs(); rAucT(); rGacQueue(); }
                 setTimeout(updateNotifBell, 0);
                 setTimeout(updateMenuBadges, 0);
                 setTimeout(window._updateShopBadge||function(){}, 0);
@@ -1863,7 +2006,7 @@ setTimeout(() => { _renderLock = false; }, 100);
             }
             sv();
         }
-    });
+    }
 
     // 🌟 안전한 경매 타이머 루프
     setInterval(() => {
@@ -2058,7 +2201,6 @@ setTimeout(() => { _renderLock = false; }, 100);
             localStorage.setItem('teacherLogged','1');
             document.getElementById('login').classList.add('hidden');
             document.getElementById('appT').classList.remove('hidden');
-            document.getElementById('dahessni_api').value = localStorage.getItem('dahessni_api_key') || "";
             nav('t_stu');
             setTimeout(rTb, 50);
             setTimeout(updateNotifBell, 100);
@@ -2066,11 +2208,41 @@ setTimeout(() => { _renderLock = false; }, 100);
         }else alert("비밀번호 오류");
     }
 
-    async function logS(){ 
+    function _showShopRestrictScreen(nm, from, to) {
+        document.getElementById('autoLoginLoader').style.display = 'none';
+        if(document.getElementById('loginBox')) document.getElementById('loginBox').style.display = 'none';
+        let el = document.getElementById('_shopRestrictOverlay');
+        if(el) el.remove();
+        el = document.createElement('div');
+        el.id = '_shopRestrictOverlay';
+        el.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#3E2723,#5D4037);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Jua",sans-serif;';
+        el.innerHTML = `
+            <div style="font-size:80px;margin-bottom:16px;animation:_cookieSpin 3s linear infinite;">🚫</div>
+            <div style="font-size:28px;color:#FFCC80;margin-bottom:8px;">출입 제한</div>
+            <div style="font-size:20px;color:white;margin-bottom:16px;">${nm} 학생</div>
+            <div style="background:rgba(255,255,255,0.12);border-radius:16px;padding:20px 32px;text-align:center;border:2px solid rgba(255,204,128,0.4);">
+                <div style="font-size:15px;color:#FFCC80;margin-bottom:6px;">상점 이용 제한 기간</div>
+                <div style="font-size:22px;font-weight:bold;color:white;">${from} ~ ${to}</div>
+            </div>
+            <div style="margin-top:20px;font-size:13px;color:rgba(255,255,255,0.5);">선생님에게 문의하세요</div>
+        `;
+        document.body.appendChild(el);
+    }
+
+    async function logS(){
         const c = document.getElementById('sc').value.trim(); 
         if(!c) return alert("코드를 입력하세요.");
         const s = db.stu.find(x => String(x.cd).trim() === c); 
         if(s){
+            // 상점 이용 제한 체크
+            if(s.shopRestrict) {
+                const _td = new Date().toISOString().slice(0,10);
+                const {from, to} = s.shopRestrict;
+                if(from && to && _td >= from && _td <= to) {
+                    _showShopRestrictScreen(s.nm, from, to);
+                    return;
+                }
+            }
             me = s;
 
             // 로그인 시 다했니 쿠키 동기화 (조용하게)
@@ -2125,10 +2297,22 @@ setTimeout(() => { _renderLock = false; }, 100);
                         </div>
                         <h2 class="modal-title" style="color:#5D4037; margin-top:10px;">${item.n}</h2>
                         ${canUse
-                            ? `<p style="color:#8D6E63; font-size:16px; margin:0 0 10px;">사용할 개수를 선택하세요 (보유: ${totalCount}개)</p>
-                               <input id="itemUseQty" type="number" min="1" max="${totalCount}" value="1" style="text-align:center;font-size:22px;font-weight:bold;margin-bottom:5px;">
-                               <div class="modal-btn-group">
-                                   <button class="btn btn-org" onclick="useQ('${safeN}')" style="width:100%; font-size:20px;">사용 요청하기</button>
+                            ? `<div style="background:#FFF8E1;border-radius:16px;padding:16px;margin-bottom:12px;">
+                                   <div style="font-size:14px;color:#5D4037;font-weight:bold;margin-bottom:10px;">📋 사용 요청</div>
+                                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                                       <label style="font-size:13px;color:#795548;white-space:nowrap;">사용 개수:</label>
+                                       <input id="itemUseQty" type="number" min="1" max="${totalCount}" value="1" style="width:70px;padding:6px;font-size:16px;font-weight:bold;border:2px solid #FFB74D;border-radius:10px;text-align:center;">
+                                       <span style="font-size:13px;color:#888;">/ ${totalCount}개 보유</span>
+                                   </div>
+                                   <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                                       <label style="font-size:13px;color:#795548;white-space:nowrap;">📅 사용 날짜:</label>
+                                       <input id="itemUseDate" type="date" value="${new Date().toISOString().slice(0,10)}" style="padding:6px 10px;font-size:13px;border:2px solid #FFB74D;border-radius:10px;font-family:'Jua',sans-serif;">
+                                   </div>
+                                   <div style="margin-bottom:14px;">
+                                       <label style="font-size:13px;color:#795548;display:block;margin-bottom:4px;">💬 비고 (선택):</label>
+                                       <textarea id="itemUseNote" placeholder="선생님께 전할 말 (선택사항)" rows="2" style="width:100%;padding:6px 10px;font-size:13px;border:2px solid #FFB74D;border-radius:10px;font-family:'Jua',sans-serif;resize:vertical;box-sizing:border-box;"></textarea>
+                                   </div>
+                                   <button class="btn btn-org" onclick="useQ('${safeN}')" style="width:100%;font-size:18px;padding:12px;">📨 사용 요청하기</button>
                                </div>`
                             : `<p style="color:#BDBDBD; font-size:15px; margin:0 0 10px;">보유 중: ${totalCount}개</p>
                                <div style="background:#F5F5F5;border-radius:12px;padding:12px;font-size:14px;color:#9E9E9E;">상점에서 직접 사용하는 아이템이에요.</div>`
@@ -2142,14 +2326,29 @@ setTimeout(() => { _renderLock = false; }, 100);
 
     function useQ(itemName){
         const qtyEl = document.getElementById('itemUseQty');
+        const dateEl = document.getElementById('itemUseDate');
+        const noteEl = document.getElementById('itemUseNote');
         const totalAvail = me.inv.filter(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo).length;
         const qty = Math.max(1, Math.min(parseInt(qtyEl ? qtyEl.value : 1)||1, totalAvail));
+        const useDate = dateEl?.value || new Date().toISOString().slice(0,10);
+        const useNote = (noteEl?.value||'').trim();
+        const _maxDate = new Date(Date.now()+7*24*60*60*1000).toISOString().slice(0,10);
+        if(useDate > _maxDate) {
+            prettyConfirm('사용 날짜는 오늘로부터<br><b>7일 이내</b>로만 지정할 수 있어요! 📅', ()=>{}, {icon:'📅', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
+            return;
+        }
         const itDef = (db.itm||[]).find(it => it.n === itemName.trim());
         const needsApprove = itDef?.needApprove;
         let used = 0;
         for(let i = 0; i < me.inv.length && used < qty; i++){
             if(me.inv[i].n.trim() === itemName.trim() && me.inv[i].st === 'active' && !me.inv[i].pseudo){
                 me.inv[i].st = needsApprove ? 'req' : 'used';
+                if(needsApprove) {
+                    me.inv[i].useDate = useDate;
+                    if(useNote) me.inv[i].note = useNote;
+                    delete me.inv[i].reqApproved;
+                    delete me.inv[i].reqDone;
+                }
                 used++;
             }
         }
@@ -2157,7 +2356,20 @@ setTimeout(() => { _renderLock = false; }, 100);
         const modal = document.getElementById('itemModal');
         if(modal) modal.remove();
         if(needsApprove) {
-            alert(`선생님께 사용 요청을 보냈습니다! (${used}개) 잠시만 기다려주세요. 🍭`);
+            // 예쁜 완료 모달
+            document.body.insertAdjacentHTML('beforeend', `<div class="modal-overlay" id="_useReqDone" onclick="this.remove()">
+                <div class="modal-window" onclick="event.stopPropagation()" style="max-width:320px;">
+                    <div class="modal-inner" style="background:linear-gradient(135deg,#E3F2FD,#FFF8E1);border-color:#64B5F6;">
+                        <div style="font-size:56px;margin-bottom:8px;">📨</div>
+                        <h2 style="color:#1565C0;margin:0 0 8px;">사용 요청 완료!</h2>
+                        <div style="font-size:15px;font-weight:bold;color:#5D4037;margin-bottom:6px;">${itemName}</div>
+                        <div style="font-size:13px;color:#666;margin-bottom:4px;">수량: ${used}개</div>
+                        <div style="font-size:13px;color:#666;margin-bottom:16px;">📅 사용 날짜: <b style="color:#1976D2;">${useDate}</b></div>
+                        <div style="font-size:12px;color:#888;margin-bottom:16px;">선생님 승인 후 처리됩니다 🍭</div>
+                        <button class="btn btn-blue" style="width:70%;" onclick="document.getElementById('_useReqDone').remove()">확인</button>
+                    </div>
+                </div>
+            </div>`);
         } else {
             alert(`사용 완료! (${used}개) 🎉`);
         }
@@ -2168,7 +2380,9 @@ setTimeout(() => { _renderLock = false; }, 100);
         let cancelled = 0;
         (me.inv||[]).forEach(it => {
             if(it.n.trim() === itemName.trim() && it.st === 'req') {
-                it.st = 'active'; cancelled++;
+                it.st = 'active';
+                delete it.reqApproved; delete it.reqDone;
+                cancelled++;
             }
         });
         if(cancelled > 0) { upMe(); rBg(); }
@@ -2187,11 +2401,11 @@ setTimeout(() => { _renderLock = false; }, 100);
     function nav(id,e){
         document.querySelectorAll('#appT .cont > div').forEach(d=>d.classList.add('hidden')); document.getElementById(id).classList.remove('hidden');
         if(e){document.querySelectorAll('.side .menu').forEach(m=>m.classList.remove('on')); e.classList.add('on');}
-        if(id==='t_stu') rTb(); 
+        if(id==='t_stu') rTb();
         if(id==='t_mgr'){rAs(); renderGivGrids();}
         if(id==='t_col') rColT();
-        if(id==='t_set'){rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList();}
-        if(id==='t_auc') { rAucT(); rGacQueue(); }
+        if(id==='t_set'){rAs(); renderGivGrids(); rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList();}
+        if(id==='t_auc') { rAs(); rAucT(); rGacQueue(); }
         if(id==='t_avt') rAvt();
         if(id==='t_plz') rPlzT();
     }
@@ -2315,6 +2529,25 @@ setTimeout(() => { _renderLock = false; }, 100);
         }
     }
 
+    window.deleteAllStudents = function() {
+        prettyConfirm('학생 전체를 삭제할까요?<br><span style="font-size:12px;color:#888;">이 작업은 되돌릴 수 없습니다.</span>', () => {
+            db.stu = []; sv(); rTb();
+        }, {icon:'🗑️', okLabel:'전체 삭제', okClass:'btn-red', cancelLabel:'취소'});
+    };
+
+    window.deleteSelectedStudents = function() {
+        if(!window._stuSelSet) window._stuSelSet = new Set();
+        const selCount = window._stuSelSet.size;
+        if(selCount === 0) return prettyConfirm('삭제할 학생을 먼저<br>체크박스로 선택해주세요.', ()=>{}, {icon:'🧺', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
+        prettyConfirm(`선택한 학생 <b>${selCount}명</b>을 삭제할까요?<br><span style="font-size:12px;color:#888;">이 작업은 되돌릴 수 없습니다.</span>`, () => {
+            const idxs = [...(window._stuSelSet||new Set())];
+            const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+            db.stu = stuList.filter((_,i) => !idxs.includes(i));
+            window._stuSelSet.clear();
+            sv(); rTb();
+        }, {icon:'🗑️', okLabel:'삭제', okClass:'btn-red', cancelLabel:'취소'});
+    };
+
     window.showAddStuModal = function() {
         if(document.getElementById('addStuModal')) return;
         document.body.insertAdjacentHTML('beforeend', `
@@ -2357,8 +2590,9 @@ setTimeout(() => { _renderLock = false; }, 100);
   function rTb(){ 
         if(!db.stu) return;
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
-        const checked = Array.from(document.querySelectorAll('.stu-chk:checked')).map(c=>c.value); 
-        
+        if(!window._stuSelSet) window._stuSelSet = new Set();
+        const checked = [...window._stuSelSet].map(String);
+
         const s_cn = db.cfg && db.cfg.show_cn !== false;
         const s_tk = db.cfg && db.cfg.show_tk !== false;
         const s_co = db.cfg && db.cfg.show_co !== false;
@@ -2397,7 +2631,7 @@ setTimeout(() => { _renderLock = false; }, 100);
                         </div>
                     </div>
                 </th>
-                <th style="background:#4E342E; width:48px;"></th>
+                <th style="background:#4E342E; width:48px; cursor:pointer;" onclick="deleteSelectedStudents()" title="선택한 학생 삭제">🗑️</th>
             </tr>
         `;
 
@@ -2407,10 +2641,9 @@ setTimeout(() => { _renderLock = false; }, 100);
             const inputStyle = `width:65px; height:30px; border:2px solid #FFE0B2; border-radius:20px; text-align:center; font-family:'Jua'; outline:none;`;
             
             return `<tr>
-                <td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''}></td>
+                <td><input type="checkbox" class="stu-chk" value="${i}" ${checked.includes(i.toString())?'checked':''} onchange="if(!window._stuSelSet)window._stuSelSet=new Set();if(this.checked)window._stuSelSet.add(+this.value);else window._stuSelSet.delete(+this.value);"></td>
                 <td>${s.no}</td>
-                <td style="font-size:16px; font-weight:bold; cursor:pointer; color:#1976D2;" onclick="me=null; localStorage.removeItem('stuCode'); location.href=location.pathname+'?cd=${s.cd}';" title="클릭하여 학생 화면으로 열기">${s.nm}</td>
-
+                <td style="font-size:16px; font-weight:bold; cursor:pointer; color:#1976D2;" onclick="window.open(location.pathname+'?cd=${s.cd}','_blank')" title="클릭하여 학생 화면으로 열기">${s.nm}</td>
                 <td style="font-weight:bold; color:#8D6E63; font-size:18px;" id="cookie_val_${i}">${curCookie}${s.shopUsed?`<div style="font-size:10px;color:#E65100;font-weight:normal;cursor:pointer;" onclick="showShopUsedReport()">-${s.shopUsed}🍪 차감</div>`:''}</td>
                 <td><input class="qty-input" style="${inputStyle} color:#FBC02D;" type="number" value="${s.co||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'co',this.value)" onchange="upCk(${i},'co',this.value)"></td>
                 <td><input class="qty-input" style="${inputStyle}" type="number" value="${s.cn||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'cn',this.value)" onchange="upCk(${i},'cn',this.value)"></td>
@@ -2532,21 +2765,65 @@ setTimeout(() => { _renderLock = false; }, 100);
         const avt = (typeof renderAvatar === 'function') ? renderAvatar(s.eq||{}, 56) : '👤';
 
         // 이 학생의 그룹만 필터
+        const stuCd = s.cd; // 안정적 조회용
+        const _getStu = () => { const sl=Array.isArray(db.stu)?db.stu:Object.values(db.stu||{}); return sl.find(x=>x.cd===stuCd)||sl[si]; };
         const _renderPanelGrid = () => {
+            const tf = window._stuPanelTypeFilter;
+            // 내역 탭
+            if(tf === 'log') {
+                const s2 = _getStu();
+                const logs = Array.isArray(s2?.shopLog) ? s2.shopLog : Object.values(s2?.shopLog||{});
+                if(!logs.length) return '<div style="text-align:center;color:#999;padding:20px;">구매 내역 없음</div>';
+                return logs.slice().sort((a,b)=>b.ts-a.ts).map(lg=>{
+                    const d = new Date(lg.ts);
+                    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                    const curIcon = lg.cur==='cn'?'🍯':lg.cur==='cd'?'🍭':'🍪';
+                    const passStr = lg.passUsed ? ` (이용권 ${lg.passUsed}개)` : '';
+                    return `<div style="background:white;border:1px solid #EEE;border-radius:10px;padding:8px 12px;margin-bottom:6px;position:relative;display:flex;align-items:center;gap:8px;">
+                        <div style="flex:1;">
+                            <div style="font-size:13px;font-weight:bold;color:#3E2723;">${lg.name||lg.type}</div>
+                            <div style="font-size:12px;color:#888;margin-top:2px;">${lg.type||''} · ${curIcon}${lg.cost||0}${passStr}</div>
+                            <div style="font-size:11px;color:#BBB;margin-top:2px;">${ds}</div>
+                        </div>
+                        <button onclick="window._delStuLog('${stuCd}',${lg.ts})" style="display:flex;align-items:center;justify-content:center;background:none;border:1px solid #EEE;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:14px;flex-shrink:0;color:#BDBDBD;" title="삭제">🗑️</button>
+                    </div>`;
+                }).join('');
+            }
+            // 완료 탭
+            if(tf === 'done') {
+                const s2 = _getStu();
+                const inv2 = Array.isArray(s2?.inv)?s2.inv:Object.values(s2?.inv||{});
+                // 원본 인덱스 보존
+                const usedItems = inv2.map((it,k)=>({it,k})).filter(({it})=>it.st==='used'||it.st==='usd');
+                if(!usedItems.length) return '<div style="text-align:center;color:#999;padding:20px;">완료된 아이템 없음</div>';
+                return usedItems.map(({it,k})=>{
+                    const imgHtml = it.i && (it.i.startsWith('http')||it.i.startsWith('data:')) ? `<img src="${it.i}" style="width:45px;height:45px;object-fit:contain;">` : `<div style="font-size:36px;">${it.i||'🎁'}</div>`;
+                    return `<div style="background:white;border:1px solid #EEE;border-radius:10px;padding:6px 10px;margin-bottom:5px;display:flex;align-items:center;gap:8px;">
+                        ${imgHtml}
+                        <div style="flex:1;">
+                            <div style="font-size:13px;font-weight:bold;color:#3E2723;">${it.n}</div>
+                            <div style="font-size:11px;color:#999;margin-top:1px;">${it.useDate||''}</div>
+                        </div>
+                        <div style="display:flex;gap:4px;">
+                            <button onclick="window._restoreDoneItem('${stuCd}',${k})" style="font-size:11px;padding:3px 7px;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:8px;cursor:pointer;color:#388E3C;">🔄 복구</button>
+                            <button onclick="window._delDoneItem('${stuCd}',${k})" style="font-size:11px;padding:3px 7px;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;cursor:pointer;color:#E53935;">🗑️ 삭제</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
             const panelGroups = currentGroups
                 .map((g,vi)=>({g,vi}))
                 .filter(({g})=> g.si === si);
             let filtered = panelGroups;
             // 종류 필터 먼저
-            const tf = window._stuPanelTypeFilter;
             if(tf && tf !== 'all') {
                 if(tf==='itm') filtered = filtered.filter(({g})=>g.y==='c'||g.y==='l');
                 else if(tf==='avt') filtered = filtered.filter(({g})=>g.y==='avt');
                 else if(tf==='bdg') filtered = filtered.filter(({g})=>g.y==='bdg');
                 else if(tf==='tit') filtered = filtered.filter(({g})=>g.y==='tit');
             }
-            // 완료 숨기기 (일반 아이템만 적용)
-            if(hideCompleted) {
+            // 완료 숨기기 (전체 탭에서는 숨기지 않음, 특정 탭에서만 적용)
+            if(hideCompleted && tf !== 'all') {
                 filtered = filtered.filter(({g}) => {
                     if(g.y==='bdg'||g.y==='avt'||g.y==='tit') return true;
                     return g.status !== 'used';
@@ -2555,7 +2832,7 @@ setTimeout(() => { _renderLock = false; }, 100);
             return filtered.map(({g,vi})=>window._makeCard(g,vi)).join('') || '<div style="text-align:center;color:#999;padding:20px;">항목 없음</div>';
         };
 
-        const PANEL_TYPES = [['all','전체'],['itm','🎁 일반'],['avt','🎨 꾸미기'],['bdg','📛 펫스킬'],['tit','🏆 칭호']];
+        const PANEL_TYPES = [['all','전체'],['itm','🎁 일반'],['avt','🎨 꾸미기'],['bdg','📛 펫스킬'],['tit','🏆 칭호'],['done','✅ 완료']];
         const _chipHtml = () => PANEL_TYPES.map(([k,lb])=>
             `<button class="panel-chip ${window._stuPanelTypeFilter===k?'active':''}" onclick="window._stuPanelTypeFilter='${k}';document.getElementById('_spGrid').innerHTML=window._renderPanelGrid();document.getElementById('_spChips').innerHTML=window._chipHtml();">${lb}</button>`
         ).join('');
@@ -2597,18 +2874,26 @@ setTimeout(() => { _renderLock = false; }, 100);
 
         const panel = document.createElement('div');
         panel.id = '_stuPanel';
-        panel.style.cssText = 'width:min(700px,96vw);max-height:88dvh;background:#FAFAFA;border-radius:20px;display:flex;flex-direction:column;animation:popUp 0.22s ease-out;box-shadow:0 12px 40px rgba(0,0,0,0.35);overflow:hidden;';
+        panel.style.cssText = 'width:min(700px,96vw);height:88dvh;background:#FAFAFA;border-radius:20px;display:flex;flex-direction:column;animation:popUp 0.22s ease-out;box-shadow:0 12px 40px rgba(0,0,0,0.35);overflow:hidden;';
         panel.innerHTML = `
             <!-- 헤더 -->
             <div style="background:linear-gradient(135deg,#5D4037,#8D6E63);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
                 <div style="flex-shrink:0;">${avt}</div>
                 <div style="flex:1;min-width:0;">
                     <div style="color:white;font-family:'Jua',sans-serif;font-size:20px;line-height:1.2;">${s.nm}</div>
-                    <div style="color:#D7CCC8;font-size:12px;margin-top:3px;">🍪${s.c||0}&nbsp;&nbsp;🍯${s.cn||0}&nbsp;&nbsp;🍭${s.cd||0}</div>
+                    <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
+                        <span style="color:#FFCC80;font-size:13px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.12);">🍪<span id="_coinSpan_${stuCd}_cookie">${Math.max(0,(s.cookie||0)-(s.usedCookie||0)-(s.shopUsed||0))}</span></span>
+                        <span onclick="window._coinClick('${stuCd}','co',1)" oncontextmenu="event.preventDefault();window._coinClick('${stuCd}','co',-1)" style="cursor:pointer;color:#FFCC80;font-size:13px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.12);user-select:none;" title="좌클릭: +1 / 우클릭: -1">🍯<span id="_coinSpan_${stuCd}_co">${s.co||0}</span></span>
+                        <span onclick="window._coinClick('${stuCd}','cn',1)" oncontextmenu="event.preventDefault();window._coinClick('${stuCd}','cn',-1)" style="cursor:pointer;color:#FFCC80;font-size:13px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.12);user-select:none;" title="좌클릭: +1 / 우클릭: -1">🍭<span id="_coinSpan_${stuCd}_cn">${s.cn||0}</span></span>
+                        <span onclick="window._coinClick('${stuCd}','tk',1)" oncontextmenu="event.preventDefault();window._coinClick('${stuCd}','tk',-1)" style="cursor:pointer;color:#FFCC80;font-size:13px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,0.12);user-select:none;" title="좌클릭: +1 / 우클릭: -1">🧺<span id="_coinSpan_${stuCd}_tk">${s.tk||0}</span></span>
+                    </div>
                     ${reqTotal>0?`<div style="color:#FFCDD2;font-size:12px;font-weight:bold;margin-top:2px;">🚨 ${reqTotal}건 승인 대기</div>`:''}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;">
+                    <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.35);" onclick="window._stuPanelTypeFilter='log';document.getElementById('_spGrid').innerHTML=window._renderPanelGrid();document.getElementById('_spChips').innerHTML=window._chipHtml();">📋 내역</button>
+                    <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(255,100,100,0.3);color:white;border:1px solid rgba(255,255,255,0.35);" onclick="window._showShopRestrictModal('${stuCd}')">🚫 상점 제한</button>
                     <button class="btn btn-blue" style="font-size:12px;padding:5px 10px;" onclick="appAllInPanel(${si})">✅ 승인</button>
+                    <button class="btn btn-red" style="font-size:12px;padding:5px 10px;" onclick="window._delSelInPanel(${si})">🗑️ 삭제</button>
                     <button onclick="closeStuPanel()" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:32px;height:32px;font-size:18px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
                 </div>
             </div>
@@ -2650,6 +2935,102 @@ setTimeout(() => { _renderLock = false; }, 100);
         document.getElementById('_stuPanelBg')?.remove();
     };
 
+    window.showGiveCoinModal = function(si) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList[si];
+        if(!s) return;
+        document.getElementById('_giveCoinModal')?.remove();
+        const bg = document.createElement('div');
+        bg.id = '_giveCoinModal';
+        bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9995;display:flex;align-items:center;justify-content:center;';
+        bg.onclick = e => { if(e.target===bg) bg.remove(); };
+        bg.innerHTML = `<div style="background:white;border-radius:18px;width:min(320px,90vw);padding:24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.35);">
+            <div style="font-size:18px;font-weight:bold;color:#3E2723;margin-bottom:16px;">💰 화폐 지급 — ${s.nm}</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;">
+                <label style="font-size:13px;color:#795548;align-self:center;">종류:</label>
+                <select id="_giveCoinType" style="flex:1;padding:6px;border-radius:8px;border:1px solid #DDD;font-size:14px;">
+                    <option value="c">🍪 쿠키</option>
+                    <option value="cn">🍯 꿀</option>
+                    <option value="cd">🍭 캔디</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <label style="font-size:13px;color:#795548;align-self:center;">수량:</label>
+                <input id="_giveCoinAmt" type="number" min="1" value="1" style="flex:1;padding:6px;border-radius:8px;border:1px solid #DDD;font-size:16px;text-align:center;">
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-org" style="flex:1;font-size:15px;" onclick="execGiveCoin(${si})">지급</button>
+                <button class="btn btn-gray" style="padding:8px 16px;" onclick="document.getElementById('_giveCoinModal').remove()">취소</button>
+            </div>
+        </div>`;
+        document.body.appendChild(bg);
+    };
+
+    window._updateStuCoin = function(stuCd, field, val) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===stuCd); if(!s) return;
+        s[field] = Math.max(0, parseInt(val)||0);
+        db.stu = stuList; sv();
+    };
+    window._coinClick = function(stuCd, field, delta) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===stuCd); if(!s) return;
+        s[field] = Math.max(0, (s[field]||0) + delta);
+        db.stu = stuList; sv();
+        ['co','cn','tk'].forEach(f => {
+            const el = document.getElementById('_coinSpan_'+stuCd+'_'+f);
+            if(el) el.textContent = s[f]||0;
+        });
+        // 쿠키는 computed
+        const _ck = document.getElementById('_coinSpan_'+stuCd+'_cookie');
+        if(_ck) _ck.textContent = Math.max(0,(s.cookie||0)-(s.usedCookie||0)-(s.shopUsed||0));
+    };
+
+    window._restoreDoneItem = function(stuCd, invIdx) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===stuCd); if(!s) return;
+        const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+        if(inv[invIdx]) inv[invIdx].st = 'active';
+        if(Array.isArray(s.inv)) s.inv = inv; db.stu = stuList; sv();
+        document.getElementById('_spGrid').innerHTML = window._renderPanelGrid();
+    };
+
+    window._delDoneItem = function(stuCd, invIdx) {
+        if(!confirm('완료된 아이템을 삭제(회수)할까요?')) return;
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===stuCd); if(!s) return;
+        if(Array.isArray(s.inv)) s.inv.splice(invIdx, 1);
+        else { const arr=Object.values(s.inv||{}); arr.splice(invIdx,1); s.inv=arr; }
+        db.stu = stuList; sv();
+        document.getElementById('_spGrid').innerHTML = window._renderPanelGrid();
+    };
+
+    window._delStuLog = function(cd, ts) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===cd); if(!s) return;
+        const logs = Array.isArray(s.shopLog)?s.shopLog:Object.values(s.shopLog||{});
+        const idx = logs.findIndex(lg=>lg.ts===ts);
+        if(idx===-1) return;
+        logs.splice(idx,1); s.shopLog = logs;
+        db.stu = stuList; sv();
+        document.getElementById('_spGrid').innerHTML = window._renderPanelGrid();
+    };
+
+    window.execGiveCoin = function(si) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList[si];
+        if(!s) return;
+        const type = document.getElementById('_giveCoinType')?.value || 'cn';
+        const amt = Math.max(1, parseInt(document.getElementById('_giveCoinAmt')?.value)||1);
+        if(type==='c') s.cookie = (s.cookie||0) + amt;
+        else s[type] = (s[type]||0) + amt;
+        db.stu = stuList; sv();
+        document.getElementById('_giveCoinModal')?.remove();
+        const typeLabel = type==='c'?'🍪 쿠키':type==='cn'?'🍯 꿀':'🍭 캔디';
+        showToast(`✅ ${s.nm}에게 ${typeLabel} ${amt}개 지급 완료`);
+        if(window._stuPanelSi !== null) showStuPanel(window._stuPanelSi);
+    };
+
     window.appAllInPanel = function(si) {
         si = +si;
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
@@ -2666,6 +3047,48 @@ setTimeout(() => { _renderLock = false; }, 100);
             });
             db.stu=stuList; sv(); rAs();
         }, {icon:'✅', okLabel:'승인', okClass:'btn-blue'});
+    };
+
+    window._delSelInPanel = function(si) {
+        si = +si;
+        const selected = window._spSel && window._spSel.size > 0 ? [...window._spSel] : null;
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        let targets;
+        if(selected) {
+            targets = currentGroups.filter(g=>g.si===si && selected.includes(g.gKey));
+        } else {
+            targets = currentGroups.filter(g=>g.si===si);
+        }
+        if(!targets.length) return alert('삭제할 항목이 없습니다.');
+        prettyConfirm(`${selected?'선택한':'전체'} <b>${targets.length}건</b>을<br>삭제할까요?`, function(){
+            targets.forEach(g=>{
+                if(g.y==='avt'){
+                    const s=stuList[g.si];if(!s)return;
+                    if(s.avtOwned){const i=s.avtOwned.indexOf(g.k);if(i>=0)s.avtOwned.splice(i,1);}
+                    if(s.eq){Object.keys(s.eq).forEach(cat=>{if(s.eq[cat]===g.k)s.eq[cat]='';});}
+                } else if(g.y==='bdg'){
+                    const s=(g.cd?stuList.find(x=>x.cd===g.cd):null)||stuList[g.si];if(!s)return;
+                    const arr=Array.isArray(s.earnedBdg)?s.earnedBdg:Object.values(s.earnedBdg||{});
+                    const bi=arr.indexOf(g.k);if(bi>=0)arr.splice(bi,1);s.earnedBdg=arr;
+                } else if(g.y==='tit'){
+                    const s=(g.cd?stuList.find(x=>x.cd===g.cd):null)||stuList[g.si];if(!s)return;
+                    const arr=Array.isArray(s.earnedTit)?s.earnedTit:Object.values(s.earnedTit||{});
+                    s.earnedTit=arr.filter(tid=>String(tid)!==String(g.k));
+                    if(String(s.equippedTit)===String(g.k))s.equippedTit=null;
+                } else {
+                    g.items.forEach(x=>{
+                        const s=stuList[x.si];if(!s)return;
+                        const arr=x.y==='c'?s.inv:s.ibx;
+                        if(arr&&arr[x.k])arr[x.k].del=true;
+                    });
+                }
+            });
+            stuList.forEach(s=>{
+                if(s.inv)s.inv=s.inv.filter(x=>!x.del);
+                if(s.ibx)s.ibx=s.ibx.filter(x=>!x.del);
+            });
+            db.stu=stuList; if(window._spSel)window._spSel.clear(); sv(); rAs();
+        },{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'});
     };
 
     window.delAllUsedInPanel = function(si) {
@@ -2700,7 +3123,7 @@ setTimeout(() => { _renderLock = false; }, 100);
     };
 
     const AVT_SUB =[{k:'all',lb:'전체'},{k:'face',lb:'얼굴'},{k:'hair',lb:'머리'},{k:'outfit',lb:'의상'},{k:'shoes',lb:'신발'},{k:'hat',lb:'모자'},{k:'hair_deco',lb:'머리 장식'},{k:'face_deco',lb:'얼굴 장식'},{k:'back',lb:'등 장식'},{k:'prop',lb:'소품'},{k:'pet',lb:'펫'}];
-    const RAS_TYPE_FILTERS = [['all','전체'],['itm','🎁 일반 아이템'],['avt','🎨 꾸미기 아이템'],['bdg','📛 펫 스킬'],['tit','🏆️ 칭호'],['gac','🎰 인형 뽑기']];
+    const RAS_TYPE_FILTERS = [['all','전체'],['itm','🎁 일반 아이템'],['avt','🎨 꾸미기 아이템'],['bdg','📛 펫 스킬'],['tit','🏆️ 칭호'],['done','✅ 완료']];
 
     window.toggleTypFilter = function() {
         const row = document.getElementById('ras-type-filter-row');
@@ -2749,6 +3172,74 @@ setTimeout(() => { _renderLock = false; }, 100);
         rAs();
     }
 
+    window.showAllPurchaseLog = function() {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+
+        const _buildRows = (logs) => logs.length ? logs.map((lg,idx) => {
+            const d = new Date(lg.ts);
+            const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+            const curIcon = lg.cur==='cn'?'🍯':lg.cur==='cd'?'🍭':'🍪';
+            const passStr = lg.passUsed ? ` (이용권 ${lg.passUsed}개)` : '';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #F0F0F0;">
+                <div style="min-width:110px;font-size:11px;color:#999;">${ds}</div>
+                <div style="min-width:55px;font-size:13px;font-weight:bold;color:#5D4037;">${lg._stuNm}</div>
+                <div style="flex:1;font-size:13px;">${lg.name||lg.type}</div>
+                <div style="font-size:12px;color:#666;">${lg.type||''}</div>
+                <div style="font-size:13px;font-weight:bold;color:#E53935;">${curIcon}${lg.cost||0}${passStr}</div>
+                <button onclick="window._delPurchaseLog(${lg.ts},'${lg._stuCd}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:#CCC;padding:0 4px;" title="삭제">🗑️</button>
+            </div>`;
+        }).join('') : '<div style="text-align:center;color:#999;padding:30px;">구매 내역 없음</div>';
+
+        // 삭제 함수 등록
+        window._delPurchaseLog = function(ts, stuCd) {
+            const stuList2 = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+            const s2 = stuList2.find(x=>x.cd===stuCd); if(!s2) return;
+            const logs = Array.isArray(s2.shopLog)?s2.shopLog:Object.values(s2.shopLog||{});
+            const idx = logs.findIndex(lg=>lg.ts===ts);
+            if(idx!==-1) { logs.splice(idx,1); s2.shopLog = logs; }
+            db.stu = stuList2; sv();
+            // 모달 재렌더
+            const bk = document.getElementById('_allPurchaseModal'); if(bk) bk.remove();
+            window.showAllPurchaseLog();
+        };
+
+        const bg = document.createElement('div');
+        bg.id = '_allPurchaseModal';
+        bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9990;display:flex;align-items:center;justify-content:center;';
+        bg.onclick = e => { if(e.target===bg) bg.remove(); };
+
+        // 삭제를 위해 각 로그에 인덱스/cd 추가
+        const logsWithMeta = [];
+        stuList.forEach(s => {
+            if(!s) return;
+            const logs = Array.isArray(s.shopLog)?s.shopLog:Object.values(s.shopLog||{});
+            logs.forEach(lg => logsWithMeta.push({...lg, _stuNm:s.nm, _stuCd:s.cd}));
+        });
+        logsWithMeta.sort((a,b)=>b.ts-a.ts);
+
+        bg.innerHTML = `<div style="background:white;border-radius:18px;width:min(800px,96vw);max-height:88dvh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,0.35);overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#5D4037,#8D6E63);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <span style="color:white;font-family:'Jua',sans-serif;font-size:18px;">📋 전체 구매 내역</span>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="window._delAllPurchaseLogs()" style="background:rgba(255,100,100,0.5);border:none;border-radius:10px;padding:4px 12px;font-size:13px;color:white;cursor:pointer;">전체 삭제</button>
+                    <button onclick="document.getElementById('_allPurchaseModal').remove()" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:30px;height:30px;font-size:16px;color:white;cursor:pointer;">✕</button>
+                </div>
+            </div>
+            <div style="flex:1;overflow-y:auto;">${_buildRows(logsWithMeta)}</div>
+        </div>`;
+
+        window._delAllPurchaseLogs = function() {
+            if(!confirm('모든 학생의 구매 내역을 삭제할까요?')) return;
+            const stuList2 = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+            stuList2.forEach(s => { if(s) s.shopLog = []; });
+            db.stu = stuList2; sv();
+            document.getElementById('_allPurchaseModal')?.remove();
+            window.showAllPurchaseLog();
+        };
+
+        document.body.appendChild(bg);
+    };
+
     // 예쁜 confirm 모달
     window.prettyConfirm = function prettyConfirm(msg, onOk, {icon='⚠️', okLabel='확인', okClass='btn-red', cancelLabel='취소'}={}) {
         document.getElementById('_pconfirm')?.remove();
@@ -2760,16 +3251,294 @@ setTimeout(() => { _renderLock = false; }, 100);
             <div style="font-size:15px;color:#4E342E;font-family:'Jua',sans-serif;line-height:1.5;margin-bottom:22px;">${msg}</div>
             <div style="display:flex;gap:10px;justify-content:center;">
                 <button class="btn ${okClass}" style="padding:10px 24px;font-size:15px;" onclick="document.getElementById('_pconfirm').remove();(${onOk.toString()})();">${okLabel}</button>
-                <button class="btn btn-gray" style="padding:10px 20px;font-size:15px;" onclick="document.getElementById('_pconfirm').remove();">${cancelLabel}</button>
+                ${cancelLabel ? `<button class="btn btn-gray" style="padding:10px 20px;font-size:15px;" onclick="document.getElementById('_pconfirm').remove();">${cancelLabel}</button>` : ''}
             </div>
         </div>`;
         document.body.appendChild(el);
     }
     
+    function _renderReqDate() {
+        const body = document.getElementById('_reqDateBody'); if(!body) return;
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const items = [];
+        const _today = new Date().toISOString().slice(0,10);
+        const _limit = new Date(Date.now()+7*24*60*60*1000).toISOString().slice(0,10);
+        stuList.forEach((s) => {
+            const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+            inv.forEach((it,k) => {
+                if(!it) return;
+                if(it.reqDone) return;
+                if(it.useDate && it.useDate > _limit) return;
+                const isPending = it.st==='req' || it.st==='shop_req';
+                const isApproved = !!it.reqApproved;
+                if(isPending || isApproved)
+                    items.push({s,it,k,cd:s.cd});
+            });
+        });
+        if(!items.length) {
+            body.innerHTML = `<div style="color:#aaa;font-size:13px;padding:16px 0;text-align:center;">요청된 항목이 없습니다</div>`;
+            return;
+        }
+        items.sort((a,b)=>(a.it.useDate||'9999').localeCompare(b.it.useDate||'9999'));
+        const byDate = {};
+        items.forEach(x => { const key=x.it.useDate||'(날짜 미정)'; if(!byDate[key])byDate[key]=[]; byDate[key].push(x); });
+        body.innerHTML = Object.entries(byDate).map(([dt,list]) =>
+            `<div style="margin-bottom:12px;">
+                <div style="font-size:12px;font-weight:bold;color:#1565C0;margin-bottom:6px;">${dt==='(날짜 미정)'?'📋 날짜 미정':'📅 '+dt}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;">
+                ${list.map(({s,it,k,cd}) => {
+                    const isApproved = !!it.reqApproved;
+                    const itmDef = (db.itm||[]).find(d=>d.n===it.n)||(db.avt||[]).find(d=>d.nm===it.n)||(db.bdg||[]).find(d=>d.name===it.n);
+                    const imgSrc = it.i || itmDef?.i || itmDef?.img;
+                    const imgHtml = imgSrc&&(imgSrc.startsWith('http')||imgSrc.startsWith('data:')) ? `<img src="${imgSrc}" style="width:40px;height:40px;object-fit:contain;">` : `<div style="font-size:28px;">${imgSrc||'🎁'}</div>`;
+                    const statusBadge = isApproved
+                        ? `<div style="font-size:10px;font-weight:bold;color:#388E3C;margin-bottom:3px;">✅ 승인됨</div>`
+                        : `<div style="font-size:10px;font-weight:bold;color:#E65100;margin-bottom:3px;">🔔 승인 대기</div>`;
+                    const btns = isApproved
+                        ? `<button onclick="window._reqDateDone('${cd}',${k})" style="font-size:10px;padding:3px 7px;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:5px;cursor:pointer;color:#2E7D32;font-weight:bold;">✔ 완료</button>
+                           <button onclick="window._reqDateRej('${cd}',${k})" style="font-size:10px;padding:3px 7px;background:#FFF3E0;border:1px solid #FFCC80;border-radius:5px;cursor:pointer;color:#E65100;font-weight:bold;">🔙 반려</button>`
+                        : `<button onclick="window._reqDateApp('${cd}',${k})" style="font-size:10px;padding:3px 7px;background:#E3F2FD;border:1px solid #90CAF9;border-radius:5px;cursor:pointer;color:#1565C0;font-weight:bold;">✅ 승인</button>
+                           <button onclick="window._reqDateRej('${cd}',${k})" style="font-size:10px;padding:3px 7px;background:#FFF3E0;border:1px solid #FFCC80;border-radius:5px;cursor:pointer;color:#E65100;font-weight:bold;">🔙 반려</button>`;
+                    return `<div style="position:relative;background:${isApproved?'white':'#FFF8E1'};border-radius:10px;padding:8px 6px;text-align:center;border:1px solid ${isApproved?'#A5D6A7':'#FFE082'};box-shadow:0 1px 4px rgba(0,0,0,0.07);"
+                        onmouseenter="this.querySelector('.rdx-btn').style.display='flex'"
+                        onmouseleave="this.querySelector('.rdx-btn').style.display='none'">
+                        <div class="rdx-btn" onclick="window._reqDateDel('${cd}',${k})" style="display:none;position:absolute;top:4px;right:4px;width:18px;height:18px;border-radius:50%;background:rgba(229,57,53,0.85);color:white;font-size:11px;font-weight:bold;align-items:center;justify-content:center;cursor:pointer;z-index:2;">✕</div>
+                        ${statusBadge}${imgHtml}
+                        <div style="font-size:11px;font-weight:bold;color:#3E2723;margin:4px 0 2px;word-break:keep-all;">${it.n}</div>
+                        <div style="font-size:11px;color:#5D4037;margin-bottom:3px;">${s.nm}</div>
+                        ${it.note?`<div style="font-size:10px;color:#795548;margin-bottom:3px;">💬 ${it.note}</div>`:''}
+                        <div style="display:flex;gap:2px;justify-content:center;flex-wrap:wrap;">${btns}</div>
+                    </div>`;
+                }).join('')}
+                </div>
+            </div>`
+        ).join('');
+    }
+
+    window._reqDateDone = function(cd, k) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===cd); if(!s) return;
+        const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+        if(inv[k]) { inv[k].reqDone = true; inv[k].st = inv[k].st==='shop_req' ? 'active' : 'used'; }
+        s.inv = inv; db.stu = stuList; sv(); _renderReqDate(); rAs(); if(typeof rBg==='function') rBg(); updateMenuBadges();
+    };
+    window._reqDateApp = function(cd, k) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===cd); if(!s) return;
+        const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+        if(inv[k]) inv[k].reqApproved = true;
+        s.inv = inv; db.stu = stuList; sv(); _renderReqDate(); if(typeof rBg==='function') rBg(); updateMenuBadges();
+    };
+    window._reqDateRej = function(cd, k) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===cd); if(!s) return;
+        const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+        if(inv[k]) { inv[k].st = 'active'; delete inv[k].reqApproved; delete inv[k].reqDone; }
+        s.inv = inv; db.stu = stuList; sv(); _renderReqDate(); rAs(); if(typeof rBg==='function') rBg(); updateMenuBadges();
+    };
+    window._reqDateDel = function(cd, k) {
+        prettyConfirm('이 항목을 삭제할까요?', function(){
+            const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+            const s = stuList.find(x=>x.cd===cd); if(!s) return;
+            const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+            inv.splice(k,1); s.inv = inv;
+            db.stu = stuList; sv(); _renderReqDate(); rAs(); updateMenuBadges();
+            document.getElementById('_reqMiniPopup')?.remove();
+        }, {icon:'🗑️',okLabel:'삭제',okClass:'btn-red'});
+    };
+
+    window._showReqMiniPopup = function() {
+        document.getElementById('_reqMiniPopup')?.remove();
+        const popup = document.createElement('div');
+        popup.id = '_reqMiniPopup';
+        popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9990;display:flex;align-items:center;justify-content:center;';
+        popup.onclick = e => { if(e.target===popup) popup.remove(); };
+
+        // 승인 대기/완료 아이템 수집
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const _today = new Date().toISOString().slice(0,10);
+        const reqItems = [];
+        stuList.forEach(s => {
+            const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+            inv.forEach((it,k) => {
+                if(!it || it.reqDone || it.reqApproved) return;
+                const isPending = it.st==='req' || it.st==='shop_req';
+                if(isPending) reqItems.push({s,it,k,cd:s.cd});
+            });
+        });
+        // 경매 요청
+        const aucReqs = (db.auc||[]).filter(a=>a.st==='req');
+        // 인형뽑기 대기
+        const gacWaits = [];
+        Object.entries(db.gacQueue||{}).forEach(([nm,arr])=>{
+            const list = Array.isArray(arr)?arr:Object.values(arr);
+            list.filter(e=>e.st==='wait').forEach(e=>gacWaits.push({nm,e}));
+        });
+        gacWaits.sort((a,b)=>(a.e.ts||0)-(b.e.ts||0));
+        window._gacWaitsCache = gacWaits;
+
+        const _itmCard = ({s,it,k,cd}) => {
+            const isApproved = !!it.reqApproved;
+            const imgSrc = it.i;
+            const imgHtml = imgSrc&&(imgSrc.startsWith('http')||imgSrc.startsWith('data:')) ? `<img src="${imgSrc}" style="width:32px;height:32px;object-fit:contain;flex-shrink:0;">` : `<div style="font-size:24px;flex-shrink:0;">${imgSrc||'🎁'}</div>`;
+            const btns = isApproved
+                ? `<button onclick="window._reqDateDone('${cd}',${k});window._showReqMiniPopup();" style="font-size:10px;padding:2px 8px;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:5px;cursor:pointer;color:#2E7D32;font-weight:bold;">✔ 완료</button>
+                   <button onclick="window._reqDateRej('${cd}',${k});window._showReqMiniPopup();" style="font-size:10px;padding:2px 8px;background:#FFF3E0;border:1px solid #FFCC80;border-radius:5px;cursor:pointer;color:#E65100;font-weight:bold;">🔙 반려</button>`
+                : `<button onclick="window._reqDateApp('${cd}',${k});window._showReqMiniPopup();" style="font-size:10px;padding:2px 8px;background:#E3F2FD;border:1px solid #90CAF9;border-radius:5px;cursor:pointer;color:#1565C0;font-weight:bold;">✅ 승인</button>
+                   <button onclick="window._reqDateRej('${cd}',${k});window._showReqMiniPopup();" style="font-size:10px;padding:2px 8px;background:#FFF3E0;border:1px solid #FFCC80;border-radius:5px;cursor:pointer;color:#E65100;font-weight:bold;">🔙 반려</button>`;
+            return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #F0F0F0;position:relative;"
+                onmouseenter="this.querySelector('.mpx').style.display='flex'" onmouseleave="this.querySelector('.mpx').style.display='none'">
+                <div class="mpx" onclick="window._reqDateDel('${cd}',${k})" style="display:none;position:absolute;top:4px;right:4px;width:16px;height:16px;border-radius:50%;background:rgba(229,57,53,0.85);color:white;font-size:10px;align-items:center;justify-content:center;cursor:pointer;">✕</div>
+                ${imgHtml}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:12px;font-weight:bold;color:#3E2723;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.n}</div>
+                    <div style="font-size:11px;color:#777;">${s.nm} ${it.useDate?'· '+it.useDate:''}</div>
+                </div>
+                <div style="display:flex;gap:3px;flex-shrink:0;">${btns}</div>
+            </div>`;
+        };
+
+        const aucHtml = aucReqs.length ? `
+            <div style="padding:8px 12px;background:#FFF3E0;border-top:2px solid #FFE082;">
+                <div style="font-size:12px;font-weight:bold;color:#E65100;margin-bottom:6px;">🔨 경매 요청 (${aucReqs.length}건)</div>
+                ${aucReqs.map(a=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #FFE082;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;color:#3E2723;font-weight:bold;">${a.n||a.id}</div>
+                        <div style="font-size:11px;color:#E65100;">요청자: ${a.sn||''}</div>
+                    </div>
+                    <div style="display:flex;gap:3px;flex-shrink:0;">
+                        <button onclick="window._miniAucApp(${a.id})" style="font-size:10px;padding:2px 7px;background:#E3F2FD;border:1px solid #90CAF9;border-radius:5px;cursor:pointer;color:#1565C0;font-weight:bold;">✅ 승인</button>
+                        <button onclick="window._miniAucRej(${a.id})" style="font-size:10px;padding:2px 7px;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:5px;cursor:pointer;color:#E53935;font-weight:bold;">❌ 거절</button>
+                    </div>
+                </div>`).join('')}
+            </div>` : '';
+        const gacHtml = gacWaits.length ? `
+            <div style="padding:8px 12px;background:#EDE7F6;border-top:2px solid #D1C4E9;">
+                <div style="font-size:12px;font-weight:bold;color:#512DA8;margin-bottom:6px;">🧸 인형뽑기 대기 (${gacWaits.length}건)</div>
+                ${gacWaits.map(({nm,e},gi)=>`<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #D1C4E9;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;color:#3E2723;font-weight:bold;">${nm}</div>
+                        <div style="font-size:11px;color:#512DA8;">신청자: ${e.nm||''}</div>
+                    </div>
+                    <div style="display:flex;gap:3px;flex-shrink:0;">
+                        <button onclick="window._miniGacGo(${gi})" style="font-size:10px;padding:2px 7px;background:#E8EAF6;border:1px solid #9FA8DA;border-radius:5px;cursor:pointer;color:#3949AB;font-weight:bold;">⚡ 처리</button>
+                        <button onclick="window._miniGacRej(${gi})" style="font-size:10px;padding:2px 7px;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:5px;cursor:pointer;color:#E53935;font-weight:bold;">❌ 거절</button>
+                    </div>
+                </div>`).join('')}
+            </div>` : '';
+        const totalCnt = reqItems.length + aucReqs.length + gacWaits.length;
+
+        popup.innerHTML = `<div style="background:white;border-radius:16px;width:min(480px,95vw);max-height:80dvh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,0.3);overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#2E7D32,#66BB6A);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <span style="color:white;font-family:'Jua',sans-serif;font-size:16px;">📋 요청사항 (${totalCnt}건)</span>
+                <button onclick="document.getElementById('_reqMiniPopup').remove()" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:28px;height:28px;font-size:16px;color:white;cursor:pointer;">✕</button>
+            </div>
+            <div style="flex:1;overflow-y:auto;">
+                ${reqItems.length ? reqItems.map(_itmCard).join('') : '<div style="text-align:center;color:#aaa;padding:16px;font-size:13px;">아이템 요청 없음</div>'}
+                ${aucHtml}
+                ${gacHtml}
+            </div>
+        </div>`;
+        document.body.appendChild(popup);
+    };
+
+    window._showShopRestrictModal = function(stuCd) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const s = stuList.find(x=>x.cd===stuCd); if(!s) return;
+        const r = s.shopRestrict||{};
+        document.getElementById('_shopRestrictModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_shopRestrictModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        el.innerHTML = `<div style="background:white;border-radius:18px;width:min(340px,90vw);padding:24px 20px;box-shadow:0 12px 40px rgba(0,0,0,0.35);">
+            <div style="font-size:17px;font-weight:bold;color:#3E2723;margin-bottom:4px;">🚫 상점 이용 제한 — ${s.nm}</div>
+            <div style="font-size:12px;color:#888;margin-bottom:16px;">설정 기간 동안 학생이 상점에 접근할 수 없습니다.</div>
+            <label style="font-size:13px;color:#5D4037;font-weight:bold;">제한 시작일</label>
+            <input type="date" id="_srFrom" value="${r.from||''}" style="width:100%;margin-bottom:10px;">
+            <label style="font-size:13px;color:#5D4037;font-weight:bold;">제한 종료일</label>
+            <input type="date" id="_srTo" value="${r.to||''}" style="width:100%;margin-bottom:16px;">
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-red" style="flex:1;" onclick="
+                    const from=document.getElementById('_srFrom').value;
+                    const to=document.getElementById('_srTo').value;
+                    if(from&&to&&from>to){alert('종료일이 시작일보다 빠릅니다.');return;}
+                    const sl=Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+                    const ss=sl.find(x=>x.cd==='${stuCd}');
+                    if(from&&to){ss.shopRestrict={from,to};}else{delete ss.shopRestrict;}
+                    db.stu=sl;sv();document.getElementById('_shopRestrictModal').remove();alert('저장됐습니다.');
+                ">저장</button>
+                <button class="btn btn-gray" style="flex:1;" onclick="
+                    const sl=Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+                    const ss=sl.find(x=>x.cd==='${stuCd}');
+                    delete ss.shopRestrict;db.stu=sl;sv();document.getElementById('_shopRestrictModal').remove();alert('제한이 해제됐습니다.');
+                ">제한 해제</button>
+                <button class="btn btn-gray" onclick="document.getElementById('_shopRestrictModal').remove()">취소</button>
+            </div>
+        </div>`;
+        document.body.appendChild(el);
+    };
+
+    window._miniGacGo = function(gi) {
+        if(!window._gacWaitsCache) return;
+        const cached = window._gacWaitsCache[gi];
+        if(!cached) return;
+        window._pendingGacGoIdx = gi;
+        prettyConfirm(`<b>${cached.e.nm||'?'}</b>의 인형뽑기 신청을 처리할까요?`, () => {
+            const _c = window._gacWaitsCache && window._gacWaitsCache[window._pendingGacGoIdx];
+            if(!_c||!db.gacQueue) return;
+            const _nm = _c.nm; const _e = _c.e;
+            const _keys = Object.keys(db.gacQueue);
+            const _key = _keys.find(k=>k===_nm) || _keys.find(k=>(Array.isArray(db.gacQueue[k])?db.gacQueue[k]:Object.values(db.gacQueue[k]||{})).some(x=>x.cd===_e.cd&&x.ts===_e.ts));
+            if(!_key) return;
+            const _arr = Array.isArray(db.gacQueue[_key])?[...db.gacQueue[_key]]:[...Object.values(db.gacQueue[_key]||{})];
+            const _i = _arr.findIndex(x=>x.cd===_e.cd&&x.ts===_e.ts);
+            if(_i>=0) _arr.splice(_i,1);
+            db.gacQueue[_key] = _arr;
+            sv(); window._showReqMiniPopup(); if(typeof rGacQueue==='function') rGacQueue();
+        }, {icon:'🎰', okLabel:'처리', okClass:'btn-green', cancelLabel:'취소'});
+    };
+    window._miniGacRej = function(gi) {
+        if(!window._gacWaitsCache) return alert('캐시 오류. 창을 닫고 다시 열어주세요.');
+        const cached = window._gacWaitsCache[gi];
+        if(!cached) return alert('항목을 찾을 수 없습니다.');
+        window._pendingGacRejIdx = gi;
+        prettyConfirm(`<b>${cached.e.nm||'?'}</b>의 인형뽑기 신청을 거절할까요?<br><span style="font-size:12px;color:#888;">비용은 환불되지 않습니다.</span>`, () => {
+            const _c = window._gacWaitsCache && window._gacWaitsCache[window._pendingGacRejIdx];
+            if(!_c) return;
+            const _nm = _c.nm; const _e = _c.e;
+            if(!db.gacQueue) return;
+            const _keys = Object.keys(db.gacQueue);
+            const _key = _keys.find(k=>k===_nm) || _keys.find(k=>(Array.isArray(db.gacQueue[k])?db.gacQueue[k]:Object.values(db.gacQueue[k]||{})).some(x=>x.cd===_e.cd&&x.ts===_e.ts));
+            if(!_key) return;
+            const _arr = Array.isArray(db.gacQueue[_key])?[...db.gacQueue[_key]]:[...Object.values(db.gacQueue[_key]||{})];
+            const _i = _arr.findIndex(x=>x.cd===_e.cd&&x.ts===_e.ts);
+            if(_i>=0) _arr.splice(_i,1);
+            db.gacQueue[_key] = _arr;
+            sv(); window._showReqMiniPopup();
+        }, {icon:'🧸', okLabel:'거절', okClass:'btn-red', cancelLabel:'취소'});
+    };
+
+    window._miniAucApp = function(id) {
+        const m = parseInt(prompt('경매 진행 시간 (분):', '5'));
+        if(isNaN(m) || m <= 0) return;
+        const tmp = document.createElement('input');
+        tmp.id = 'ar_m_'+id; tmp.value = m; tmp.style.display = 'none';
+        document.body.appendChild(tmp);
+        approveAuc(id);
+        tmp.remove();
+        window._showReqMiniPopup();
+    };
+    window._miniAucRej = function(id) {
+        prettyConfirm('이 경매 요청을 거절할까요?', () => { delAuc(id); window._showReqMiniPopup(); },
+            {icon:'❌', okLabel:'거절', okClass:'btn-red', cancelLabel:'취소'});
+    };
+
     function rAs(){
         if(!db.stu) return;
         setTimeout(updateNotifBell, 0);
         updateMenuBadges();
+        _renderReqDate();
         // 인형 뽑기 탭: 대기열만 표시
         const tAg = document.getElementById('t_ag');
         const tGacWrap = document.getElementById('t_gac_queue_wrap');
@@ -2808,7 +3577,8 @@ setTimeout(() => { _renderLock = false; }, 100);
             });
         });
 
-        if(hideCompleted) {
+        // 전체 탭에서는 완료/숨긴 아이템도 표시
+        if(hideCompleted && rasTypeFilter !== 'all') {
             l = l.filter(x => {
                 // avt/bdg/tit는 used 상태가 없으므로 항상 표시
                 if(x.y==='avt'||x.y==='bdg'||x.y==='tit') return true;
@@ -2861,6 +3631,7 @@ setTimeout(() => { _renderLock = false; }, 100);
             }
             else if(rasTypeFilter === 'bdg') groups = groups.filter(g => g.y==='bdg');
             else if(rasTypeFilter === 'tit') groups = groups.filter(g => g.y==='tit');
+            else if(rasTypeFilter === 'done') groups = groups.filter(g => (g.y==='c'||g.y==='l') && g.status==='used');
         }
 
         const getW = (st) => { if(st==='req') return 0; if(st==='active') return 1; if(st==='owned') return 1.5; return 2; };
@@ -2890,15 +3661,15 @@ setTimeout(() => { _renderLock = false; }, 100);
             if(g.y==='avt') {
                 const avtItem=(db.avt||[]).find(a=>a.id===g.k);
                 img = avtItem?.img ? `<img src="${avtItem.img}" style="width:70px;height:70px;object-fit:contain;image-rendering:pixelated;margin-bottom:5px;" onerror="this.style.display='none'">` : `<div class="huge-emoji" style="font-size:60px;">🎨</div>`;
-                actionBtn = `<div style="font-size:11px;color:#2196F3;margin-top:5px;">🎨 아바타 보유</div><div style="margin-top:5px;"><button class="btn btn-red" style="width:100%;padding:5px;font-size:12px;pointer-events:auto;" onclick="prettyConfirm('꾸미기 아이템을<br>삭제(회수)할까요?',function(){delGrp(${visualIdx});},{icon:'🎨',okLabel:'삭제',okClass:'btn-red'})">🗑️ 삭제</button></div>`;
+                actionBtn = `<div style="font-size:11px;color:#2196F3;margin-top:5px;">🎨 아바타 보유</div>`;
             } else if(g.y==='bdg') {
                 const bdgItem=(db.bdg||[]).find(b=>b.id===g.k);
                 img = bdgItem?.img ? `<img src="${bdgItem.img}" style="width:70px;height:70px;object-fit:contain;border-radius:8px;margin-bottom:5px;" onerror="this.style.display='none'">` : `<div class="huge-emoji" style="font-size:60px;">${bdgItem?.icon||'📛'}</div>`;
-                actionBtn = `<div style="font-size:11px;color:#9C27B0;margin-top:5px;">📛 펫 스킬 보유</div><div style="margin-top:5px;"><button class="btn btn-red" style="width:100%;padding:5px;font-size:12px;pointer-events:auto;" onclick="prettyConfirm('펫 스킬을 삭제할까요?',function(){delGrp(${visualIdx});},{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'})">🗑️ 삭제</button></div>`;
+                actionBtn = `<div style="font-size:11px;color:#9C27B0;margin-top:5px;">📛 펫 스킬 보유</div>`;
             } else if(g.y==='tit') {
                 const titItem=(db.tit||[]).find(t=>t.id===g.k);
                 img = titItem?.img ? `<img src="${titItem.img}" style="width:70px;height:70px;object-fit:contain;border-radius:8px;margin-bottom:5px;" onerror="this.style.display='none'">` : `<div class="huge-emoji" style="font-size:60px;">🏆️</div>`;
-                actionBtn = `<div style="font-size:11px;color:#FF9800;margin-top:5px;">🏆️ 칭호 보유</div><div style="margin-top:5px;"><button class="btn btn-red" style="width:100%;padding:5px;font-size:12px;pointer-events:auto;" onclick="prettyConfirm('칭호를 삭제할까요?',function(){delGrp(${visualIdx});},{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'})">🗑️ 삭제</button></div>`;
+                actionBtn = `<div style="font-size:11px;color:#FF9800;margin-top:5px;">🏆️ 칭호 보유</div>`;
             } else {
                 img = g.y==='c'
                     ? (g.i && (g.i.startsWith('http')||g.i.startsWith('data:')) ? `<img src="${g.i}" style="width:70px;height:70px;object-fit:contain;margin-bottom:5px;" onerror="this.style.display='none'">` : `<div class="huge-emoji" style="font-size:70px;">${g.i||'🎁'}</div>`)
@@ -2911,15 +3682,16 @@ setTimeout(() => { _renderLock = false; }, 100);
                     ? `<div style="display:flex;gap:3px;width:100%;margin-top:5px;">
                         <button class="btn btn-blue" style="flex:1;pointer-events:auto;padding:5px;font-size:12px;" onclick="appGrp(${visualIdx})">✅ ${shopReqCnt>0?'구매 승인':'승인'}</button>
                         <button class="btn btn-org" style="flex:1;pointer-events:auto;padding:5px;font-size:12px;" onclick="rejectGrp(${visualIdx})">🔙 반려</button>
-                        <button class="btn btn-red" style="flex:1;pointer-events:auto;padding:5px;font-size:12px;" onclick="prettyConfirm('이 항목을 삭제할까요?',function(){delGrp(${visualIdx});},{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'})">🗑️ 삭제</button>
                        </div>`
                     : (g.hasActive
-                        ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div><div style="display:flex;gap:3px;margin-top:5px;"><button class="btn btn-org" style="flex:1;padding:5px;font-size:12px;pointer-events:auto;" onclick="appGrp(${visualIdx})">✔️ 강제 사용</button><button class="btn btn-red" style="padding:5px;font-size:12px;pointer-events:auto;" onclick="prettyConfirm('이 항목을 삭제할까요?',function(){delGrp(${visualIdx});},{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'})">🗑️ 삭제</button></div>`
-                        : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div><div style="display:flex;gap:3px;margin-top:5px;"><button class="btn btn-green" style="flex:1;padding:5px;font-size:12px;pointer-events:auto;" onclick="resGrp(${visualIdx})">🔄 복구</button><button class="btn btn-red" style="padding:5px;font-size:12px;pointer-events:auto;" onclick="prettyConfirm('이 항목을 삭제할까요?',function(){delGrp(${visualIdx});},{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'})">🗑️ 삭제</button></div>`);
+                        ? `<div style="font-size:11px;color:green;margin-top:5px">보관중</div><div style="margin-top:5px;"><button class="btn btn-org" style="width:100%;padding:5px;font-size:12px;pointer-events:auto;" onclick="appGrp(${visualIdx})">✔️ 강제 사용</button></div>`
+                        : `<div style="font-size:11px;color:gray;margin-top:5px">사용됨</div><div style="margin-top:5px;"><button class="btn btn-green" style="width:100%;padding:5px;font-size:12px;pointer-events:auto;" onclick="resGrp(${visualIdx})">🔄 복구</button></div>`);
             }
             const cnt = g.items.length;
             const cntBadge = cnt > 1 ? `<div style="position:absolute;top:6px;right:8px;background:rgba(0,0,0,0.7);color:white;padding:2px 9px;border-radius:8px;font-size:14px;font-weight:bold;">×${cnt}</div>` : '';
-            const statusBadge = g.hasReq ? '<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:5px">🚨 사용요청</div>' : '';
+            const _noteText = g.items.map(x=>x.t?.note).filter(Boolean).join(' / ');
+            const noteBadge = _noteText ? `<div style="font-size:11px;color:#5D4037;background:#FFF8E1;border-radius:6px;padding:2px 6px;margin-top:2px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_noteText}">💬 ${_noteText}</div>` : '';
+            const statusBadge = g.hasReq ? `<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:2px">🚨 사용요청</div>${noteBadge}` : '';
             const _dispN = (g.y==='tit') ? (()=>{const _d=document.createElement('div');_d.innerHTML=g.n||'';return(_d.textContent||_d.innerText||'').trim()||g.n||'칭호';})() : (g.n||'아이템');
             const showStuName = asort !== 'stu';
             const itemTitle = `<div style="font-weight:bold;font-size:14px;color:#3E2723;margin-top:5px;font-family:'Jua',sans-serif;">${showStuName ? g.sn+'의 ' : ''}${_dispN}</div>`;
@@ -2929,10 +3701,12 @@ setTimeout(() => { _renderLock = false; }, 100);
             const mdHandler = inPanel
                 ? `window._spStartDrag(event,'${escapedKey}')`
                 : `startDrag(event,${visualIdx},'${escapedKey}')`;
+            const hoverX = `<div class="card-hover-x" onclick="event.stopPropagation();prettyConfirm('이 항목을 삭제할까요?',function(){delGrp(${visualIdx});},{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'})" style="display:none;position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(229,57,53,0.85);color:white;font-size:13px;font-weight:bold;align-items:center;justify-content:center;cursor:pointer;z-index:10;pointer-events:auto;">✕</div>`;
             return `<div id="card_${g.gKey}" class="asset ${seld?'sel':''} ${g.hasReq?'req':''} ${isUsed?'used':''}"
                 draggable="false" ondragstart="return false;"
                 onmousedown="${mdHandler}"
-                ondblclick="delGrp(${visualIdx})"> ${statusBadge} ${img} ${itemTitle} ${actionBtn} ${cntBadge} </div>`;
+                onmouseenter="this.querySelector('.card-hover-x').style.display='flex'"
+                onmouseleave="this.querySelector('.card-hover-x').style.display='none'"> ${statusBadge} ${hoverX} ${img} ${itemTitle} ${actionBtn} ${cntBadge} </div>`;
         };
 
         // ── 학생별 모드 vs 평면 모드 렌더 ──
@@ -2966,9 +3740,14 @@ setTimeout(() => { _renderLock = false; }, 100);
                 </div>`;
             });
             ag.innerHTML = stuEntries.length ? cards : '<div style="text-align:center;color:#999;padding:30px;">표시할 항목 없음</div>';
-            // 패널이 열려있었다면 다시 열기
+            // 패널이 열려있으면 그리드만 업데이트 (깜빡임 방지)
             if(window._stuPanelSi !== null && window._stuPanelSi !== undefined) {
-                showStuPanel(window._stuPanelSi);
+                const _spG = document.getElementById('_spGrid');
+                const _spC = document.getElementById('_spChips');
+                if(_spG && window._renderPanelGrid) {
+                    _spG.innerHTML = window._renderPanelGrid();
+                    if(_spC && window._chipHtml) _spC.innerHTML = window._chipHtml();
+                }
             }
         } else {
             const ag = document.getElementById('t_ag');
@@ -3131,7 +3910,16 @@ window.appU = function(y, si, k) {
             const s = stuList[x.si];
             if(!s) return;
             if(x.y==='c' && s.inv && s.inv[x.k]) {
-                s.inv[x.k].st = s.inv[x.k].st === 'shop_req' ? 'active' : 'used';
+                const invIt = s.inv[x.k];
+                // 화폐 지급 아이템이면 화폐 직접 지급
+                const itmDef = (db.itm||[]).find(it=>it.n===invIt.n);
+                if(itmDef?.coinType) {
+                    const field = itmDef.coinType; const amt = itmDef.coinAmt||1;
+                    s[field] = (s[field]||0) + amt;
+                    invIt.st = 'used'; // 사용 처리
+                } else {
+                    invIt.st = invIt.st === 'shop_req' ? 'active' : 'used';
+                }
             } else if(x.y==='l' && s.ibx && s.ibx[x.k]) {
                 s.ibx[x.k].st = 'used';
             }
@@ -3419,8 +4207,10 @@ window.appU = function(y, si, k) {
             const s = stuArr[si]; if(!s) return;
             items.forEach(({type, idx}) => {
                 if(type==='itm'){
-                    const it = db.itm[idx]; if(!it) return;
+                    const _itmList = Array.isArray(db.itm)?db.itm:Object.values(db.itm||{});
+                    const it = _itmList[idx]; if(!it) return;
                     if(!s.inv) s.inv=[];
+                    else if(!Array.isArray(s.inv)) s.inv = Object.values(s.inv);
                     for(let q=0;q<multiQty;q++) s.inv.push({n:it.n, i:it.i, st:'active', g:it.g||'C'});
                     if(!s.col) s.col=[]; if(!s.col.includes(it.n)) s.col.push(it.n);
                 } else if(type==='avt'){
@@ -3446,6 +4236,43 @@ window.appU = function(y, si, k) {
     };
 
     function upGiv(){ renderGivGrids(); }
+
+    window._openGivCoin = function(type) {
+        const labels = {co:'🍯 꿀', cn:'🍭 캔디', tk:'🧺 바구니'};
+        document.getElementById('_givCoinModal2')?.remove();
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const opts = stuList.map((s,i)=>`<option value="${i}">${s.nm}</option>`).join('');
+        const el = document.createElement('div');
+        el.id = '_givCoinModal2';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9990;display:flex;align-items:center;justify-content:center;';
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        el.innerHTML = `<div style="background:white;border-radius:18px;padding:24px;width:min(320px,92vw);box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <div style="font-size:18px;font-weight:bold;color:#3E2723;margin-bottom:16px;">${labels[type]} 지급</div>
+            <label style="font-size:12px;color:#888;">학생 선택</label>
+            <select id="_gcStu" style="width:100%;padding:8px;border-radius:8px;border:1px solid #DDD;font-family:'Jua';margin:4px 0 10px;"></select>
+            <label style="font-size:12px;color:#888;">지급 수량</label>
+            <input type="number" id="_gcAmt" value="1" min="1" style="width:100%;padding:8px;border-radius:8px;border:1px solid #DDD;font-family:'Jua';box-sizing:border-box;margin:4px 0 16px;">
+            <div style="display:flex;gap:8px;">
+                <button onclick="window._doGivCoin('${type}')" style="flex:1;background:#FF9F43;border:none;border-radius:10px;padding:10px;font-family:'Jua';font-size:15px;color:white;cursor:pointer;">지급</button>
+                <button onclick="document.getElementById('_givCoinModal2').remove()" style="background:#EEE;border:none;border-radius:10px;padding:10px;font-family:'Jua';cursor:pointer;font-size:15px;">취소</button>
+            </div>
+        </div>`;
+        document.body.appendChild(el);
+        // populate select after append
+        const sel = document.getElementById('_gcStu');
+        if(sel) sel.innerHTML = opts;
+    };
+    window._doGivCoin = function(type) {
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const si = parseInt(document.getElementById('_gcStu')?.value||0);
+        const amt = Math.max(1, parseInt(document.getElementById('_gcAmt')?.value||1)||1);
+        const s = stuList[si]; if(!s) return;
+        s[type] = (s[type]||0) + amt;
+        db.stu = stuList; sv();
+        document.getElementById('_givCoinModal2')?.remove();
+        const labels = {co:'🍯 꿀', cn:'🍭 캔디', tk:'🧺 바구니'};
+        alert(`${s.nm}에게 ${labels[type]} ${amt}개를 지급했습니다.`);
+    };
 
     function giv(){
         const ti=document.getElementById('gt').value, ii=document.getElementById('gi').value, it=db.itm[ii];
@@ -4174,6 +5001,17 @@ window.appU = function(y, si, k) {
                     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:10px;">
                         <input type="checkbox" id="m_needApprove" style="width:auto;margin:0;" ${it.needApprove?'checked':''}> ✅ 사용 시 교사 승인 필요 (사용하기 클릭 → 승인 요청)
                     </label>
+                    <label>💰 화폐 지급 아이템 <span style="font-weight:normal;color:#aaa;font-size:12px;">(승인 시 학생에게 화폐 직접 지급)</span></label>
+                    <select id="m_coinType" style="margin-bottom:6px;" onchange="document.getElementById('m_coinAmtRow').style.display=this.value?'':'none'">
+                        <option value="" ${!it.coinType?'selected':''}>일반 아이템</option>
+                        <option value="c" ${it.coinType==='c'?'selected':''}>🍪 쿠키</option>
+                        <option value="cn" ${it.coinType==='cn'?'selected':''}>🍯 꿀</option>
+                        <option value="cd" ${it.coinType==='cd'?'selected':''}>🍭 캔디</option>
+                    </select>
+                    <div id="m_coinAmtRow" style="display:${it.coinType?'':'none'};margin-bottom:10px;">
+                        <label style="font-size:12px;">지급 수량</label>
+                        <input id="m_coinAmt" type="number" min="1" value="${it.coinAmt||1}" placeholder="지급할 화폐 수량">
+                    </div>
                     <div style="display:flex;gap:8px;margin-top:8px;">
                         <button class="btn btn-green" style="flex:1;" onclick="saveItm(${editIdx})">저장</button>
                         <button class="btn btn-gray" style="flex:1;" onclick="document.getElementById('itmMgrModal').remove()">취소</button>
@@ -4205,6 +5043,9 @@ window.appU = function(y, si, k) {
         if(needApprove) item.needApprove = true;
         if(openMonth) item.openMonth = openMonth;
         if(shopCat) item.shopCat = shopCat;
+        const coinType = document.getElementById('m_coinType')?.value || '';
+        const coinAmt = parseInt(document.getElementById('m_coinAmt')?.value||1)||1;
+        if(coinType) { item.coinType = coinType; item.coinAmt = coinAmt; }
         if(editIdx>=0) db.itm[editIdx]=item; else db.itm.push(item);
         sv(); rSet(); document.getElementById('itmMgrModal').remove();
     };
@@ -4634,13 +5475,18 @@ window.appU = function(y, si, k) {
             const tipAttr = desc ? `onmouseenter="showTip(event,'${desc.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n')}')" onmousemove="moveTip(event)" onmouseleave="hideTip()"` : '';
             const safeNc = item.n.replace(/'/g, "\\'");
             const cancelBtn = isReq ? `<button onclick="event.stopPropagation();cancelReq('${safeNc}')" style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:#FF7043;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">취소</button>` : '';
+            const _ud = item.useDate ? new Date(item.useDate+'T00:00') : null;
+            const isApprovedReq = (isReq || isShopReq) && !!item.reqApproved;
+            const reqTopLabel = isApprovedReq
+                ? `<div style="position:absolute;top:0;background:#388E3C;color:white;font-size:12px;font-weight:bold;width:100%;text-align:center;border-radius:7px 7px 0 0;padding:3px 0;line-height:1.3;">${_ud ? _ud.getMonth()+1+'월 '+_ud.getDate()+'일 (사용 예정)' : '사용 예정'}</div>`
+                : isShopReq ? '<div style="position:absolute;top:0;background:#1976D2;color:white;font-size:10px;width:100%;text-align:center;border-radius:7px 7px 0 0;">승인 대기</div>'
+                : isReq ? '<div style="position:absolute;top:0;background:orange;color:white;font-size:10px;width:100%;text-align:center;border-radius:7px 7px 0 0;">사용요청중</div>' : '';
 
             html += `<div class="inventory-slot has-item ${tierCls} ${showTrash ? 'is-used' : ''}" ${tipAttr} onclick="${clickEvent}">
                 ${item.i.includes('http') ? `<img src="${item.i}">` : `<div class="slot-emoji">${item.i}</div>`}
                 <div style="font-size: 18px; font-weight: bold; margin-top: 10px; color: #5D4037; text-align: center; word-break: keep-all; line-height: 1.2;">${item.n}</div>
                 <div class="item-count">${item.count}</div>
-                ${isReq ? '<div style="position:absolute; top:0; background:orange; color:white; font-size:10px; width:100%; text-align:center; border-radius:7px 7px 0 0;">사용요청중</div>' : ''}
-                ${isShopReq ? '<div style="position:absolute; top:0; background:#1976D2; color:white; font-size:10px; width:100%; text-align:center; border-radius:7px 7px 0 0;">승인 대기</div>' : ''}
+                ${reqTopLabel}
                 ${cancelBtn}
             </div>`;
         });
@@ -5038,6 +5884,20 @@ window.appU = function(y, si, k) {
         const old = document.getElementById('askModal'); if(old) old.remove();
         const itemIcon = item.i.includes('http') ? `<img src="${item.i}" style="width:70px; height:70px; object-fit:contain;">` : `<div style="font-size:70px;">${item.i}</div>`;
 
+        // 이용권 보유 수량
+        const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        const cType = item.c || 'cn';
+        const passSection = (cType==='cn' || cType==='kc') && passCount > 0 && item.p > 0 ? `
+            <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <label style="font-size:12px;color:#795548;">사용할 개수:</label>
+                    <input id="_passUse" type="number" min="0" max="${Math.min(passCount, item.p)}" value="0" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _v=parseInt(this.value)||0,_mx=${Math.min(passCount,item.p)};const _w=document.getElementById('_passWarn');if(_v>_mx){if(_w)_w.style.display='';this.value=_mx;}else{if(_w)_w.style.display='none';}document.getElementById('_passRemain').textContent=(${item.p}-parseInt(this.value));">
+                    <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_passRemain">${item.p}</b> ${curEmoji[cType]}</span>
+                </div>
+                <div id="_passWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;">⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 ${Math.min(passCount,item.p)}개까지 사용 가능합니다.</div>
+            </div>` : '';
+
         const modalHtml = `
             <div id="askModal" class="modal-overlay">
                 <div class="modal-window">
@@ -5045,10 +5905,11 @@ window.appU = function(y, si, k) {
                     <div class="modal-inner">
                         <div class="modal-icon">${itemIcon}</div>
                         <h2 class="modal-title">구매 하시겠습니까?</h2>
-                        <div style="background:rgba(255,255,255,0.8); border: 2px dashed #A1887F; border-radius: 15px; padding: 15px; margin-bottom:20px;">
+                        <div style="background:rgba(255,255,255,0.8); border: 2px dashed #A1887F; border-radius: 15px; padding: 15px; margin-bottom:14px;">
                             <div style="font-size:24px; font-weight:900; color:#FF6F00;">${item.n}</div>
                             <div style="font-size:20px; color:#5D4037; margin-top:10px;">가격: <b style="color:#E65100; font-size:24px;">${item.p}</b> ${curEmoji[item.c||'cn']}</div>
                         </div>
+                        ${passSection}
                         <div class="modal-btn-group" style="justify-content: center;">
                             <button class="btn btn-org" onclick="realBuyCurrent('${item.n.replace(/'/g, "\\'")}')" style="flex: none; width: 60%;">네, 살래요!</button>
                         </div>
@@ -5060,6 +5921,9 @@ window.appU = function(y, si, k) {
     }
 
     window.realBuyCurrent = function(itemName) {
+        // 모달 제거 전에 이용권 값 미리 읽기
+        const _passValCache = parseInt(document.getElementById('_passUse')?.value||0)||0;
+
         const modal = document.getElementById('askModal');
         if (modal) modal.remove();
 
@@ -5070,13 +5934,30 @@ window.appU = function(y, si, k) {
         const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[cType]||0);
         if (myBal < item.p) return;
 
+        // 이용권 차감 (cn/kc 구매 시)
+        let passUsed = 0;
+        if(cType==='cn'||cType==='kc') {
+            const passEl = {value: _passValCache}; // 이미 읽어둔 캐시 값 사용
+            const maxPass = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+            passUsed = Math.min(parseInt(passEl?.value||0)||0, maxPass, item.p);
+            let removed = 0;
+            for(let i=0; i<me.inv.length && removed<passUsed; i++) {
+                if(me.inv[i].n==='상점 이용권'&&(me.inv[i].st==='active'||me.inv[i].st==='new')) {
+                    me.inv[i].st='used'; removed++;
+                }
+            }
+        }
+        const effectiveCost = item.p - passUsed;
+
         // 화폐 차감
         if (cType === 'kc') {
-            me.shopUsed = (me.shopUsed || 0) + item.p;
+            me.shopUsed = (me.shopUsed || 0) + effectiveCost;
             if(!me.shopLog) me.shopLog = [];
-            me.shopLog.push({type:'아이템 구입', name:item.n, cost:item.p, ts:Date.now()});
+            me.shopLog.push({type:'아이템 구입', name:item.n, cost:effectiveCost, passUsed, ts:Date.now()});
         } else {
-            me[cType] -= item.p;
+            me[cType] -= effectiveCost;
+            if(!me.shopLog) me.shopLog = [];
+            me.shopLog.push({type:'아이템 구입', name:item.n, cost:effectiveCost, cur:cType, passUsed, ts:Date.now()});
         }
 
         me.inv.push({n: item.n, i: item.i, st: 'active', g: item.g || 'C'});
@@ -5140,24 +6021,74 @@ window.appU = function(y, si, k) {
         const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[cType]||0);
         if (myBal < g.c) return alert("화폐가 부족해요!");
 
-        // 확인 모달 없이 바로 뽑기 실행
+        // 이용권 보유 시 확인 모달
+        const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        if((cType==='cn'||cType==='kc') && passCount > 0 && g.c > 0) {
+            document.getElementById('_gacPassModal')?.remove();
+            const safeN = gachaName.replace(/'/g,"\\'");
+            const maxPass = Math.min(passCount, g.c);
+            document.body.insertAdjacentHTML('beforeend', `<div id="_gacPassModal" class="modal-overlay" onclick="if(event.target===this)this.remove()">
+                <div class="modal-window" onclick="event.stopPropagation()">
+                    <button class="modal-close-btn" onclick="document.getElementById('_gacPassModal').remove()">X</button>
+                    <div class="modal-inner">
+                        <div style="font-size:48px;margin-bottom:8px;">🔮</div>
+                        <h2 class="modal-title">${g.n}</h2>
+                        <div style="background:rgba(255,255,255,0.8);border:2px dashed #A1887F;border-radius:15px;padding:14px;margin-bottom:14px;">
+                            <div style="font-size:18px;color:#5D4037;">가격: <b style="color:#E65100;font-size:22px;">${g.c}</b> ${curEmoji[cType]}</div>
+                        </div>
+                        <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+                            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)</div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <label style="font-size:12px;color:#795548;">사용 개수:</label>
+                                <input id="_gacPassUse" type="number" min="0" max="${maxPass}" value="0" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${maxPass};const _gw=document.getElementById('_gacPassWarn');if(_gv>_gmx){if(_gw)_gw.style.display='';this.value=_gmx;}else{if(_gw)_gw.style.display='none';}document.getElementById('_gacRemain').textContent=(${g.c}-parseInt(this.value));">
+                                <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_gacRemain">${g.c}</b> ${curEmoji[cType]}</span>
+                            </div>
+                            <div id="_gacPassWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;">⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 ${maxPass}개까지 사용 가능합니다.</div>
+                        </div>
+                        <button class="btn btn-org" style="width:100%;font-size:18px;padding:12px;" onclick="executeGachaCurrent('${safeN}')">뽑기!</button>
+                    </div>
+                </div>
+            </div>`);
+            return;
+        }
         executeGachaCurrent(gachaName);
     }
 
     window.executeGachaCurrent = function(gachaName) {
-        const modal = document.getElementById('gachaModal');
-        if (modal) modal.remove();
+        // 모달 제거 전에 이용권 값 미리 읽기
+        const _gacPassCache = parseInt(document.getElementById('_gacPassUse')?.value||0)||0;
+
+        document.getElementById('gachaModal')?.remove();
+        document.getElementById('_gacPassModal')?.remove();
 
         const g = db.gac.find(i => i.n === gachaName);
         if (!g) return;
 
         const cType = g.cur || 'cn';
+
+        // 이용권 차감
+        let gacPassUsed = 0;
+        if(cType==='cn'||cType==='kc') {
+            const passEl = {value: _gacPassCache}; // 미리 읽어둔 값 사용
+            const maxPass2 = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+            gacPassUsed = Math.min(parseInt(passEl?.value||0)||0, maxPass2, g.c);
+            let removed2 = 0;
+            for(let i=0; i<me.inv.length && removed2<gacPassUsed; i++) {
+                if(me.inv[i].n==='상점 이용권'&&(me.inv[i].st==='active'||me.inv[i].st==='new')) {
+                    me.inv[i].st='used'; removed2++;
+                }
+            }
+        }
+        const gacEffCost = g.c - gacPassUsed;
+
         if (cType === 'kc') {
-            me.shopUsed = (me.shopUsed || 0) + g.c;
+            me.shopUsed = (me.shopUsed || 0) + gacEffCost;
             if(!me.shopLog) me.shopLog = [];
-            me.shopLog.push({type:'뽑기', name:g.n, cost:g.c, ts:Date.now()});
+            me.shopLog.push({type:'뽑기', name:g.n, cost:gacEffCost, passUsed:gacPassUsed, ts:Date.now()});
         } else {
-            me[cType] -= g.c;
+            me[cType] -= gacEffCost;
+            if(!me.shopLog) me.shopLog = [];
+            me.shopLog.push({type:'뽑기', name:g.n, cost:gacEffCost, cur:cType, passUsed:gacPassUsed, ts:Date.now()});
         }
 
         // 듀얼 뽑기: 다른 기계에서 추가 1개
@@ -5176,7 +6107,7 @@ window.appU = function(y, si, k) {
             };
         }
 
-        upMe();
+        window._gachaInProgress = true;
         rBg(); rSh();
         runRNG(g, true);
     }
@@ -5272,22 +6203,7 @@ window.appU = function(y, si, k) {
         rSh();
     };
 
-    // 완료/호출 알림 감지 (5초 싱크에서 호출)
-    let _prevCalledGacKeys = new Set();
-    function checkOfflineGacDone() {
-        if(!me||!db.gacQueue) return;
-        Object.entries(db.gacQueue).forEach(([gacNm, rawArr]) => {
-            const arr = Array.isArray(rawArr) ? rawArr : Object.values(rawArr);
-            arr.filter(e=>e.cd===me.cd&&e.called).forEach(e=>{
-                const key = `call_${gacNm}_${e.ts}_${e.called}`;
-                if(!_prevCalledGacKeys.has(key)) {
-                    _prevCalledGacKeys.add(key);
-                    showToast(`📣 선생님이 호출합니다! [${gacNm}] 뽑기 차례입니다 🎰`, 6000);
-                    try { snd('r'); } catch(_){}
-                }
-            });
-        });
-    }
+    function checkOfflineGacDone() { /* 인형뽑기 호출 기능 삭제됨 */ }
 
     /* === 학생 경매 모달 함수 === */
     window.showAucReqModal = function() {
@@ -5404,6 +6320,7 @@ window.appU = function(y, si, k) {
     function rAucT() {
         if(!db.auc) db.auc = [];
         setTimeout(updateNotifBell, 0);
+        _renderReqDate();
 
         const reqList = db.auc.filter(a => a.st === 'req');
         const actList = db.auc.filter(a => a.st === 'active');
@@ -6288,7 +7205,7 @@ let isScratchDone = false;
             if(!Array.isArray(me.ownedPets)) me.ownedPets = [];
             me.ownedPets.push({defId:petDef.id, isSpecial:petDef.type==='spGacha', skin:null, skill:null, gotAt:Date.now()});
             if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
-            upMe(); rChar(); return;
+            window._gachaInProgress = false; upMe(); rChar(); return;
         }
         // 2순위: 아바타 아이템(펫 아바타 포함 → avtOwned)
         const avtItem = (db.avt||[]).find(a => nm && (a.nm===nm || a.id===nm));
@@ -6296,7 +7213,7 @@ let isScratchDone = false;
             if(!Array.isArray(me.avtOwned)) me.avtOwned = [];
             if(!me.avtOwned.includes(avtItem.id)) me.avtOwned.push(avtItem.id);
             if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
-            upMe(); rBg(); rChar(); return;
+            window._gachaInProgress = false; upMe(); rBg(); rChar(); return;
         }
         // 3순위: 펫 스킬(뱃지 → earnedBdg)
         const bdg = (db.bdg||[]).find(b => b.name===nm || b.n===nm);
@@ -6304,7 +7221,7 @@ let isScratchDone = false;
             if(!Array.isArray(me.earnedBdg)) me.earnedBdg = [];
             if(!me.earnedBdg.includes(bdg.id)) me.earnedBdg.push(bdg.id);
             if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
-            upMe(); rBg(); rChar(); return;
+            window._gachaInProgress = false; upMe(); rBg(); rChar(); return;
         }
         }
 
@@ -6319,6 +7236,7 @@ let isScratchDone = false;
         // 복권 보너스 쿠키 지급
         if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
 
+        window._gachaInProgress = false;
         upMe(); rBg(); rSh(); rCol();
 
         // 뽑기 결과 광장 채팅에 시스템 메시지
@@ -8067,24 +8985,30 @@ window.addCharRow = function() {
 
     /* ===== 교사: 오프라인 뽑기 대기열 ===== */
     function rGacQueue() {
-        const el = document.getElementById('t_gac_queue'); if(!el) return;
+        const _renderGacInto = (el, compact) => {
+        if(!el) return;
         const offlineGacs = (db.gac||[]).filter(g=>g.offline);
-        if(!offlineGacs.length) { el.innerHTML = '<div style="color:#aaa;font-size:13px;padding:8px;">오프라인 신청 모드 기계가 없습니다. 뽑기 기계 설정에서 🎰 오프라인 모드를 켜주세요.</div>'; return; }
+        if(!offlineGacs.length) { el.innerHTML = '<div style="color:#aaa;font-size:13px;padding:8px;">오프라인 신청 모드 기계가 없습니다. 뽑기 기계 설정에서 🧸 오프라인 모드를 켜주세요.</div>'; return; }
 
         const queue = db.gacQueue || {};
+        let totalWait = 0, totalDone = 0;
         let html = '';
         offlineGacs.forEach(g => {
             const rawArr = queue[g.n] || [];
             const arr = (Array.isArray(rawArr) ? rawArr : Object.values(rawArr)).sort((a,b)=>a.ts-b.ts);
             const waitList = arr.filter(e=>e.st==='wait');
             const doneList = arr.filter(e=>e.st==='done');
-            html += `<div style="margin-bottom:16px;">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                  <div style="font-size:15px;font-weight:bold;color:#5D4037;">${g.em&&!g.em.startsWith('http')?g.em:'🎰'} ${g.n}</div>
+            totalWait += waitList.length; totalDone += doneList.length;
+            html += `<div style="margin-bottom:16px;">`;
+            if(!compact) {
+                // 전체 뷰(t_set): 기계 이름 + 통계 + 버튼을 한 행에
+                html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div style="font-size:15px;font-weight:bold;color:#5D4037;">${g.em&&!g.em.startsWith('http')?g.em:'🧸'} ${g.n}</div>
                   <span style="background:#FF9800;color:white;border-radius:10px;padding:2px 10px;font-size:12px;">대기 ${waitList.length}명</span>
                   ${doneList.length?`<span style="background:#66BB6A;color:white;border-radius:10px;padding:2px 10px;font-size:12px;">완료 ${doneList.length}건</span>`:''}
                   <button class="btn btn-gray" style="margin-left:auto;padding:3px 10px;font-size:12px;" onclick="clearDoneGacQueue()">✅ 완료 항목 정리</button>
                 </div>`;
+            }
             if(!waitList.length) {
                 html += `<div style="color:#aaa;font-size:13px;padding:6px 0;">대기 중인 학생이 없습니다.</div>`;
             } else {
@@ -8106,7 +9030,6 @@ window.addCharRow = function() {
                           <div style="display:flex;gap:4px;align-items:center;">
                             <select id="gqres_${g.n.replace(/[^a-z0-9]/gi,'_')}_${i}" style="flex:1;min-width:0;margin:0;padding:4px 6px;font-size:12px;border-radius:8px;border:1px solid #DDD;">${itemOpts}</select>
                             <button class="btn btn-green" style="padding:4px 10px;font-size:12px;white-space:nowrap;" onclick="processGacQueue('${g.n.replace(/'/g,"\\'")}',${i})">⚡ 처리</button>
-                            <button class="btn btn-gray" style="padding:4px 8px;font-size:12px;" onclick="callNextGac('${g.n.replace(/'/g,"\\'")}',${i})" title="이 학생에게 호출 알림">📣</button>
                           </div>
                         </td>
                     </tr>`;
@@ -8116,6 +9039,16 @@ window.addCharRow = function() {
             html += `</div>`;
         });
         el.innerHTML = html;
+        if(compact) {
+            const statsEl = document.getElementById('t_auc_gac_stats');
+            if(statsEl) statsEl.innerHTML =
+                `<span style="background:#FF9800;color:white;border-radius:10px;padding:2px 10px;font-size:12px;">대기 ${totalWait}명</span>
+                 ${totalDone?`<span style="background:#66BB6A;color:white;border-radius:10px;padding:2px 10px;font-size:12px;">완료 ${totalDone}건</span>`:''}
+                 <button class="btn btn-gray" style="padding:3px 10px;font-size:12px;" onclick="clearDoneGacQueue()">✅ 완료 항목 정리</button>`;
+        }
+        }; // end _renderGacInto
+        _renderGacInto(document.getElementById('t_gac_queue'), false);
+        _renderGacInto(document.getElementById('t_auc_gac_queue'), true);
     }
 
     window.processGacQueue = function(gacNm, waitIdx) {
@@ -8137,21 +9070,8 @@ window.addCharRow = function() {
         db.gacQueue[gacNm] = arr;
 
         sv(); rGacQueue();
-        alert(`✅ 처리 완료!\n${entry.nm} → ${resultNm} 지급`);
     };
 
-    window.callNextGac = function(gacNm, waitIdx) {
-        if(!db.gacQueue||!db.gacQueue[gacNm]) return;
-        const arr = (Array.isArray(db.gacQueue[gacNm])?db.gacQueue[gacNm]:Object.values(db.gacQueue[gacNm])).sort((a,b)=>a.ts-b.ts);
-        const waitList = arr.filter(e=>e.st==='wait');
-        const entry = waitList[waitIdx]; if(!entry) return;
-        const realIdx = arr.findIndex(e=>e===entry);
-        arr[realIdx].called = Date.now(); // 호출 시각 기록 → 학생이 감지
-        db.gacQueue[gacNm] = arr;
-        sv();
-        showToast(`📣 ${entry.nm} 학생에게 호출 알림을 보냈습니다.`);
-        rGacQueue();
-    };
 
     window.clearDoneGacQueue = function() {
         if(!db.gacQueue) return;
@@ -8163,6 +9083,31 @@ window.addCharRow = function() {
     };
 
     function updateMenuBadges() {
+        // 요청사항 뱃지 (경매 요청 + 오늘 날짜 요청사항)
+        const _mAuc = document.getElementById('menu_auc');
+        if(_mAuc) {
+            _mAuc.querySelector('.menu-badge-auc')?.remove();
+            const _today = new Date().toISOString().slice(0,10);
+            const _aucReqCnt = (db.auc||[]).filter(a=>a.st==='req').length;
+            const _todayReqCnt = (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).reduce((sum,stu)=>{
+                const inv = Array.isArray(stu.inv)?stu.inv:Object.values(stu.inv||{});
+                const newReq = inv.filter(it=>(it.st==='req'||it.st==='shop_req')&&!it.reqApproved&&!it.reqDone).length;
+                const approvedToday = inv.filter(it=>!!it.reqApproved&&!it.reqDone&&it.useDate===_today).length;
+                return sum + newReq + approvedToday;
+            },0);
+            const _gacWaitCnt = Object.values(db.gacQueue||{}).reduce((s,arr)=>{
+                const a=Array.isArray(arr)?arr:Object.values(arr); return s+a.filter(e=>e.st==='wait').length;
+            },0);
+            const _totalBadge = _aucReqCnt + _todayReqCnt + _gacWaitCnt;
+            if(_totalBadge > 0) {
+                const b = document.createElement('div');
+                b.className = 'menu-badge-auc';
+                b.textContent = _totalBadge;
+                b.style.cssText = 'position:absolute;top:6px;right:6px;background:#E53935;color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;z-index:5;pointer-events:auto;';
+                b.onclick = (e) => { e.stopPropagation(); window._showReqMiniPopup(); };
+                _mAuc.appendChild(b);
+            }
+        }
         // 아바타 관리 뱃지
         const _mAvt = document.getElementById('menu_avt');
         if(_mAvt) {
@@ -8175,31 +9120,6 @@ window.addCharRow = function() {
                 b.style.cssText = 'position:absolute;top:6px;right:6px;background:#E53935;color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;z-index:5;pointer-events:auto;';
                 b.onclick = (e) => { e.stopPropagation(); showAllStudentReqs(); };
                 _mAvt.appendChild(b);
-            }
-        }
-        // 아이템 승인 뱃지 (요청 + 오프라인 뽑기 대기)
-        const _mMgr = document.getElementById('menu_mgr');
-        if(_mMgr) {
-            _mMgr.querySelector('.menu-badge')?.remove();
-            _mMgr.querySelector('.menu-badge-gac')?.remove();
-            const _pc = (db.stu||[]).reduce((s,stu)=>s+(stu.inv||[]).filter(t=>t.st==='req'||t.st==='shop_req').length,0);
-            const _qc = Object.values(db.gacQueue||{}).reduce((s,arr)=>{
-                const a=Array.isArray(arr)?arr:Object.values(arr); return s+a.filter(e=>e.st==='wait').length;
-            },0);
-            if(_pc > 0) {
-                const b = document.createElement('div');
-                b.className = 'menu-badge';
-                b.textContent = _pc;
-                b.style.cssText = 'position:absolute;top:6px;right:6px;background:#E53935;color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;z-index:5;pointer-events:auto;';
-                b.onclick = (e) => { e.stopPropagation(); showAllItemApprovals(); };
-                _mMgr.appendChild(b);
-            } else if(_qc > 0) {
-                const b = document.createElement('div');
-                b.className = 'menu-badge-gac';
-                b.textContent = _qc;
-                b.style.cssText = 'position:absolute;top:6px;right:6px;background:#FF9800;color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;z-index:5;pointer-events:auto;';
-                b.onclick = (e) => { e.stopPropagation(); showAllItemApprovals(); };
-                _mMgr.appendChild(b);
             }
         }
     }
@@ -8306,7 +9226,6 @@ window.addCharRow = function() {
                 </div>
                 <select id="${selId}" style="margin:0;padding:3px 6px;font-size:12px;border-radius:6px;border:1px solid #DDD;max-width:100px;">${itemOpts}</select>
                 <button class="btn btn-green" style="font-size:12px;padding:4px 8px;white-space:nowrap;" onclick="processGacQueue('${gacNm.replace(/'/g,"\\'")}',${i});showAllItemApprovals();">⚡처리</button>
-                <button class="btn btn-gray" style="font-size:12px;padding:4px 6px;" onclick="callNextGac('${gacNm.replace(/'/g,"\\'")}',${i})" title="호출">📣</button>
             </div>`;
         }).join('') : '<div style="color:#aaa;font-size:13px;text-align:center;padding:12px 0;">인형 뽑기 대기가 없습니다.</div>';
 
@@ -8346,15 +9265,15 @@ window.addCharRow = function() {
                     : (earnedTits[earnedTits.length-1]||null);
                 const _tOutline = '-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000';
                 const _tFs = 13;
-                const _eTitPlain = eqTit ? (()=>{const _d=document.createElement('div');_d.innerHTML=eqTit.name||'';return(_d.textContent||_d.innerText||'').trim()||eqTit.name||'';})() : '';
+                const _titHtml = eqTit ? (eqTit.name||'').replace(/font-size\s*:[^;'"]+;?\s*/gi,'') : '';
                 const titBar = eqTit
                     ? (eqTit.img
                         ? `<div style="width:160px;height:38px;border:1.3px solid #000;border-radius:10px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:6px;">
                                <img src="${eqTit.img}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;">
-                               <span style="position:relative;font-size:${_tFs}px;font-weight:normal;color:${eqTit.color||'#fff'};text-shadow:${_tOutline};white-space:nowrap;overflow:hidden;max-width:140px;">${_eTitPlain}</span>
+                               <span style="position:relative;font-size:${_tFs}px;font-weight:normal;color:${eqTit.color||'#fff'};text-shadow:${_tOutline};white-space:nowrap;overflow:hidden;max-width:140px;">${_titHtml}</span>
                            </div>`
-                        : `<div style="width:160px;height:38px;border:1.3px solid #000;border-radius:10px;background:linear-gradient(90deg,#FFF8E1,#FFE082,#FFD54F,#FFE082,#FFF8E1);display:flex;align-items:center;justify-content:center;margin-bottom:6px;">
-                               <span style="font-size:${_tFs}px;font-weight:normal;color:${eqTit.color||'#5D4037'};text-shadow:${_tOutline};white-space:nowrap;overflow:hidden;max-width:140px;">${_eTitPlain}</span>
+                        : `<div style="width:160px;height:38px;border:1.3px solid #000;border-radius:10px;background:linear-gradient(90deg,#FFF8E1,#FFE082,#FFD54F,#FFE082,#FFF8E1);display:flex;align-items:center;justify-content:center;margin-bottom:6px;overflow:hidden;">
+                               <span style="font-size:${_tFs}px;font-weight:normal;color:${eqTit.color||'#5D4037'};text-shadow:${_tOutline};white-space:nowrap;max-width:140px;overflow:hidden;">${_titHtml}</span>
                            </div>`)
                     : `<div style="width:160px;height:38px;border:2px dashed #BDBDBD;border-radius:10px;background:rgba(200,200,200,0.08);margin-bottom:6px;"></div>`;
                 const reqCount = ((s.bugReqs||[]).length) + ((s.printReqs||[]).length);
@@ -8647,15 +9566,51 @@ window.addCharRow = function() {
                 const TIT_R = 14;
                 await document.fonts.load(`900 36px "Jua"`);
                 const _drawTitText = (tc, w, h, tit) => {
-                    const _tmp = document.createElement('div'); _tmp.innerHTML = tit.name||'';
-                    const plainName = (_tmp.textContent||_tmp.innerText||'').trim() || tit.name || '칭호';
-                    const fs = Math.round(h * 0.62);
-                    tc.font = `normal ${fs}px "Jua", sans-serif`;
-                    tc.textAlign = 'center'; tc.textBaseline = 'middle';
-                    tc.fillStyle = '#000000';
-                    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy]) => tc.fillText(plainName, w/2+dx, h/2+dy));
-                    tc.fillStyle = tit.color || '#ffffff';
-                    tc.fillText(plainName, w/2, h/2);
+                    const baseFs = Math.round(h * 0.62);
+                    const baseColor = tit.color || '#ffffff';
+                    // 에디터 베이스 폰트크기: applyTitFmt가 value*1.38 px로 저장하므로 동일 기준으로 역산
+                    const previewBaseFs = Math.round((tit.fontSize || 30) * 1.38);
+                    // HTML 파싱: span 태그별로 색상/크기 분리
+                    const _tmpDiv = document.createElement('div');
+                    _tmpDiv.innerHTML = tit.name || '';
+                    const segments = [];
+                    const _walk = (node, iCol, iFs) => {
+                        if(node.nodeType === 3) {
+                            if(node.textContent) segments.push({text: node.textContent, color: iCol, fs: iFs});
+                        } else if(node.nodeType === 1) {
+                            const st = node.style || {};
+                            const col = st.color || iCol;
+                            const fsRaw = st.fontSize || null;
+                            const fsPx = fsRaw ? Math.round(parseFloat(fsRaw) * (baseFs / previewBaseFs)) : iFs;
+                            Array.from(node.childNodes).forEach(ch => _walk(ch, col, fsPx));
+                        }
+                    };
+                    Array.from(_tmpDiv.childNodes).forEach(n => _walk(n, null, null));
+                    if(!segments.length || segments.every(s=>!s.text.trim())) {
+                        const plain = (_tmpDiv.textContent||'').trim() || '칭호';
+                        segments.length = 0;
+                        segments.push({text: plain, color: null, fs: null});
+                    }
+                    // 전체 폭 계산해서 중앙 정렬
+                    const _measure = (seg) => {
+                        tc.font = `normal ${seg.fs||baseFs}px "Jua", sans-serif`;
+                        return tc.measureText(seg.text).width;
+                    };
+                    const totalW = segments.reduce((s,seg)=>s+_measure(seg),0);
+                    let cx = w/2 - totalW/2;
+                    const cy = h/2;
+                    segments.forEach(seg => {
+                        const segFs = seg.fs||baseFs;
+                        tc.font = `normal ${segFs}px "Jua", sans-serif`;
+                        tc.textAlign = 'left'; tc.textBaseline = 'middle';
+                        const sw = tc.measureText(seg.text).width;
+                        // 외곽선
+                        tc.fillStyle = '#000000';
+                        [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([dx,dy]) => tc.fillText(seg.text, cx+dx, cy+dy));
+                        tc.fillStyle = seg.color || baseColor;
+                        tc.fillText(seg.text, cx, cy);
+                        cx += sw;
+                    });
                 };
                 if(tit) {
                     const titCanvas = document.createElement('canvas');
@@ -10039,6 +10994,21 @@ window.addCharRow = function() {
         alert('새로고침 신호가 전송되었습니다.');
     };
 
+    window.toggleMaintenance = function() {
+        if(!db.cfg) db.cfg = {};
+        const cur = !!db.cfg.maintenance;
+        if(!cur) {
+            if(!confirm('영업 중지 모드로 전환하면 학생들이 접속할 수 없게 됩니다.\n계속하시겠습니까?')) return;
+        }
+        db.cfg.maintenance = !cur;
+        sv();
+        const btn = document.getElementById('maintenanceBtn');
+        if(btn) {
+            btn.textContent = db.cfg.maintenance ? '✅ 영업 재개' : '🚧 영업 중지';
+            btn.className = db.cfg.maintenance ? 'btn btn-green' : 'btn btn-gray';
+        }
+    };
+
     window.onPlzBgFileSelect = async function(inp) {
         const file = inp.files[0];
         if(!file) return;
@@ -10077,6 +11047,39 @@ window.addCharRow = function() {
         const file = event.dataTransfer.files[0];
         if(!file || !file.type.startsWith('image/')) return;
         onPlzBgFileSelect({files: [file]});
+    };
+
+    window.showSettings = function() {
+        const gh = (db.cfg&&db.cfg.gh)||{};
+        const dahessniKey = localStorage.getItem('dahessni_api_key')||'';
+        const html = `<div id="settingsModal" class="modal-overlay" onclick="this.remove()">
+            <div class="modal-window" style="width:460px;" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="document.getElementById('settingsModal').remove()">X</button>
+                <div class="modal-inner">
+                    <h3 style="margin-top:0;">⚙️ 설정</h3>
+                    <div style="background:#FFF3E0;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid #FFE082;">
+                        <div style="font-size:14px;font-weight:bold;color:#E65100;margin-bottom:8px;">🍪 쿠키 자동 동기화 (다했니)</div>
+                        <label style="font-size:12px;color:#666;">다했니 API Key</label>
+                        <input id="set_dahessni" placeholder="API Key 입력..." value="${dahessniKey}" style="margin-bottom:8px;">
+                        <button class="btn btn-wood" style="width:100%;padding:8px;" onclick="const k=document.getElementById('set_dahessni').value.trim();if(!k)return alert('Key를 입력해주세요.');localStorage.setItem('dahessni_api_key',k);syncAllCookies();document.getElementById('settingsModal').remove();">🔄 저장 후 동기화</button>
+                    </div>
+                    <div style="background:#E3F2FD;border-radius:10px;padding:14px;border:1px solid #90CAF9;">
+                        <div style="font-size:14px;font-weight:bold;color:#1565C0;margin-bottom:8px;">🐙 GitHub 이미지 업로드</div>
+                        <label style="font-size:12px;color:#666;">Personal Access Token</label>
+                        <input id="set_gh_token" placeholder="ghp_xxxx..." value="${gh.token||''}" type="password" style="margin-bottom:6px;">
+                        <label style="font-size:12px;color:#666;">Owner (계정명)</label>
+                        <input id="set_gh_owner" placeholder="username" value="${gh.owner||''}" style="margin-bottom:6px;">
+                        <label style="font-size:12px;color:#666;">Repository 이름</label>
+                        <input id="set_gh_repo" placeholder="my-repo" value="${gh.repo||''}" style="margin-bottom:8px;">
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-green" style="flex:1;" onclick="if(!db.cfg)db.cfg={};db.cfg.gh={token:document.getElementById('set_gh_token').value.trim(),owner:document.getElementById('set_gh_owner').value.trim(),repo:document.getElementById('set_gh_repo').value.trim()};sv();document.getElementById('settingsModal').remove();alert('GitHub 설정이 저장되었습니다.');">저장</button>
+                            <button class="btn btn-gray" onclick="document.getElementById('settingsModal').remove();showGhFileMgr()">📁 파일 관리</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
     };
 
     window.showGhSettings = function() {
@@ -10641,6 +11644,18 @@ window.addCharRow = function() {
 
         // 예쁜 구매 확인 모달
         const old = document.getElementById('avtConfirmModal'); if(old) old.remove();
+        const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        const maxPass = Math.min(passCount, price);
+        const passSection = price > 0 && passCount > 0 ? `
+            <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <label style="font-size:12px;color:#795548;">사용할 개수:</label>
+                    <input id="_avtPassUse" type="number" min="0" max="${maxPass}" value="0" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _av=parseInt(this.value)||0,_amx=${maxPass};const _aw=document.getElementById('_avtPassWarn');if(_av>_amx){if(_aw)_aw.style.display='';this.value=_amx;}else{if(_aw)_aw.style.display='none';}document.getElementById('_avtPassRemain').textContent=(${price}-parseInt(this.value));">
+                    <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_avtPassRemain">${price}</b> 🍪</span>
+                </div>
+                <div id="_avtPassWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;">⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 ${maxPass}개까지 사용 가능합니다.</div>
+            </div>` : '';
         const priceStr = price===0 ? '<span style="color:#66BB6A;font-size:22px;font-weight:bold;">무료!</span>' : `<span style="font-size:22px;font-weight:bold;color:#FF6F00;">🍪 ${price}</span>`;
         const canAfford = myKc >= price;
         const imgHtml = item.img ? `<img src="${item.img}" style="width:90px;height:90px;object-fit:contain;image-rendering:pixelated;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">` : `<div style="font-size:70px;">🎨</div>`;
@@ -10657,6 +11672,7 @@ window.addCharRow = function() {
                         <div>${priceStr}</div>
                         ${price>0?`<div style="font-size:13px;color:${canAfford?'#5D4037':'#E53935'};margin-top:6px;">내 쿠키: 🍪${myKc} ${canAfford?'✓':'(부족!)'}</div>`:''}
                     </div>
+                    ${passSection}
                     ${canAfford
                         ? `<button class="btn btn-org" style="width:100%;font-size:18px;padding:14px;" onclick="confirmBuyAvt('${itemId}')">구매하기!</button>`
                         : `<button class="btn btn-gray" style="width:100%;font-size:16px;padding:14px;" disabled>쿠키가 부족해요 🍪</button>`
@@ -10667,6 +11683,8 @@ window.addCharRow = function() {
     };
 
     window.confirmBuyAvt = function(itemId) {
+        // 모달 제거 전 이용권 값 읽기
+        const _avtPassCache = parseInt(document.getElementById('_avtPassUse')?.value||0)||0;
         const modal = document.getElementById('avtConfirmModal'); if(modal) modal.remove();
         const item = (db.avt||[]).find(a=>a.id===itemId);
         if(!item) return;
@@ -10676,10 +11694,24 @@ window.addCharRow = function() {
         if(!me.avtOwned) me.avtOwned = [];
         if(me.avtOwned.includes(itemId)) return;
 
+        // 이용권 차감
+        let avtPassUsed = 0;
         if(price > 0) {
-            me.shopUsed = (me.shopUsed||0) + price;
+            const maxPass = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+            avtPassUsed = Math.min(_avtPassCache, maxPass, price);
+            let removed = 0;
+            for(let i=0; i<me.inv.length && removed<avtPassUsed; i++) {
+                if(me.inv[i].n==='상점 이용권'&&(me.inv[i].st==='active'||me.inv[i].st==='new')) {
+                    me.inv[i].st='used'; removed++;
+                }
+            }
+        }
+        const effectiveCost = price - avtPassUsed;
+
+        if(effectiveCost > 0) {
+            me.shopUsed = (me.shopUsed||0) + effectiveCost;
             if(!me.shopLog) me.shopLog = [];
-            me.shopLog.push({type:'꾸미기 구입', name:item.nm||itemId, cost:price, ts:Date.now()});
+            me.shopLog.push({type:'꾸미기 구입', name:item.nm||itemId, cost:effectiveCost, cur:'kc', passUsed:avtPassUsed, ts:Date.now()});
         }
         me.avtOwned.push(itemId);
         if(!me.eq) me.eq = {};
@@ -11728,9 +12760,38 @@ window.addCharRow = function() {
                 nmSlot.innerHTML = `<div style="background:linear-gradient(90deg,#FFE566,#FFCA00,#FFD700,#FFCA00,#FFE566);border:1.5px solid #B8860B;border-radius:5px;padding:1px 7px;display:inline-flex;align-items:center;gap:4px;margin-top:-4px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5);"><span style="font-size:9px;font-weight:900;color:#3E2723;">Lv.${lv}</span><span style="font-size:10px;font-weight:900;color:#3E2723;white-space:nowrap;">${u.nm||'학생'}</span></div>`;
             }
 
+            const prevX = parseFloat(el.dataset.px || u.x);
+            const prevY = parseFloat(el.dataset.py || u.y);
+            const moved = !isMe && (Math.abs(u.x - prevX) > 0.05 || Math.abs(u.y - prevY) > 0.05);
+            el.dataset.px = u.x;
+            el.dataset.py = u.y;
+
             el.style.left = u.x + '%';
             el.style.top  = u.y + '%';
+
+            if(moved) {
+                el.classList.add('walking');
+                clearTimeout(el._walkTimer);
+                el._walkTimer = setTimeout(() => el.classList.remove('walking'), 500);
+                // 발자국 먼지 효과
+                _spawnDust(el, u.x, u.y);
+            }
         });
+    }
+
+    const _dustPool = [];
+    function _spawnDust(charEl, x, y) {
+        const charsEl = document.getElementById('plzChars');
+        if(!charsEl) return;
+        clearTimeout(charEl._dustTimer);
+        charEl._dustTimer = setTimeout(() => {
+            for(let i=0;i<3;i++) {
+                const d = document.createElement('div');
+                d.style.cssText = `position:absolute;left:${x+((Math.random()-0.5)*1.5)}%;top:${y}%;width:6px;height:6px;border-radius:50%;background:rgba(180,150,100,0.55);pointer-events:none;z-index:5;animation:dustFade 0.6s ease forwards;transform:translate(-50%,-50%);`;
+                charsEl.appendChild(d);
+                setTimeout(()=>d.remove(), 650);
+            }
+        }, 60);
     }
 
     function _showBubble(msg) {
@@ -11828,7 +12889,7 @@ window.addCharRow = function() {
             }
 
             const now = Date.now();
-            if(now - _plzSyncThrottle > 150 && plzMyRef) {
+            if(now - _plzSyncThrottle > 50 && plzMyRef) {
                 _plzSyncThrottle = now;
                 plzMyRef.update({ x: _plzPos.x, y: _plzPos.y });
             }
