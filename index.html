@@ -1482,6 +1482,8 @@ const firebaseConfig = {
         firebase.initializeApp(firebaseConfig);
     }
     const dbRef = firebase.database().ref('ClassData/EventShop');
+let _prevDbHash = ''; // 변경 감지용 해시
+let _renderLock = false; // 재진입 방지
 
     let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], avt:[], bdg:[], tit:[], ak:'', cfg: {hideCandy: false, baseChar:'', gh:{token:'',owner:'',repo:''}}};
     window._pageLoadTime = Date.now();
@@ -1837,13 +1839,18 @@ const firebaseConfig = {
             if (!document.getElementById('appT').classList.contains('hidden')) {
                 if(!document.getElementById('t_stu').classList.contains('hidden')) {
                     document.getElementById('dahessni_api').value = localStorage.getItem('dahessni_api_key') || "";
+
+if (_renderLock) return;
+
+
                     rTb();
                 }
                 if(!document.getElementById('t_mgr').classList.contains('hidden')) { rAs(); renderGivGrids(); }
                 if(!document.getElementById('t_col').classList.contains('hidden')) rColT();
                 if(!document.getElementById('t_set').classList.contains('hidden') && !_localSaving) { rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); }
                 if(!document.getElementById('t_auc').classList.contains('hidden')) { rAucT(); rGacQueue(); }
-                if(!document.getElementById('t_avt').classList.contains('hidden')) rAvt();
+_renderLock = true;
+setTimeout(() => { _renderLock = false; }, 50);
                 setTimeout(updateNotifBell, 0);
                 setTimeout(updateMenuBadges, 0);
                 setTimeout(window._updateShopBadge||function(){}, 0);
