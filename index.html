@@ -2,10 +2,17 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="color-scheme" content="light">
-    <title>RPG 상점</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="우리반 매니저">
+    <meta name="theme-color" content="#FFB366">
+    <title>우리반 매니저</title>
+    <link rel="manifest" href="manifest.json">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎪</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFB366'/><text y='.9em' font-size='80'>🎪</text></svg>">
 
     <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&family=Jua&display=swap" rel="stylesheet">
     
@@ -1116,9 +1123,8 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                 <h2 style="margin:0;">🏫 광장 관리</h2>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    <span id="plz_open_badge" style="padding:5px 14px; border-radius:20px; font-size:14px; font-weight:bold; background:#EEE; color:#888;">● 닫힘</span>
                     <button class="btn btn-green" id="plz_toggle_btn" onclick="togglePlzOpen()">광장 열기</button>
-                    <button class="btn btn-gray" onclick="downloadChatLog()">💾 채팅 로그 다운로드</button>
+                    <button class="btn btn-blue" onclick="enterPlazaAsTeacher()">🏫 입장</button>
                 </div>
             </div>
             <div style="display:flex; gap:16px; height:calc(100vh - 200px); min-height:480px;">
@@ -1142,9 +1148,14 @@
                             <div id="plz_bg_upload_status" style="font-size:11px;color:#888;margin-top:3px;"></div>
                         </div>
                     </div>
-                    <div class="card" style="padding:14px; flex:1; min-height:0; display:flex; flex-direction:column;">
+                    <div class="card" style="padding:14px;cursor:pointer;" onclick="showTchCharModal()">
+                        <h4 style="margin:0 0 10px; font-size:14px;">👨‍🏫 교사 캐릭터 <span style="font-size:11px;color:#42A5F5;margin-left:4px;">✏️ 편집</span></h4>
+                        <div id="t_plz_char_preview" style="display:flex;justify-content:center;"></div>
+                        <div id="t_plz_char_nm_label" style="text-align:center;font-size:13px;color:#5D4037;margin-top:6px;"></div>
+                    </div>
+                    <div class="card" style="padding:14px; min-height:0; display:flex; flex-direction:column;">
                         <h4 style="margin:0 0 10px; font-size:14px;">👥 접속 중인 학생 <span id="plz_stu_cnt" style="font-size:12px; color:#888;"></span></h4>
-                        <div id="plz_stu_list" style="flex:1; overflow-y:auto;"></div>
+                        <div id="plz_stu_list" style="overflow-y:auto;"></div>
                     </div>
                 </div>
                 <!-- 채팅 로그 -->
@@ -1152,6 +1163,7 @@
                     <div class="card" style="flex:1; display:flex; flex-direction:column; padding:14px; min-height:0;">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                             <h4 style="margin:0;font-size:14px;flex:1;">💬 채팅 로그</h4>
+                            <button class="btn btn-gray" style="padding:3px 10px;font-size:12px;" onclick="downloadChatLog()">💾 다운로드</button>
                             <button class="btn btn-red" style="padding:3px 10px;font-size:12px;" onclick="clearPlzChat()">🗑️ 초기화</button>
                         </div>
                         <div id="plz_chat_log_t" class="plz-chat-log" style="flex:1; overflow-y:auto;"></div>
@@ -1783,6 +1795,19 @@ let _renderLock = false; // 재진입 방지
         _dbDebounceTimer = setTimeout(() => _handleDbUpdate(snapshot), 150);
     });
 
+    const _preloadCache = new Set();
+    function _preloadAvatarImages() {
+        const urls = [];
+        if(db.cfg && db.cfg.baseChar && db.cfg.baseChar.startsWith('http')) urls.push(db.cfg.baseChar);
+        (db.avt||[]).forEach(a => { if(a.img) urls.push(a.img); if(a.img2) urls.push(a.img2); });
+        urls.forEach(url => {
+            if(_preloadCache.has(url)) return;
+            _preloadCache.add(url);
+            const img = new Image();
+            img.src = url;
+        });
+    }
+
     function _handleDbUpdate(snapshot) {
         if(window._gachaInProgress) return; // 뽑기 진행 중엔 DB 덮어쓰기 방지
         const data = snapshot.val();
@@ -1809,10 +1834,8 @@ let _renderLock = false; // 재진입 방지
             if(!db.cfg.gh) db.cfg.gh = {token:'',owner:'',repo:''};
             if(!db.cfg.baseChar) db.cfg.baseChar = '';
 
-            // 아바타 이미지 백그라운드 프리로드 (첫 로그인 느린 이미지 해결)
-            requestIdleCallback(()=>{
-                (db.avt||[]).forEach(a=>{ if(a.img && a.img.startsWith('http')){ const _i=new Image(); _i.src=a.img; } });
-            }, {timeout:3000});
+            // 아바타 이미지 프리로드 — 로그인 전에 캐시에 올림
+            _preloadAvatarImages();
 
             // 강제 새로고침 체크
             if(db.cfg.reloadAt && db.cfg.reloadAt > window._pageLoadTime) {
@@ -7643,7 +7666,12 @@ window.addCharRow = function() {
                </div>`;
 
         document.getElementById('s_char').innerHTML = `
-            <h2>🧑 내 캐릭터</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <h2 style="margin:0;">🧑 내 캐릭터</h2>
+                <button class="pwa-install-btn" onclick="triggerPwaInstall()" style="display:${window._pwaReady?'flex':'none'};align-items:center;gap:7px;padding:8px 16px;border-radius:20px;border:none;cursor:pointer;font-family:'Jua';font-size:13px;color:white;background:linear-gradient(135deg,#667eea,#764ba2);box-shadow:0 4px 14px rgba(102,126,234,0.5);transition:0.15s;white-space:nowrap;" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 18px rgba(102,126,234,0.65)'" onmouseout="this.style.transform='';this.style.boxShadow='0 4px 14px rgba(102,126,234,0.5)'">
+                    <span style="font-size:18px;">📲</span><span>홈에 추가</span>
+                </button>
+            </div>
             <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;">
                 <!-- 좌측: 캐릭터 패널 -->
                 <div style="background:white;border-radius:20px;padding:6px 20px 8px;text-align:center;min-width:200px;display:flex;flex-direction:column;align-items:center;">
@@ -11844,6 +11872,34 @@ window.addCharRow = function() {
     let plzListeners = [];   // {ref, type, fn} — for cleanup
     let _plzRAF = null;      // requestAnimationFrame handle
     let _plzKeys = {};       // currently pressed keys
+    window._plzKeySet = function(key, down) { if(down) _plzKeys[key]=true; else delete _plzKeys[key]; };
+    let _plzDpadIv = null;
+    window._plzDpadStart = function(dir) {
+        window._plzDpadStop();
+        function step() {
+            if(!window._plzActive || !me) { window._plzDpadStop(); return; }
+            let dx=0, dy=0;
+            if(dir==='u') dy=-PLZ_SPEED; else if(dir==='d') dy=PLZ_SPEED;
+            else if(dir==='l') dx=-PLZ_SPEED*0.65; else dx=PLZ_SPEED*0.65;
+            const b=_plzGetBounds();
+            const nx=Math.max(b.xMin,Math.min(b.xMax,_plzPos.x+dx));
+            const ny=Math.max(b.yMin,Math.min(b.yMax,_plzPos.y+dy));
+            const co=_plzCharBodyOffset();
+            if(!_plzIsBlocked(nx,ny-co)){_plzPos.x=nx;_plzPos.y=ny;}
+            else if(!_plzIsBlocked(nx,_plzPos.y-co)){_plzPos.x=nx;}
+            else if(!_plzIsBlocked(_plzPos.x,ny-co)){_plzPos.y=ny;}
+            const myEl=document.querySelector(`.plz-char[data-uid="${me.cd}"]`);
+            if(myEl){myEl.style.left=_plzPos.x+'%';myEl.style.top=_plzPos.y+'%';myEl.classList.add('walking');}
+            const now=Date.now();
+            if(now-_plzSyncThrottle>50&&plzMyRef){_plzSyncThrottle=now;plzMyRef.update({x:_plzPos.x,y:_plzPos.y});}
+        }
+        step();
+        _plzDpadIv = setInterval(step, 33);
+    };
+    window._plzDpadStop = function() {
+        if(_plzDpadIv){clearInterval(_plzDpadIv);_plzDpadIv=null;}
+        if(me){const el=document.querySelector(`.plz-char[data-uid="${me.cd}"]`);if(el)el.classList.remove('walking');}
+    };
     let _plzPos = { x:50, y:50 }; // my position (%)
     let _plzSyncThrottle = 0;
     const PLZ_SPEED = 0.12;  // % per frame
@@ -11893,6 +11949,9 @@ window.addCharRow = function() {
 
         // Subscribe to plaza data
         _plzTSubscribe();
+
+        // 교사 캐릭터 UI
+        _rTPlzChar();
     }
 
     window.savePlzHours = function() {
@@ -12393,8 +12452,10 @@ window.addCharRow = function() {
         getPlzRef().child('chat').child(key).remove();
     };
     window.clearPlzChat = function() {
-        if(!confirm('채팅 기록을 모두 삭제하시겠습니까?')) return;
-        getPlzRef().child('chat').remove();
+        prettyConfirm('채팅 기록을 모두 삭제할까요?<br><span style="font-size:12px;color:#aaa;">삭제 후 복구할 수 없어요</span>',
+            () => { getPlzRef().child('chat').remove(); },
+            { icon:'🗑️', okLabel:'삭제', okClass:'btn-red', cancelLabel:'취소' }
+        );
     };
 
     function _fmtTime(ts) {
@@ -12583,13 +12644,13 @@ window.addCharRow = function() {
                 <div style="position:absolute;bottom:108px;right:12px;z-index:10;user-select:none;">
                     <div style="display:grid;grid-template-columns:40px 40px 40px;gap:3px;">
                         <div></div>
-                        <button class="plz-dpad-btn" onmousedown="_plzKeys['ArrowUp']=true" onmouseup="delete _plzKeys['ArrowUp']" onmouseleave="delete _plzKeys['ArrowUp']" ontouchstart="event.preventDefault();_plzKeys['ArrowUp']=true" ontouchend="delete _plzKeys['ArrowUp']">▲</button>
+                        <button class="plz-dpad-btn" onmousedown="window._plzDpadStart('u')" onmouseup="window._plzDpadStop()" onmouseleave="window._plzDpadStop()" ontouchstart="event.preventDefault();window._plzDpadStart('u')" ontouchend="window._plzDpadStop()">▲</button>
                         <div></div>
-                        <button class="plz-dpad-btn" onmousedown="_plzKeys['ArrowLeft']=true" onmouseup="delete _plzKeys['ArrowLeft']" onmouseleave="delete _plzKeys['ArrowLeft']" ontouchstart="event.preventDefault();_plzKeys['ArrowLeft']=true" ontouchend="delete _plzKeys['ArrowLeft']">◀</button>
+                        <button class="plz-dpad-btn" onmousedown="window._plzDpadStart('l')" onmouseup="window._plzDpadStop()" onmouseleave="window._plzDpadStop()" ontouchstart="event.preventDefault();window._plzDpadStart('l')" ontouchend="window._plzDpadStop()">◀</button>
                         <div style="width:40px;height:40px;background:rgba(0,0,0,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;">✦</div>
-                        <button class="plz-dpad-btn" onmousedown="_plzKeys['ArrowRight']=true" onmouseup="delete _plzKeys['ArrowRight']" onmouseleave="delete _plzKeys['ArrowRight']" ontouchstart="event.preventDefault();_plzKeys['ArrowRight']=true" ontouchend="delete _plzKeys['ArrowRight']">▶</button>
+                        <button class="plz-dpad-btn" onmousedown="window._plzDpadStart('r')" onmouseup="window._plzDpadStop()" onmouseleave="window._plzDpadStop()" ontouchstart="event.preventDefault();window._plzDpadStart('r')" ontouchend="window._plzDpadStop()">▶</button>
                         <div></div>
-                        <button class="plz-dpad-btn" onmousedown="_plzKeys['ArrowDown']=true" onmouseup="delete _plzKeys['ArrowDown']" onmouseleave="delete _plzKeys['ArrowDown']" ontouchstart="event.preventDefault();_plzKeys['ArrowDown']=true" ontouchend="delete _plzKeys['ArrowDown']">▼</button>
+                        <button class="plz-dpad-btn" onmousedown="window._plzDpadStart('d')" onmouseup="window._plzDpadStop()" onmouseleave="window._plzDpadStop()" ontouchstart="event.preventDefault();window._plzDpadStart('d')" ontouchend="window._plzDpadStop()">▼</button>
                         <div></div>
                     </div>
                 </div>
@@ -12611,7 +12672,14 @@ window.addCharRow = function() {
         const uid = me.cd;
         _plzPos = { x: 20 + Math.random()*60, y: 20 + Math.random()*60 };
         plzMyRef = getPlzRef().child('users').child(uid);
-        plzMyRef.set({ nm: me.nm, no: me.no, x: _plzPos.x, y: _plzPos.y, ts: Date.now() });
+        const _presenceData = { nm: me.nm, no: me.no, x: _plzPos.x, y: _plzPos.y, ts: Date.now() };
+        if(me.eq && Object.keys(me.eq).length) _presenceData.eq = me.eq;
+        if(uid === 'teacher_main') {
+            _presenceData.isTeacher = true;
+            const _tchTitD = db.cfg && db.cfg.teacherChar && db.cfg.teacherChar.tit;
+            if(_tchTitD) _presenceData.tit = _tchTitD;
+        }
+        plzMyRef.set(_presenceData);
         plzMyRef.onDisconnect().remove();
 
         // Subscribe to all users
@@ -12634,20 +12702,61 @@ window.addCharRow = function() {
         setTimeout(() => { const m = document.getElementById('plzMap'); if(m) m.focus(); }, 100);
     }
 
+    // 접속 중인 유저 캐시 (uid → data)
+    let _plzUserCache = {};
+
+    function _plzUpdateOnlinePanel() {
+        const panel = document.getElementById('plzOnlinePanel');
+        if(!panel) return;
+        const entries = Object.values(_plzUserCache);
+        panel.innerHTML = `<div style="font-size:10px;color:rgba(255,255,255,0.55);margin-bottom:3px;">👥 ${entries.length}명</div>`
+            + entries.map(u => `<div style="font-size:11px;color:white;line-height:1.5;">${u.nm||'학생'}</div>`).join('');
+    }
+
     function _plzSubscribeUsers() {
         const ref = getPlzRef().child('users');
-        const fn = snap => {
-            const users = snap.val() || {};
-            _renderPlzChars(users);
-            const panel = document.getElementById('plzOnlinePanel');
-            if(panel) {
-                const entries = Object.values(users);
-                panel.innerHTML = `<div style="font-size:10px;color:rgba(255,255,255,0.55);margin-bottom:3px;">👥 ${entries.length}명</div>`
-                    + entries.map(u => `<div style="font-size:11px;color:white;line-height:1.5;">${u.nm||'학생'}</div>`).join('');
+
+        // child_added: 새 유저 입장 → 전체 렌더
+        const fnAdd = snap => {
+            _plzUserCache[snap.key] = snap.val();
+            _renderPlzChars(_plzUserCache);
+            _plzUpdateOnlinePanel();
+        };
+        // child_removed: 유저 퇴장 → 해당 요소만 제거
+        const fnRem = snap => {
+            delete _plzUserCache[snap.key];
+            const el = document.querySelector(`.plz-char[data-uid="${snap.key}"]`);
+            if(el) el.remove();
+            _plzUpdateOnlinePanel();
+        };
+        // child_changed: 데이터 변경 → x/y만 바뀌면 style만 업데이트, 나머지는 전체 렌더
+        const fnChg = snap => {
+            const prev = _plzUserCache[snap.key] || {};
+            const u = snap.val();
+            _plzUserCache[snap.key] = u;
+            const el = document.querySelector(`.plz-char[data-uid="${snap.key}"]`);
+            // 위치만 바뀐 경우 style만 업데이트 (재렌더 없음)
+            const posOnly = el && u.nm===prev.nm && JSON.stringify(u.eq)===JSON.stringify(prev.eq);
+            if(posOnly) {
+                const isMe = me && snap.key === me.cd;
+                if(!isMe) {
+                    el.style.left = u.x + '%';
+                    el.style.top  = u.y + '%';
+                    el.dataset.px = u.x; el.dataset.py = u.y;
+                }
+            } else {
+                _renderPlzChars(_plzUserCache);
             }
         };
-        ref.on('value', fn);
-        plzListeners.push({ref, type:'value', fn, who:'student'});
+
+        ref.on('child_added',   fnAdd);
+        ref.on('child_removed', fnRem);
+        ref.on('child_changed', fnChg);
+        plzListeners.push(
+            {ref, type:'child_added',   fn:fnAdd, who:'student'},
+            {ref, type:'child_removed', fn:fnRem, who:'student'},
+            {ref, type:'child_changed', fn:fnChg, who:'student'}
+        );
     }
 
     function _plzSubscribeChat() {
@@ -12740,7 +12849,10 @@ window.addCharRow = function() {
         Object.entries(users).forEach(([uid, u]) => {
             let el = charsEl.querySelector(`.plz-char[data-uid="${uid}"]`);
             const isMe = uid === myUid;
-            const stu = db.stu ? db.stu.find(s=>String(s.cd).trim()===String(uid).trim()) : null;
+            const isTeacher = uid === 'teacher_main' || u.isTeacher;
+            const stu = isTeacher ? null : (db.stu ? db.stu.find(s=>String(s.cd).trim()===String(uid).trim()) : null);
+            // 교사 캐릭터는 presence의 eq 사용
+            const displayEq = isTeacher ? (u.eq || (db.cfg&&db.cfg.teacherChar&&db.cfg.teacherChar.eq) || {}) : (stu?.eq || {});
 
             if(!el) {
                 el = document.createElement('div');
@@ -12751,22 +12863,28 @@ window.addCharRow = function() {
             }
 
             // 아바타: eq 변화 있을 때만 재렌더 (hash로 비교)
-            const eqStr = JSON.stringify(stu?.eq||{});
+            const eqStr = JSON.stringify(displayEq);
             if(el.dataset.avthash !== eqStr) {
                 el.dataset.avthash = eqStr;
-                const avtHtml = renderAvatar(stu?.eq||{}, 98);
+                const avtHtml = renderAvatar(displayEq, 98);
                 el.innerHTML = `<div data-s="tit"></div><div class="plz-avatar-body">${avtHtml}</div><div data-s="nm"></div>`;
             }
 
-            // 칭호 (db.stu에서 직접)
+            // 칭호 (교사는 커스텀 tit 배너)
             const titSlot = el.querySelector('[data-s="tit"]');
-            if(titSlot) titSlot.innerHTML = _plzTitHtml(stu);
+            if(titSlot) {
+                if(isTeacher) {
+                    titSlot.innerHTML = `<div style="font-size:22px;line-height:1;text-align:center;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.4));animation:plzWalkBob 1.2s ease-in-out infinite;">💖</div>`;
+                } else {
+                    titSlot.innerHTML = _plzTitHtml(stu);
+                }
+            }
 
             // 이름+레벨 배너
             const nmSlot = el.querySelector('[data-s="nm"]');
             if(nmSlot) {
                 const lv = stu ? Math.floor((stu.cookie||0)/10) : 0;
-                nmSlot.innerHTML = `<div style="background:linear-gradient(90deg,#FFE566,#FFCA00,#FFD700,#FFCA00,#FFE566);border:1.5px solid #B8860B;border-radius:5px;padding:1px 7px;display:inline-flex;align-items:center;gap:4px;margin-top:-4px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5);"><span style="font-size:9px;font-weight:900;color:#3E2723;">Lv.${lv}</span><span style="font-size:10px;font-weight:900;color:#3E2723;white-space:nowrap;">${u.nm||'학생'}</span></div>`;
+                nmSlot.innerHTML = `<div style="background:linear-gradient(90deg,#FFE566,#FFCA00,#FFD700,#FFCA00,#FFE566);border:1.5px solid #B8860B;border-radius:5px;padding:1px 7px;display:inline-flex;align-items:center;gap:4px;margin-top:-4px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5);">${!isTeacher?`<span style="font-size:9px;font-weight:900;color:#3E2723;">Lv.${lv}</span>`:''}<span style="font-size:10px;font-weight:900;color:#3E2723;white-space:nowrap;">${u.nm||'학생'}</span></div>`;
             }
 
             const prevX = parseFloat(el.dataset.px || u.x);
@@ -12898,7 +13016,7 @@ window.addCharRow = function() {
             }
 
             const now = Date.now();
-            if(now - _plzSyncThrottle > 50 && plzMyRef) {
+            if(now - _plzSyncThrottle > 100 && plzMyRef) {
                 _plzSyncThrottle = now;
                 plzMyRef.update({ x: _plzPos.x, y: _plzPos.y });
             }
@@ -13246,9 +13364,383 @@ window.addCharRow = function() {
         if(window._plzKeyDown) document.removeEventListener('keydown', window._plzKeyDown);
         if(window._plzKeyUp)   document.removeEventListener('keyup',   window._plzKeyUp);
         _plzKeys = {};
+        _plzUserCache = {};
+        if(window._plzDpadStop) window._plzDpadStop();
         // Unsubscribe Firebase listeners
         plzListeners.filter(l=>l.who==='student').forEach(l=>l.ref.off(l.type, l.fn));
         plzListeners = plzListeners.filter(l=>l.who!=='student');
+    }
+
+    /* ===== 교사 캐릭터 편집 ===== */
+    const _TCH_CATS = [{k:'face',lb:'얼굴'},{k:'hair',lb:'머리'},{k:'outfit',lb:'의상'},{k:'shoes',lb:'신발'},{k:'hat',lb:'모자'},{k:'hair_deco',lb:'머리장식'},{k:'face_deco',lb:'얼굴장식'},{k:'back',lb:'등장식'},{k:'prop',lb:'소품'},{k:'pet',lb:'펫'}];
+    let _tPlzCurCat = 'face';
+
+    function _rTPlzChar() {
+        const tc = (db.cfg && db.cfg.teacherChar) || {};
+        const eq = tc.eq || {};
+        const nm = tc.nm || '선생님';
+        const prev = document.getElementById('t_plz_char_preview');
+        if(prev) prev.innerHTML = renderAvatar(eq, 110);
+        const lbl = document.getElementById('t_plz_char_nm_label');
+        if(lbl) lbl.textContent = nm;
+    }
+
+    window.showTchCharModal = function() {
+        document.getElementById('_tchCharModal')?.remove();
+        const tc = (db.cfg && db.cfg.teacherChar) || {};
+        const nm = tc.nm || '선생님';
+        const avt = db.avt || [];
+        const avtCats = _TCH_CATS.filter(c => avt.some(a => a.cat === c.k));
+        const allTabs = [...avtCats, {k:'__tit', lb:'🏷️ 칭호'}];
+        if(!allTabs.find(c=>c.k===_tPlzCurCat)) _tPlzCurCat = allTabs[0]?.k || 'face';
+
+        const _tchTit = () => (db.cfg && db.cfg.teacherChar && db.cfg.teacherChar.tit) || {};
+
+        const _renderBody = () => {
+            const _tc2 = (db.cfg && db.cfg.teacherChar) || {};
+            const _eq2 = _tc2.eq || {};
+
+            const catsHtml = allTabs.map(c =>
+                `<button onclick="window._tPlzSetCat('${c.k}')" style="padding:5px 12px;border-radius:14px;border:1.5px solid ${c.k===_tPlzCurCat?'#1565C0':'#DDD'};background:${c.k===_tPlzCurCat?'#1565C0':'white'};color:${c.k===_tPlzCurCat?'white':'#555'};font-size:12px;font-family:'Jua';cursor:pointer;white-space:nowrap;">${c.lb}</button>`
+            ).join('');
+
+            let contentHtml = '';
+            if(_tPlzCurCat === '__tit') {
+                // 칭호 디자인 탭
+                const tit = _tchTit();
+                const previewBg = tit.img
+                    ? `background:url('${tit.img}') center/cover no-repeat;`
+                    : tit.bg || 'background:linear-gradient(90deg,#1A237E,#3949AB,#1A237E);';
+                const previewCol = tit.col || '#E8EAF6';
+                const previewTxt = tit.txt || '선생님';
+                const titPreview = `<div style="${previewBg}border-radius:6px;padding:3px 12px;display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,0.3);box-shadow:0 2px 6px rgba(0,0,0,0.3);"><span style="font-size:13px;color:${previewCol};font-family:'Jua';white-space:nowrap;">${previewTxt}</span></div>`;
+                const bgPresets = [
+                    {label:'파랑', val:'background:linear-gradient(90deg,#1A237E,#3949AB,#1A237E);'},
+                    {label:'초록', val:'background:linear-gradient(90deg,#1B5E20,#388E3C,#1B5E20);'},
+                    {label:'빨강', val:'background:linear-gradient(90deg,#B71C1C,#E53935,#B71C1C);'},
+                    {label:'보라', val:'background:linear-gradient(90deg,#4A148C,#7B1FA2,#4A148C);'},
+                    {label:'금색', val:'background:linear-gradient(90deg,#F57F17,#FDD835,#F57F17);'},
+                    {label:'갈색', val:'background:linear-gradient(90deg,#3E2723,#6D4C41,#3E2723);'},
+                    {label:'하늘', val:'background:linear-gradient(90deg,#01579B,#0288D1,#01579B);'},
+                    {label:'없음', val:'background:rgba(0,0,0,0.18);'},
+                ];
+                const bgHtml = bgPresets.map((p,pi) => {
+                    const isOn = (tit.bg||bgPresets[0].val) === p.val;
+                    return `<div onclick="window._tPlzTitSetBg(${pi})" title="${p.label}"
+                        style="width:36px;height:24px;border-radius:6px;border:2.5px solid ${isOn?'#1565C0':'transparent'};cursor:pointer;${p.val}box-shadow:${isOn?'0 0 0 2px #42A5F5':'0 1px 3px rgba(0,0,0,0.2)'};"></div>`;
+                }).join('');
+                window._tchBgPresets = bgPresets;
+                const colPresets = ['#E8EAF6','#FFFFFF','#FFE082','#A5D6A7','#EF9A9A','#1A237E','#1B5E20','#B71C1C','#F57F17','#4A148C'];
+                const colHtml = colPresets.map(c => {
+                    const isOn = (tit.col||'#E8EAF6') === c;
+                    return `<div onclick="window._tPlzTitSet('col','${c}')"
+                        style="width:28px;height:28px;border-radius:50%;background:${c};border:3px solid ${isOn?'#1565C0':'rgba(0,0,0,0.15)'};cursor:pointer;box-shadow:${isOn?'0 0 0 2px #42A5F5':'none'};"></div>`;
+                }).join('');
+                contentHtml = `
+                    <div style="text-align:center;margin-bottom:14px;padding:10px;background:#F5F5F5;border-radius:12px;">
+                        ${titPreview}
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:12px;color:#888;margin-bottom:6px;">칭호 텍스트</div>
+                        <input value="${previewTxt}" maxlength="10" placeholder="칭호 이름"
+                            style="width:100%;padding:7px 12px;border-radius:10px;border:2px solid #EEE;font-family:'Jua';font-size:14px;outline:none;box-sizing:border-box;"
+                            oninput="window._tPlzTitSet('txt',this.value)">
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:12px;color:#888;margin-bottom:6px;">배경 색상</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;">${bgHtml}</div>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <div style="font-size:12px;color:#888;margin-bottom:6px;">글자 색상</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;">${colHtml}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:12px;color:#888;margin-bottom:6px;">배경 이미지 (GitHub 업로드)</div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="flex:1;display:flex;align-items:center;gap:6px;padding:7px 12px;border:2px dashed #90CAF9;border-radius:10px;cursor:pointer;background:#F3F9FF;font-size:12px;color:#1976D2;font-family:'Jua';"
+                                onclick="window._tchTitPickFile()"
+                                ondragover="event.preventDefault();this.style.borderColor='#1976D2'" ondragleave="this.style.borderColor='#90CAF9'"
+                                ondrop="event.preventDefault();this.style.borderColor='#90CAF9';window._tchTitImgDrop(event)">
+                                <span>🖼️</span><span id="_tchTitUploadLabel">클릭 또는 드래그</span>
+                            </div>
+                            ${tit.img ? `<button onclick="window._tPlzTitSet('img','')" style="padding:5px 10px;border-radius:8px;border:none;background:#EF5350;color:white;font-family:'Jua';font-size:12px;cursor:pointer;">✕ 제거</button>` : ''}
+                        </div>
+                        <div id="_tchTitImgStatus" style="font-size:11px;color:#888;margin-top:4px;">${tit.img?`<img src="${tit.img}" style="height:24px;border-radius:4px;vertical-align:middle;margin-right:4px;">현재 이미지 적용 중`:''}</div>
+                    </div>`;
+            } else {
+                // 아이템 탭
+                const eqVal = _eq2[_tPlzCurCat];
+                const curId = typeof eqVal === 'object' ? (eqVal?.id||'') : (eqVal||'');
+                const curFlip = typeof eqVal === 'object' ? (eqVal?.flip||'right') : 'right';
+                const items = [{ id:'__none' }, ...avt.filter(a => a.cat === _tPlzCurCat)];
+                const itemsHtml = items.map(a => {
+                    const isNone = a.id === '__none';
+                    const isOn = isNone ? !curId : curId === a.id;
+                    const imgHtml = (!isNone && a.img)
+                        ? `<img src="${a.img}" style="width:38px;height:38px;object-fit:contain;">`
+                        : `<span style="font-size:20px;">${isNone?'✖':'👤'}</span>`;
+                    return `<div onclick="window._tPlzEquip('${_tPlzCurCat}','${isNone?'':a.id}','${curFlip}')"
+                        style="width:54px;height:54px;border-radius:10px;border:2.5px solid ${isOn?'#1565C0':'#EEE'};background:${isOn?'#E3F2FD':'white'};display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-shadow:${isOn?'0 2px 8px rgba(21,101,192,0.25)':'none'};">
+                        ${imgHtml}</div>`;
+                }).join('');
+                // 좌우 대칭 버튼 (아이템이 선택된 경우만 활성)
+                const flipHtml = curId ? `
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:#F5F5F5;border-radius:10px;padding:8px 12px;">
+                        <span style="font-size:12px;color:#888;flex:1;">방향</span>
+                        <button onclick="window._tPlzEquip('${_tPlzCurCat}','${curId}','right')"
+                            style="padding:4px 14px;border-radius:10px;border:1.5px solid ${curFlip==='right'?'#1565C0':'#DDD'};background:${curFlip==='right'?'#E3F2FD':'white'};font-family:'Jua';font-size:12px;cursor:pointer;">→ 오른쪽</button>
+                        <button onclick="window._tPlzEquip('${_tPlzCurCat}','${curId}','left')"
+                            style="padding:4px 14px;border-radius:10px;border:1.5px solid ${curFlip==='left'?'#1565C0':'#DDD'};background:${curFlip==='left'?'#E3F2FD':'white'};font-family:'Jua';font-size:12px;cursor:pointer;">← 왼쪽</button>
+                    </div>` : '';
+                contentHtml = `${flipHtml}<div style="display:flex;flex-wrap:wrap;gap:6px;max-height:220px;overflow-y:auto;">${itemsHtml}</div>`;
+            }
+
+            const body = document.getElementById('_tchCharModalBody');
+            if(body) {
+                body.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">${catsHtml}</div>${contentHtml}`;
+                return;
+            }
+
+            // 처음 생성
+            const el = document.createElement('div');
+            el.id = '_tchCharModal';
+            el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100000;display:flex;align-items:center;justify-content:center;';
+            el.onclick = e => { if(e.target===el) el.remove(); };
+            el.innerHTML = `<div style="background:white;border-radius:22px;width:min(480px,95vw);max-height:90dvh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.35);overflow:hidden;font-family:'Jua';">
+                <div style="background:linear-gradient(135deg,#1A237E,#3949AB);padding:14px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                    <div id="_tchCharPrev" style="flex-shrink:0;">${renderAvatar((db.cfg&&db.cfg.teacherChar&&db.cfg.teacherChar.eq)||{},90)}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="color:#E8EAF6;font-size:13px;margin-bottom:4px;">👨‍🏫 교사 캐릭터</div>
+                        <div id="_tchTitPrevSlot" style="margin-bottom:5px;"></div>
+                        <input id="_tchCharNmInput" value="${nm}" maxlength="8" placeholder="이름"
+                            style="width:100%;padding:6px 10px;border-radius:10px;border:none;font-family:'Jua';font-size:14px;background:rgba(255,255,255,0.18);color:white;outline:none;box-sizing:border-box;"
+                            oninput="window._tPlzNmChange(this.value)">
+                    </div>
+                    <button onclick="document.getElementById('_tchCharModal').remove()" style="flex-shrink:0;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:28px;height:28px;font-size:16px;color:white;cursor:pointer;">✕</button>
+                </div>
+                <div style="padding:16px;flex:1;overflow-y:auto;">
+                    <div id="_tchCharModalBody"></div>
+                </div>
+            </div>`;
+            document.body.appendChild(el);
+            _renderBody();
+            _updateTchTitPreview();
+        };
+        _renderBody();
+    };
+
+    function _updateTchTitPreview() {
+        const slot = document.getElementById('_tchTitPrevSlot');
+        if(!slot) return;
+        const tit = (db.cfg && db.cfg.teacherChar && db.cfg.teacherChar.tit) || {};
+        const txt = tit.txt || '선생님';
+        const bg = tit.img ? `background:url('${tit.img}') center/cover no-repeat;` : (tit.bg || 'background:linear-gradient(90deg,#1A237E,#3949AB,#1A237E);');
+        const col = tit.col || '#E8EAF6';
+        slot.innerHTML = `<div style="${bg}border-radius:5px;padding:2px 10px;display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,0.25);box-shadow:0 1px 4px rgba(0,0,0,0.3);"><span style="font-size:12px;color:${col};font-family:'Jua';">${txt}</span></div>`;
+    }
+
+    window._tchTitPickFile = function() {
+        let inp = document.getElementById('_tchTitFileInput');
+        if(!inp) {
+            inp = document.createElement('input');
+            inp.type = 'file';
+            inp.id = '_tchTitFileInput';
+            inp.accept = 'image/*';
+            inp.style.display = 'none';
+            inp.onchange = () => { if(inp.files[0]) window._tchTitImgUpload(inp.files[0]); inp.value=''; };
+            document.body.appendChild(inp);
+        }
+        inp.click();
+    };
+
+    window._tchTitImgDrop = function(e) {
+        const file = e.dataTransfer.files[0];
+        if(file && file.type.startsWith('image/')) window._tchTitImgUpload(file);
+    };
+
+    window._tchTitImgUpload = async function(file) {
+        if(!file) return;
+        const statusEl = document.getElementById('_tchTitImgStatus');
+        const gh = db.cfg && db.cfg.gh;
+        if(!gh || !gh.token || !gh.owner || !gh.repo) {
+            if(statusEl) statusEl.textContent = '❌ GitHub 설정이 필요합니다 (설정 메뉴에서 입력)';
+            return;
+        }
+        if(statusEl) statusEl.innerHTML = '⏳ 업로드 중...';
+        try {
+            const base64 = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file); });
+            const fname = `teacher_tit/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+            const resp = await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${fname}`, {
+                method:'PUT',
+                headers:{'Authorization':`token ${gh.token}`,'Content-Type':'application/json'},
+                body:JSON.stringify({message:`Upload teacher tit: ${file.name}`, content:base64})
+            });
+            const data = await resp.json();
+            if(!resp.ok) throw new Error(data.message||'Unknown error');
+            const url = data.content.download_url;
+            // 먼저 상태 표시 (모달 재생성 전)
+            if(statusEl) statusEl.innerHTML = `<img src="${url}" style="height:24px;border-radius:4px;vertical-align:middle;margin-right:4px;">✅ 업로드 완료`;
+            // DB 저장 + 광장 presence 갱신 (showTchCharModal 재호출 없이)
+            if(!db.cfg) db.cfg = {};
+            if(!db.cfg.teacherChar) db.cfg.teacherChar = { nm:'선생님', eq:{} };
+            if(!db.cfg.teacherChar.tit) db.cfg.teacherChar.tit = {};
+            db.cfg.teacherChar.tit.img = url;
+            sv();
+            if(window._tchPlzActive && window.plzMyRef) window.plzMyRef.update({ tit: db.cfg.teacherChar.tit });
+            _updateTchTitPreview();
+            // 1초 후 모달 갱신 (상태 메시지 잠깐 보이게)
+            setTimeout(() => { if(document.getElementById('_tchCharModal')) window.showTchCharModal(); }, 1000);
+        } catch(e) {
+            if(statusEl) statusEl.textContent = '❌ 업로드 실패: ' + e.message;
+        }
+    };
+
+    window._tPlzTitSetBg = function(idx) {
+        const presets = window._tchBgPresets;
+        if(!presets || !presets[idx]) return;
+        window._tPlzTitSet('bg', presets[idx].val);
+    };
+
+    window._tPlzTitSet = function(key, val) {
+        if(!db.cfg) db.cfg = {};
+        if(!db.cfg.teacherChar) db.cfg.teacherChar = { nm:'선생님', eq:{} };
+        if(!db.cfg.teacherChar.tit) db.cfg.teacherChar.tit = {};
+        db.cfg.teacherChar.tit[key] = val;
+        sv();
+        if(_tchPlzActive && plzMyRef) plzMyRef.update({ tit: db.cfg.teacherChar.tit });
+        window.showTchCharModal();
+        _updateTchTitPreview();
+    };
+
+    window._tPlzSetCat = function(cat) {
+        _tPlzCurCat = cat;
+        window.showTchCharModal();
+    };
+
+    window._tPlzEquip = function(cat, id, flip) {
+        if(!db.cfg) db.cfg = {};
+        if(!db.cfg.teacherChar) db.cfg.teacherChar = { nm:'선생님', eq:{} };
+        if(!db.cfg.teacherChar.eq) db.cfg.teacherChar.eq = {};
+        if(id) db.cfg.teacherChar.eq[cat] = { id, flip: flip || 'right' };
+        else delete db.cfg.teacherChar.eq[cat];
+        sv();
+        _rTPlzChar();
+        const prev = document.getElementById('_tchCharPrev');
+        if(prev) prev.innerHTML = renderAvatar(db.cfg.teacherChar.eq, 90);
+        window.showTchCharModal();
+        if(_tchPlzActive && plzMyRef) plzMyRef.update({ eq: db.cfg.teacherChar.eq });
+    };
+
+    window._tPlzNmChange = function(val) {
+        if(!db.cfg) db.cfg = {};
+        if(!db.cfg.teacherChar) db.cfg.teacherChar = { nm:'선생님', eq:{} };
+        db.cfg.teacherChar.nm = val || '선생님';
+        sv();
+        _rTPlzChar();
+        if(_tchPlzActive && plzMyRef) plzMyRef.update({ nm: db.cfg.teacherChar.nm });
+    };
+
+    /* ===== 교사 광장 입장 ===== */
+    let _tchPlzActive = false;
+
+    window.enterPlazaAsTeacher = function() {
+        if(_tchPlzActive) return;
+        getPlzRef().child('cfg').once('value', snap => {
+            const cfg = snap.val() || {};
+            if(!cfg.open) {
+                prettyConfirm('광장이 닫혀 있어요.<br>광장을 먼저 열고 입장해 주세요.', ()=>{}, {icon:'🔒', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
+                return;
+            }
+            _tchPlzActive = true;
+            window._plzActive = true;
+
+            const tc = (db.cfg && db.cfg.teacherChar) || {};
+            const tchNm = tc.nm || '선생님';
+            const tchEq = tc.eq || {};
+
+            // 오버레이 생성
+            const ov = document.createElement('div');
+            ov.id = '_tchPlzOv';
+            ov.style.cssText = 'position:fixed;inset:0;z-index:90000;background:#111;display:flex;flex-direction:column;';
+
+            const bar = document.createElement('div');
+            bar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 16px;background:linear-gradient(90deg,#1A237E,#283593);flex-shrink:0;';
+            bar.innerHTML = `<span style="font-size:22px;">👨‍🏫</span><span style="color:#E8EAF6;font-size:15px;font-family:'Jua';">${tchNm} (선생님)</span>
+                <span style="font-size:11px;color:rgba(255,255,255,0.45);margin-left:4px;">학생들에게 보입니다</span>
+                <button onclick="window.exitPlazaAsTeacher()" style="margin-left:auto;padding:6px 18px;border-radius:20px;border:none;background:rgba(239,83,80,0.85);color:white;font-family:'Jua';font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);">✕ 나가기</button>`;
+            ov.appendChild(bar);
+
+            const cont = document.createElement('div');
+            cont.id = '_tchPlzCont';
+            cont.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0;height:0;';
+            ov.appendChild(cont);
+            document.body.appendChild(ov);
+
+            // me를 교사 캐릭터로 임시 교체 (buildPlzUI 호출 전에 해야 함)
+            window._tchPlzSavedMe = me;
+            me = {
+                nm: tchNm,
+                cd: 'teacher_main',
+                no: 0,
+                eq: tchEq,
+                cookie: 0,
+                inv: [],
+                bugReqs: [],
+                teacherMsgs: []
+            };
+
+            _buildPlzUI(cont, cfg);
+            // _buildPlzUI 내부에서 plzMyRef, _plzPos, 리스너, 루프 모두 설정됨
+        });
+    };
+
+    window.exitPlazaAsTeacher = function() {
+        if(!_tchPlzActive) return;
+        _tchPlzActive = false;
+        exitPlaza();
+        if(window._tchPlzSavedMe) { me = window._tchPlzSavedMe; window._tchPlzSavedMe = null; }
+        document.getElementById('_tchPlzOv')?.remove();
+    };
+
+    /* ===== PWA 설치 ===== */
+    let _pwaInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        _pwaInstallPrompt = e;
+        window._pwaReady = true;
+        document.querySelectorAll('.pwa-install-btn').forEach(b => b.style.display = 'flex');
+    });
+
+    window.addEventListener('appinstalled', () => {
+        _pwaInstallPrompt = null;
+        document.querySelectorAll('.pwa-install-btn').forEach(b => b.style.display = 'none');
+        showToast('홈 화면에 추가됐어요! 🎉');
+    });
+
+    window.triggerPwaInstall = function() {
+        if(_pwaInstallPrompt) {
+            _pwaInstallPrompt.prompt();
+            _pwaInstallPrompt.userChoice.then(() => { _pwaInstallPrompt = null; });
+        } else {
+            // iOS Safari 안내
+            const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            let msg;
+            if(isIos && isSafari) {
+                msg = '① 하단의 <b>공유 버튼 □↑</b> 을 누르세요<br>② <b>"홈 화면에 추가"</b> 를 선택하세요';
+            } else if(isIos) {
+                msg = 'Safari 브라우저로 열어서<br>홈 화면에 추가해 주세요.';
+            } else {
+                msg = '브라우저 주소창 우측의<br><b>설치(⊕) 아이콘</b>을 눌러 추가하세요.';
+            }
+            prettyConfirm(`<b>📲 홈 화면에 추가하기</b><br><br>${msg}`, ()=>{}, {icon:'📲', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
+        }
+    };
+
+    // 서비스워커 등록 (PWA 오프라인 지원)
+    if('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js').catch(()=>{});
     }
 
 </script>
