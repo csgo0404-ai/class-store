@@ -11890,8 +11890,7 @@ window.addCharRow = function() {
             else if(!_plzIsBlocked(_plzPos.x,ny-co)){_plzPos.y=ny;}
             const myEl=document.querySelector(`.plz-char[data-uid="${me.cd}"]`);
             if(myEl){myEl.style.left=_plzPos.x+'%';myEl.style.top=_plzPos.y+'%';myEl.classList.add('walking');}
-            const now=Date.now();
-            if(now-_plzSyncThrottle>50&&plzMyRef){_plzSyncThrottle=now;plzMyRef.update({x:_plzPos.x,y:_plzPos.y});}
+            _plzTrySyncPos();
         }
         step();
         _plzDpadIv = setInterval(step, 33);
@@ -11902,8 +11901,30 @@ window.addCharRow = function() {
     };
     let _plzPos = { x:50, y:50 }; // my position (%)
     let _plzSyncThrottle = 0;
+    let _plzLastSentX = -1, _plzLastSentY = -1; // 마지막으로 전송한 위치
     const PLZ_SPEED = 0.12;  // % per frame
     window._plzActive = false;
+
+    // C: 접속자 수에 따라 throttle 자동 조정
+    function _plzGetThrottle() {
+        const n = Object.keys(_plzUserCache).length;
+        if(n <= 10) return 100;
+        if(n <= 20) return 200;
+        return 300;
+    }
+    // A: 실제로 위치가 바뀌었을 때만 Firebase 전송
+    function _plzTrySyncPos() {
+        if(!plzMyRef) return;
+        const dx = Math.abs(_plzPos.x - _plzLastSentX);
+        const dy = Math.abs(_plzPos.y - _plzLastSentY);
+        if(dx < 0.01 && dy < 0.01) return; // 움직임 없음 → 전송 안 함
+        const now = Date.now();
+        if(now - _plzSyncThrottle < _plzGetThrottle()) return;
+        _plzSyncThrottle = now;
+        _plzLastSentX = _plzPos.x;
+        _plzLastSentY = _plzPos.y;
+        plzMyRef.update({ x: _plzPos.x, y: _plzPos.y });
+    }
 
     function getPlzRef() {
         if(!plzRef) plzRef = firebase.database().ref('ClassData/EventShop/plaza');
@@ -13015,11 +13036,7 @@ window.addCharRow = function() {
                 myEl.classList.add('walking');
             }
 
-            const now = Date.now();
-            if(now - _plzSyncThrottle > 100 && plzMyRef) {
-                _plzSyncThrottle = now;
-                plzMyRef.update({ x: _plzPos.x, y: _plzPos.y });
-            }
+            _plzTrySyncPos();
         } else {
             if(myEl) myEl.classList.remove('walking');
         }
@@ -13040,7 +13057,8 @@ window.addCharRow = function() {
         _plzPos.y = cy;
         const myEl = document.querySelector(`.plz-char[data-uid="${me.cd}"]`);
         if(myEl) { myEl.style.left = _plzPos.x + '%'; myEl.style.top = _plzPos.y + '%'; }
-        if(plzMyRef) plzMyRef.update({ x: _plzPos.x, y: _plzPos.y });
+        _plzLastSentX = -1; // 클릭 이동은 즉시 전송
+        _plzTrySyncPos();
     };
 
     window.sendPlzChat = function() {
