@@ -1,6 +1,6 @@
-const CACHE = 'uriban-v2';
+const CACHE = 'uriban-v3';
 const CORE = [
-  '/class-store/%EC%9D%B4%EB%B2%A4%ED%8A%B8%20%EC%83%81%EC%A0%90.html',
+  '/class-store/app.html',
   '/class-store/index.html',
   'https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&family=Jua&display=swap'
 ];
