@@ -1,5 +1,20 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>우리반 매니저</title>
+<link rel="manifest" href="/class-store/manifest.json">
+<style>
+  body { margin:0; background:#FFFDF2; display:flex; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+  .loader { text-align:center; color:#FFB366; font-size:18px; }
+</style>
+</head>
 <body>
-<script>location.href = decodeURIComponent('%EC%9D%B4%EB%B2%A4%ED%8A%B8%20%EC%83%81%EC%A0%90.html') + location.search;</script>
-</body></html>
+<div class="loader">🎪 로딩 중...</div>
+<script>
+  // 쿼리스트링(학생 코드 등) 유지하며 메인 파일로 이동
+  window.location.replace('이벤트 상점.html' + window.location.search);
+</script>
+</body>
+</html>
