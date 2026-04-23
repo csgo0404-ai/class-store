@@ -742,7 +742,7 @@
         #t_avt .avt-grid { grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:16px; }
 
         /* === 광장 === */
-        .plz-layout { display:flex; gap:12px; height:calc(100% - 80px); min-height:500px; }
+        .plz-layout { display:flex; gap:12px; min-height:500px; height:100%; box-sizing:border-box; }
         .plz-map-wrap { flex:1; position:relative; border-radius:18px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.15); background:#7EC850; cursor:default; }
         .plz-chat-overlay { position:absolute; bottom:0; left:0; right:0; background:rgba(10,10,10,0.72); backdrop-filter:blur(6px); z-index:25; display:flex; flex-direction:column; transition:height 0.2s ease; }
         .plz-chat-overlay-input { display:flex; align-items:center; gap:8px; padding:5px 10px 2px; flex-shrink:0; }
@@ -754,7 +754,7 @@
         .plz-chat-row .chat-who { color:#90CAF9; font-weight:bold; }
         .plz-chat-row .chat-time { color:rgba(255,255,255,0.28); font-size:10px; }
         .plz-map-bg { position:absolute; inset:0; background-size:cover; background-position:center; }
-        .plz-char { position:absolute; transform:translate(-50%,-100%); transition:left 0.08s linear, top 0.08s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
+        .plz-char { position:absolute; transform:translate(-50%,-100%); transition:left 0.5s linear, top 0.5s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
         .plz-char.me { transition:none; }
         .plz-tit-slot { display:flex; justify-content:center; }
         .plz-nm-slot { display:flex; justify-content:center; margin-top:-4px; }
@@ -876,7 +876,9 @@
     } else if(localStorage.getItem('stuCode')) {
         document.getElementById('autoLoginLoader').style.display = 'flex';
     } else {
-        document.getElementById('loginBox').style.display = '';
+        // Firebase 응답 전까지 로더 표시 — 공사중 여부 확인 후 loginBox 표시
+        document.getElementById('autoLoginLoader').style.display = 'flex';
+        window._pendingLoginBox = true;
     }
 </script>
 
@@ -901,6 +903,7 @@
                     <button class="btn btn-org" onclick="showShopUsedReport()" style="padding:8px 15px;">🍪 상점 차감 정산</button>
                     <button class="btn btn-green" onclick="backupDB()" style="padding:8px 15px;">📤 내보내기</button>
                     <button class="btn btn-blue" onclick="document.getElementById('_restoreInput').click()" style="padding:8px 15px;">📥 불러오기</button>
+                    <button class="btn btn-gray" onclick="restoreFromLocalSnap()" style="padding:8px 15px;" title="앱이 자동으로 저장한 로컬 스냅샷으로 복구">💾 긴급복구</button>
                     <input type="file" id="_restoreInput" accept=".json" style="display:none" onchange="restoreDB(this)">
                     <button class="btn btn-red" onclick="forceReloadAll()" style="padding:8px 15px;">🔄 업데이트</button>
                     <button id="maintenanceBtn" onclick="toggleMaintenance()" style="padding:8px 15px;" class="btn btn-gray">🚧 영업 중지</button>
@@ -1119,6 +1122,34 @@
                         </div>
                     </div>
                     <div id="plz_hours_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
+                </div>
+                <!-- 최대 접속자 수 -->
+                <div class="card" style="flex:0.5; min-width:100px; padding:12px; box-sizing:border-box;">
+                    <h4 style="margin:0 0 8px; font-size:14px;">👥 최대 접속자 수</h4>
+                    <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-bottom:8px; white-space:nowrap;">
+                        <input type="checkbox" id="plz_maxuser_enabled" onchange="savePlzMaxUser()">
+                        인원 제한 활성화
+                    </label>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:12px; color:#888;">최대</label>
+                        <input type="number" id="plz_maxuser_count" min="1" max="100" value="30" style="width:52px;padding:3px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;" onchange="savePlzMaxUser()">
+                        <label style="font-size:12px; color:#888;">명</label>
+                    </div>
+                    <div id="plz_maxuser_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
+                </div>
+                <!-- 비활성 자동 퇴장 -->
+                <div class="card" style="flex:0.5; min-width:100px; padding:12px; box-sizing:border-box;">
+                    <h4 style="margin:0 0 8px; font-size:14px;">💤 비활성 자동 퇴장</h4>
+                    <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-bottom:8px; white-space:nowrap;">
+                        <input type="checkbox" id="plz_idle_enabled" onchange="savePlzIdle()">
+                        자동 퇴장 활성화
+                    </label>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:12px; color:#888;">무움직임</label>
+                        <input type="number" id="plz_idle_minutes" min="1" max="60" value="5" style="width:44px;padding:3px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;" onchange="savePlzIdle()">
+                        <label style="font-size:12px; color:#888;">분 후 퇴장</label>
+                    </div>
+                    <div id="plz_idle_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
                 </div>
                 <!-- 채팅 규칙 설정 -->
                 <div class="card" style="flex:0.5; min-width:100px; padding:12px; box-sizing:border-box;">
@@ -1843,11 +1874,13 @@ let _renderLock = false; // 재진입 방지
             if(!db.bdg) db.bdg = []; else if(!Array.isArray(db.bdg)) db.bdg = Object.values(db.bdg);
             if(!db.tit) db.tit = []; else if(!Array.isArray(db.tit)) db.tit = Object.values(db.tit);
             // 각 학생의 inv/ibx도 배열로 정규화 (Firebase 객체 반환 시 .some/.filter 오류 방지)
-            db.stu.forEach(s => {
+            db.stu.forEach((s, i) => {
                 if(s.inv && !Array.isArray(s.inv)) s.inv = Object.values(s.inv).filter(Boolean);
                 else if(!s.inv) s.inv = [];
                 if(s.ibx && !Array.isArray(s.ibx)) s.ibx = Object.values(s.ibx).filter(Boolean);
                 else if(!s.ibx) s.ibx = [];
+                // no 필드 없으면 배열 인덱스+1로 복구
+                if(s.no === undefined || s.no === null) s.no = i + 1;
             });
             if(!db.cfg.gh) db.cfg.gh = {token:'',owner:'',repo:''};
             if(!db.cfg.baseChar) db.cfg.baseChar = '';
@@ -1862,10 +1895,11 @@ let _renderLock = false; // 재진입 방지
                 return;
             }
 
-            // 영업 중지(공사중) 체크 — 학생 화면에서만 막음
+            // 영업 중지(공사중) 체크 — 학생 화면에서만 막음 (교사 로그인 화면은 항상 허용)
             const isMaintenance = !!db.cfg.maintenance;
             const isTeacherView = !document.getElementById('appT').classList.contains('hidden');
-            if(isMaintenance && !isTeacherView && !window._autoTeacher) {
+            const isTeacherLoginVisible = !document.getElementById('lt')?.classList.contains('hidden');
+            if(isMaintenance && !isTeacherView && !window._autoTeacher && !isTeacherLoginVisible) {
                 document.getElementById('autoLoginLoader').style.display = 'none';
                 document.getElementById('loginBox').style.display = 'none';
                 let _mDiv = document.getElementById('_maintenanceOverlay');
@@ -1873,12 +1907,28 @@ let _renderLock = false; // 재진입 방지
                     _mDiv = document.createElement('div');
                     _mDiv.id = '_maintenanceOverlay';
                     _mDiv.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#1a1a2e,#16213e);z-index:99990;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:\'Jua\',sans-serif;';
-                    _mDiv.innerHTML = '<div style="font-size:72px;margin-bottom:20px;">🚧</div><div style="font-size:28px;color:white;font-weight:bold;margin-bottom:12px;">공사 중입니다</div><div style="font-size:16px;color:rgba(255,255,255,0.65);">잠시 후 다시 방문해 주세요!</div>';
+                    _mDiv.innerHTML = '<div id="_maintEmoji" style="font-size:72px;margin-bottom:20px;cursor:default;user-select:none;">🚧</div><div style="font-size:28px;color:white;font-weight:bold;margin-bottom:12px;">공사 중입니다</div><div style="font-size:16px;color:rgba(255,255,255,0.65);">잠시 후 다시 방문해 주세요!</div>';
+                    _mDiv.querySelector('#_maintEmoji').addEventListener('contextmenu', function(e) {
+                        e.preventDefault();
+                        _mDiv.remove();
+                        document.getElementById('loginBox').style.display = '';
+                        document.getElementById('ls').classList.add('hidden');
+                        document.getElementById('lt').classList.remove('hidden');
+                        // 탭 버튼 숨김 — 교사 로그인만 가능하도록
+                        const tabBtns = document.querySelectorAll('.tab-btn');
+                        tabBtns.forEach(b => b.style.display = 'none');
+                    });
                     document.body.appendChild(_mDiv);
                 }
                 return;
             } else {
                 document.getElementById('_maintenanceOverlay')?.remove();
+                // 저장된 로그인 없이 처음 접속한 경우 — 공사중 아님 확인 후 loginBox 표시
+                if(window._pendingLoginBox) {
+                    window._pendingLoginBox = false;
+                    document.getElementById('autoLoginLoader').style.display = 'none';
+                    document.getElementById('loginBox').style.display = '';
+                }
             }
 
             // 교사 버튼 상태 동기화
@@ -2045,10 +2095,13 @@ let _renderLock = false; // 재진입 방지
                 setTimeout(window._updateShopBadge||function(){}, 0);
             }
         } else {
+            // Firebase에서 null 수신 = DB 미초기화 상태일 때만 최초 1회 기본값 세팅
+            // ⚠️ Firebase 정지/일시오류로 null이 올 수 있으므로 sv() 호출 금지
             if(!db.stu || db.stu.length === 0) {
                 db.stu = [{no:1, nm:'학생1', cd:'1234', cn:100, tk:10, co:5, cookie:0, usedCookie:0, level:1, inv:[], ibx:[], col:[], rd:{}, rb:0}];
+                sv(); // 진짜 신규 DB일 때만 저장
             }
-            sv();
+            // null이지만 db.stu가 이미 메모리에 있으면 아무것도 하지 않음
         }
     }
 
@@ -2135,7 +2188,53 @@ let _renderLock = false; // 재진입 방지
         clearTimeout(_localSavingTimer);
         _localSavingTimer = setTimeout(() => { _localSaving = false; }, 3000);
         dbRef.set(db);
+        // localStorage 자동 스냅샷
+        try {
+            const snap = {ts: new Date().toISOString(), stu: db.stu, itm: db.itm, gac: db.gac, avt: db.avt, bdg: db.bdg, tit: db.tit, petDef: db.petDef, log: db.log, cfg: db.cfg};
+            localStorage.setItem('rpg_autosnap', JSON.stringify(snap));
+        } catch(e) {}
     }
+
+    // 로컬 스냅샷으로 복구
+    window.restoreFromLocalSnap = function() {
+        const raw = localStorage.getItem('rpg_autosnap');
+        if(!raw) return alert('저장된 로컬 스냅샷이 없습니다.');
+        let data;
+        try { data = JSON.parse(raw); } catch(e) { return alert('스냅샷 파싱 오류'); }
+        const d = new Date(data.ts);
+        const label = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        prettyConfirm(`로컬 스냅샷을 불러올까요?<br><span style="font-size:12px;color:#888;">저장 시각: ${label} · 학생 ${(data.stu||[]).length}명</span><br><span style="color:#E53935;font-size:12px;">현재 Firebase 데이터를 덮어씁니다.</span>`,
+        () => {
+            if(data.stu) db.stu = data.stu;
+            if(data.itm) db.itm = data.itm;
+            if(data.gac) db.gac = data.gac;
+            if(data.avt) db.avt = data.avt;
+            if(data.bdg) db.bdg = data.bdg;
+            if(data.tit) db.tit = data.tit;
+            if(data.petDef) db.petDef = data.petDef;
+            if(data.log) db.log = data.log;
+            if(data.cfg) db.cfg = data.cfg;
+            sv(); rTb(); alert('로컬 스냅샷 복구 완료!');
+        }, {icon:'💾', okLabel:'복구', okClass:'btn-blue', cancelLabel:'취소'});
+    };
+
+    // 창 닫기/새로고침 시 백업 팝업 (교사 전용)
+    // beforeunload: 브라우저 기본 "떠나시겠습니까?" 다이얼로그 + 자동 백업 시도
+    window.addEventListener('beforeunload', function(e) {
+        if(localStorage.getItem('teacherLogged') !== '1') return;
+        // 자동 백업 파일 다운로드 시도 (일부 브라우저에서 작동)
+        try {
+            const backup = {ts:new Date().toISOString(),stu:db.stu,itm:db.itm,gac:db.gac,avt:db.avt,bdg:db.bdg,tit:db.tit,petDef:db.petDef,log:db.log,cfg:db.cfg};
+            const blob = new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+            const d = new Date();
+            const fn = `RPG상점_자동백업_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.json`;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = fn;
+            a.click();
+        } catch(err) {}
+        // 경고창 없이 자동 백업만
+    });
 
     window.showTip = function(e, text) {
         if (!text || window._gachaRunning) return;
@@ -11909,7 +12008,7 @@ window.addCharRow = function() {
             _plzTrySyncPos();
         }
         step();
-        _plzDpadIv = setInterval(step, 33);
+        _plzDpadIv = setInterval(step, 100);
     };
     window._plzDpadStop = function() {
         if(_plzDpadIv){clearInterval(_plzDpadIv);_plzDpadIv=null;}
@@ -11924,13 +12023,16 @@ window.addCharRow = function() {
     // C: 접속자 수에 따라 throttle 자동 조정
     function _plzGetThrottle() {
         const n = Object.keys(_plzUserCache).length;
-        if(n <= 10) return 100;
-        if(n <= 20) return 200;
-        return 300;
+        if(n <= 10) return 500;
+        if(n <= 20) return 800;
+        return 1200;
     }
     // A: 실제로 위치가 바뀌었을 때만 Firebase 전송
     function _plzTrySyncPos() {
         if(!plzMyRef) return;
+        _plzLastMoveTime = Date.now(); // 움직임 감지 → 비활성 타이머 리셋
+        window._plzIdleWarned = false;
+        document.getElementById('_plzIdleWarn')?.remove();
         const dx = Math.abs(_plzPos.x - _plzLastSentX);
         const dy = Math.abs(_plzPos.y - _plzLastSentY);
         if(dx < 0.01 && dy < 0.01) return; // 움직임 없음 → 전송 안 함
@@ -11981,6 +12083,24 @@ window.addCharRow = function() {
         if(enDEl) enDEl.value = plzHours.end || '17:00';
         if(stEl2) stEl2.textContent = plzHours.enabled ? `✅ ${plzHours.start||'09:00'} ~ ${plzHours.end||'17:00'} 시간만 접속 가능` : '';
 
+        // 최대 접속자 설정 반영
+        const plzMaxUser = (db.cfg && db.cfg.plzMaxUser) || {};
+        const muEnEl = document.getElementById('plz_maxuser_enabled');
+        const muCnEl = document.getElementById('plz_maxuser_count');
+        const muStEl = document.getElementById('plz_maxuser_status');
+        if(muEnEl) muEnEl.checked = !!plzMaxUser.enabled;
+        if(muCnEl) muCnEl.value = plzMaxUser.count || 30;
+        if(muStEl) muStEl.textContent = plzMaxUser.enabled ? `✅ 최대 ${plzMaxUser.count||30}명으로 제한` : '';
+
+        // 비활성 자동 퇴장 설정 반영
+        const plzIdle = (db.cfg && db.cfg.plzIdle) || {};
+        const idEnEl = document.getElementById('plz_idle_enabled');
+        const idMnEl = document.getElementById('plz_idle_minutes');
+        const idStEl = document.getElementById('plz_idle_status');
+        if(idEnEl) idEnEl.checked = !!plzIdle.enabled;
+        if(idMnEl) idMnEl.value = plzIdle.minutes || 5;
+        if(idStEl) idStEl.textContent = plzIdle.enabled ? `✅ ${plzIdle.minutes||5}분 무움직임 시 자동 퇴장` : '';
+
         // Open/close state
         updatePlzOpenBadge();
         _initPlzRulesUI();
@@ -12001,6 +12121,26 @@ window.addCharRow = function() {
         sv();
         const statusEl = document.getElementById('plz_hours_status');
         if(statusEl) statusEl.textContent = enabled ? `✅ ${start} ~ ${end} 시간만 접속 가능` : '⏰ 시간 제한 없음';
+    };
+
+    window.savePlzMaxUser = function() {
+        const enabled = document.getElementById('plz_maxuser_enabled').checked;
+        const count = parseInt(document.getElementById('plz_maxuser_count').value) || 30;
+        if(!db.cfg) db.cfg = {};
+        db.cfg.plzMaxUser = { enabled, count };
+        sv();
+        const statusEl = document.getElementById('plz_maxuser_status');
+        if(statusEl) statusEl.textContent = enabled ? `✅ 최대 ${count}명으로 제한` : '제한 없음';
+    };
+
+    window.savePlzIdle = function() {
+        const enabled = document.getElementById('plz_idle_enabled').checked;
+        const minutes = parseInt(document.getElementById('plz_idle_minutes').value) || 5;
+        if(!db.cfg) db.cfg = {};
+        db.cfg.plzIdle = { enabled, minutes };
+        sv();
+        const statusEl = document.getElementById('plz_idle_status');
+        if(statusEl) statusEl.textContent = enabled ? `✅ ${minutes}분 무움직임 시 자동 퇴장` : '비활성';
     };
 
     window.togglePlzChat = function() {
@@ -12063,6 +12203,7 @@ window.addCharRow = function() {
             <div id="obsModalInner" style="background:white;border-radius:16px;max-width:min(1100px,97vw);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;width:fit-content;">
                 <div style="background:#4E342E;color:white;padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
                     <span style="font-size:15px;font-weight:bold;flex:1;">🚧 이동 제한 구역 편집${bgLabel}</span>
+                    <button onclick="copyObsFromOther()" style="background:#1976D2;color:white;border:none;border-radius:8px;padding:7px 16px;font-family:'Jua';font-size:14px;cursor:pointer;">📋 가져오기</button>
                     <button onclick="saveObstacles()" style="background:#FF9800;color:white;border:none;border-radius:8px;padding:7px 16px;font-family:'Jua';font-size:14px;cursor:pointer;">💾 저장</button>
                     <button onclick="document.getElementById('obsPaintCursor')?.remove();document.getElementById('obsEditorModal').remove()" style="background:#EEE;color:#333;border:none;border-radius:8px;padding:7px 14px;font-family:'Jua';font-size:14px;cursor:pointer;">✕ 닫기</button>
                 </div>
@@ -12375,6 +12516,38 @@ window.addCharRow = function() {
         _obsRenderAll();
     };
 
+    window.copyObsFromOther = function() {
+        const plzCfg = (db.cfg && db.cfg.plz) || {};
+        const customBgs = Array.isArray(plzCfg.customBgs) ? plzCfg.customBgs : Object.values(plzCfg.customBgs || {});
+        const obstaclesByBg = plzCfg.obstaclesByBg || {};
+        const curIdx = window._obsEditingBgIdx ?? 0;
+        // 다른 이미지 목록 (장애물 있는 것 우선)
+        const others = customBgs.map((url, i) => ({ i, url, haObs: !!(obstaclesByBg[i] && obstaclesByBg[i].length) }))
+            .filter(o => o.i !== curIdx);
+        if(!others.length) { alert('다른 이미지가 없습니다.'); return; }
+        const listHtml = others.map(o =>
+            `<div onclick="window._doCopyObs(${o.i})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-radius:10px;margin-bottom:6px;background:#FFF8E1;border:2px solid ${o.haObs?'#FF9800':'#EEE'};">
+                <div style="width:60px;height:40px;border-radius:6px;background-image:url('${o.url}');background-size:cover;background-position:center;flex-shrink:0;"></div>
+                <div style="font-size:13px;font-family:'Jua';">이미지 ${o.i+1} ${o.haObs?'<span style="color:#FF9800;">● 장애물 있음</span>':'<span style="color:#aaa;">장애물 없음</span>'}</div>
+            </div>`).join('');
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `<div style="background:white;border-radius:16px;padding:20px;min-width:300px;max-width:420px;">
+            <div style="font-size:15px;font-weight:bold;margin-bottom:14px;font-family:'Jua';">📋 장애물 복사할 이미지 선택</div>
+            ${listHtml}
+            <button onclick="this.closest('div[style]').remove()" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;background:#EEE;font-family:'Jua';font-size:14px;cursor:pointer;">취소</button>
+        </div>`;
+        document.body.appendChild(modal);
+        window._doCopyObs = function(fromIdx) {
+            const obs = obstaclesByBg[fromIdx];
+            if(!obs || !obs.length) { alert('해당 이미지에 장애물이 없습니다.'); return; }
+            window._obsRects = (Array.isArray(obs) ? obs : Object.values(obs)).map((o,i) => ({...o, i}));
+            modal.remove();
+            _obsRenderAll();
+            alert(`이미지 ${fromIdx+1}의 장애물 ${window._obsRects.length}개를 가져왔습니다.\n저장 버튼을 눌러 적용하세요.`);
+        };
+    };
+
     window.saveObstacles = function() {
         if(!db.cfg) db.cfg = {};
         if(!db.cfg.plz) db.cfg.plz = {};
@@ -12672,9 +12845,10 @@ window.addCharRow = function() {
         getPlzRef().child('cfg').once('value', snap => {
             const cfg = snap.val() || {};
             if(!cfg.open) {
-                container.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+                window._plzActive = false;
+                container.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#f9f9f9;">
                     <div style="font-size:60px;">🔒</div>
-                    <div style="font-size:18px;color:#888;">선생님이 광장을 아직 열지 않았어요.</div>
+                    <div style="font-size:18px;color:#888;text-align:center;">선생님이 광장을 아직 열지 않았어요.<br><span style="font-size:14px;color:#bbb;">광장 관리 → 광장 열기를 눌러주세요.</span></div>
                 </div>`;
                 return;
             }
@@ -12700,7 +12874,7 @@ window.addCharRow = function() {
             ? `aspect-ratio:${bgAspect};max-width:100%;max-height:100%;flex-shrink:1;`
             : `flex:1;`;
         container.innerHTML = `
-        <div class="plz-layout" style="height:100%;justify-content:center;align-items:center;">
+        <div class="plz-layout" style="height:100%;justify-content:center;">
             <div class="plz-map-wrap" id="plzMap" tabindex="0" style="${mapStyle}">
                 <div class="plz-map-bg" id="plzMapBg" style="${bgStyle}"></div>
                 <div class="plz-ctrl-hint">방향키 이동 · Enter 채팅</div>
@@ -12735,7 +12909,15 @@ window.addCharRow = function() {
 
         // Register presence
         const uid = me.cd;
-        _plzPos = { x: 20 + Math.random()*60, y: 20 + Math.random()*60 };
+        // 장애물 없는 소환 위치 탐색 (최대 100회 시도)
+        let _spawnX = 50, _spawnY = 50;
+        const _co = _plzCharBodyOffset();
+        for(let _t = 0; _t < 100; _t++) {
+            const _tx = 15 + Math.random() * 70;
+            const _ty = 15 + Math.random() * 70;
+            if(!_plzIsBlocked(_tx, _ty - _co)) { _spawnX = _tx; _spawnY = _ty; break; }
+        }
+        _plzPos = { x: _spawnX, y: _spawnY };
         plzMyRef = getPlzRef().child('users').child(uid);
         const _presenceData = { nm: me.nm, no: me.no, x: _plzPos.x, y: _plzPos.y, ts: Date.now() };
         if(me.eq && Object.keys(me.eq).length) _presenceData.eq = me.eq;
@@ -12763,8 +12945,46 @@ window.addCharRow = function() {
         // Game loop
         _plzLoop();
 
+        // 비활성 자동 퇴장 타이머 시작
+        _plzStartIdleTimer();
+
         // Focus map so keyboard works immediately
         setTimeout(() => { const m = document.getElementById('plzMap'); if(m) m.focus(); }, 100);
+    }
+
+    let _plzIdleTimer = null;
+    let _plzLastMoveTime = Date.now();
+
+    function _plzStartIdleTimer() {
+        _plzLastMoveTime = Date.now();
+        clearInterval(_plzIdleTimer);
+        const idleCfg = (db.cfg && db.cfg.plzIdle) || {};
+        if(!idleCfg.enabled || !idleCfg.minutes) return;
+        const limitMs = idleCfg.minutes * 60 * 1000;
+        const warnMs = Math.max(30000, limitMs - 60000); // 1분 전 경고 (최소 30초)
+        _plzIdleTimer = setInterval(() => {
+            if(!window._plzActive) { clearInterval(_plzIdleTimer); return; }
+            const idle = Date.now() - _plzLastMoveTime;
+            if(idle >= limitMs) {
+                clearInterval(_plzIdleTimer);
+                exitPlaza();
+                const cont = document.getElementById('s_plz') || document.getElementById('_tchPlzCont');
+                if(cont) cont.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#f9f9f9;">
+                    <div style="font-size:60px;">💤</div>
+                    <div style="font-size:18px;color:#888;text-align:center;">${idleCfg.minutes}분간 움직임이 없어<br>광장에서 퇴장되었습니다.</div>
+                    <button onclick="enterPlaza?enterPlaza():null" style="padding:10px 24px;border-radius:20px;border:none;background:#FF9800;color:white;font-family:'Jua';font-size:15px;cursor:pointer;">다시 입장</button>
+                </div>`;
+            } else if(idle >= warnMs && !window._plzIdleWarned) {
+                window._plzIdleWarned = true;
+                const remain = Math.ceil((limitMs - idle) / 1000);
+                const warn = document.createElement('div');
+                warn.id = '_plzIdleWarn';
+                warn.style.cssText = 'position:absolute;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#FFD54F;padding:8px 18px;border-radius:20px;font-family:\'Jua\';font-size:13px;z-index:30;white-space:nowrap;';
+                warn.textContent = `⚠️ ${remain}초 후 비활성으로 자동 퇴장됩니다`;
+                document.getElementById('plzMap')?.appendChild(warn);
+                setTimeout(() => { warn.remove(); window._plzIdleWarned = false; }, 10000);
+            }
+        }, 5000);
     }
 
     // 접속 중인 유저 캐시 (uid → data)
@@ -12800,14 +13020,18 @@ window.addCharRow = function() {
             const u = snap.val();
             _plzUserCache[snap.key] = u;
             const el = document.querySelector(`.plz-char[data-uid="${snap.key}"]`);
-            // 위치만 바뀐 경우 style만 업데이트 (재렌더 없음)
             const posOnly = el && u.nm===prev.nm && JSON.stringify(u.eq)===JSON.stringify(prev.eq);
             if(posOnly) {
                 const isMe = me && snap.key === me.cd;
                 if(!isMe) {
+                    const _ms = _plzGetThrottle();
+                    el.style.transition = `left ${_ms}ms linear, top ${_ms}ms linear`;
                     el.style.left = u.x + '%';
                     el.style.top  = u.y + '%';
                     el.dataset.px = u.x; el.dataset.py = u.y;
+                    el.classList.add('walking');
+                    clearTimeout(el._walkTimer);
+                    el._walkTimer = setTimeout(() => el.classList.remove('walking'), _ms + 50);
                 }
             } else {
                 _renderPlzChars(_plzUserCache);
@@ -12822,6 +13046,22 @@ window.addCharRow = function() {
             {ref, type:'child_removed', fn:fnRem, who:'student'},
             {ref, type:'child_changed', fn:fnChg, who:'student'}
         );
+
+        // 최대 접속자 제한 — 초기 로드 완료 후 체크
+        const maxCfg = (db.cfg && db.cfg.plzMaxUser) || {};
+        if(maxCfg.enabled && maxCfg.count) {
+            ref.once('value', snap => {
+                const count = snap.numChildren();
+                if(count > maxCfg.count) {
+                    exitPlaza();
+                    const container = document.getElementById('s_plz');
+                    if(container) container.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+                        <div style="font-size:60px;">👥</div>
+                        <div style="font-size:18px;color:#888;text-align:center;">광장이 꽉 찼어요!<br><b style="color:#FF9800;">${count}/${maxCfg.count}명</b> 접속 중입니다.<br>잠시 후 다시 시도해 주세요.</div>
+                    </div>`;
+                }
+            });
+        }
     }
 
     function _plzSubscribeChat() {
@@ -13497,6 +13737,9 @@ window.addCharRow = function() {
 
     function exitPlaza() {
         window._plzActive = false;
+        clearInterval(_plzIdleTimer); _plzIdleTimer = null;
+        window._plzIdleWarned = false;
+        document.getElementById('_plzIdleWarn')?.remove();
         // Remove from presence
         if(plzMyRef) { plzMyRef.remove(); plzMyRef = null; }
         // Cancel game loop
@@ -13788,50 +14031,47 @@ window.addCharRow = function() {
         if(_tchPlzActive) return;
         getPlzRef().child('cfg').once('value', snap => {
             const cfg = snap.val() || {};
+            const _doEnterPlaza = (finalCfg) => {
+                _tchPlzActive = true;
+                window._plzActive = true;
+                const tc = (db.cfg && db.cfg.teacherChar) || {};
+                const tchNm = tc.nm || '선생님';
+                const tchEq = tc.eq || {};
+                const ov = document.createElement('div');
+                ov.id = '_tchPlzOv';
+                ov.style.cssText = 'position:fixed;inset:0;z-index:90000;background:#111;display:flex;flex-direction:column;';
+                const bar = document.createElement('div');
+                bar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 16px;background:linear-gradient(90deg,#1A237E,#283593);flex-shrink:0;';
+                bar.innerHTML = `<span style="font-size:22px;">👨‍🏫</span><span style="color:#E8EAF6;font-size:15px;font-family:'Jua';">${tchNm} (선생님)</span>
+                    <span style="font-size:11px;color:rgba(255,255,255,0.45);margin-left:4px;">학생들에게 보입니다</span>
+                    <button onclick="window.exitPlazaAsTeacher()" style="margin-left:auto;padding:6px 18px;border-radius:20px;border:none;background:rgba(239,83,80,0.85);color:white;font-family:'Jua';font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);">✕ 나가기</button>`;
+                ov.appendChild(bar);
+                const cont = document.createElement('div');
+                cont.id = '_tchPlzCont';
+                cont.style.cssText = 'flex:1;min-height:0;position:relative;';
+                ov.appendChild(cont);
+                document.body.appendChild(ov);
+                window._tchPlzSavedMe = me;
+                me = { nm: tchNm, cd: 'teacher_main', no: 0, eq: tchEq, cookie: 0, inv: [], bugReqs: [], teacherMsgs: [] };
+                _buildPlzUI(cont, finalCfg);
+            };
             if(!cfg.open) {
-                prettyConfirm('광장이 닫혀 있어요.<br>광장을 먼저 열고 입장해 주세요.', ()=>{}, {icon:'🔒', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
+                // 광장이 닫혀 있으면 열고 입장
+                prettyConfirm('광장이 닫혀 있어요.<br>광장을 열고 입장할까요?',
+                    () => {
+                        getPlzRef().child('cfg').update({ open: true });
+                        if(!db.cfg) db.cfg = {};
+                        if(!db.cfg.plz) db.cfg.plz = {};
+                        db.cfg.plz.open = true;
+                        sv();
+                        updatePlzOpenBadge();
+                        _doEnterPlaza({ ...cfg, open: true });
+                    },
+                    { icon:'🔒', okLabel:'열고 입장', okClass:'btn-green', cancelLabel:'취소' }
+                );
                 return;
             }
-            _tchPlzActive = true;
-            window._plzActive = true;
-
-            const tc = (db.cfg && db.cfg.teacherChar) || {};
-            const tchNm = tc.nm || '선생님';
-            const tchEq = tc.eq || {};
-
-            // 오버레이 생성
-            const ov = document.createElement('div');
-            ov.id = '_tchPlzOv';
-            ov.style.cssText = 'position:fixed;inset:0;z-index:90000;background:#111;display:flex;flex-direction:column;';
-
-            const bar = document.createElement('div');
-            bar.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 16px;background:linear-gradient(90deg,#1A237E,#283593);flex-shrink:0;';
-            bar.innerHTML = `<span style="font-size:22px;">👨‍🏫</span><span style="color:#E8EAF6;font-size:15px;font-family:'Jua';">${tchNm} (선생님)</span>
-                <span style="font-size:11px;color:rgba(255,255,255,0.45);margin-left:4px;">학생들에게 보입니다</span>
-                <button onclick="window.exitPlazaAsTeacher()" style="margin-left:auto;padding:6px 18px;border-radius:20px;border:none;background:rgba(239,83,80,0.85);color:white;font-family:'Jua';font-size:13px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);">✕ 나가기</button>`;
-            ov.appendChild(bar);
-
-            const cont = document.createElement('div');
-            cont.id = '_tchPlzCont';
-            cont.style.cssText = 'flex:1;display:flex;flex-direction:column;min-height:0;height:0;';
-            ov.appendChild(cont);
-            document.body.appendChild(ov);
-
-            // me를 교사 캐릭터로 임시 교체 (buildPlzUI 호출 전에 해야 함)
-            window._tchPlzSavedMe = me;
-            me = {
-                nm: tchNm,
-                cd: 'teacher_main',
-                no: 0,
-                eq: tchEq,
-                cookie: 0,
-                inv: [],
-                bugReqs: [],
-                teacherMsgs: []
-            };
-
-            _buildPlzUI(cont, cfg);
-            // _buildPlzUI 내부에서 plzMyRef, _plzPos, 리스너, 루프 모두 설정됨
+            _doEnterPlaza(cfg);
         });
     };
 
