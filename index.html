@@ -1090,34 +1090,52 @@
             <div id="avt_stu_grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;"></div>
         </div>
         <div id="t_plz" class="hidden">
-            <div style="display:flex; gap:12px; margin-bottom:15px; align-items:stretch;">
-                <div class="card" style="flex:1; padding:14px;">
-                    <h3 style="margin-top:0;">📢 학급 공지</h3>
-                    <div style="font-size:13px; color:#888; margin-bottom:10px;">학생 화면 상단에 공지 배너가 표시됩니다. 비워두면 공지가 사라집니다.</div>
-                    <textarea id="t_notice_input" rows="3" placeholder="공지 내용을 입력하세요..." style="width:100%; box-sizing:border-box; font-family:'Jua'; resize:vertical;"></textarea>
-                    <div style="display:flex; gap:8px; margin-top:8px;">
-                        <button class="btn btn-org" onclick="saveNotice()">공지 저장</button>
-                        <button class="btn btn-gray" onclick="clearNotice()">공지 삭제</button>
+            <div style="display:flex; gap:10px; margin-bottom:15px; align-items:stretch; flex-wrap:wrap;">
+                <!-- 학급 공지 -->
+                <div class="card" style="flex:1; min-width:120px; padding:12px; box-sizing:border-box;">
+                    <h4 style="margin:0 0 8px; font-size:14px;">📢 학급 공지</h4>
+                    <textarea id="t_notice_input" rows="3" placeholder="공지 내용..." style="width:100%; box-sizing:border-box; font-family:'Jua'; resize:none; font-size:13px;"></textarea>
+                    <div style="display:flex; gap:6px; margin-top:6px;">
+                        <button class="btn btn-org" style="font-size:12px;padding:4px 10px;" onclick="saveNotice()">저장</button>
+                        <button class="btn btn-gray" style="font-size:12px;padding:4px 10px;" onclick="clearNotice()">삭제</button>
                     </div>
-                    <div id="t_notice_status" style="font-size:13px; color:#888; margin-top:6px;"></div>
+                    <div id="t_notice_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
                 </div>
-                <div class="card" style="width:200px; flex-shrink:0; padding:14px; box-sizing:border-box;">
-                    <h4 style="margin:0 0 10px; font-size:14px;">⏰ 접속 가능 시간</h4>
-                    <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-bottom:10px; white-space:nowrap;">
+                <!-- 접속 가능 시간 -->
+                <div class="card" style="flex:0.5; min-width:100px; padding:12px; box-sizing:border-box;">
+                    <h4 style="margin:0 0 8px; font-size:14px;">⏰ 접속 가능 시간</h4>
+                    <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-bottom:8px; white-space:nowrap;">
                         <input type="checkbox" id="plz_hours_enabled" onchange="savePlzHours()">
                         시간 제한 활성화
                     </label>
-                    <div id="plz_hours_inputs" style="display:flex; flex-direction:column; gap:8px;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <label style="font-size:12px; color:#888; width:36px;">시작</label>
+                    <div id="plz_hours_inputs" style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:12px; color:#888; width:32px;">시작</label>
                             <input type="time" id="plz_hours_start" style="flex:1; font-size:12px;" onchange="savePlzHours()">
                         </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <label style="font-size:12px; color:#888; width:36px;">종료</label>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:12px; color:#888; width:32px;">종료</label>
                             <input type="time" id="plz_hours_end" style="flex:1; font-size:12px;" onchange="savePlzHours()">
                         </div>
                     </div>
-                    <div id="plz_hours_status" style="font-size:11px; color:#888; margin-top:6px;"></div>
+                    <div id="plz_hours_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
+                </div>
+                <!-- 채팅 규칙 설정 -->
+                <div class="card" style="flex:0.5; min-width:100px; padding:12px; box-sizing:border-box;">
+                    <h4 style="margin:0 0 8px; font-size:14px;">🚫 채팅 규칙 설정</h4>
+                    <div style="font-size:12px;color:#666;margin-bottom:4px;">도배 기준</div>
+                    <div style="display:flex;gap:4px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                        <input id="plz_spam_sec" type="number" min="3" max="60" placeholder="초" style="width:44px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
+                        <span style="font-size:11px;color:#888;">초/</span>
+                        <input id="plz_spam_cnt" type="number" min="2" max="20" placeholder="회" style="width:40px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
+                        <span style="font-size:11px;color:#888;">회</span>
+                    </div>
+                    <div style="font-size:12px;color:#666;margin-bottom:4px;">금지 단어 (쉼표 구분)</div>
+                    <textarea id="plz_bad_words" rows="2" placeholder="예: 바보,욕설" style="width:100%;box-sizing:border-box;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;resize:none;"></textarea>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                        <button class="btn btn-blue" style="font-size:12px;padding:4px 12px;" onclick="savePlzChatRules()">💾 저장</button>
+                        <div id="plz_rules_status" style="font-size:11px;color:#43A047;"></div>
+                    </div>
                 </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
@@ -1152,20 +1170,6 @@
                         <h4 style="margin:0 0 10px; font-size:14px;">👨‍🏫 교사 캐릭터 <span style="font-size:11px;color:#42A5F5;margin-left:4px;">✏️ 편집</span></h4>
                         <div id="t_plz_char_preview" style="display:flex;justify-content:center;"></div>
                         <div id="t_plz_char_nm_label" style="text-align:center;font-size:13px;color:#5D4037;margin-top:6px;"></div>
-                    </div>
-                    <div class="card" style="padding:14px;">
-                        <h4 style="margin:0 0 10px; font-size:14px;">🚫 채팅 규칙 설정</h4>
-                        <div style="font-size:12px;color:#666;margin-bottom:4px;">도배 기준 (초/횟수)</div>
-                        <div style="display:flex;gap:6px;margin-bottom:10px;">
-                            <input id="plz_spam_sec" type="number" min="3" max="60" placeholder="초" style="width:56px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
-                            <span style="line-height:30px;font-size:12px;color:#888;">초 안에</span>
-                            <input id="plz_spam_cnt" type="number" min="2" max="20" placeholder="회" style="width:50px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;font-size:13px;">
-                            <span style="line-height:30px;font-size:12px;color:#888;">회 이상</span>
-                        </div>
-                        <div style="font-size:12px;color:#666;margin-bottom:4px;">금지 단어 (쉼표로 구분)</div>
-                        <textarea id="plz_bad_words" rows="3" placeholder="예: 바보,멍청이,욕설" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:12px;resize:none;"></textarea>
-                        <button class="btn btn-blue" style="margin-top:8px;width:100%;font-size:13px;" onclick="savePlzChatRules()">💾 저장</button>
-                        <div id="plz_rules_status" style="font-size:11px;color:#43A047;margin-top:4px;text-align:center;"></div>
                     </div>
                     <div class="card" style="padding:14px; min-height:0; display:flex; flex-direction:column;">
                         <h4 style="margin:0 0 10px; font-size:14px;">👥 접속 중인 학생 <span id="plz_stu_cnt" style="font-size:12px; color:#888;"></span></h4>
@@ -13284,49 +13288,50 @@ window.addCharRow = function() {
 
     /* ===== 교사→학생 메시지 시스템 ===== */
     window.showSendMsgModal = function() {
-        document.getElementById('_sendMsgModal')?.remove();
+        // 현재 선택된 카드의 학생 인덱스 수집
+        const selCards = [...document.querySelectorAll('#avt_stu_grid .avt-card.avt-sel')];
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        let idxs = selCards.map(c => parseInt(c.dataset.si)).filter(i => !isNaN(i));
+        // 아무도 선택 안 됐으면 전체 대상
+        if(!idxs.length) idxs = stuList.map((_,i) => i);
+
+        const targetNames = idxs.map(i => stuList[i] ? `${stuList[i].no||''}번 ${stuList[i].nm}` : '').filter(Boolean);
+        const targetLabel = idxs.length === stuList.length
+            ? '전체 학생'
+            : targetNames.slice(0,5).join(', ') + (targetNames.length > 5 ? ` 외 ${targetNames.length-5}명` : '');
+
+        document.getElementById('_sendMsgModal')?.remove();
         const el = document.createElement('div');
         el.id = '_sendMsgModal';
         el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
         el.onclick = e => { if(e.target===el) el.remove(); };
-        el.innerHTML = `<div style="background:white;border-radius:20px;width:min(500px,95vw);max-height:85dvh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.4);overflow:hidden;font-family:'Jua',sans-serif;">
+        el.innerHTML = `<div style="background:white;border-radius:20px;width:min(460px,95vw);display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.4);overflow:hidden;font-family:'Jua',sans-serif;">
             <div style="background:linear-gradient(135deg,#1565C0,#42A5F5);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-                <span style="color:white;font-size:17px;">✉️ 학생에게 메시지 보내기</span>
+                <span style="color:white;font-size:17px;">✉️ 메시지 보내기</span>
                 <button onclick="document.getElementById('_sendMsgModal').remove()" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:28px;height:28px;font-size:16px;color:white;cursor:pointer;">✕</button>
             </div>
-            <div style="flex:1;overflow-y:auto;padding:20px;">
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:13px;color:#666;margin-bottom:8px;">받을 학생 선택</div>
-                    <div style="display:flex;gap:8px;margin-bottom:8px;">
-                        <button onclick="document.querySelectorAll('._smChk').forEach(c=>c.checked=true)" style="font-size:12px;padding:4px 10px;border:1px solid #1565C0;border-radius:6px;background:#E3F2FD;color:#1565C0;cursor:pointer;">전체 선택</button>
-                        <button onclick="document.querySelectorAll('._smChk').forEach(c=>c.checked=false)" style="font-size:12px;padding:4px 10px;border:1px solid #DDD;border-radius:6px;background:white;color:#555;cursor:pointer;">전체 해제</button>
-                    </div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:160px;overflow-y:auto;padding:8px;background:#F5F5F5;border-radius:10px;">
-                        ${stuList.map((s,i)=>`<label style="display:flex;align-items:center;gap:4px;padding:4px 8px;background:white;border-radius:8px;cursor:pointer;font-size:13px;border:1px solid #EEE;">
-                            <input type="checkbox" class="_smChk" value="${i}" style="width:14px;height:14px;">
-                            <span>${s.no||''}번 ${s.nm}</span>
-                        </label>`).join('')}
-                    </div>
+            <div style="padding:20px;">
+                <div style="background:#E3F2FD;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#1565C0;">
+                    📨 받는 학생: <b>${targetLabel}</b> (${idxs.length}명)
                 </div>
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:13px;color:#666;margin-bottom:6px;">메시지 내용</div>
-                    <textarea id="_smText" placeholder="학생에게 전달할 메시지를 입력하세요" style="width:100%;height:100px;border:1.5px solid #DDD;border-radius:10px;padding:10px;font-family:'Jua';font-size:14px;resize:none;box-sizing:border-box;outline:none;" oninput="this.style.borderColor='#42A5F5'"></textarea>
-                </div>
+                <textarea id="_smText" placeholder="학생에게 전달할 메시지를 입력하세요" style="width:100%;height:110px;border:1.5px solid #DDD;border-radius:10px;padding:10px;font-family:'Jua';font-size:14px;resize:none;box-sizing:border-box;outline:none;" oninput="this.style.borderColor='#42A5F5'"></textarea>
             </div>
-            <div style="padding:16px 20px;border-top:1px solid #EEE;display:flex;gap:8px;flex-shrink:0;">
+            <div style="padding:0 20px 18px;display:flex;gap:8px;">
                 <button onclick="window._doSendMsg()" style="flex:1;padding:11px;background:linear-gradient(135deg,#1565C0,#42A5F5);color:white;border:none;border-radius:10px;font-family:'Jua';font-size:15px;cursor:pointer;">✉️ 전송</button>
                 <button onclick="document.getElementById('_sendMsgModal').remove()" style="padding:11px 18px;background:#F5F5F5;color:#555;border:none;border-radius:10px;font-family:'Jua';font-size:15px;cursor:pointer;">취소</button>
             </div>
         </div>`;
+        // 선택된 인덱스 저장
+        el.dataset.idxs = JSON.stringify(idxs);
         document.body.appendChild(el);
+        document.getElementById('_smText')?.focus();
     };
 
     window._doSendMsg = function() {
         const text = (document.getElementById('_smText')?.value||'').trim();
-        if(!text) return alert('메시지를 입력해주세요.');
-        const idxs = [...document.querySelectorAll('._smChk:checked')].map(c=>parseInt(c.value));
-        if(!idxs.length) return alert('받을 학생을 선택해주세요.');
+        if(!text) { document.getElementById('_smText').style.borderColor='#E53935'; return; }
+        const modal = document.getElementById('_sendMsgModal');
+        const idxs = JSON.parse(modal?.dataset.idxs || '[]');
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         const ts = Date.now();
         idxs.forEach(i => {
@@ -13335,7 +13340,7 @@ window.addCharRow = function() {
             stuList[i].teacherMsgs.push({text, ts, read:false});
         });
         sv();
-        document.getElementById('_sendMsgModal')?.remove();
+        modal?.remove();
         prettyConfirm(`${idxs.length}명에게 메시지를 전송했어요!`, ()=>{}, {icon:'✉️', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
     };
 
