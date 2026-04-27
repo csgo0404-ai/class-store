@@ -718,6 +718,11 @@
             .shop-title { top: 55px !important; font-size: 20px !important; }
             .pedestal { width: 130px !important; height: 45px !important; bottom: 10px !important; }
             .shop-card .btn-price { font-size: 20px !important; }
+            /* ── 뽑기 탭 — 태블릿 가로 모드 — 카드 크게, 이미지 작게, 음수 마진 보정 ── */
+            #shop-gacha-sec .grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important; row-gap: 18px !important; column-gap: 14px !important; }
+            #shop-gacha-sec .shop-card { transform: scale(0.95) !important; margin-bottom: -10px !important; width: 170px !important; height: 250px !important; }
+            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny { font-size: 130px !important; width: 130px !important; height: 130px !important; bottom: 65px !important; }
+            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny img { width: 100px !important; height: 100px !important; }
 
             /* 2. 가방: 슬롯 및 아이콘 크기 축소 */
             #s_iv { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
@@ -1402,7 +1407,7 @@
         <button class="btn btn-gray" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
     <div class="cont" style="padding:15px; display:flex; flex-direction:column;">
-        <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="transform:scale(0.7);transform-origin:top center;width:142.857%;margin:0 auto;"></div></div>
+        <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="zoom:0.7;"></div></div>
         <div id="s_bg" class="hidden"></div>
         <div id="s_col" class="hidden"></div>
         <div id="s_sh" class="hidden"></div>
@@ -6992,8 +6997,7 @@ window.appU = function(y, si, k) {
             const petEmptyCount = Math.max(0, 18 - petItemCount);
             let petEmptyHtml = '';
             for(let i = 0; i < petEmptyCount; i++) {
-                const hideClass = (petItemCount + i) >= 15 ? ' tablet-hide' : '';
-                petEmptyHtml += `<div class="inventory-slot${hideClass}"></div>`;
+                petEmptyHtml += `<div class="inventory-slot"></div>`;
             }
             document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv">${petHtml}${bdgHtml}${petEmptyHtml}</div>`;
             return;
@@ -7015,8 +7019,7 @@ window.appU = function(y, si, k) {
             }).join('');
             const titEmptyCount = Math.max(0, 18 - ownedTitles.length);
             for(let i = 0; i < titEmptyCount; i++) {
-                const hideClass = (ownedTitles.length + i) >= 15 ? ' tablet-hide' : '';
-                titHtml += `<div class="inventory-slot${hideClass}"></div>`;
+                titHtml += `<div class="inventory-slot"></div>`;
             }
             document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv">${titHtml}</div>`;
             return;
@@ -7118,9 +7121,8 @@ window.appU = function(y, si, k) {
         });
         
         const emptySlots = Math.max(0, 18 - itemList.length);
-        for(let i=0; i<emptySlots; i++) { 
-            const hideClass = (itemList.length + i) >= 15 ? ' tablet-hide' : '';
-            html += `<div class="inventory-slot${hideClass}"></div>`; 
+        for(let i=0; i<emptySlots; i++) {
+            html += `<div class="inventory-slot"></div>`;
         }
         html += `</div>`;
 
@@ -9380,7 +9382,7 @@ window.addCharRow = function() {
         let _scInner = document.getElementById('s_char_inner');
         if(!_scInner){
             const _scHost = document.getElementById('s_char');
-            _scHost.innerHTML = '<div id="s_char_inner" style="transform:scale(0.7);transform-origin:top center;width:142.857%;margin:0 auto;"></div>';
+            _scHost.innerHTML = '<div id="s_char_inner" style="zoom:0.7;"></div>';
             _scInner = document.getElementById('s_char_inner');
         }
         _scInner.innerHTML = `
@@ -9400,8 +9402,8 @@ window.addCharRow = function() {
                         <span class="cnb-star">✦</span>
                     </div>
                 </div>
-                <!-- 우측: 아이템·펫·펫 스킬 패널 -->
-                <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:10px;">
+                <!-- 우측: 아이템·펫·펫 스킬 패널 — 캐릭터 대비 더 크게 보이도록 counter-zoom (0.7 × 1.4 ≈ 0.98) -->
+                <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:10px;zoom:1.4;">
                     <div style="background:white;border:2px solid #EEE;border-radius:16px;padding:14px;">
                         <div style="margin-bottom:10px;">
                             <div style="font-size:13px;font-weight:bold;color:#5D4037;">🎨 아이템</div>
@@ -15907,7 +15909,7 @@ window.addCharRow = function() {
         container.innerHTML = `
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;gap:20px;background:linear-gradient(135deg,#FFF8E1,#FFE0B2);">
             <div style="font-size:36px;font-family:'Jua';color:#5D4037;">🏫 광장 선택</div>
-            <div style="display:grid;grid-template-columns:repeat(${cols},minmax(180px,260px));gap:20px;justify-content:center;max-width:100%;">
+            <div id="_plzRoomCardsWrap" style="display:grid;grid-template-columns:repeat(${cols},minmax(180px,260px));gap:20px;justify-content:center;max-width:100%;">
                 ${rooms.map(r => `
                     <div id="_roomCard_${r.rid}" onclick="window._pickPlzRoom('${r.rid}')" style="cursor:pointer;background:white;border-radius:20px;box-shadow:0 6px 20px rgba(0,0,0,0.1);overflow:hidden;transition:transform 0.15s;border:3px solid #66BB6A;display:${r.isOpen?'block':'none'};" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
                         <div style="aspect-ratio:16/9;${r.bg?`background-image:url('${r.bg}');background-size:cover;background-position:center;`:'background:#b8d4a8;'}"></div>
@@ -15919,8 +15921,24 @@ window.addCharRow = function() {
                     </div>
                 `).join('')}
             </div>
+            <div id="_plzNoOpenMsg" style="display:none;text-align:center;color:#888;font-family:'Jua';font-size:18px;background:white;border-radius:18px;padding:30px 40px;box-shadow:0 6px 20px rgba(0,0,0,0.08);border:2px dashed #BDBDBD;">
+                <div style="font-size:60px;margin-bottom:10px;">🔒</div>
+                <div style="font-size:20px;color:#5D4037;font-weight:bold;margin-bottom:6px;">열린 광장이 없습니다</div>
+                <div style="font-size:13px;color:#999;">선생님이 광장을 열면 여기에 표시돼요</div>
+            </div>
         </div>`;
+        // 모든 카드 숨김 상태 → 안내 메시지 표시 결정
+        const _updateEmptyMsg = () => {
+            const wrap = document.getElementById('_plzRoomCardsWrap');
+            const msg = document.getElementById('_plzNoOpenMsg');
+            if(!wrap || !msg) return;
+            const visibleCards = [...wrap.children].filter(c => c.style.display !== 'none');
+            const anyOpen = visibleCards.length > 0;
+            wrap.style.display = anyOpen ? 'grid' : 'none';
+            msg.style.display = anyOpen ? 'none' : 'block';
+        };
         // 각 방의 실제 open 상태를 Firebase에서 가져와 카드 표시/숨김 동기화
+        let _checked = 0;
         rooms.forEach(r => {
             firebase.database().ref('ClassData/EventShop/plaza/' + r.rid + '/cfg/open').once('value', snap => {
                 const isOpen = !!snap.val();
@@ -15930,8 +15948,12 @@ window.addCharRow = function() {
                     if(!db.cfg.plzRooms[r.rid].plz) db.cfg.plzRooms[r.rid].plz = {};
                     db.cfg.plzRooms[r.rid].plz.open = isOpen;
                 }
+                _checked++;
+                if(_checked === rooms.length) _updateEmptyMsg();
             });
         });
+        // 즉시 1차 체크 (db 캐시 기준)
+        _updateEmptyMsg();
         // 접속자 수 실시간 조회 (1회씩)
         rooms.forEach(r => {
             firebase.database().ref('ClassData/EventShop/plaza/' + r.rid + '/users').once('value', snap => {
