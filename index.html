@@ -718,12 +718,12 @@
             .shop-title { top: 55px !important; font-size: 20px !important; }
             .pedestal { width: 130px !important; height: 45px !important; bottom: 10px !important; }
             .shop-card .btn-price { font-size: 20px !important; }
-            /* ── 뽑기 탭 — 태블릿 가로 모드 — 카드 더 크게, 이미지 작게(제목 안 가리게) ── */
+            /* ── 뽑기 탭 — 태블릿 가로 모드 — 제목 상단, 이미지 1.3배 키움 ── */
             #shop-gacha-sec .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; row-gap: 24px !important; column-gap: 18px !important; }
             #shop-gacha-sec .shop-card { transform: none !important; margin-bottom: 0 !important; width: 220px !important; height: 320px !important; }
-            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny { font-size: 95px !important; width: 95px !important; height: 95px !important; bottom: 80px !important; }
-            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny img { width: 80px !important; height: 80px !important; }
-            #shop-gacha-sec .shop-card .shop-title { top: 95px !important; font-size: 22px !important; }
+            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny { font-size: 124px !important; width: 124px !important; height: 124px !important; bottom: 70px !important; }
+            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny img { width: 104px !important; height: 104px !important; }
+            #shop-gacha-sec .shop-card .shop-title { top: 35px !important; font-size: 22px !important; }
 
             /* 2. 가방: 슬롯 및 아이콘 크기 축소 */
             #s_iv { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
@@ -13870,6 +13870,12 @@ window.addCharRow = function() {
     // A: 실제로 위치가 바뀌었을 때만 Firebase 전송
     function _plzTrySyncPos() {
         if(!plzMyRef) return;
+        // 라이어/마피아 게임 진행 중에는 위치 동기화 차단 (정적 게임 — 트래픽 절감)
+        const _liG = window._liarState, _mafG = window._mafiaState;
+        if((_liG && _liG.on) || (_mafG && _mafG.on)) {
+            _plzLastMoveTime = Date.now();
+            return;
+        }
         _plzLastMoveTime = Date.now();
         window._plzIdleWarned = false;
         document.getElementById('_plzIdleWarn')?.remove();
@@ -16208,9 +16214,11 @@ window.addCharRow = function() {
             if(window._updatePlzVoteBtn) window._updatePlzVoteBtn();
             if(g && g.active && g.startedAt){
                 window._showGameIntro('hs_'+g.startedAt, '🔎', '숨바꼭질', [
-                    '술래는 숨은 친구들을 찾아내야 해요',
-                    '숨은 친구는 <b>반투명</b>하게 보여요. 가까이 가서 클릭!',
-                    '시간이 끝나면 마지막 잡힌 사람이 다음 술래'
+                    '🔍 <b>술래</b>는 숨은 친구들을 찾아내야 해요',
+                    '🙈 숨은 친구는 <b>거의 안 보이게</b> 표시돼요. 가까이 가면 잡혀요!',
+                    '🤝 <b>잡힌 친구는 술래 편이 되어 같이 잡으러 다녀요</b>',
+                    '⏱️ 시간 안에 모두 찾으면 <b>술래 승리</b>, 한 명이라도 끝까지 안 잡히면 <b>도망자 승리</b>',
+                    '🚨 10초 이상 정지하면 위치가 3초간 노출되니 조심!'
                 ], '#8E24AA');
             }
             // 라운드 변경(playStartAt 변경) 감지 시 이동/정지 사이클 재기준점
@@ -16495,14 +16503,17 @@ window.addCharRow = function() {
         const found = g.found || {};
         const allFound = hiders.length > 0 && hiders.every(uid => found[uid]);
         if(allFound || now >= g.endAt) {
-            let nextSeeker = null, lastTs = 0;
-            hiders.forEach(uid => {
-                if(!found[uid]) { nextSeeker = uid; lastTs = Infinity; }
-                else if(found[uid] > lastTs && !nextSeeker) { lastTs = found[uid]; }
-            });
-            if(!nextSeeker) {
+            let nextSeeker = null;
+            // 1순위: 안 잡힌 생존자 — 여러 명이면 랜덤
+            const survivors = hiders.filter(uid => !found[uid]);
+            if(survivors.length > 0){
+                nextSeeker = survivors[Math.floor(Math.random()*survivors.length)];
+            } else {
+                // 2순위: 마지막에 잡힌 사람 — 동률이면 랜덤
                 let latest = 0;
-                hiders.forEach(uid => { if(found[uid] > latest) { latest = found[uid]; nextSeeker = uid; }});
+                hiders.forEach(uid => { if(found[uid] > latest) latest = found[uid]; });
+                const lastCaught = hiders.filter(uid => found[uid] === latest && latest > 0);
+                if(lastCaught.length > 0) nextSeeker = lastCaught[Math.floor(Math.random()*lastCaught.length)];
             }
             if(nextSeeker) {
                 const outcome = allFound ? 'seeker_win' : 'hider_win';
@@ -20018,15 +20029,29 @@ window.addCharRow = function() {
                 <div style="background:linear-gradient(135deg,#FFF8E1,#FFE082);border-radius:14px;padding:16px;border:2px solid #FFD54F;margin-bottom:18px;font-family:'Jua';">
                     <div style="font-size:13px;color:#8D6E63;margin-bottom:4px;">🏆 다음 술래</div>
                     <div style="font-size:22px;color:#E65100;font-weight:bold;">${myNm} (나)</div>
-                    <div style="font-size:11px;color:#A1887F;margin-top:4px;">이어서 시작할까요?</div>
+                    <div style="font-size:11px;color:#A1887F;margin-top:4px;">이어서 시작할까요? <span id="_hsWinSec" style="color:#C62828;font-weight:bold;">5</span>초 후 자동 종료</div>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button style="flex:1;padding:12px;border:2px solid #BDBDBD;border-radius:14px;background:white;color:#666;font-family:'Jua';font-size:15px;cursor:pointer;" onclick="document.getElementById('_hsWinModal').remove();getPlzRef().child('hideseek').remove();">취소</button>
-                    <button style="flex:2;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#AB47BC,#7B1FA2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(74,20,140,0.4);" onclick="document.getElementById('_hsWinModal').remove();_hideSeekStartAsSeeker('${me?.cd||''}')">▶️ 다음 라운드 시작</button>
+                    <button style="flex:2;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#AB47BC,#7B1FA2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(74,20,140,0.4);" onclick="if(window._hsWinTimer){clearInterval(window._hsWinTimer);}if(window._hsWinAutoTimer){clearTimeout(window._hsWinAutoTimer);}document.getElementById('_hsWinModal').remove();_hideSeekStartAsSeeker('${me?.cd||''}')">▶️ 다음 라운드 시작</button>
                 </div>
             </div>
         </div>`;
         document.body.appendChild(el);
+        // 5초 카운트다운 + 자동 종료
+        let _hsRem = 5;
+        if(window._hsWinTimer) clearInterval(window._hsWinTimer);
+        if(window._hsWinAutoTimer) clearTimeout(window._hsWinAutoTimer);
+        window._hsWinTimer = setInterval(()=>{
+            _hsRem--;
+            const s = document.getElementById('_hsWinSec');
+            if(s) s.textContent = _hsRem;
+            if(_hsRem <= 0 && window._hsWinTimer){ clearInterval(window._hsWinTimer); window._hsWinTimer=null; }
+        }, 1000);
+        window._hsWinAutoTimer = setTimeout(()=>{
+            document.getElementById('_hsWinModal')?.remove();
+            try { getPlzRef().child('hideseek').remove(); } catch(_){}
+        }, 5000);
     };
 
     window._hideSeekResultModal = function(g) {
@@ -20159,15 +20184,29 @@ window.addCharRow = function() {
                 <div style="background:linear-gradient(135deg,#FFF8E1,#FFE082);border-radius:14px;padding:16px;border:2px solid #FFD54F;margin-bottom:18px;font-family:'Jua';">
                     <div style="font-size:13px;color:#8D6E63;margin-bottom:4px;">🏆 다음 술래</div>
                     <div style="font-size:22px;color:#E65100;font-weight:bold;">${myNm} (나)</div>
-                    <div style="font-size:11px;color:#A1887F;margin-top:4px;">이어서 시작할까요?</div>
+                    <div style="font-size:11px;color:#A1887F;margin-top:4px;">이어서 시작할까요? <span id="_iceTagWinSec" style="color:#C62828;font-weight:bold;">5</span>초 후 자동 종료</div>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button style="flex:1;padding:12px;border:2px solid #BDBDBD;border-radius:14px;background:white;color:#666;font-family:'Jua';font-size:15px;cursor:pointer;" onclick="document.getElementById('_iceTagWinModal').remove();getPlzRef().child('game').remove();">취소</button>
-                    <button style="flex:2;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#42A5F5,#1976D2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(21,101,192,0.4);" onclick="document.getElementById('_iceTagWinModal').remove();_iceTagStartAsTagger('${me?.cd||''}')">▶️ 다음 라운드 시작</button>
+                    <button style="flex:2;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#42A5F5,#1976D2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(21,101,192,0.4);" onclick="if(window._iceTagWinTimer){clearInterval(window._iceTagWinTimer);}if(window._iceTagWinAutoTimer){clearTimeout(window._iceTagWinAutoTimer);}document.getElementById('_iceTagWinModal').remove();_iceTagStartAsTagger('${me?.cd||''}')">▶️ 다음 라운드 시작</button>
                 </div>
             </div>
         </div>`;
         document.body.appendChild(el);
+        // 5초 카운트다운 + 자동 종료
+        let _winRemain = 5;
+        if(window._iceTagWinTimer) clearInterval(window._iceTagWinTimer);
+        if(window._iceTagWinAutoTimer) clearTimeout(window._iceTagWinAutoTimer);
+        window._iceTagWinTimer = setInterval(()=>{
+            _winRemain--;
+            const sEl = document.getElementById('_iceTagWinSec');
+            if(sEl) sEl.textContent = _winRemain;
+            if(_winRemain <= 0 && window._iceTagWinTimer){ clearInterval(window._iceTagWinTimer); window._iceTagWinTimer=null; }
+        }, 1000);
+        window._iceTagWinAutoTimer = setTimeout(()=>{
+            document.getElementById('_iceTagWinModal')?.remove();
+            try { getPlzRef().child('game').remove(); } catch(_){}
+        }, 5000);
     };
 
     // 다른 학생들에게 보여줄 결과 모달
@@ -20287,9 +20326,10 @@ window.addCharRow = function() {
             // 게임 시작 시 인트로
             if(g && g.mode==='icetag' && g.active && g.startedAt){
                 window._showGameIntro('ice_'+g.startedAt, '🧊', '얼음땡', [
-                    '술래가 친구를 잡으면 <b>얼음(정지)</b> 상태가 돼요',
-                    '다른 친구가 와서 터치하면 <b>땡!</b> 풀려요',
-                    '시간 안에 모두 얼리면 술래 승리'
+                    '🔥 <b>술래</b>가 친구를 잡으면 🧊 <b>얼음(정지)</b> 상태가 돼요',
+                    '🤝 잡힌 친구는 다른 친구가 와서 터치하면 <b>땡!</b> 다시 움직일 수 있어요',
+                    '⏱️ 시간 안에 술래가 <b>모두 얼리면 술래 승리</b>',
+                    '🏃 시간이 다 될 때까지 한 명이라도 안 얼면 <b>도망자 승리</b>'
                 ], '#1976D2');
             }
             // 얼음/땡 효과음 — frozen 변경 감지
@@ -20438,12 +20478,11 @@ window.addCharRow = function() {
         const frozen = g.frozen || {};
         const remaining = candidates.filter(uid => !frozen[uid]);
         if(remaining.length === 0) {
-            // 모두 얼음 → 마지막으로 언 사람 = 다음 술래
-            let last = null, lastTs = 0;
-            candidates.forEach(uid => {
-                const ts = frozen[uid] || 0;
-                if(ts > lastTs) { lastTs = ts; last = uid; }
-            });
+            // 모두 얼음 → 마지막으로 언 사람(들) = 다음 술래. 동률이면 랜덤
+            let lastTs = 0;
+            candidates.forEach(uid => { const ts = frozen[uid]||0; if(ts > lastTs) lastTs = ts; });
+            const lastFrozen = candidates.filter(uid => (frozen[uid]||0) === lastTs && lastTs > 0);
+            const last = lastFrozen.length > 0 ? lastFrozen[Math.floor(Math.random()*lastFrozen.length)] : candidates[Math.floor(Math.random()*candidates.length)];
             _iceTagEnd(last, 'tagger_win');
         }
     }
