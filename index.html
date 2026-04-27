@@ -11,9 +11,58 @@
     <meta name="application-name" content="RPG 상점">
     <meta name="theme-color" content="#FFB366">
     <title>RPG 상점</title>
-    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"RPG 상점","short_name":"RPG 상점","description":"우리반 RPG 이벤트 상점","start_url":".","scope":".","display":"standalone","orientation":"any","background_color":"%23FFFDF2","theme_color":"%23FFB366","lang":"ko","dir":"ltr","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%23FFB366%27/><text y=%27.9em%27 font-size=%2780%27>🎪</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎪</text></svg>">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFB366'/><text y='.9em' font-size='80'>🎪</text></svg>">
+    <link id="manifestLink" rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"RPG 상점","short_name":"RPG 상점","start_url":".","scope":".","display":"standalone","orientation":"any","background_color":"%23FFFDF2","theme_color":"%23FFB366"}'>
+<link id="iconLink" rel="icon" type="image/png" sizes="192x192">
+<link id="appleIconLink" rel="apple-touch-icon" sizes="192x192">
+<script>
+  // PNG 아이콘 동적 생성 — Android Chrome PWA 호환 (SVG/이모지 직접 사용 시 일부 기기에서 안 뜸)
+  (function _genPwaIcon(){
+    function makeIcon(size){
+      const c = document.createElement('canvas');
+      c.width = size; c.height = size;
+      const ctx = c.getContext('2d');
+      // 둥근 사각 배경 (오렌지)
+      const r = size * 0.22;
+      ctx.fillStyle = '#FFB366';
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(size - r, 0); ctx.quadraticCurveTo(size, 0, size, r);
+      ctx.lineTo(size, size - r); ctx.quadraticCurveTo(size, size, size - r, size);
+      ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size - r);
+      ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath(); ctx.fill();
+      // 🎪 이모지
+      ctx.font = (size * 0.65) + "px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',serif";
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('🎪', size/2, size/2 + size*0.04);
+      return c.toDataURL('image/png');
+    }
+    try {
+      const icon192 = makeIcon(192);
+      const icon512 = makeIcon(512);
+      // <link> 아이콘 갱신
+      document.getElementById('iconLink').href = icon192;
+      document.getElementById('appleIconLink').href = icon192;
+      // 동적 manifest 생성
+      const manifest = {
+        name: 'RPG 상점', short_name: 'RPG 상점',
+        description: '우리반 RPG 이벤트 상점',
+        start_url: '.', scope: '.',
+        display: 'standalone', orientation: 'any',
+        background_color: '#FFFDF2', theme_color: '#FFB366',
+        lang: 'ko',
+        icons: [
+          { src: icon192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: icon512, sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+      const url = URL.createObjectURL(blob);
+      document.getElementById('manifestLink').href = url;
+    } catch(e) { console.warn('PWA icon gen failed:', e); }
+  })();
+</script>
 
     <link href="https://fonts.googleapis.com/css2?family=Dongle:wght@300;400;700&family=Jua&display=swap" rel="stylesheet">
     
@@ -1353,7 +1402,7 @@
         <button class="btn btn-gray" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
     <div class="cont" style="padding:15px; display:flex; flex-direction:column;">
-        <div id="s_char" style="flex:1;overflow-y:auto;"></div>
+        <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="transform:scale(0.7);transform-origin:top center;width:142.857%;margin:0 auto;"></div></div>
         <div id="s_bg" class="hidden"></div>
         <div id="s_col" class="hidden"></div>
         <div id="s_sh" class="hidden"></div>
@@ -9327,7 +9376,14 @@ window.addCharRow = function() {
                 <span style="color:#BDBDBD;font-size:26px;font-weight:900;">칭호 없음</span>
                </div>`;
 
-        document.getElementById('s_char').innerHTML = `
+        // s_char 안에 0.7배 축소된 inner 컨테이너 유지 (innerHTML 덮어쓸 때 재생성)
+        let _scInner = document.getElementById('s_char_inner');
+        if(!_scInner){
+            const _scHost = document.getElementById('s_char');
+            _scHost.innerHTML = '<div id="s_char_inner" style="transform:scale(0.7);transform-origin:top center;width:142.857%;margin:0 auto;"></div>';
+            _scInner = document.getElementById('s_char_inner');
+        }
+        _scInner.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                 <h2 style="margin:0;">🧑 내 캐릭터</h2>
                 
