@@ -718,11 +718,12 @@
             .shop-title { top: 55px !important; font-size: 20px !important; }
             .pedestal { width: 130px !important; height: 45px !important; bottom: 10px !important; }
             .shop-card .btn-price { font-size: 20px !important; }
-            /* ── 뽑기 탭 — 태블릿 가로 모드 — 카드 크게, 이미지 작게, 음수 마진 보정 ── */
-            #shop-gacha-sec .grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)) !important; row-gap: 18px !important; column-gap: 14px !important; }
-            #shop-gacha-sec .shop-card { transform: scale(0.95) !important; margin-bottom: -10px !important; width: 170px !important; height: 250px !important; }
-            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny { font-size: 130px !important; width: 130px !important; height: 130px !important; bottom: 65px !important; }
-            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny img { width: 100px !important; height: 100px !important; }
+            /* ── 뽑기 탭 — 태블릿 가로 모드 — 카드 더 크게, 이미지 작게(제목 안 가리게) ── */
+            #shop-gacha-sec .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; row-gap: 24px !important; column-gap: 18px !important; }
+            #shop-gacha-sec .shop-card { transform: none !important; margin-bottom: 0 !important; width: 220px !important; height: 320px !important; }
+            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny { font-size: 95px !important; width: 95px !important; height: 95px !important; bottom: 80px !important; }
+            #shop-gacha-sec .shop-card .item-shiny.gacha-shiny img { width: 80px !important; height: 80px !important; }
+            #shop-gacha-sec .shop-card .shop-title { top: 95px !important; font-size: 22px !important; }
 
             /* 2. 가방: 슬롯 및 아이콘 크기 축소 */
             #s_iv { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
@@ -9402,8 +9403,8 @@ window.addCharRow = function() {
                         <span class="cnb-star">✦</span>
                     </div>
                 </div>
-                <!-- 우측: 아이템·펫·펫 스킬 패널 — 캐릭터 대비 더 크게 보이도록 counter-zoom (0.7 × 1.4 ≈ 0.98) -->
-                <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:10px;zoom:1.4;">
+                <!-- 우측: 아이템·펫·펫 스킬 패널 — 살짝 키워서 캐릭터 높이 안에 맞춤 (0.7 × 1.2 ≈ 0.84) -->
+                <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:8px;zoom:1.2;">
                     <div style="background:white;border:2px solid #EEE;border-radius:16px;padding:14px;">
                         <div style="margin-bottom:10px;">
                             <div style="font-size:13px;font-weight:bold;color:#5D4037;">🎨 아이템</div>
@@ -15908,7 +15909,7 @@ window.addCharRow = function() {
         const cols = Math.max(1, Math.ceil(rooms.length / 2));
         container.innerHTML = `
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;gap:20px;background:linear-gradient(135deg,#FFF8E1,#FFE0B2);">
-            <div style="font-size:36px;font-family:'Jua';color:#5D4037;">🏫 광장 선택</div>
+            <div style="font-size:36px;font-family:'Jua';color:#5D4037;">🏰 광장 선택</div>
             <div id="_plzRoomCardsWrap" style="display:grid;grid-template-columns:repeat(${cols},minmax(180px,260px));gap:20px;justify-content:center;max-width:100%;">
                 ${rooms.map(r => `
                     <div id="_roomCard_${r.rid}" onclick="window._pickPlzRoom('${r.rid}')" style="cursor:pointer;background:white;border-radius:20px;box-shadow:0 6px 20px rgba(0,0,0,0.1);overflow:hidden;transition:transform 0.15s;border:3px solid #66BB6A;display:${r.isOpen?'block':'none'};" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
