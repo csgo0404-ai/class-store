@@ -762,14 +762,40 @@
         /* 숨바꼭질 깜빡임 효과 비활성화 */
         .plz-char.hs-blink { animation: none !important; }
         .plz-char.frozen { filter: hue-rotate(180deg) brightness(1.1) saturate(1.5) drop-shadow(0 0 6px #4FC3F7); }
-        .plz-char.tagger, .plz-char.seeker { filter: drop-shadow(0 0 8px #FF5722) saturate(1.3); }
+        .plz-char.tagger, .plz-char.seeker { animation: taggerFire 0.8s ease-in-out infinite alternate; }
+        @keyframes taggerFire {
+            0%   { filter: drop-shadow(0 0 6px #FF1744) drop-shadow(0 0 14px #FF6F00) drop-shadow(0 0 22px #FFD600) saturate(1.5) brightness(1.05); }
+            100% { filter: drop-shadow(0 0 12px #FF5252) drop-shadow(0 0 24px #FF9100) drop-shadow(0 0 36px #FFEA00) saturate(1.8) brightness(1.15); }
+        }
+        /* 술래 발 밑 불꽃 아우라 (의사 요소) */
+        .plz-char.tagger::after, .plz-char.seeker::after {
+            content:''; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%);
+            width:80%; height:18px; border-radius:50%;
+            background:radial-gradient(ellipse at center, rgba(255,193,7,0.9) 0%, rgba(255,87,34,0.7) 40%, rgba(244,67,54,0) 75%);
+            filter:blur(2px); animation: taggerAuraPulse 0.7s ease-in-out infinite alternate;
+            pointer-events:none; z-index:-1;
+        }
+        @keyframes taggerAuraPulse {
+            0%   { transform:translateX(-50%) scale(0.85); opacity:0.7; }
+            100% { transform:translateX(-50%) scale(1.15); opacity:1;   }
+        }
+        @keyframes taggerFireBadge {
+            0%   { transform:translateX(-50%) translateY(0) rotate(-6deg) scale(1);    }
+            100% { transform:translateX(-50%) translateY(-3px) rotate(6deg) scale(1.15); }
+        }
         .plz-char.hider-found { filter: drop-shadow(0 0 6px #FF9800) saturate(1.2); opacity:1 !important; }
         .plz-char { position:absolute; transform:translate(-50%,-100%) scale(1.2); transform-origin:center bottom; transition:left 0.5s linear, top 0.5s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
         .plz-char.me { transition:none; }
         .plz-tit-slot { display:flex; justify-content:center; }
         .plz-nm-slot { display:flex; justify-content:center; margin-top:-4px; }
-        @keyframes plzWalkBob { 0%,100%{transform:translateY(0px);} 30%{transform:translateY(-5px);} 60%{transform:translateY(-2px);} }
-        .plz-char.walking .plz-avatar-body { animation:plzWalkBob 0.32s ease-in-out infinite; }
+        @keyframes plzWalkBob {
+            0%   { transform:translateY(0px) scaleY(1); }
+            25%  { transform:translateY(-12px) scaleY(1.05); }
+            50%  { transform:translateY(0px) scaleY(0.95); }
+            75%  { transform:translateY(-6px) scaleY(1.02); }
+            100% { transform:translateY(0px) scaleY(1); }
+        }
+        .plz-char.walking .plz-avatar-body { animation:plzWalkBob 0.45s ease-in-out infinite; transform-origin:center bottom; }
         .plz-chat-overlay { display:flex !important; flex-direction:column !important; }
         #plzChatPanel { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.22) transparent; }
         #plzChatPanel::-webkit-scrollbar { width:4px; }
@@ -1165,6 +1191,10 @@
                                 <input type="file" id="plz_bg_file" accept="image/*" style="display:none" onchange="onPlzBgFileSelect(this)">
                                 <div id="plz_bg_upload_status" style="font-size:10px;color:#888;margin-top:3px;"></div>
                                 <button onclick="cleanupPlazaBgDuplicates()" style="margin-top:6px;width:100%;padding:4px 6px;border:1px solid #ddd;border-radius:6px;background:#F5F5F5;font-size:11px;cursor:pointer;">🧹 중복 이미지 정리</button>
+                                <div style="display:flex;gap:6px;margin-top:6px;">
+                                    <button onclick="forceSyncCurRoom()" title="이 방의 db 설정을 Firebase로 강제 푸시 (불일치 복구)" style="flex:1;padding:5px 6px;border:1px solid #FFB74D;border-radius:6px;background:#FFF8E1;color:#E65100;font-size:11px;cursor:pointer;font-family:'Jua';">🔄 동기화</button>
+                                    <button onclick="forceSyncAllRooms()" title="모든 방을 강제 동기화" style="flex:1;padding:5px 6px;border:1px solid #EF5350;border-radius:6px;background:#FFEBEE;color:#C62828;font-size:11px;cursor:pointer;font-family:'Jua';">🔄 전체</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3082,7 +3112,7 @@ let _renderLock = false; // 재진입 방지
                                    </div>
                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                                        <label style="font-size:13px;color:#795548;white-space:nowrap;">📅 사용 날짜:</label>
-                                       <input id="itemUseDate" type="date" min="${new Date().toISOString().slice(0,10)}" max="${new Date(Date.now()+7*24*60*60*1000).toISOString().slice(0,10)}" value="${new Date().toISOString().slice(0,10)}" style="padding:6px 10px;font-size:13px;border:2px solid #FFB74D;border-radius:10px;font-family:'Jua',sans-serif;">
+                                       <input id="itemUseDate" type="date" min="${new Date().toLocaleDateString('sv-SE')}" max="${new Date(Date.now()+7*24*60*60*1000).toLocaleDateString('sv-SE')}" value="${new Date().toLocaleDateString('sv-SE')}" style="padding:6px 10px;font-size:13px;border:2px solid #FFB74D;border-radius:10px;font-family:'Jua',sans-serif;">
                                    </div>
                                    <div style="margin-bottom:14px;">
                                        <label style="font-size:13px;color:#795548;display:block;margin-bottom:4px;">💬 비고 (선택):</label>
@@ -3122,9 +3152,9 @@ let _renderLock = false; // 재진입 방지
             return;
         }
         const qty = Math.max(1, Math.min(inputQty, totalAvail));
-        const useDate = dateEl?.value || new Date().toISOString().slice(0,10);
+        const useDate = dateEl?.value || new Date().toLocaleDateString('sv-SE');
         const useNote = (noteEl?.value||'').trim();
-        const _today = new Date().toISOString().slice(0,10);
+        const _today = new Date().toLocaleDateString('sv-SE');
         const _maxDate = new Date(Date.now()+7*24*60*60*1000).toISOString().slice(0,10);
         if(useDate < _today) {
             prettyConfirm('사용 날짜는 <b>오늘 이후</b>로만 지정할 수 있어요! 📅', ()=>{}, {icon:'📅', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
@@ -3250,8 +3280,8 @@ let _renderLock = false; // 재진입 방지
     window.editReq = function(idx) {
         const it = (me.inv||[])[idx]; if(!it || it.st!=='req') return;
         if(it.reqApproved) { alert('이미 승인된 요청은 수정할 수 없어요. 먼저 취소해주세요.'); return; }
-        const _today = new Date().toISOString().slice(0,10);
-        const _maxDate = new Date(Date.now()+7*24*60*60*1000).toISOString().slice(0,10);
+        const _today = new Date().toLocaleDateString('sv-SE');
+        const _maxDate = new Date(Date.now()+7*24*60*60*1000).toLocaleDateString('sv-SE');
         const safeNote = (it.note||'').replace(/"/g,'&quot;');
         document.getElementById('_editReqModal')?.remove();
         document.body.insertAdjacentHTML('beforeend', `
@@ -4222,8 +4252,8 @@ let _renderLock = false; // 재진입 방지
     function _renderReqDate() {
         const body = document.getElementById('_reqDateBody'); if(!body) return;
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
-        const _today = new Date().toISOString().slice(0,10);
-        const _limit = new Date(Date.now()+7*24*60*60*1000).toISOString().slice(0,10);
+        const _today = new Date().toLocaleDateString('sv-SE');
+        const _limit = new Date(Date.now()+7*24*60*60*1000).toLocaleDateString('sv-SE');
         // 같은 학생/이름/상태/날짜/노트끼리 묶기
         const groupMap = new Map();
         stuList.forEach((s) => {
@@ -4372,7 +4402,7 @@ let _renderLock = false; // 재진입 방지
 
         // 승인 대기/완료 아이템 수집
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
-        const _today = new Date().toISOString().slice(0,10);
+        const _today = new Date().toLocaleDateString('sv-SE');
         const _groupKey = it => `${it.n||''}|${it.st}|${it.useDate||''}|${it.note||''}`;
         const reqMap = new Map(), apprMap = new Map();
         stuList.forEach(s => {
@@ -10427,7 +10457,7 @@ window.addCharRow = function() {
         const _mAuc = document.getElementById('menu_auc');
         if(_mAuc) {
             _mAuc.querySelector('.menu-badge-auc')?.remove();
-            const _today = new Date().toISOString().slice(0,10);
+            const _today = new Date().toLocaleDateString('sv-SE');
             const _aucReqCnt = (db.auc||[]).filter(a=>a.st==='req').length;
             const _todayReqCnt = (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).reduce((sum,stu)=>{
                 const inv = Array.isArray(stu.inv)?stu.inv:Object.values(stu.inv||{});
@@ -14629,46 +14659,50 @@ window.addCharRow = function() {
 
     window.applyCustomBg = function(url) {
         if(!db.cfg) db.cfg = {};
-        if(!db.cfg.plz) db.cfg.plz = {};
-        // 방별 1장만 유지하되 장애물/비율은 유지 (인덱스 0으로 이관)
-        db.cfg.plz.customBgs = [url];
-        db.cfg.plz.customBg = url;
+        if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
+        if(!db.cfg.plzRooms[_plzCurRoom]) db.cfg.plzRooms[_plzCurRoom] = {};
+        if(!db.cfg.plzRooms[_plzCurRoom].plz) db.cfg.plzRooms[_plzCurRoom].plz = {};
+        // 항상 현재 방 객체에 직접 쓰기 (db.cfg.plz 바인딩이 끊어져도 안전)
+        const roomPlz = db.cfg.plzRooms[_plzCurRoom].plz;
+        roomPlz.customBgs = [url];
+        roomPlz.customBg = url;
         // 이전 인덱스의 장애물을 새 인덱스 0으로 이동
-        if(db.cfg.plz.obstaclesByBg) {
-            const keys = Object.keys(db.cfg.plz.obstaclesByBg);
+        if(roomPlz.obstaclesByBg) {
+            const keys = Object.keys(roomPlz.obstaclesByBg);
             if(keys.length) {
                 const firstKey = keys[0];
-                const obs = db.cfg.plz.obstaclesByBg[firstKey];
-                db.cfg.plz.obstaclesByBg = { 0: obs };
+                const obs = roomPlz.obstaclesByBg[firstKey];
+                roomPlz.obstaclesByBg = { 0: obs };
             }
         }
-        if(db.cfg.plz.bgAspectByBg) {
-            const keys = Object.keys(db.cfg.plz.bgAspectByBg);
+        if(roomPlz.bgAspectByBg) {
+            const keys = Object.keys(roomPlz.bgAspectByBg);
             if(keys.length) {
                 const firstKey = keys[0];
-                const asp = db.cfg.plz.bgAspectByBg[firstKey];
-                db.cfg.plz.bgAspectByBg = { 0: asp };
+                const asp = roomPlz.bgAspectByBg[firstKey];
+                roomPlz.bgAspectByBg = { 0: asp };
             }
         }
-        // plzRooms에도 반영
-        if(db.cfg.plzRooms && db.cfg.plzRooms[_plzCurRoom]) {
-            db.cfg.plzRooms[_plzCurRoom].plz = db.cfg.plz;
-        }
+        // 바인딩 재동기화: db.cfg.plz가 현재 방을 가리키도록 강제
+        db.cfg.plz = roomPlz;
         sv();
-        getPlzRef().child('cfg').update({ customBg: url, customBgs: [url] });
+        // 명시적으로 현재 방 경로에 직접 쓰기 (캐시된 plzRef에 의존하지 않음)
+        firebase.database().ref('ClassData/EventShop/plaza/' + _plzCurRoom + '/cfg').update({ customBg: url, customBgs: [url] });
         const img = new Image();
+        const _capturedRoom = _plzCurRoom; // 비동기 콜백 시점 방 변경 보호
         img.onload = function() {
             const ar = `${this.naturalWidth}/${this.naturalHeight}`;
-            const idx = db.cfg.plz.customBgs.indexOf(url);
-            if(!db.cfg.plz.bgAspectByBg) db.cfg.plz.bgAspectByBg = {};
-            if(idx >= 0) db.cfg.plz.bgAspectByBg[idx] = ar;
-            db.cfg.plz.bgAspect = ar;
+            const rp = db.cfg?.plzRooms?.[_capturedRoom]?.plz;
+            if(!rp) return;
+            const idx = (rp.customBgs||[]).indexOf(url);
+            if(!rp.bgAspectByBg) rp.bgAspectByBg = {};
+            if(idx >= 0) rp.bgAspectByBg[idx] = ar;
+            rp.bgAspect = ar;
             sv();
-            // Firebase cfg에도 비율 동기화 (학생·다른 클라이언트가 같은 비율로 렌더)
-            getPlzRef().child('cfg').update({
+            firebase.database().ref('ClassData/EventShop/plaza/' + _capturedRoom + '/cfg').update({
                 bgAspect: ar,
-                bgAspectByBg: db.cfg.plz.bgAspectByBg,
-                obstaclesByBg: db.cfg.plz.obstaclesByBg || null
+                bgAspectByBg: rp.bgAspectByBg,
+                obstaclesByBg: rp.obstaclesByBg || null
             });
             rPlzT();
         };
@@ -14791,10 +14825,31 @@ window.addCharRow = function() {
                     ondragover="event.preventDefault()"
                     ondrop="window._plzTabDrop(event,'${rid}')"
                     style="padding:4px 10px;font-size:13px;border-radius:6px 0 0 6px;border:2px solid ${sel?'#FF9800':'#DDD'};border-right:none;background:${sel?'#FFF3E0':'white'};color:${sel?'#E65100':'#666'};font-family:'Jua';cursor:grab;">${name}</button>
-                <button onclick="window._plzToggleOneRoom('${rid}')" title="${isOpen?'닫기':'열기'}"
+                <button id="_plzRoomOpenBtn_${rid}" onclick="window._plzToggleOneRoom('${rid}')" title="${isOpen?'닫기':'열기'}"
                     style="padding:4px 6px;font-size:11px;border-radius:0 6px 6px 0;border:2px solid ${sel?'#FF9800':'#DDD'};border-left:none;background:${isOpen?'#C8E6C9':'#FFCDD2'};color:${isOpen?'#2E7D32':'#C62828'};font-family:'Jua';cursor:pointer;">${isOpen?'🟢':'🔴'}</button>
             </div>`;
         }).join('');
+        // Firebase 룸 cfg/open을 진실값으로 사용 — db 캐시와 다르면 db 갱신 + UI 갱신
+        _PLZ_ROOM_KEYS.forEach(rid => {
+            firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/cfg/open').once('value', snap => {
+                const fbOpen = !!snap.val();
+                if(db.cfg && db.cfg.plzRooms && db.cfg.plzRooms[rid]) {
+                    if(!db.cfg.plzRooms[rid].plz) db.cfg.plzRooms[rid].plz = {};
+                    if(db.cfg.plzRooms[rid].plz.open !== fbOpen) {
+                        db.cfg.plzRooms[rid].plz.open = fbOpen;
+                    }
+                }
+                const btn = document.getElementById('_plzRoomOpenBtn_' + rid);
+                if(btn) {
+                    btn.style.background = fbOpen ? '#C8E6C9' : '#FFCDD2';
+                    btn.style.color = fbOpen ? '#2E7D32' : '#C62828';
+                    btn.textContent = fbOpen ? '🟢' : '🔴';
+                    btn.title = fbOpen ? '닫기' : '열기';
+                }
+                // 모두 열기/닫기 버튼 라벨도 갱신
+                if(window.updatePlzOpenBadge) updatePlzOpenBadge();
+            });
+        });
         const nameIn = document.getElementById('plz_room_name_input');
         if(nameIn) nameIn.value = (db.cfg.plzRooms[_plzCurRoom]?.name) || '';
         const plzC = db.cfg.plzRooms[_plzCurRoom]?.plz || {};
@@ -14822,6 +14877,12 @@ window.addCharRow = function() {
         const nv = !cur;
         db.cfg.plzRooms[rid].plz.open = nv;
         if(rid === _plzCurRoom && db.cfg.plz) db.cfg.plz.open = nv;
+        // db.plaza도 같이 갱신 — sv()가 전체 트리를 덮어쓰므로 stale 데이터로 plaza/cfg/open이 복구되는 것 방지
+        if(!db.plaza) db.plaza = {};
+        if(!db.plaza[rid]) db.plaza[rid] = {};
+        if(!db.plaza[rid].cfg) db.plaza[rid].cfg = {};
+        db.plaza[rid].cfg.open = nv;
+        if(!nv) db.plaza[rid].cfg.closedAt = Date.now();
         sv();
         const upd = { open: nv };
         if(!nv) upd.closedAt = Date.now();
@@ -14988,14 +15049,78 @@ window.addCharRow = function() {
         if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
         if(!db.cfg.plzRooms[_plzCurRoom]) db.cfg.plzRooms[_plzCurRoom] = {};
         if(!db.cfg.plzRooms[_plzCurRoom].plz) db.cfg.plzRooms[_plzCurRoom].plz = {};
-        db.cfg.plzRooms[_plzCurRoom].plz.iceTagOn = !!ic;
-        db.cfg.plzRooms[_plzCurRoom].plz.hideSeekOn = !!hs;
-        db.cfg.plzRooms[_plzCurRoom].plz.oxQuizOn = !!ox;
-        db.cfg.plzRooms[_plzCurRoom].plz.mafiaOn = !!mf;
-        db.cfg.plzRooms[_plzCurRoom].plz.liarOn = !!lr;
-        if(db.cfg.plz) { db.cfg.plz.iceTagOn = !!ic; db.cfg.plz.hideSeekOn = !!hs; db.cfg.plz.oxQuizOn = !!ox; db.cfg.plz.mafiaOn = !!mf; db.cfg.plz.liarOn = !!lr; }
+        const rp = db.cfg.plzRooms[_plzCurRoom].plz;
+        rp.iceTagOn = !!ic;
+        rp.hideSeekOn = !!hs;
+        rp.oxQuizOn = !!ox;
+        rp.mafiaOn = !!mf;
+        rp.liarOn = !!lr;
+        // 바인딩 재동기화 (현재 방 데이터를 db.cfg.plz가 정확히 가리키도록)
+        db.cfg.plz = rp;
         sv();
-        getPlzRef().child('cfg').update({ iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr });
+        // 게임 플래그 + 배경 + 비율 + 장애물까지 모두 한 번에 푸시 (다른 코드 경로의 불일치 방지)
+        const _capturedRoom = _plzCurRoom;
+        firebase.database().ref('ClassData/EventShop/plaza/' + _capturedRoom + '/cfg').update({
+            iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr,
+            customBg: rp.customBg || null,
+            customBgs: rp.customBgs || null,
+            bgAspect: rp.bgAspect || null,
+            bgAspectByBg: rp.bgAspectByBg || null,
+            obstaclesByBg: rp.obstaclesByBg || null
+        });
+    };
+
+    // 방 설정 강제 동기화: db에 저장된 현재 방의 모든 plz 필드를 Firebase 룸 cfg로 푸시
+    window.forceSyncCurRoom = function() {
+        if(!db.cfg || !db.cfg.plzRooms || !db.cfg.plzRooms[_plzCurRoom]) {
+            alert('현재 방 데이터가 없습니다.'); return;
+        }
+        const rp = db.cfg.plzRooms[_plzCurRoom].plz || {};
+        const _capturedRoom = _plzCurRoom;
+        const _capturedName = db.cfg.plzRooms[_plzCurRoom].name || _capturedRoom;
+        firebase.database().ref('ClassData/EventShop/plaza/' + _capturedRoom + '/cfg').update({
+            iceTagOn: rp.iceTagOn !== false,
+            hideSeekOn: rp.hideSeekOn !== false,
+            oxQuizOn: rp.oxQuizOn === true,
+            mafiaOn: rp.mafiaOn === true,
+            liarOn: rp.liarOn === true,
+            customBg: rp.customBg || null,
+            customBgs: rp.customBgs || null,
+            bgAspect: rp.bgAspect || null,
+            bgAspectByBg: rp.bgAspectByBg || null,
+            obstaclesByBg: rp.obstaclesByBg || null,
+            notice: rp.notice || null
+            // open 상태는 별도 토글로만 관리 — 동기화에서 제외 (열린 방을 닫는 사고 방지)
+        }).then(()=>{
+            alert(`✅ "${_capturedName}" (${_capturedRoom}) 동기화 완료\n학생 측에서도 즉시 반영됩니다.`);
+        }).catch(e=>{
+            alert('동기화 실패: '+e.message);
+        });
+    };
+
+    // 모든 방 강제 동기화
+    window.forceSyncAllRooms = function() {
+        if(!confirm('모든 방의 db 설정을 Firebase로 강제 푸시할까요?\n(설정 불일치 복구용)')) return;
+        const rooms = Object.keys(db.cfg?.plzRooms||{});
+        let done = 0, fail = 0;
+        rooms.forEach(rid => {
+            const rp = db.cfg.plzRooms[rid].plz || {};
+            firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/cfg').update({
+                iceTagOn: rp.iceTagOn !== false,
+                hideSeekOn: rp.hideSeekOn !== false,
+                oxQuizOn: rp.oxQuizOn === true,
+                mafiaOn: rp.mafiaOn === true,
+                liarOn: rp.liarOn === true,
+                customBg: rp.customBg || null,
+                customBgs: rp.customBgs || null,
+                bgAspect: rp.bgAspect || null,
+                bgAspectByBg: rp.bgAspectByBg || null,
+                obstaclesByBg: rp.obstaclesByBg || null,
+                notice: rp.notice || null
+                // open 상태는 별도 토글로만 관리 — 동기화에서 제외
+            }).then(()=>{ done++; if(done+fail===rooms.length) alert(`✅ ${done}/${rooms.length}개 방 동기화 완료${fail?` (실패 ${fail})`:''}`); })
+              .catch(()=>{ fail++; if(done+fail===rooms.length) alert(`✅ ${done}/${rooms.length}개 방 동기화 완료 (실패 ${fail})`); });
+        });
     };
 
     window.savePlzRoomName = function() {
@@ -15089,8 +15214,17 @@ window.addCharRow = function() {
     window.toggleAllPlzRoomsAuto = function() {
         _plzSyncRoomKeys();
         const targets = _plzNonOxRoomKeys();
-        const allOpen = targets.every(rid => !!(db.cfg.plzRooms?.[rid]?.plz?.open));
-        toggleAllPlzRooms(!allOpen);
+        // Firebase에서 진실값 조회 (db 캐시가 stale일 수 있음)
+        Promise.all(targets.map(rid =>
+            firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/cfg/open').once('value').then(s => !!s.val())
+        )).then(states => {
+            const allOpen = states.every(Boolean);
+            toggleAllPlzRooms(!allOpen);
+        }).catch(e => {
+            // 폴백: 로컬 db 사용
+            const allOpen = targets.every(rid => !!(db.cfg.plzRooms?.[rid]?.plz?.open));
+            toggleAllPlzRooms(!allOpen);
+        });
     };
 
     window.toggleAllPlzRooms = function(openState) {
@@ -15099,10 +15233,16 @@ window.addCharRow = function() {
         if(!confirm(`${targets.length}개 광장을 모두 ${openState?'열까요':'닫을까요'}?\n(OX 퀴즈 방은 제외)`)) return;
         if(!db.cfg) db.cfg = {};
         if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
+        if(!db.plaza) db.plaza = {};
         targets.forEach(rid => {
             if(!db.cfg.plzRooms[rid]) db.cfg.plzRooms[rid] = {};
             if(!db.cfg.plzRooms[rid].plz) db.cfg.plzRooms[rid].plz = {};
             db.cfg.plzRooms[rid].plz.open = openState;
+            // db.plaza도 같이 갱신 (sv()가 전체 트리 덮어쓰는 것 대비)
+            if(!db.plaza[rid]) db.plaza[rid] = {};
+            if(!db.plaza[rid].cfg) db.plaza[rid].cfg = {};
+            db.plaza[rid].cfg.open = openState;
+            if(!openState) db.plaza[rid].cfg.closedAt = Date.now();
             const upd = { open: openState };
             if(!openState) upd.closedAt = Date.now();
             firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/cfg').update(upd);
@@ -15126,10 +15266,22 @@ window.addCharRow = function() {
         if(!db.cfg) db.cfg = {};
         if(!db.cfg.plz) db.cfg.plz = {};
         db.cfg.plz.open = nowOpen;
+        // db.cfg.plzRooms[curRoom].plz도 같이 갱신 (바인딩 끊김 대비)
+        if(db.cfg.plzRooms && db.cfg.plzRooms[_plzCurRoom]) {
+            if(!db.cfg.plzRooms[_plzCurRoom].plz) db.cfg.plzRooms[_plzCurRoom].plz = {};
+            db.cfg.plzRooms[_plzCurRoom].plz.open = nowOpen;
+        }
+        // db.plaza도 같이 갱신 (sv()가 전체 트리 덮어쓰는 것 대비)
+        if(!db.plaza) db.plaza = {};
+        if(!db.plaza[_plzCurRoom]) db.plaza[_plzCurRoom] = {};
+        if(!db.plaza[_plzCurRoom].cfg) db.plaza[_plzCurRoom].cfg = {};
+        db.plaza[_plzCurRoom].cfg.open = nowOpen;
+        if(!nowOpen) db.plaza[_plzCurRoom].cfg.closedAt = Date.now();
         sv();
         getPlzRef().child('cfg').update({ open: nowOpen, closedAt: nowOpen ? null : Date.now() });
-        // 닫을 때: 접속한 학생 전원 강제 퇴장
+        // 닫을 때: 진행 중 게임 모두 종료 + 접속한 학생 전원 강제 퇴장
         if(!nowOpen) {
+            try { window._endAllPlzGames && window._endAllPlzGames(); } catch(_){}
             getPlzRef().child('users').once('value', snap => {
                 const users = snap.val() || {};
                 Object.keys(users).forEach(uid => {
@@ -15198,7 +15350,7 @@ window.addCharRow = function() {
             const maxCnt = maxCfg.enabled ? (maxCfg.count || 0) : 0;
             const isOpen = !!(meta.plz && meta.plz.open);
             return { rid, name, bg, maxCnt, isOpen };
-        }).filter(r => r.isOpen); // 닫힌 방은 학생 picker에 표시 안 함
+        }); // 모든 방을 일단 렌더 → Firebase에서 실시간 open 상태로 닫힌 방 숨김
         // 2행 배치 — 방 개수의 절반을 column 수로 (홀수면 첫 행이 한 칸 더)
         const cols = Math.max(1, Math.ceil(rooms.length / 2));
         container.innerHTML = `
@@ -15206,7 +15358,7 @@ window.addCharRow = function() {
             <div style="font-size:36px;font-family:'Jua';color:#5D4037;">🏫 광장 선택</div>
             <div style="display:grid;grid-template-columns:repeat(${cols},minmax(180px,260px));gap:20px;justify-content:center;max-width:100%;">
                 ${rooms.map(r => `
-                    <div id="_roomCard_${r.rid}" onclick="window._pickPlzRoom('${r.rid}')" style="cursor:pointer;background:white;border-radius:20px;box-shadow:0 6px 20px rgba(0,0,0,0.1);overflow:hidden;transition:transform 0.15s;border:3px solid ${r.isOpen?'#66BB6A':'#BDBDBD'};" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+                    <div id="_roomCard_${r.rid}" onclick="window._pickPlzRoom('${r.rid}')" style="cursor:pointer;background:white;border-radius:20px;box-shadow:0 6px 20px rgba(0,0,0,0.1);overflow:hidden;transition:transform 0.15s;border:3px solid #66BB6A;display:${r.isOpen?'block':'none'};" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
                         <div style="aspect-ratio:16/9;${r.bg?`background-image:url('${r.bg}');background-size:cover;background-position:center;`:'background:#b8d4a8;'}"></div>
                         <div style="padding:14px;text-align:center;">
                             <div style="font-family:'Jua';font-size:20px;color:#3E2723;">${r.name}</div>
@@ -15217,12 +15369,12 @@ window.addCharRow = function() {
                 `).join('')}
             </div>
         </div>`;
-        // 각 방의 실제 open 상태를 Firebase에서 가져와 닫힌 방은 카드 숨김
+        // 각 방의 실제 open 상태를 Firebase에서 가져와 카드 표시/숨김 동기화
         rooms.forEach(r => {
             firebase.database().ref('ClassData/EventShop/plaza/' + r.rid + '/cfg/open').once('value', snap => {
                 const isOpen = !!snap.val();
                 const card = document.getElementById('_roomCard_' + r.rid);
-                if(card && !isOpen) card.style.display = 'none';
+                if(card) card.style.display = isOpen ? 'block' : 'none';
                 if(db.cfg && db.cfg.plzRooms && db.cfg.plzRooms[r.rid]) {
                     if(!db.cfg.plzRooms[r.rid].plz) db.cfg.plzRooms[r.rid].plz = {};
                     db.cfg.plzRooms[r.rid].plz.open = isOpen;
@@ -15241,6 +15393,11 @@ window.addCharRow = function() {
 
     // 학생 광장 나가기 (방 선택 화면으로 복귀)
     window._studentExitPlaza = function() {
+        // 게임 진행 중이고 내가 참가자면 나가기 차단 (참관자는 가능)
+        if(me && me.cd && window._anyPlzGameActive && window._anyPlzGameActive() && !(window._isPlzSpectator && window._isPlzSpectator(me.cd))){
+            alert('게임 진행 중에는 나갈 수 없어요. 게임이 끝나면 이동해주세요.');
+            return;
+        }
         // 방 이동 쿨다운: 나간 시각 기준
         if(me && me.cd) {
             try { sessionStorage.setItem('plzLastSwitch_' + me.cd, String(Date.now())); } catch(_) {}
@@ -15424,6 +15581,7 @@ window.addCharRow = function() {
         getPlzRef().child('hideseek').set({
             active: true,
             seekerIds,
+            participants: candidates, // 시작 시점 참여자 — 이후 입장자는 관전
             hideStartAt: Date.now(),
             playStartAt: Date.now() + HIDE_MS,
             endAt: Date.now() + HIDE_MS + PLAY_MS,
@@ -15439,6 +15597,7 @@ window.addCharRow = function() {
         window._hsFlashUntil = 0;
         _hideSeekUpdateUI();
         const ref = getPlzRef().child('hideseek');
+        let _hsWinPrompted = null;
         const fn = snap => {
             const g = snap.val();
             // 오래된 상태(endAt 지남) 자동 정리
@@ -15448,7 +15607,17 @@ window.addCharRow = function() {
                 _hideSeekUpdateUI();
                 return;
             }
+            // 게임 종료 처리 — 다음 술래에게는 시작 여부 모달, 나머지에게는 결과 모달
+            if(g && g.active===false && g.endedAt && _hsWinPrompted !== g.endedAt){
+                _hsWinPrompted = g.endedAt;
+                if(me && me.cd===g.nextSeekerId){
+                    window._hideSeekWinnerModal && window._hideSeekWinnerModal(g);
+                } else if(me && me.cd !== 'teacher_main'){
+                    window._hideSeekResultModal && window._hideSeekResultModal(g);
+                }
+            }
             window._hideSeekState = (g && g.active) ? g : null;
+            if(window._updatePlzVoteBtn) window._updatePlzVoteBtn();
             if(g && g.active && g.startedAt){
                 window._showGameIntro('hs_'+g.startedAt, '🔎', '숨바꼭질', [
                     '술래는 숨은 친구들을 찾아내야 해요',
@@ -15478,6 +15647,7 @@ window.addCharRow = function() {
     }
 
     function _hideSeekUpdateUI() {
+        if(window._renderSpectatorBadges) window._renderSpectatorBadges();
         const btn = document.getElementById('plzHideBtn');
         const st  = document.getElementById('hideSeekStatus');
         const g = window._hideSeekState;
@@ -15487,7 +15657,7 @@ window.addCharRow = function() {
             if(st) { st.style.display='none'; st.innerHTML=''; }
         }
         if(!g) {
-            if(btn) { btn.style.background='rgba(142,36,170,0.9)'; btn.textContent='🔎 숨바꼭질'; }
+            if(btn) { btn.style.display=''; btn.style.background='rgba(142,36,170,0.9)'; btn.textContent='🔎 숨바꼭질'; }
             if(st)  st.style.display = 'none';
             document.querySelectorAll('.plz-char').forEach(el => {
                 el.classList.remove('seeker','hider-found');
@@ -15498,8 +15668,8 @@ window.addCharRow = function() {
             _hsHideRhythmBadge();
             return;
         }
-        // 게임 중: 버튼을 종료 버튼으로
-        if(btn) { btn.style.background='rgba(239,83,80,0.9)'; btn.textContent='🛑 종료'; }
+        // 게임 중: 시작 버튼 숨김 (종료는 종료 투표로 처리)
+        if(btn) { btn.style.display='none'; }
         const now = Date.now();
         const inHidePhase = now < g.playStartAt;
         const inPlayPhase = !inHidePhase && now < g.endAt;
@@ -15685,6 +15855,9 @@ window.addCharRow = function() {
         if(!g || !me || me.cd === 'teacher_main') return;
         const now = Date.now();
         if(now < g.playStartAt || now >= g.endAt) return;
+        // 참관자(중간 입장자)는 잡지도 못하고 잡히지도 않음
+        const parts = Array.isArray(g.participants) ? g.participants : null;
+        if(parts && !parts.includes(me.cd)) return;
         const seekerIds = g.seekerIds || [];
         const found = g.found || {};
         const amSeeker = seekerIds.includes(me.cd);
@@ -15696,6 +15869,8 @@ window.addCharRow = function() {
             if(uid === me.cd || uid === 'teacher_main') return;
             if(seekerIds.includes(uid)) return;
             if(found[uid]) return;
+            // 참관자는 잡기 대상에서 제외
+            if(parts && !parts.includes(uid)) return;
             const dx = (u.x||0) - _plzPos.x;
             const dy = (u.y||0) - _plzPos.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
@@ -15707,15 +15882,19 @@ window.addCharRow = function() {
         const g = window._hideSeekState;
         if(!g || !me) return;
         const seekerIds = g.seekerIds || [];
-        if(seekerIds[0] !== me.cd) return; // 첫 술래만 실행
+        // 첫 술래(없으면 살아있는 첫 참가자)만 실행
+        const liveUids = new Set(Object.keys(_plzUserCache||{}));
+        const parts = Array.isArray(g.participants) ? g.participants : null;
+        const t0 = seekerIds[0];
+        const isRunner = (t0 && liveUids.has(t0)) ? (t0 === me.cd)
+            : (parts ? parts.filter(u=>liveUids.has(u))[0] === me.cd : seekerIds[0] === me.cd);
+        if(!isRunner) return;
         const now = Date.now();
+        // 참가자 기준 hiders (참관자 제외)
+        const baseUids = parts ? parts.slice() : Object.keys(_plzUserCache).filter(u => u !== 'teacher_main');
+        const hiders = baseUids.filter(uid => !seekerIds.includes(uid));
         // 인원 2명 이하면 자동 종료
-        const totalPlayers = Object.keys(_plzUserCache).filter(u => u !== 'teacher_main').length;
-        if(totalPlayers <= 2) {
-            getPlzRef().child('hideseek').remove();
-            return;
-        }
-        const hiders = Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main' && !seekerIds.includes(uid));
+        if(baseUids.length <= 2) { getPlzRef().child('hideseek').remove(); return; }
         const found = g.found || {};
         const allFound = hiders.length > 0 && hiders.every(uid => found[uid]);
         if(allFound || now >= g.endAt) {
@@ -15729,19 +15908,18 @@ window.addCharRow = function() {
                 hiders.forEach(uid => { if(found[uid] > latest) { latest = found[uid]; nextSeeker = uid; }});
             }
             if(nextSeeker) {
-                const ANNOUNCE_MS = 4000, HIDE_MS = 10000, PLAY_MS = 3 * 60 * 1000;
-                const prevSeekerNm = seekerIds.map(uid => _plzUserCache[uid]?.nm || '').filter(Boolean).join(', ');
-                const newSeekerNm = _plzUserCache[nextSeeker]?.nm || '';
-                // 새 라운드: announce(4초) + hide(10초) → playStartAt에 announce 버퍼 포함
-                getPlzRef().child('hideseek').set({
-                    active: true,
-                    seekerIds: [nextSeeker],
-                    hideStartAt: Date.now(),
-                    playStartAt: Date.now() + ANNOUNCE_MS + HIDE_MS,
-                    endAt: Date.now() + ANNOUNCE_MS + HIDE_MS + PLAY_MS,
-                    found: {},
-                    announce: { reason: allFound ? 'allFound' : 'timeout', prevSeekerNm, newSeekerNm, ts: Date.now() }
+                const outcome = allFound ? 'seeker_win' : 'hider_win';
+                const startedAt = g.playStartAt || g.hideStartAt || Date.now();
+                const newSeekerNm = _plzUserCache[nextSeeker]?.nm || '학생';
+                getPlzRef().child('hideseek').update({
+                    active:false, endedAt: Date.now(),
+                    nextSeekerId: nextSeeker,
+                    outcome,
+                    durationMs: Math.max(0, Date.now() - startedAt)
                 });
+                const cmsg = outcome==='seeker_win' ? `🔍 술래 승리! 다음 술래는 ${newSeekerNm}님!` : `🙈 도망자 승리! 다음 술래는 ${newSeekerNm}님!`;
+                try { getPlzRef().child('chat').push({ sys:true, nm:'🙈', msg:cmsg, ts:Date.now() }); } catch(_){}
+                setTimeout(()=>{ try{ getPlzRef().child('hideseek').remove(); }catch(_){} }, 8000);
             } else {
                 getPlzRef().child('hideseek').remove();
             }
@@ -16019,6 +16197,90 @@ window.addCharRow = function() {
         getPlzRef().child('oxQuiz').remove();
     };
 
+    // ═══════════════ 게임 진행 중 입장자 관전 표시 ═══════════════
+    // 진행 중 게임에 포함되지 않은 학생 머리 위에 👁️ 배지 부착 + HUD 안내
+    window._renderSpectatorBadges = function(){
+        const mafG = window._mafiaState;
+        const liarG = window._liarState;
+        const hsG = window._hideSeekState;
+        const igG = window._iceTagState;
+        const isAnyGameOn = (mafG && mafG.on) || (liarG && liarG.on) || (hsG && hsG.active) || (igG && igG.active);
+        document.querySelectorAll('.plz-char[data-uid]').forEach(el => {
+            const uid = el.dataset.uid;
+            if(uid === 'teacher_main') {
+                el.querySelector('.spec-badge')?.remove();
+                el.querySelector('.spec-mark')?.remove();
+                el.style.filter = '';
+                return;
+            }
+            let isSpec = false;
+            if(mafG && mafG.on){
+                isSpec = !mafG.roles || !mafG.roles[uid];
+            } else if(liarG && liarG.on){
+                isSpec = !liarG.players || !liarG.players.includes(uid);
+            } else if(hsG && hsG.active){
+                const parts = hsG.participants || [];
+                if(parts.length) isSpec = !parts.includes(uid);
+            } else if(igG && igG.active){
+                const parts = igG.participants || [];
+                if(parts.length) isSpec = !parts.includes(uid);
+            }
+            // OX 유령 진행 중이면 OX 효과가 우선 (filter는 OX 코드가 관리)
+            const oxG = window._oxQuizState;
+            const isOxOut = oxG && oxG.out && oxG.out[uid];
+            // 마피아 사망자도 유령 처리
+            const mafDead = mafG && mafG.on && mafG.roles && mafG.roles[uid] && mafG.alive && !mafG.alive[uid];
+            if(mafDead && !isOxOut) {
+                isSpec = true;
+            }
+            if(isSpec && !isOxOut){
+                el.style.filter = 'grayscale(1) brightness(0.65) contrast(1.1) drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #1a1a1a)';
+                if(!el.querySelector('.spec-mark')){
+                    const sm = document.createElement('div');
+                    sm.className = 'spec-mark';
+                    sm.textContent = '👻';
+                    sm.style.cssText = 'position:absolute;top:-46px;left:50%;transform:translateX(-50%);font-size:34px;pointer-events:none;z-index:5;filter:none !important;opacity:1;text-shadow:0 2px 6px rgba(0,0,0,0.6);';
+                    el.appendChild(sm);
+                }
+                el.querySelector('.spec-badge')?.remove();
+            } else if(!isOxOut){
+                el.querySelector('.spec-mark')?.remove();
+                el.querySelector('.spec-badge')?.remove();
+                // 다른 게임 효과(술래·얼음·찾기 등)가 없으면 필터 해제
+                if(!el.classList.contains('tagger') && !el.classList.contains('frozen') && !el.classList.contains('seeker') && !el.classList.contains('hider-found')){
+                    el.style.filter = '';
+                }
+            }
+        });
+        // 본인이 관전자면 좌상단 배너 표시
+        const specHud = document.getElementById('plzSpectatorHud');
+        const amSpec = me && window._isPlazaSpectator && window._isPlazaSpectator(me.cd);
+        if(amSpec && isAnyGameOn){
+            if(!specHud){
+                const map = document.getElementById('plzMap');
+                if(map){
+                    const d = document.createElement('div');
+                    d.id = 'plzSpectatorHud';
+                    d.style.cssText = 'position:absolute;top:14px;left:14px;z-index:36;background:rgba(69,90,100,0.95);color:white;padding:10px 16px;border-radius:14px;font-family:Jua;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.4);pointer-events:none;border:2px solid rgba(255,255,255,0.2);';
+                    d.innerHTML = '👻 <b>참관중</b><br><span style="font-size:11px;opacity:0.85;">움직임만 가능 · 채팅 불가<br>다음 경기에 자동 참여</span>';
+                    map.appendChild(d);
+                }
+            }
+        } else if(specHud){
+            specHud.remove();
+        }
+    };
+    // 본인이 진행 중 게임에 관전 중인지 (채팅 차단용)
+    window._isPlazaSpectator = function(uid){
+        if(!uid) return false;
+        const mafG = window._mafiaState, liarG = window._liarState, hsG = window._hideSeekState, igG = window._iceTagState;
+        if(mafG && mafG.on && (!mafG.roles || !mafG.roles[uid])) return true;
+        if(liarG && liarG.on && (!liarG.players || !liarG.players.includes(uid))) return true;
+        if(hsG && hsG.active && hsG.participants && !hsG.participants.includes(uid)) return true;
+        if(igG && igG.active && Array.isArray(igG.participants) && !igG.participants.includes(uid)) return true;
+        return false;
+    };
+
     // ═══════════════ 게임 시작 인트로 모달 ═══════════════
     // key: 게임 식별자(예: 'ice_'+startedAt). 같은 key는 1회만 표시.
     window._showGameIntro = function(key, emoji, title, bullets, color, onDismiss){
@@ -16064,15 +16326,16 @@ window.addCharRow = function() {
         };
     }
 
-    // 인원수에 따른 역할 추천:
-    //  4-5명: 마피아1, 의사1, 시민
-    //  6명:   마피아1, 의사1, 경찰1, 시민
-    //  7+명:  마피아2, 의사1, 경찰1, 시민
+    // 인원수에 따른 역할 추천 (최소 6명 시작):
+    //  6명:    마피아1, 의사1, 경찰1, 시민3
+    //  7명:    마피아2, 의사1, 경찰1, 시민3
+    //  8-9명:  마피아2, 의사1, 경찰1, 시민(N-4)
+    //  10+명:  마피아3, 의사1, 경찰1, 시민(N-5)
     function _mafiaRecommendRoles(N){
         let mafia, doctor, police;
-        if(N <= 5){ mafia = 1; doctor = 1; police = 0; }
-        else if(N === 6){ mafia = 1; doctor = 1; police = 1; }
-        else { mafia = 2; doctor = 1; police = 1; }
+        if(N <= 6){ mafia = 1; doctor = 1; police = 1; }
+        else if(N <= 9){ mafia = 2; doctor = 1; police = 1; }
+        else { mafia = 3; doctor = 1; police = 1; }
         const citizen = Math.max(0, N - mafia - doctor - police);
         return { mafia, doctor, police, citizen };
     }
@@ -16128,9 +16391,9 @@ window.addCharRow = function() {
                 <div style="font-size:22px;margin-bottom:6px;color:#5E35B1;">🕵️ 마피아 시작</div>
                 <div style="font-size:11px;color:#888;margin-bottom:12px;">인원수에 따라 자동 분배</div>
                 <div style="background:#F3E5F5;border-radius:12px;padding:14px 16px;font-size:13px;color:#5D4037;line-height:2;margin-bottom:14px;">
-                    👥 인원: <b>${N}명</b> ${N<4?'<span style="color:#C62828;">(4명 이상 필요)</span>':''}<br>
+                    👥 인원: <b>${N}명</b> ${N<6?'<span style="color:#C62828;">(6명 이상 필요)</span>':''}<br>
                     🔪 마피아 <b>${rec.mafia}명</b> · 💊 의사 <b>${rec.doctor}명</b>${rec.police?` · 🔍 경찰 <b>${rec.police}명</b>`:''} · 🙋 시민 <b>${rec.citizen}명</b><br>
-                    <span style="font-size:11px;color:#888;">분배 룰: 4~5명=마피아1·의사1 / 6명=마피아1·의사1·경찰1 / 7+명=마피아2·의사1·경찰1</span>
+                    <span style="font-size:11px;color:#888;">분배 룰: 6명=마피아1·의사1·경찰1 / 7~9명=마피아2 / 10명+=마피아3</span>
                 </div>
                 <div style="background:#FFF8E1;border-radius:12px;padding:12px 14px;font-size:12px;color:#5D4037;line-height:1.85;margin-bottom:14px;">
                     📜 <b>진행</b>: 역할 공개 → 자기소개·자유토론 → 절반 동의 시 밤 → 결과 발표 → 다시 토론 → ...<br>
@@ -16139,7 +16402,7 @@ window.addCharRow = function() {
                     <br>마피아 N명일 때, 마피아가 N명 살해 + 시민도 다수결로 N명 처형
                     <br>🏆 마피아 0=시민 승 / 마피아≥시민=마피아 승
                 </div>
-                <button class="btn btn-blue" style="width:100%;padding:11px;font-size:15px;${N<4?'opacity:0.5;pointer-events:none;':''}" onclick="window._mafiaSaveCfgAndStart();">▶ 게임 시작</button>
+                <button class="btn btn-blue" style="width:100%;padding:11px;font-size:15px;${N<6?'opacity:0.5;pointer-events:none;':''}" onclick="window._mafiaSaveCfgAndStart();">▶ 게임 시작</button>
                 <button class="btn btn-gray" style="width:100%;padding:8px;margin-top:8px;font-size:12px;" onclick="document.getElementById('_mafMenu').remove();">닫기</button>
             </div>
         </div>`;
@@ -16157,11 +16420,12 @@ window.addCharRow = function() {
         if(!me) { console.warn('[mafia] me 없음'); return; }
         const allUids = Object.keys(_plzUserCache||{}).filter(u => u !== 'teacher_main');
         console.log('[mafia] start clicked. 학생 수:', allUids.length, allUids);
-        if(allUids.length < 4){
-            alert('마피아 게임은 학생 4명 이상이 필요해요 (현재 '+allUids.length+'명)\n\n학생들이 같은 광장에 입장했는지 확인해주세요.');
+        if(allUids.length < 6){
+            alert('마피아 게임은 학생 6명 이상이 필요해요 (현재 '+allUids.length+'명)\n\n학생들이 같은 광장에 입장했는지 확인해주세요.');
             return;
         }
-        if(!plzRef){ console.warn('[mafia] plzRef 없음 — 광장 진입 후 시작'); alert('광장에 먼저 진입해주세요.'); return; }
+        // getPlzRef로 lazy init 트리거 (plzRef가 null이어도 자동 생성)
+        try { getPlzRef(); } catch(_) {}
         const N = allUids.length;
         const rec = _mafiaRecommendRoles(N);
         const shuffled = [...allUids].sort(() => Math.random()-0.5);
@@ -16189,28 +16453,142 @@ window.addCharRow = function() {
         window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🕵️', msg:'🕵️ 마피아 게임 시작! 본인 역할을 확인하세요', ts:now });
     };
 
+    // 본인 역할 재확인 모달
+    window._mafiaShowMyRole = function(){
+        const g = window._mafiaState;
+        if(!g || !g.roles || !me || !g.roles[me.cd]) return;
+        const role = g.roles[me.cd];
+        const ic = role==='mafia'?'🔪':role==='doctor'?'💊':role==='police'?'🔍':'🙋';
+        const nm = role==='mafia'?'마피아':role==='doctor'?'의사':role==='police'?'경찰':'시민';
+        const desc = role==='mafia'?'밤에 죽일 사람 한 명을 지목하세요'
+            : role==='doctor'?'밤에 살릴 사람 한 명을 지목하세요'
+            : role==='police'?'밤에 조사할 사람 한 명을 지목하면 마피아 여부를 알 수 있어요'
+            : '밤에 의심되는 사람 한 명을 지목하세요. 다수결로 처형!';
+        const col = role==='mafia'?'#C62828':role==='doctor'?'#2E7D32':role==='police'?'#1565C0':'#5D4037';
+        document.getElementById('_mafRoleModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_mafRoleModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.25s ease-out;';
+        el.innerHTML = `
+        <div style="background:linear-gradient(160deg,#fff,#f5f5f5);border-radius:24px;padding:0;width:min(340px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.5);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;border:4px solid ${col};">
+            <div style="background:${col};padding:18px 24px;text-align:center;color:white;font-family:'Jua';">
+                <div style="font-size:60px;line-height:1;">${ic}</div>
+                <div style="font-size:24px;font-weight:bold;margin-top:6px;">${nm}</div>
+            </div>
+            <div style="padding:18px 22px;font-family:'Jua';">
+                <div style="font-size:13px;color:#5D4037;line-height:1.6;text-align:center;background:#FFF8E1;border-radius:10px;padding:12px;margin-bottom:14px;">${desc}</div>
+                <button style="width:100%;padding:11px;border:none;border-radius:12px;background:${col};color:white;font-family:'Jua';font-size:15px;cursor:pointer;" onclick="document.getElementById('_mafRoleModal').remove()">확인</button>
+            </div>
+        </div>`;
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
+    };
+
     window._mafiaEnd = function(forced){
         const g = window._mafiaState;
         if(!g) return;
         const winner = forced ? null : _mafiaCheckWin(g);
         const allUids = Object.keys(g.roles||{});
+        const _nm = u => (_plzUserCache[u]||{}).nm || u;
         // 역할 공개 메시지
         const reveal = allUids.map(u => {
-            const nm = (_plzUserCache[u]||{}).nm || u;
             const role = g.roles[u];
             const ico = role==='mafia'?'🔪':role==='doctor'?'💊':role==='police'?'🔍':'🙋';
-            return `${ico} ${nm}`;
+            return `${ico} ${_nm(u)}`;
         }).join(' · ');
         const winMsg = forced ? '⏹️ 마피아 게임이 강제 종료됐어요' :
             (winner==='mafia' ? '🔪 마피아 승리!' : '🙋 시민 승리!');
+        // 행동 로그 빌드 (라운드별)
+        const actsAll = g.acts || {};
+        const rounds = Object.keys(actsAll).map(Number).sort((a,b)=>a-b);
+        const log = rounds.map(rd => {
+            const ra = actsAll[rd] || {};
+            const byRole = { mafia:[], doctor:[], police:[], citizen:[] };
+            Object.entries(ra).forEach(([u, t]) => {
+                const r = g.roles[u]; if(!r || !byRole[r]) return;
+                byRole[r].push({u, t});
+            });
+            return { round: rd, ...byRole };
+        });
         const now = Date.now();
         getPlzRef().child('mafia').update({
             on:false, phase:'end', winner: winner||'forced',
-            endedAt: now, finalRoles: reveal
+            endedAt: now, finalRoles: reveal,
+            actionLog: log
         });
         window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🏆', msg: winMsg+' / '+reveal, ts:now });
-        // 5초 뒤 mafia 노드 제거
-        setTimeout(() => { getPlzRef().child('mafia').remove(); }, 5000);
+        // 8초 뒤 mafia 노드 제거 (결과 모달 보는 시간 확보)
+        setTimeout(() => { getPlzRef().child('mafia').remove(); }, 8000);
+    };
+
+    // 마피아 결과 모달
+    window._mafiaShowEndModal = function(g){
+        if(!g) return;
+        const _nm = u => (_plzUserCache[u]||{}).nm || u;
+        const roles = g.roles || {};
+        const winner = g.winner;
+        const isMafiaWin = winner === 'mafia';
+        const isCitizenWin = winner === 'citizen';
+        const headColor = isMafiaWin ? 'linear-gradient(135deg,#C62828,#B71C1C)'
+            : isCitizenWin ? 'linear-gradient(135deg,#2E7D32,#1B5E20)'
+            : 'linear-gradient(135deg,#5D4037,#3E2723)';
+        const headIcon = isMafiaWin ? '🔪' : isCitizenWin ? '🙋' : '⏹️';
+        const headTxt = isMafiaWin ? '마피아 승리!' : isCitizenWin ? '시민 승리!' : '강제 종료';
+        // 효과음 — 내가 이긴 진영이면 win, 아니면 lose
+        const myRole = me && roles[me.cd];
+        const iWon = (myRole==='mafia' && isMafiaWin) || (myRole && myRole!=='mafia' && isCitizenWin);
+        try { window._plzPlayResultSnd && window._plzPlayResultSnd(iWon ? 'win' : 'lose'); } catch(_){}
+        // 역할별 색·아이콘
+        const _roleColor = r => r==='mafia'?'#EF5350':r==='doctor'?'#66BB6A':r==='police'?'#42A5F5':'#A1887F';
+        const _roleIc = r => r==='mafia'?'🔪':r==='doctor'?'💊':r==='police'?'🔍':'🙋';
+        const _roleNm = r => r==='mafia'?'마피아':r==='doctor'?'의사':r==='police'?'경찰':'시민';
+        // 최종 명단 (생사 + 역할)
+        const allUids = Object.keys(roles);
+        const rosterHtml = allUids.map(u => {
+            const r = roles[u];
+            const aliveAtEnd = !!(g.alive && g.alive[u]);
+            return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;background:${aliveAtEnd?'#F5F5F5':'#FFEBEE'};${aliveAtEnd?'':'opacity:0.7;'}">
+                <span style="font-size:18px;">${_roleIc(r)}</span>
+                <span style="font-size:13px;font-weight:bold;color:${_roleColor(r)};">${_roleNm(r)}</span>
+                <span style="font-size:13px;color:#3E2723;">${_nm(u)}</span>
+                ${aliveAtEnd?'<span style="font-size:10px;color:#2E7D32;margin-left:auto;">생존</span>':'<span style="font-size:10px;color:#C62828;margin-left:auto;">💀 사망</span>'}
+            </div>`;
+        }).join('');
+        // 라운드별 행동 로그
+        const log = g.actionLog || [];
+        const _ts = arr => arr.length ? arr.map(a => `${_nm(a.u)} → ${_nm(a.t)}`).join(', ') : '—';
+        const logHtml = log.length ? log.map(rd => `
+            <div style="background:white;border:2px solid #E0E0E0;border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+                <div style="font-size:13px;font-weight:bold;color:#3E2723;margin-bottom:6px;">🗓️ ${rd.round}일차 밤</div>
+                <div style="font-size:12px;line-height:1.7;color:#5D4037;">
+                    <div>🔪 <b style="color:#C62828;">마피아</b>: ${_ts(rd.mafia)}</div>
+                    <div>💊 <b style="color:#2E7D32;">의사</b>: ${_ts(rd.doctor)}</div>
+                    ${rd.police?.length ? `<div>🔍 <b style="color:#1565C0;">경찰</b>: ${_ts(rd.police)}</div>` : ''}
+                    <div>🙋 <b style="color:#8D6E63;">시민 투표</b>: ${_ts(rd.citizen)}</div>
+                </div>
+            </div>`).join('') : '<div style="color:#888;font-size:12px;text-align:center;padding:14px;">행동 기록이 없어요</div>';
+        document.getElementById('_mafEndModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_mafEndModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99999;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.25s ease-out;padding:20px;';
+        el.innerHTML = `
+        <div style="background:white;border-radius:24px;width:min(480px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.5);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;">
+            <div style="background:${headColor};padding:20px 24px;text-align:center;color:white;font-family:'Jua';flex-shrink:0;">
+                <div style="font-size:54px;line-height:1;">${headIcon}</div>
+                <div style="font-size:24px;font-weight:bold;margin-top:6px;letter-spacing:1px;">${headTxt}</div>
+            </div>
+            <div style="padding:18px 22px;overflow-y:auto;font-family:'Jua';">
+                <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:8px;">👥 최종 역할 공개</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;">${rosterHtml}</div>
+                <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:8px;">📜 행동 기록</div>
+                ${logHtml}
+            </div>
+            <div style="padding:14px 22px;border-top:1px solid #EEE;flex-shrink:0;">
+                <button style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5E35B1,#311B92);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(49,27,146,0.4);" onclick="document.getElementById('_mafEndModal').remove()">확인</button>
+            </div>
+        </div>`;
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
     };
 
     // 학생/교사 모두 1초 폴링 — leadUid만 페이즈 전환
@@ -16224,16 +16602,17 @@ window.addCharRow = function() {
     function _mafiaTick(){
         const g = window._mafiaState;
         if(!g || !g.on){ _mafiaTickStop(); return; }
-        // HUD + 액션 패널 갱신
+        // HUD + 액션 패널 + 관전자 배지 갱신
         _mafiaRenderHud();
         _mafiaRenderActionPanel();
-        // 생존자 3명 이하면 자동 종료 (leadUid만 트리거)
+        if(window._renderSpectatorBadges) window._renderSpectatorBadges();
+        // 승패 조건이 충족되면 종료 (leadUid만 트리거)
         if(me && me.cd === g.leadUid){
+            const win = _mafiaCheckWin(g);
+            if(win){ window._mafiaEnd(false); return; }
+            // 마피아·시민 모두 죽으면 강제 종료 (아무도 안 살아있음)
             const aliveCnt = Object.keys(g.alive||{}).filter(u => g.alive[u] && _plzUserCache[u]).length;
-            if(aliveCnt <= 3){
-                window._mafiaEnd(true);
-                return;
-            }
+            if(aliveCnt <= 1){ window._mafiaEnd(true); return; }
         }
         // 페이즈 전환은 leadUid만 (race 방지)
         if(!me || me.cd !== g.leadUid) return;
@@ -16732,14 +17111,12 @@ window.addCharRow = function() {
             return;
         }
         if(me && g.roles && g.roles[me.cd]){
-            const myRole = g.roles[me.cd];
             const myAlive = !!g.alive[me.cd];
-            const ic = myRole==='mafia'?'🔪':myRole==='doctor'?'💊':myRole==='police'?'🔍':'🙋';
-            const lbl = _mafiaRoleLabel(myRole).replace(/^[^\s]+\s/,'');
             const dead = myAlive ? '' : ' <span style="color:#FF6B6B;">(👻 유령)</span>';
             roleHud.style.display = 'block';
-            roleHud.innerHTML = `<div style="background:rgba(94,53,177,0.94);color:white;padding:8px 14px;border-radius:14px;font-family:Jua;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,0.35);">
-                ${ic} ${lbl}${dead}
+            roleHud.style.pointerEvents = 'auto';
+            roleHud.innerHTML = `<div onclick="window._mafiaShowMyRole&&window._mafiaShowMyRole()" style="background:rgba(94,53,177,0.94);color:white;padding:8px 14px;border-radius:14px;font-family:Jua;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,0.35);cursor:pointer;user-select:none;" title="클릭하면 본인 역할 다시 확인">
+                🎭 역할 (클릭)${dead}
             </div>`;
         } else {
             roleHud.style.display = 'none';
@@ -16883,6 +17260,7 @@ window.addCharRow = function() {
                     ref.remove();
                     return;
                 }
+                const leadGone = v.leadUid && !_plzUserCache[v.leadUid];
                 if(leadGone && me){
                     // leadUid가 떠난 경우 본인이 인계 시도
                     const newLead = Object.keys(v.alive||{}).filter(u => v.alive[u] && _plzUserCache[u]).sort()[0];
@@ -16893,6 +17271,11 @@ window.addCharRow = function() {
             }
             // 새 쪽지 도착 감지 (state 갱신 전에 비교)
             _mafiaCheckNoteArrival(prev, v);
+            // 종료 페이즈 진입 시 결과 모달 (한 번만)
+            if(v && v.phase === 'end' && v.endedAt && window._mafEndShownFor !== v.endedAt){
+                window._mafEndShownFor = v.endedAt;
+                if(window._mafiaShowEndModal) window._mafiaShowEndModal(v);
+            }
             window._mafiaState = v;
             if(v && v.on){
                 _mafiaTickStart();
@@ -16923,6 +17306,7 @@ window.addCharRow = function() {
                     _mafiaShowFinaleModal(v);
                 }
                 if(!v){
+                    if(window._renderSpectatorBadges) window._renderSpectatorBadges();
                     window._mafiaShownRoleRound = null;
                     window._mafiaShownPolice = {};
                     // 유령 효과·배지 복구
@@ -17227,6 +17611,7 @@ window.addCharRow = function() {
         if(!g || !g.on){ _liarTickStop(); return; }
         _liarRenderHud();
         _liarRenderDescribePanel();
+        if(window._renderSpectatorBadges) window._renderSpectatorBadges();
         if(!me || me.cd !== g.leadUid) return;
         // 광장 내 plyer 3명 미만이면 자동 종료
         const inRoomPlayers = (g.players||[]).filter(u => _plzUserCache[u]).length;
@@ -17916,6 +18301,7 @@ window.addCharRow = function() {
                 _liarTickStop();
                 _liarRenderHud();
                 if(!v){
+                    if(window._renderSpectatorBadges) window._renderSpectatorBadges();
                     window._liarShownWordRound = null;
                     window._liarResultShownFor = null;
                     document.getElementById('_lrWordModal')?.remove();
@@ -18311,41 +18697,440 @@ window.addCharRow = function() {
             active: true,
             taggerId: taggerIds[0], // 하위 호환
             taggerIds,
+            participants: candidates, // 시작 시점 참가자 (이후 입장자는 참관자)
             startedAt: Date.now() + 5000,
             roundEndAt: Date.now() + 5000 + ROUND_MS,
             frozen: {}
         });
     };
 
-    window._iceTagEnd = function(winnerId) {
-        // 승자가 다음 술래. 없으면 랜덤.
+    // ===== 광장 게임 공통 헬퍼: 참관자/종료/투표 =====
+    window._isPlzSpectator = function(uid) {
+        if(!uid || uid === 'teacher_main') return false;
+        const ig = window._iceTagState;
+        if(ig && ig.active && Array.isArray(ig.participants) && !ig.participants.includes(uid)) return true;
+        const hg = window._hideSeekState;
+        if(hg && hg.active && Array.isArray(hg.participants) && !hg.participants.includes(uid)) return true;
+        const lg = window._liarState;
+        if(lg && lg.on && Array.isArray(lg.players) && !lg.players.includes(uid)) return true;
+        const mg = window._mafiaState;
+        if(mg && mg.on && mg.roles && !mg.roles[uid]) return true;
+        return false;
+    };
+    window._anyPlzGameActive = function() {
+        return !!(window._iceTagState || window._hideSeekState || (window._liarState&&window._liarState.on) || (window._mafiaState&&window._mafiaState.on) || window._oxQuizState);
+    };
+    // 광장의 모든 게임을 강제 종료
+    window._endAllPlzGames = function() {
+        try { getPlzRef().child('game').remove(); } catch(_){}
+        try { getPlzRef().child('hideseek').remove(); } catch(_){}
+        try { getPlzRef().child('mafia').remove(); } catch(_){}
+        try { getPlzRef().child('liar').remove(); } catch(_){}
+        try { getPlzRef().child('oxQuiz').remove(); } catch(_){}
+        try { getPlzRef().child('endVote').remove(); } catch(_){}
+    };
+    // 종료 투표 모달 (예쁜 디자인) — 현재 표/참가자 수 표시 + 진행 바
+    window._plzVoteEnd = function() {
+        if(!me) return;
+        if(window._isPlzSpectator(me.cd)) { alert('👻 참관자는 투표할 수 없어요.'); return; }
+        if(!window._anyPlzGameActive()) return;
+        // 참가자 수 산정
+        let total = 0;
+        const ig = window._iceTagState; if(ig && ig.participants) total = Math.max(total, ig.participants.length);
+        const hg = window._hideSeekState; if(hg && hg.participants) total = Math.max(total, hg.participants.length);
+        const lg = window._liarState; if(lg && lg.players) total = Math.max(total, lg.players.length);
+        const mg = window._mafiaState; if(mg && mg.roles) total = Math.max(total, Object.keys(mg.roles).length);
+        if(total === 0) total = Object.keys(_plzUserCache||{}).filter(u=>u!=='teacher_main').length;
+        const need = Math.ceil(total / 2);
+
+        getPlzRef().child('endVote').once('value', snap => {
+            const cur = Object.keys(snap.val()||{});
+            const already = cur.includes(me.cd);
+            const curVotes = cur.length;
+
+            document.getElementById('_voteEndModal')?.remove();
+            const el = document.createElement('div');
+            el.id = '_voteEndModal';
+            el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.2s ease-out;';
+            const pct = Math.min(100, Math.round((curVotes / Math.max(1,need)) * 100));
+            el.innerHTML = `
+            <style>
+                @keyframes voteFadeIn { from{opacity:0;} to{opacity:1;} }
+                @keyframes votePopIn { from{transform:scale(0.8);opacity:0;} to{transform:scale(1);opacity:1;} }
+                @keyframes voteShine { 0%,100%{box-shadow:0 0 20px rgba(255,167,38,0.4);} 50%{box-shadow:0 0 32px rgba(255,167,38,0.7);} }
+            </style>
+            <div style="background:linear-gradient(160deg,#FFF8E1 0%,#FFE0B2 100%);border-radius:24px;padding:0;width:min(380px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.4);overflow:hidden;animation:votePopIn 0.25s ease-out;border:3px solid #FFB74D;">
+                <div style="background:linear-gradient(135deg,#FF9800,#F57C00);padding:18px 24px;text-align:center;color:white;">
+                    <div style="font-size:42px;line-height:1;animation:voteShine 1.5s ease-in-out infinite;display:inline-block;border-radius:50%;width:64px;height:64px;line-height:64px;background:rgba(255,255,255,0.2);margin-bottom:6px;">🗳️</div>
+                    <div style="font-size:20px;font-weight:bold;font-family:'Jua';letter-spacing:0.5px;">게임 종료 투표</div>
+                </div>
+                <div style="padding:22px 24px;">
+                    <div style="text-align:center;font-size:14px;color:#5D4037;margin-bottom:18px;line-height:1.5;font-family:'Jua';">
+                        ${already ? '✅ 이미 투표하셨어요!' : '진행 중인 게임을 종료할까요?'}
+                        <div style="font-size:11px;color:#8D6E63;margin-top:4px;">참가자 과반수가 동의하면 즉시 종료됩니다</div>
+                    </div>
+                    <div style="background:white;border-radius:14px;padding:14px 18px;border:2px solid #FFE0B2;margin-bottom:16px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-family:'Jua';">
+                            <span style="font-size:13px;color:#8D6E63;">현재 투표</span>
+                            <span style="font-size:18px;color:#E65100;font-weight:bold;">${curVotes} / ${need}<span style="font-size:11px;color:#A1887F;font-weight:normal;"> (참가자 ${total}명)</span></span>
+                        </div>
+                        <div style="height:10px;background:#FFE0B2;border-radius:6px;overflow:hidden;">
+                            <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,#FFB74D,#FF7043);border-radius:6px;transition:width 0.4s ease;${pct>=100?'background:linear-gradient(90deg,#66BB6A,#388E3C);':''}"></div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="document.getElementById('_voteEndModal').remove()" style="flex:1;padding:12px;border:2px solid #BDBDBD;border-radius:14px;background:white;color:#666;font-family:'Jua';font-size:15px;cursor:pointer;transition:0.15s;" onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background='white'">취소</button>
+                        <button ${already?'disabled':''} onclick="window._plzCastVoteEnd()" style="flex:2;padding:12px;border:none;border-radius:14px;background:${already?'#BDBDBD':'linear-gradient(135deg,#EF5350,#C62828)'};color:white;font-family:'Jua';font-size:15px;cursor:${already?'default':'pointer'};box-shadow:${already?'none':'0 4px 0 rgba(198,40,40,0.4)'};transition:0.1s;" ${already?'':'onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"'}>${already?'✅ 투표 완료':'🗳️ 종료 투표'}</button>
+                    </div>
+                </div>
+            </div>`;
+            el.onclick = e => { if(e.target===el) el.remove(); };
+            document.body.appendChild(el);
+        });
+    };
+
+    // 실제 투표 동작 (모달 버튼이 호출)
+    window._plzCastVoteEnd = function() {
+        if(!me) return;
+        getPlzRef().child('endVote').child(me.cd).set(true);
+        getPlzRef().child('endVote').once('value', snap => {
+            const votes = Object.keys(snap.val()||{}).length;
+            let total = 0;
+            const ig = window._iceTagState; if(ig && ig.participants) total = Math.max(total, ig.participants.length);
+            const hg = window._hideSeekState; if(hg && hg.participants) total = Math.max(total, hg.participants.length);
+            const lg = window._liarState; if(lg && lg.players) total = Math.max(total, lg.players.length);
+            const mg = window._mafiaState; if(mg && mg.roles) total = Math.max(total, Object.keys(mg.roles).length);
+            if(total === 0) total = Object.keys(_plzUserCache||{}).filter(u=>u!=='teacher_main').length;
+            const need = Math.ceil(total / 2);
+            // 모달 갱신
+            const modal = document.getElementById('_voteEndModal');
+            if(modal) {
+                modal.remove();
+                if(votes < need) window._plzVoteEnd(); // 다시 열어서 투표 완료 상태 반영
+            }
+            if(votes >= need) {
+                try { getPlzRef().child('chat').push({ sys:true, nm:'🗳️', msg:`과반수 동의로 게임이 종료되었어요! (${votes}/${total})`, ts:Date.now() }); } catch(_){}
+                window._endAllPlzGames();
+            }
+        });
+    };
+    // 강제 종료 투표 버튼 가시성 갱신
+    window._updatePlzVoteBtn = function() {
+        const b = document.getElementById('plzVoteEndBtn'); if(!b) return;
+        const active = window._anyPlzGameActive && window._anyPlzGameActive();
+        const meCd = me && me.cd;
+        const isSpec = meCd && window._isPlzSpectator && window._isPlzSpectator(meCd);
+        b.style.display = (active && meCd && meCd!=='teacher_main' && !isSpec) ? '' : 'none';
+    };
+    // 인원 부족 시 자동 종료 체크
+    window._checkPlzMinPlayers = function() {
+        const liveUids = new Set(Object.keys(_plzUserCache||{}).filter(u=>u!=='teacher_main'));
+        const ig = window._iceTagState;
+        if(ig && ig.active && Array.isArray(ig.participants)) {
+            const alive = ig.participants.filter(u=>liveUids.has(u)).length;
+            if(alive < 2) { try{ getPlzRef().child('game').remove(); }catch(_){} }
+        }
+        const hg = window._hideSeekState;
+        if(hg && hg.active && Array.isArray(hg.participants)) {
+            const alive = hg.participants.filter(u=>liveUids.has(u)).length;
+            if(alive < 2) { try{ getPlzRef().child('hideseek').remove(); }catch(_){} }
+        }
+        const lg = window._liarState;
+        if(lg && lg.on && Array.isArray(lg.players)) {
+            const alive = lg.players.filter(u=>liveUids.has(u)).length;
+            if(alive < 3) { try{ getPlzRef().child('liar').remove(); }catch(_){} }
+        }
+        const mg = window._mafiaState;
+        if(mg && mg.on && mg.roles) {
+            const alive = Object.keys(mg.roles).filter(u=>liveUids.has(u) && mg.alive && mg.alive[u]).length;
+            if(alive < 3) { try{ getPlzRef().child('mafia').remove(); }catch(_){} }
+        }
+    };
+
+    // 얼음땡 승자 모달 — 다음 술래로 이어서 시작할지 확인
+    function _hsFmtDur(ms){
+        const s = Math.max(0, Math.floor(ms/1000));
+        const m = Math.floor(s/60), sec = s%60;
+        return `${m}분 ${String(sec).padStart(2,'0')}초`;
+    }
+
+    window._hideSeekWinnerModal = function(g) {
+        g = g || {};
+        const outcome = g.outcome || 'seeker_win';
+        const isSeekerWin = outcome === 'seeker_win';
+        const dur = _hsFmtDur(g.durationMs || 0);
+        const myNm = me?.nm || '나';
+        window._plzPlayResultSnd && window._plzPlayResultSnd('win');
+        document.getElementById('_hsWinModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_hsWinModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.25s ease-out;';
+        el.innerHTML = `
+        <style>@keyframes hsBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}</style>
+        <div style="background:linear-gradient(160deg,#F3E5F5 0%,#E1BEE7 100%);border-radius:24px;padding:0;width:min(380px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.45);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;border:3px solid #AB47BC;">
+            <div style="background:linear-gradient(135deg,${isSeekerWin?'#7B1FA2,#4A148C':'#66BB6A,#2E7D32'});padding:20px 24px;text-align:center;color:white;">
+                <div style="font-size:54px;line-height:1;animation:hsBounce 1s ease-in-out infinite;">${isSeekerWin?'🔍':'🙈'}</div>
+                <div style="font-size:22px;font-weight:bold;font-family:'Jua';margin-top:4px;letter-spacing:0.5px;">${isSeekerWin?'술래 승리!':'도망자 승리!'}</div>
+            </div>
+            <div style="padding:22px 24px;text-align:center;">
+                <div style="background:white;border-radius:14px;padding:14px 16px;border:2px solid #E1BEE7;margin-bottom:14px;font-family:'Jua';">
+                    <div style="font-size:13px;color:#888;margin-bottom:4px;">⏱️ 걸린 시간</div>
+                    <div style="font-size:18px;color:#7B1FA2;font-weight:bold;">${dur}</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#FFF8E1,#FFE082);border-radius:14px;padding:16px;border:2px solid #FFD54F;margin-bottom:18px;font-family:'Jua';">
+                    <div style="font-size:13px;color:#8D6E63;margin-bottom:4px;">🏆 다음 술래</div>
+                    <div style="font-size:22px;color:#E65100;font-weight:bold;">${myNm} (나)</div>
+                    <div style="font-size:11px;color:#A1887F;margin-top:4px;">이어서 시작할까요?</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button style="flex:1;padding:12px;border:2px solid #BDBDBD;border-radius:14px;background:white;color:#666;font-family:'Jua';font-size:15px;cursor:pointer;" onclick="document.getElementById('_hsWinModal').remove();getPlzRef().child('hideseek').remove();">취소</button>
+                    <button style="flex:2;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#AB47BC,#7B1FA2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(74,20,140,0.4);" onclick="document.getElementById('_hsWinModal').remove();_hideSeekStartAsSeeker('${me?.cd||''}')">▶️ 다음 라운드 시작</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(el);
+    };
+
+    window._hideSeekResultModal = function(g) {
+        g = g || {};
+        const outcome = g.outcome || 'seeker_win';
+        const isSeekerWin = outcome === 'seeker_win';
+        const dur = _hsFmtDur(g.durationMs || 0);
+        const winnerNm = (g.nextSeekerId && _plzUserCache[g.nextSeekerId]?.nm) || '학생';
+        const seekerIds = g.seekerIds || [];
+        const wasSeeker = me && seekerIds.includes(me.cd);
+        const wasFound = me && g.found && g.found[me.cd];
+        const myResult = wasSeeker
+            ? (isSeekerWin ? '🔍 모두 찾았어요!' : '😢 시간 안에 못 찾았어요')
+            : (isSeekerWin ? (wasFound ? '🙈 잡혔어요' : '🤔 아직 안 잡혔는데?!') : (wasFound ? '🙈 잡혔지만 우리 팀 승리!' : '🌿 끝까지 안 들켰어요!'));
+        // 효과음: 내가 이긴 진영이면 win, 아니면 lose
+        const iWon = (wasSeeker && isSeekerWin) || (!wasSeeker && !isSeekerWin);
+        window._plzPlayResultSnd && window._plzPlayResultSnd(iWon ? 'win' : 'lose');
+        document.getElementById('_hsResultModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_hsResultModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.25s ease-out;';
+        el.innerHTML = `
+        <div style="background:linear-gradient(160deg,${isSeekerWin?'#F3E5F5,#E1BEE7':'#E8F5E9,#C8E6C9'} 100%);border-radius:24px;padding:0;width:min(360px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.45);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;border:3px solid ${isSeekerWin?'#AB47BC':'#66BB6A'};">
+            <div style="background:linear-gradient(135deg,${isSeekerWin?'#7B1FA2,#4A148C':'#66BB6A,#388E3C'});padding:18px 24px;text-align:center;color:white;">
+                <div style="font-size:48px;line-height:1;animation:hsBounce 1s ease-in-out infinite;">${isSeekerWin?'🔍':'🙈'}</div>
+                <div style="font-size:20px;font-weight:bold;font-family:'Jua';margin-top:4px;">${isSeekerWin?'술래 승리!':'도망자 승리!'}</div>
+            </div>
+            <div style="padding:20px 22px;text-align:center;font-family:'Jua';">
+                <div style="font-size:15px;color:#3E2723;margin-bottom:14px;font-weight:bold;">${myResult}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+                    <div style="background:white;border-radius:12px;padding:10px;border:2px solid ${isSeekerWin?'#E1BEE7':'#C8E6C9'};">
+                        <div style="font-size:11px;color:#888;">⏱️ 걸린 시간</div>
+                        <div style="font-size:15px;color:#3E2723;font-weight:bold;margin-top:2px;">${dur}</div>
+                    </div>
+                    <div style="background:white;border-radius:12px;padding:10px;border:2px solid ${isSeekerWin?'#E1BEE7':'#C8E6C9'};">
+                        <div style="font-size:11px;color:#888;">🏆 다음 술래</div>
+                        <div style="font-size:15px;color:#E65100;font-weight:bold;margin-top:2px;">${winnerNm}</div>
+                    </div>
+                </div>
+                <button style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#AB47BC,#7B1FA2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(74,20,140,0.4);" onclick="document.getElementById('_hsResultModal').remove()">확인</button>
+            </div>
+        </div>`;
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
+        setTimeout(()=>{ document.getElementById('_hsResultModal')?.remove(); }, 7000);
+    };
+    window._hideSeekStartAsSeeker = function(seekerId) {
         const candidates = Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main');
-        let nextTagger = winnerId && candidates.includes(winnerId) ? winnerId : null;
-        if(!nextTagger && candidates.length >= 2) {
-            nextTagger = candidates[Math.floor(Math.random()*candidates.length)];
-        }
-        if(nextTagger) {
-            const ROUND_MS = 5 * 60 * 1000;
-            getPlzRef().child('game').set({
-                mode: 'icetag',
-                active: true,
-                taggerId: nextTagger,
-                startedAt: Date.now() + 5000,
-                roundEndAt: Date.now() + 5000 + ROUND_MS,
-                frozen: {}
-            });
-        } else {
-            getPlzRef().child('game').remove();
-        }
+        if(candidates.length < 3) { alert('3명 이상 모여야 해요.'); getPlzRef().child('hideseek').remove(); return; }
+        const ANNOUNCE_MS = 4000, HIDE_MS = 10000, PLAY_MS = 3 * 60 * 1000;
+        getPlzRef().child('hideseek').set({
+            active: true,
+            seekerIds: [seekerId],
+            participants: candidates,
+            hideStartAt: Date.now(),
+            playStartAt: Date.now() + ANNOUNCE_MS + HIDE_MS,
+            endAt: Date.now() + ANNOUNCE_MS + HIDE_MS + PLAY_MS,
+            found: {},
+            announce: { reason: 'continue', newSeekerNm: _plzUserCache[seekerId]?.nm||'', ts: Date.now() }
+        });
+    };
+
+    // 광장 게임 결과 효과음 (라이어 게임 패턴 재사용)
+    window._plzPlayResultSnd = function(kind){
+        try {
+            const ctx = window._lrAudioCtx || (window._lrAudioCtx = new (window.AudioContext||window.webkitAudioContext)());
+            if(ctx.state === 'suspended') ctx.resume();
+            const t = ctx.currentTime;
+            const beep = (f, dur, delay, gain, wave) => {
+                const o = ctx.createOscillator(), g = ctx.createGain();
+                o.type = wave || 'sine'; o.frequency.value = f;
+                g.gain.setValueAtTime(0, t+delay);
+                g.gain.linearRampToValueAtTime(gain ?? 0.18, t+delay+0.02);
+                g.gain.exponentialRampToValueAtTime(0.001, t+delay+dur);
+                o.connect(g); g.connect(ctx.destination);
+                o.start(t+delay); o.stop(t+delay+dur+0.05);
+            };
+            if(kind === 'win'){
+                // 상승 팡파레 (도-미-솔-도)
+                beep(523,0.18,0,0.20,'square');
+                beep(659,0.18,0.15,0.20,'square');
+                beep(784,0.25,0.30,0.22,'square');
+                beep(1046,0.45,0.50,0.24,'square');
+            } else if(kind === 'lose'){
+                // 하강 멜로디
+                beep(440,0.20,0,0.18,'triangle');
+                beep(330,0.25,0.20,0.18,'triangle');
+                beep(220,0.45,0.45,0.20,'sawtooth');
+            } else { // 'next' — 다음 술래에게 (밝은 시작 사운드)
+                beep(659,0.15,0,0.20,'sine');
+                beep(880,0.20,0.12,0.22,'sine');
+                beep(1175,0.35,0.28,0.24,'sine');
+            }
+        } catch(_){}
+    };
+
+    // 시간 포맷 (mm:ss)
+    function _iceTagFmtDur(ms){
+        const s = Math.max(0, Math.floor(ms/1000));
+        const m = Math.floor(s/60), sec = s%60;
+        return `${m}분 ${String(sec).padStart(2,'0')}초`;
+    }
+
+    window._iceTagWinnerModal = function(g) {
+        g = g || window._iceTagState || {};
+        const outcome = g.outcome || 'tagger_win';
+        const isTaggerWin = outcome === 'tagger_win';
+        const dur = _iceTagFmtDur(g.durationMs || 0);
+        const myNm = me?.nm || '나';
+        // 다음 술래 = 마지막으로 언 사람(술래 승) 또는 끝까지 살아남은 사람(도망자 승) — 어느 쪽이든 본인은 "주인공"이므로 win 사운드
+        window._plzPlayResultSnd && window._plzPlayResultSnd('win');
+        document.getElementById('_iceTagWinModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_iceTagWinModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99999;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.25s ease-out;';
+        el.innerHTML = `
+        <style>@keyframes iceTagPopIn{from{transform:scale(0.7);opacity:0;}to{transform:scale(1);opacity:1;}}@keyframes iceTagBounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}</style>
+        <div style="background:linear-gradient(160deg,#E3F2FD 0%,#BBDEFB 100%);border-radius:24px;padding:0;width:min(380px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.45);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;border:3px solid #42A5F5;">
+            <div style="background:linear-gradient(135deg,${isTaggerWin?'#FF7043,#E64A19':'#42A5F5,#1976D2'});padding:20px 24px;text-align:center;color:white;">
+                <div style="font-size:54px;line-height:1;animation:iceTagBounce 1s ease-in-out infinite;">${isTaggerWin?'🔥':'🏃'}</div>
+                <div style="font-size:22px;font-weight:bold;font-family:'Jua';margin-top:4px;letter-spacing:0.5px;">${isTaggerWin?'술래 승리!':'도망자 승리!'}</div>
+            </div>
+            <div style="padding:22px 24px;text-align:center;">
+                <div style="background:white;border-radius:14px;padding:14px 16px;border:2px solid #BBDEFB;margin-bottom:14px;font-family:'Jua';">
+                    <div style="font-size:13px;color:#888;margin-bottom:4px;">⏱️ 걸린 시간</div>
+                    <div style="font-size:18px;color:#1976D2;font-weight:bold;">${dur}</div>
+                </div>
+                <div style="background:linear-gradient(135deg,#FFF8E1,#FFE082);border-radius:14px;padding:16px;border:2px solid #FFD54F;margin-bottom:18px;font-family:'Jua';">
+                    <div style="font-size:13px;color:#8D6E63;margin-bottom:4px;">🏆 다음 술래</div>
+                    <div style="font-size:22px;color:#E65100;font-weight:bold;">${myNm} (나)</div>
+                    <div style="font-size:11px;color:#A1887F;margin-top:4px;">이어서 시작할까요?</div>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button style="flex:1;padding:12px;border:2px solid #BDBDBD;border-radius:14px;background:white;color:#666;font-family:'Jua';font-size:15px;cursor:pointer;" onclick="document.getElementById('_iceTagWinModal').remove();getPlzRef().child('game').remove();">취소</button>
+                    <button style="flex:2;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#42A5F5,#1976D2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(21,101,192,0.4);" onclick="document.getElementById('_iceTagWinModal').remove();_iceTagStartAsTagger('${me?.cd||''}')">▶️ 다음 라운드 시작</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(el);
+    };
+
+    // 다른 학생들에게 보여줄 결과 모달
+    window._iceTagResultModal = function(g) {
+        g = g || {};
+        const outcome = g.outcome || 'tagger_win';
+        const isTaggerWin = outcome === 'tagger_win';
+        const dur = _iceTagFmtDur(g.durationMs || 0);
+        const winnerNm = (g.winnerId && _plzUserCache[g.winnerId]?.nm) || '학생';
+        // 내가 술래였는지
+        const taggerIds = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
+        const wasTagger = me && taggerIds.includes(me.cd);
+        const wasFrozen = me && g.frozen && g.frozen[me.cd];
+        const myResult = wasTagger
+            ? (isTaggerWin ? '🔥 내가 이겼어요!' : '😢 시간 안에 못 잡았어요')
+            : (isTaggerWin ? (wasFrozen ? '🧊 잡혔어요' : '🤔 마지막까지 안 잡혔는데...') : (wasFrozen ? '🧊 잡혔지만 우리 팀 승리!' : '🏃 끝까지 도망 성공!'));
+        // 효과음: 내가 이긴 진영이면 win, 아니면 lose
+        const iWon = (wasTagger && isTaggerWin) || (!wasTagger && !isTaggerWin);
+        window._plzPlayResultSnd && window._plzPlayResultSnd(iWon ? 'win' : 'lose');
+        document.getElementById('_iceTagResultModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_iceTagResultModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.25s ease-out;';
+        el.innerHTML = `
+        <div style="background:linear-gradient(160deg,${isTaggerWin?'#FFEBEE,#FFCDD2':'#E8F5E9,#C8E6C9'} 100%);border-radius:24px;padding:0;width:min(360px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.45);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;border:3px solid ${isTaggerWin?'#EF5350':'#66BB6A'};">
+            <div style="background:linear-gradient(135deg,${isTaggerWin?'#FF7043,#E64A19':'#66BB6A,#388E3C'});padding:18px 24px;text-align:center;color:white;">
+                <div style="font-size:48px;line-height:1;animation:iceTagBounce 1s ease-in-out infinite;">${isTaggerWin?'🔥':'🏃'}</div>
+                <div style="font-size:20px;font-weight:bold;font-family:'Jua';margin-top:4px;">${isTaggerWin?'술래 승리!':'도망자 승리!'}</div>
+            </div>
+            <div style="padding:20px 22px;text-align:center;font-family:'Jua';">
+                <div style="font-size:15px;color:#3E2723;margin-bottom:14px;font-weight:bold;">${myResult}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+                    <div style="background:white;border-radius:12px;padding:10px;border:2px solid ${isTaggerWin?'#FFCDD2':'#C8E6C9'};">
+                        <div style="font-size:11px;color:#888;">⏱️ 걸린 시간</div>
+                        <div style="font-size:15px;color:#3E2723;font-weight:bold;margin-top:2px;">${dur}</div>
+                    </div>
+                    <div style="background:white;border-radius:12px;padding:10px;border:2px solid ${isTaggerWin?'#FFCDD2':'#C8E6C9'};">
+                        <div style="font-size:11px;color:#888;">🏆 다음 술래</div>
+                        <div style="font-size:15px;color:#E65100;font-weight:bold;margin-top:2px;">${winnerNm}</div>
+                    </div>
+                </div>
+                <button style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#42A5F5,#1976D2);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(21,101,192,0.4);" onclick="document.getElementById('_iceTagResultModal').remove()">확인</button>
+            </div>
+        </div>`;
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
+        // 7초 후 자동 닫기
+        setTimeout(()=>{ document.getElementById('_iceTagResultModal')?.remove(); }, 7000);
+    };
+    window._iceTagStartAsTagger = function(taggerId) {
+        const candidates = Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main');
+        if(candidates.length < 3) { alert('3명 이상 모여야 해요.'); getPlzRef().child('game').remove(); return; }
+        if(!candidates.includes(taggerId)) taggerId = candidates[Math.floor(Math.random()*candidates.length)];
+        const ROUND_MS = 5 * 60 * 1000;
+        getPlzRef().child('game').set({
+            mode:'icetag', active:true,
+            taggerId, taggerIds:[taggerId],
+            participants: candidates,
+            startedAt: Date.now()+5000, roundEndAt: Date.now()+5000+ROUND_MS, frozen:{}
+        });
+    };
+
+    window._iceTagEnd = function(winnerId, outcome) {
+        // outcome: 'tagger_win' (모두 얼림) | 'runner_win' (시간 초과 생존)
+        const g = window._iceTagState;
+        const startedAt = g?.startedAt || Date.now();
+        getPlzRef().child('game').update({
+            active:false,
+            endedAt: Date.now(),
+            winnerId: winnerId||null,
+            outcome: outcome || null,
+            durationMs: Math.max(0, Date.now() - startedAt)
+        });
+        try {
+            if(winnerId && _plzUserCache[winnerId]) {
+                const wnm = _plzUserCache[winnerId].nm || '학생';
+                const msg = outcome==='tagger_win' ? `🔥 술래 승리! 다음 술래는 ${wnm}님!` : `🏃 도망자 승리! 다음 술래는 ${wnm}님!`;
+                getPlzRef().child('chat').push({ sys:true, nm:'🧊', msg, ts:Date.now() });
+            }
+        } catch(_){}
+        // 8초 후 게임 상태 완전 제거 (모달 표시 시간 확보)
+        setTimeout(()=>{ try{ getPlzRef().child('game').remove(); }catch(_){} }, 8000);
     };
 
     function _iceTagSubscribe() {
         const ref = getPlzRef().child('game');
         let lastFrozenSet = new Set();
+        let _winnerPromptedFor = null;
         const fn = snap => {
             const g = snap.val();
             const prevActive = !!window._iceTagState;
             window._iceTagState = (g && g.mode==='icetag' && g.active) ? g : null;
+            // 게임 종료 알림
+            if(g && g.mode==='icetag' && g.active===false && g.endedAt && _winnerPromptedFor !== g.endedAt){
+                _winnerPromptedFor = g.endedAt;
+                if(me && me.cd===g.winnerId){
+                    // 승자(다음 술래): 다음 라운드 시작 여부 묻기
+                    window._iceTagWinnerModal && window._iceTagWinnerModal(g);
+                } else if(me && me.cd !== 'teacher_main'){
+                    // 나머지: 결과 모달
+                    window._iceTagResultModal && window._iceTagResultModal(g);
+                }
+            }
             // 게임 시작 시 인트로
             if(g && g.mode==='icetag' && g.active && g.startedAt){
                 window._showGameIntro('ice_'+g.startedAt, '🧊', '얼음땡', [
@@ -18366,6 +19151,8 @@ window.addCharRow = function() {
                 lastFrozenSet = new Set();
             }
             _iceTagUpdateUI();
+            if(window._renderSpectatorBadges) window._renderSpectatorBadges();
+            if(window._updatePlzVoteBtn) window._updatePlzVoteBtn();
         };
         ref.on('value', fn);
         plzListeners.push({ ref, type:'value', fn, who:'student' });
@@ -18384,21 +19171,18 @@ window.addCharRow = function() {
             });
             return;
         }
-        // 게임 중: 시작 버튼을 "게임 종료"로 대체
-        if(btn) {
-            btn.style.display='';
-            btn.textContent='🛑 게임 종료';
-            btn.disabled=false;
-            btn.style.opacity='';
-            btn.style.background='rgba(239,83,80,0.9)';
-            btn.onclick = () => { getPlzRef().child('game').remove(); };
-        }
+        // 게임 중: 시작 버튼 숨김 (종료는 종료 투표로 처리)
+        if(btn) { btn.style.display='none'; }
+        const _parts = Array.isArray(g.participants) ? g.participants : null;
+        const _amSpec = _parts && me && !_parts.includes(me.cd);
         if(st) {
             const frozenCnt = g.frozen ? Object.keys(g.frozen).length : 0;
             const taggerIdsLocal = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
-            const totalStu = Object.keys(_plzUserCache).filter(u => u !== 'teacher_main').length - taggerIdsLocal.length;
+            const totalStu = (_parts ? _parts.length : Object.keys(_plzUserCache).filter(u => u !== 'teacher_main').length) - taggerIdsLocal.length;
             const taggerNms = taggerIdsLocal.map(uid => _plzUserCache[uid]?.nm || '술래').join(', ');
-            const myRole = taggerIdsLocal.includes(me.cd) ? '🔥 나는 술래!' : (g.frozen && g.frozen[me.cd] ? '🧊 얼었어요!' : '🏃 도망쳐요!');
+            const myRole = _amSpec ? '👻 참관 중'
+                : taggerIdsLocal.includes(me.cd) ? '🔥 나는 술래!'
+                : (g.frozen && g.frozen[me.cd] ? '🧊 얼었어요!' : '🏃 도망쳐요!');
             const taggerNm = taggerNms;
             st.style.display='';
             const remain = g.roundEndAt ? Math.max(0, Math.ceil((g.roundEndAt - Date.now())/1000)) : null;
@@ -18406,17 +19190,19 @@ window.addCharRow = function() {
             st.innerHTML = `${myRole} · 술래: <b>${taggerNm}</b> · 얼음 ${frozenCnt}/${totalStu}${timeStr}`;
         }
         const taggerIds = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
-        // 캐릭터 표시 갱신
+        // 캐릭터 표시 갱신 — 참관자에는 술래/얼음 배지 부여 안 함
         Object.keys(_plzUserCache).forEach(uid => {
             const el = document.querySelector(`.plz-char[data-uid="${uid}"]`);
             if(!el) return;
-            el.classList.toggle('tagger', taggerIds.includes(uid));
-            el.classList.toggle('frozen', !!(g.frozen && g.frozen[uid]));
+            const isPart = !_parts || _parts.includes(uid);
+            el.classList.toggle('tagger', isPart && taggerIds.includes(uid));
+            el.classList.toggle('frozen', isPart && !!(g.frozen && g.frozen[uid]));
             el.querySelectorAll('.role-badge').forEach(b => b.remove());
+            if(!isPart) return; // 참관자는 배지 없음
             if(taggerIds.includes(uid)) {
                 const b = document.createElement('div');
                 b.className = 'role-badge';
-                b.style.cssText = 'position:absolute;top:-32px;left:50%;transform:translateX(-50%);font-size:20px;pointer-events:none;z-index:3;';
+                b.style.cssText = 'position:absolute;top:-44px;left:50%;transform:translateX(-50%);font-size:32px;pointer-events:none;z-index:5;animation:taggerFireBadge 0.5s ease-in-out infinite alternate;text-shadow:0 0 8px #FF6F00,0 0 16px #FFD600;';
                 b.textContent = '🔥';
                 el.appendChild(b);
             } else if(g.frozen && g.frozen[uid]) {
@@ -18432,6 +19218,9 @@ window.addCharRow = function() {
     function _iceTagCheckCollision() {
         const g = window._iceTagState;
         if(!g || !me || me.cd === 'teacher_main') return;
+        // 참관자(중간 입장자)는 충돌 판정에서 제외 — 잡지도 풀지도 못함, 잡히지도 않음
+        const participants = Array.isArray(g.participants) ? g.participants : null;
+        if(participants && !participants.includes(me.cd)) return;
         const frozen = g.frozen || {};
         const myFrozen = !!frozen[me.cd];
         const taggerIds = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
@@ -18440,6 +19229,7 @@ window.addCharRow = function() {
         Object.entries(_plzUserCache).forEach(([uid, u]) => {
             if(uid === me.cd || uid === 'teacher_main') return;
             if(taggerIds.includes(uid)) return; // 다른 술래는 건너뛰기
+            if(participants && !participants.includes(uid)) return; // 참관자는 건너뛰기
             // 투명화 중이어도 접촉은 판정됨 (보이지만 않을 뿐)
             const dx = (u.x||0) - _plzPos.x;
             const dy = (u.y||0) - _plzPos.y;
@@ -18454,27 +19244,43 @@ window.addCharRow = function() {
     }
 
     // 라운드 시간 초과 시 자동 술래 교체 (첫 번째 술래만 실행해서 중복 방지)
+    // 게임 종료 체크를 누가 실행할지 결정 — 첫 술래 우선, 없으면 첫 참가자
+    function _iceTagAmCheckRunner(g) {
+        if(!me || !g) return false;
+        const taggerIds = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
+        const liveUids = new Set(Object.keys(_plzUserCache||{}));
+        const t0 = taggerIds[0];
+        if(t0 && liveUids.has(t0)) return t0 === me.cd;
+        // 첫 술래 오프라인 → 살아있는 참가자 중 첫 번째가 실행
+        const parts = Array.isArray(g.participants) ? g.participants : Object.keys(_plzUserCache).filter(u=>u!=='teacher_main');
+        const liveParts = parts.filter(u => liveUids.has(u));
+        return liveParts[0] === me.cd;
+    }
+
     function _iceTagRoundTimeoutCheck() {
         const g = window._iceTagState;
-        const taggerIds = g?.taggerIds || (g?.taggerId ? [g.taggerId] : []);
-        if(!g || !me || taggerIds[0] !== me.cd) return;
+        if(!g || !_iceTagAmCheckRunner(g)) return;
         if(!g.roundEndAt || Date.now() < g.roundEndAt) return;
-        // 시간 초과: 일반 학생(도망자) 중 얼지 않은 사람이 "승자" → 다음 술래
-        const candidates = Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main' && uid !== g.taggerId);
+        const taggerIds = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
+        const parts = Array.isArray(g.participants) ? g.participants : null;
+        const baseCandidates = parts ? parts.slice() : Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main');
+        const candidates = baseCandidates.filter(uid => !taggerIds.includes(uid));
         const frozen = g.frozen || {};
         const survivors = candidates.filter(uid => !frozen[uid]);
         let nextTagger = survivors.length ? survivors[Math.floor(Math.random()*survivors.length)] : null;
-        // 생존자 없으면 현재 술래를 제외한 전원 중 랜덤
         if(!nextTagger && candidates.length) nextTagger = candidates[Math.floor(Math.random()*candidates.length)];
-        _iceTagEnd(nextTagger);
+        _iceTagEnd(nextTagger, 'runner_win');
     }
 
-    // 게임 종료 체크 (모든 도망자가 얼면 종료) — 첫 술래만 실행
+    // 게임 종료 체크 (모든 도망자가 얼면 종료) — 첫 술래(없으면 첫 참가자)가 실행
     function _iceTagEndCheckAsTagger() {
         const g = window._iceTagState;
-        const taggerIds = g?.taggerIds || (g?.taggerId ? [g.taggerId] : []);
-        if(!g || !me || taggerIds[0] !== me.cd) return;
-        const candidates = Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main' && !taggerIds.includes(uid));
+        if(!g || !_iceTagAmCheckRunner(g)) return;
+        const taggerIds = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
+        // 참관자(중간 입장자)는 제외 — participants 기준으로 도망자 산정
+        const parts = Array.isArray(g.participants) ? g.participants : null;
+        const baseCandidates = parts ? parts.slice() : Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main');
+        const candidates = baseCandidates.filter(uid => !taggerIds.includes(uid));
         if(candidates.length === 0) return;
         const frozen = g.frozen || {};
         const remaining = candidates.filter(uid => !frozen[uid]);
@@ -18485,7 +19291,7 @@ window.addCharRow = function() {
                 const ts = frozen[uid] || 0;
                 if(ts > lastTs) { lastTs = ts; last = uid; }
             });
-            _iceTagEnd(last);
+            _iceTagEnd(last, 'tagger_win');
         }
     }
 
@@ -18713,6 +19519,7 @@ window.addCharRow = function() {
                     ? `<img src="${cfg.customBg}" id="plzMapBg" style="display:block;width:100%;height:100%;object-fit:contain;position:absolute;inset:0;user-select:none;pointer-events:none;" draggable="false" onload="const mp=document.getElementById('plzMap');if(mp){mp.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;}">`
                     : `<div class="plz-map-bg" id="plzMapBg" style="background:#b8d4a8;"></div>`}
                 <button onclick="${me && me.cd === 'teacher_main' ? 'window.exitPlazaAsTeacher()' : 'window._studentExitPlaza()'}" style="position:absolute;top:10px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(239,83,80,0.9);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🚪 나가기</button>
+                ${me && me.cd !== 'teacher_main' ? `<button id="plzVoteEndBtn" onclick="window._plzVoteEnd()" style="position:absolute;top:10px;right:100px;z-index:30;padding:6px 12px;border-radius:16px;border:none;background:rgba(255,167,38,0.95);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:none;">🗳️ 종료 투표</button>` : ''}
                 ${me && me.cd === 'teacher_main' ? `<div style="position:absolute;top:90px;left:10px;z-index:30;background:rgba(0,0,0,0.55);border-radius:14px;padding:4px 10px;font-family:'Jua';color:white;font-size:12px;white-space:nowrap;line-height:1;">
                     <span style="vertical-align:middle;">속도</span> <select id="tchSpeedSel" onchange="window._setTchSpeed(this.value)" style="background:white;color:#333;border:none;border-radius:6px;padding:2px 6px;font-family:'Jua';font-size:12px;cursor:pointer;vertical-align:middle;">
                         <option value="1">1배</option><option value="2">2배</option><option value="3" selected>3배</option><option value="4">4배</option><option value="5">5배</option>
@@ -18733,14 +19540,15 @@ window.addCharRow = function() {
                 </div>
                 <svg id="plzObsOverlay" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none;z-index:20;"></svg>` : ''}
                 ${(() => {
-                    // 룸 cfg가 Firebase에 누락된 경우 db.cfg.plz로 폴백 (룸 복제 후 onchange 미발생 등)
+                    // 게임 플래그: 룸 cfg를 우선시. 글로벌 폴백은 기본 게임(얼음땡/숨바꼭질)에만 적용 — 그렇지 않으면 다른 방 설정이 새어 들어옴.
                     const localPlz = (db.cfg && db.cfg.plz) || {};
                     const _g = k => (cfg[k] !== undefined) ? cfg[k] : localPlz[k];
                     const iceOn = _g('iceTagOn') !== false;
                     const hsOn = _g('hideSeekOn') !== false;
-                    const oxOn = !!_g('oxQuizOn');
-                    const mfOn = !!_g('mafiaOn');
-                    const lrOn = !!_g('liarOn');
+                    // OX/마피아/라이어는 룸에서 명시적으로 켠 경우만 활성화 (글로벌 폴백 금지)
+                    const oxOn = cfg.oxQuizOn === true;
+                    const mfOn = cfg.mafiaOn === true;
+                    const lrOn = cfg.liarOn === true;
                     let html = '';
                     if(iceOn && !oxOn) html += `<button id="plzIceTagBtn" onclick="window._iceTagStart()" style="position:absolute;top:50px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(33,150,243,0.9);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🧊 얼음땡</button>`;
                     if(hsOn && !oxOn) html += `<button id="plzHideBtn" onclick="window._hideSeekStart()" style="position:absolute;top:90px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(142,36,170,0.9);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🔎 숨바꼭질</button>`;
@@ -18751,7 +19559,7 @@ window.addCharRow = function() {
                 })()}
                 <div id="liarHud" style="display:none;position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:none;"></div>
                 <div id="liarRoleHud" style="display:none;position:absolute;top:14px;left:14px;z-index:36;pointer-events:auto;"></div>
-                <div id="liarDescribePanel" style="display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:auto;"></div>
+                <div id="liarDescribePanel" style="display:none;position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:auto;"></div>
                 <div id="oxQuizOverlay" style="display:none;position:absolute;inset:0;z-index:5;pointer-events:none;"></div>
                 <div id="mafiaHud" style="display:none;position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:none;"></div>
                 <div id="mafiaRoleHud" style="display:none;position:absolute;top:14px;left:14px;z-index:36;pointer-events:none;"></div>
@@ -19023,6 +19831,7 @@ window.addCharRow = function() {
             _plzUpdateOnlinePanel();
             if(typeof _iceTagUpdateUI === 'function') _iceTagUpdateUI();
             if(typeof _hideSeekUpdateUI === 'function') _hideSeekUpdateUI();
+            if(window._updatePlzVoteBtn) window._updatePlzVoteBtn();
         };
         // child_removed: 유저 퇴장 → 해당 요소만 제거
         const fnRem = snap => {
@@ -19032,15 +19841,12 @@ window.addCharRow = function() {
             if(el) el.remove();
             _plzUpdateOnlinePanel();
             if(typeof _iceTagUpdateUI === 'function') _iceTagUpdateUI();
-            // 방이 비거나 학생이 2명 미만이면 진행중 얼음땡 자동 종료
-            const studentCnt = Object.keys(_plzUserCache).filter(u => u !== 'teacher_main').length;
-            if(window._iceTagState && studentCnt < 2) {
-                getPlzRef().child('game').remove();
-            }
             // 마피아 진행 중 이탈자 → 사망 처리 + leadUid 인계
             if(window._mafiaHandleLeave) window._mafiaHandleLeave(leftUid);
             // 라이어 진행 중 이탈자
             if(window._liarHandleLeave) window._liarHandleLeave(leftUid);
+            // 게임별 인원 부족 자동 종료 체크
+            if(window._checkPlzMinPlayers) window._checkPlzMinPlayers();
         };
         // child_changed: 데이터 변경 → x/y만 바뀌면 style만 업데이트, 나머지는 전체 렌더
         const fnChg = snap => {
@@ -19259,6 +20065,8 @@ window.addCharRow = function() {
             // OX 퀴즈 아웃: 유령 (회색톤 + 어두운 외곽선 + 머리 위 👻, 반투명 없음)
             const oxG = window._oxQuizState;
             const isOxOut = oxG && oxG.out && oxG.out[uid];
+            // 게임 참관자 (중간 입장자) — 회색 + 머리 위 👁
+            const isSpectator = !isOxOut && window._isPlzSpectator && window._isPlzSpectator(uid);
             if(isOxOut && !isInvis && !isTeacher) {
                 el.style.filter = 'grayscale(1) brightness(0.65) contrast(1.1) drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #1a1a1a)';
                 if(!el.querySelector('.ox-ghost-mark')) {
@@ -19268,9 +20076,21 @@ window.addCharRow = function() {
                     gh.style.cssText = 'position:absolute;top:-46px;left:50%;transform:translateX(-50%);font-size:34px;pointer-events:none;z-index:4;filter:none !important;opacity:1;text-shadow:0 2px 6px rgba(0,0,0,0.6);';
                     el.appendChild(gh);
                 }
+                el.querySelector('.spec-mark')?.remove();
+            } else if(isSpectator && !isInvis && !isTeacher) {
+                el.style.filter = 'grayscale(1) brightness(0.65) contrast(1.1) drop-shadow(0 0 2px #000) drop-shadow(0 0 4px #1a1a1a)';
+                if(!el.querySelector('.spec-mark')) {
+                    const sm = document.createElement('div');
+                    sm.className = 'spec-mark';
+                    sm.textContent = '👻';
+                    sm.style.cssText = 'position:absolute;top:-46px;left:50%;transform:translateX(-50%);font-size:34px;pointer-events:none;z-index:4;filter:none !important;opacity:1;text-shadow:0 2px 6px rgba(0,0,0,0.6);';
+                    el.appendChild(sm);
+                }
+                el.querySelector('.ox-ghost-mark')?.remove();
             } else {
                 if(!isInvis) el.style.filter = '';
                 el.querySelector('.ox-ghost-mark')?.remove();
+                el.querySelector('.spec-mark')?.remove();
             }
             // 숨바꼭질 깜빡임 효과 비활성화 (반투명 노출만 사용)
             el.classList.remove('hs-blink');
@@ -20401,6 +21221,13 @@ window.addCharRow = function() {
         // 채팅 금지 확인 (교사 제외)
         if(!isTeacher && _plzBanUntil[uid] && now < _plzBanUntil[uid]) {
             _plzShowBan(inp, Math.ceil((_plzBanUntil[uid] - now) / 1000));
+            return;
+        }
+
+        // 게임 참관자 (중간 입장자) 채팅 차단 — 모든 게임 공통
+        if(!isTeacher && window._isPlzSpectator && window._isPlzSpectator(uid)){
+            inp.value = ''; inp.placeholder = '👻 참관 중에는 채팅할 수 없어요';
+            setTimeout(() => { inp.placeholder = '메시지 입력 후 Enter...'; }, 2500);
             return;
         }
 
