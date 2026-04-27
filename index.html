@@ -8,9 +8,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="RPG 상점">
+    <meta name="application-name" content="RPG 상점">
     <meta name="theme-color" content="#FFB366">
     <title>RPG 상점</title>
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"RPG 상점","short_name":"RPG 상점","description":"우리반 RPG 이벤트 상점","start_url":".","scope":".","display":"standalone","orientation":"any","background_color":"%23FFFDF2","theme_color":"%23FFB366","lang":"ko","dir":"ltr","icons":[{"src":"data:image/svg+xml;utf8,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%23FFB366%27/><text y=%27.9em%27 font-size=%2780%27>🎪</text></svg>","sizes":"512x512","type":"image/svg+xml","purpose":"any maskable"}]}'>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎪</text></svg>">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23FFB366'/><text y='.9em' font-size='80'>🎪</text></svg>">
 
@@ -23,7 +24,8 @@
         /* === 공통 스타일 === */
         :root { --bg:#FFFDF2; --main:#FFB366; --act:#FF9F43; --dark:#5D4037; --shadow: 0 4px 15px rgba(0,0,0,0.1); color-scheme: light; }
         * { box-sizing:border-box; }
-        body { font-family:'Jua'; background:var(--bg); margin:0; background-image: radial-gradient(#FFE4B5 3px, transparent 3px); background-size: 40px 40px; display:flex; justify-content:center; align-items:center; height:100dvh; overflow:hidden; color:var(--dark); }
+        html { height:100%; }
+        body { font-family:'Jua'; background:var(--bg); margin:0; background-image: radial-gradient(#FFE4B5 3px, transparent 3px); background-size: 40px 40px; display:flex; justify-content:center; align-items:center; height:100vh; height:100dvh; height:var(--app-h, 100dvh); overflow:hidden; color:var(--dark); padding-top:env(safe-area-inset-top,0); padding-bottom:env(safe-area-inset-bottom,0); box-sizing:border-box; }
         ::-webkit-scrollbar { width: 12px; height: 12px; }
         ::-webkit-scrollbar-track { background: #FFF3E0; border-radius: 10px; margin: 5px; }
         ::-webkit-scrollbar-thumb { background: #FFB74D; border-radius: 10px; border: 3px solid #FFF3E0; }
@@ -784,7 +786,7 @@
             100% { transform:translateX(-50%) translateY(-3px) rotate(6deg) scale(1.15); }
         }
         .plz-char.hider-found { filter: drop-shadow(0 0 6px #FF9800) saturate(1.2); opacity:1 !important; }
-        .plz-char { position:absolute; transform:translate(-50%,-100%) scale(1.2); transform-origin:center bottom; transition:left 0.5s linear, top 0.5s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
+        .plz-char { position:absolute; transform:translate(-50%,-100%) scale(1.56); transform-origin:center bottom; transition:left 0.5s linear, top 0.5s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
         .plz-char.me { transition:none; }
         .plz-tit-slot { display:flex; justify-content:center; }
         .plz-nm-slot { display:flex; justify-content:center; margin-top:-4px; }
@@ -1162,8 +1164,8 @@
                         </div>
                         <div id="_gamesBody" style="max-height:0;overflow:hidden;transition:max-height 0.25s ease;">
                             <div style="padding:0 8px 10px;display:flex;flex-direction:column;gap:4px;overflow-x:hidden;overflow-y:auto;max-height:200px;">
-                                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_icetag_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🧊 얼음땡</label>
-                                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_hideseek_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🔎 숨바꼭질</label>
+                                <label oncontextmenu="event.preventDefault();window._setIceTagDuration&&window._setIceTagDuration();return false;" title="우클릭: 시간 설정" style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_icetag_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🧊 얼음땡 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
+                                <label oncontextmenu="event.preventDefault();window._setHideSeekDuration&&window._setHideSeekDuration();return false;" title="우클릭: 시간 설정" style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_hideseek_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🔎 숨바꼭질 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 단어 관리" oncontextmenu="event.preventDefault();window._liarWordEditor&&window._liarWordEditor();return false;"><input type="checkbox" id="plz_room_liar_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🎭 라이어 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_mafia_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🕵️ 마피아</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="체크 시 OX 퀴즈 방 — 인원 제한·전체 열기/닫기 무시"><input type="checkbox" id="plz_room_oxquiz_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">📝 OX 퀴즈</label>
@@ -1677,6 +1679,24 @@ const firebaseConfig = {
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
+    // 모바일/태블릿 브라우저(특히 삼성 인터넷) 뷰포트 보정 — visualViewport 사용해 실제 visible 영역으로 --app-h 갱신
+    (function _setupAppHeight(){
+        const setH = () => {
+            const h = (window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight;
+            document.documentElement.style.setProperty('--app-h', h + 'px');
+        };
+        setH();
+        window.addEventListener('resize', setH);
+        window.addEventListener('orientationchange', () => setTimeout(setH, 100));
+        if(window.visualViewport){
+            window.visualViewport.addEventListener('resize', setH);
+            window.visualViewport.addEventListener('scroll', setH);
+        }
+        // 페이지 로드 후 URL 바 자동 숨김으로 인한 변화도 반영
+        setTimeout(setH, 300);
+        setTimeout(setH, 1000);
+    })();
+
     const dbRef = firebase.database().ref('ClassData/EventShop');
 let _prevDbHash = ''; // 변경 감지용 해시
 let _renderLock = false; // 재진입 방지
@@ -1965,10 +1985,21 @@ let _renderLock = false; // 재진입 방지
         const urls = [];
         if(db.cfg && db.cfg.baseChar && db.cfg.baseChar.startsWith('http')) urls.push(db.cfg.baseChar);
         (db.avt||[]).forEach(a => { if(a.img) urls.push(a.img); if(a.img2) urls.push(a.img2); });
+        // 모든 광장 방 배경도 함께 프리로드 (첫 입장 시 지연 방지)
+        if(db.cfg && db.cfg.plzRooms) {
+            Object.values(db.cfg.plzRooms).forEach(room => {
+                const bg = room?.plz?.customBg;
+                if(bg) urls.push(bg);
+                const bgs = room?.plz?.customBgs;
+                if(Array.isArray(bgs)) bgs.forEach(u => u && urls.push(u));
+                else if(bgs) Object.values(bgs).forEach(u => u && urls.push(u));
+            });
+        }
         urls.forEach(url => {
             if(_preloadCache.has(url)) return;
             _preloadCache.add(url);
             const img = new Image();
+            img.decoding = 'async';
             img.src = url;
         });
     }
@@ -14457,14 +14488,17 @@ window.addCharRow = function() {
     // plz-fit 컨테이너 크기에 맞춰 plz-layout(2000×1200)을 transform: scale로 축소
     function _plzApplyFitScale() {
         const fits = document.querySelectorAll('.plz-fit');
+        const PLZ_DISPLAY_BOOST = 1.0; // 광장 표시 크기 (캐릭터만 별도로 확대)
         fits.forEach(fit => {
             const layout = fit.querySelector('.plz-layout');
             if(!layout) return;
             const w = fit.clientWidth, h = fit.clientHeight;
             if(!w || !h) return;
-            const s = Math.min(w/2000, h/1200, 1);
+            // 컨테이너에 맞춘 기본 fit 스케일에 1.3배 확대 (필요한 경우 overflow는 숨김)
+            const baseScale = Math.min(w/2000, h/1200, 1);
+            const s = baseScale * PLZ_DISPLAY_BOOST;
             layout.style.setProperty('--plzScale', s);
-            // 가운데 정렬 (스케일 후 남는 여백)
+            // 가운데 정렬 (확대로 음수가 되어도 0 이상으로)
             const offX = Math.max(0, (w - 2000*s) / 2);
             const offY = Math.max(0, (h - 1200*s) / 2);
             layout.style.marginLeft = offX + 'px';
@@ -15341,6 +15375,16 @@ window.addCharRow = function() {
             const isOpen = !!(meta.plz && meta.plz.open);
             return { rid, name, bg, maxCnt, isOpen };
         }); // 모든 방을 일단 렌더 → Firebase에서 실시간 open 상태로 닫힌 방 숨김
+        // 모든 방 배경 이미지를 즉시 프리로드 (특히 첫 번째 방이 늦게 뜨는 문제 해결)
+        rooms.forEach(r => {
+            if(r.bg && !window._plzBgPreloaded?.[r.bg]) {
+                if(!window._plzBgPreloaded) window._plzBgPreloaded = {};
+                window._plzBgPreloaded[r.bg] = true;
+                const img = new Image();
+                img.decoding = 'async';
+                img.src = r.bg;
+            }
+        });
         // 2행 배치 — 방 개수의 절반을 column 수로 (홀수면 첫 행이 한 칸 더)
         const cols = Math.max(1, Math.ceil(rooms.length / 2));
         container.innerHTML = `
@@ -15563,19 +15607,26 @@ window.addCharRow = function() {
             _hsShowAnnounce(`⚠️ 3명 이상 모여야 시작할 수 있어요!<br><span style="font-size:14px;color:#FFCDD2;">현재 ${candidates.length}명</span>`, 5500);
             return;
         }
-        const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-        const seekerCount = candidates.length >= 6 ? 2 : 1;
-        const seekerIds = shuffled.slice(0, seekerCount);
-        const HIDE_MS = 10000;   // 10초 숨기 시간
-        const PLAY_MS = 3 * 60 * 1000;   // 3분 찾기 시간
-        getPlzRef().child('hideseek').set({
-            active: true,
-            seekerIds,
-            participants: candidates, // 시작 시점 참여자 — 이후 입장자는 관전
-            hideStartAt: Date.now(),
-            playStartAt: Date.now() + HIDE_MS,
-            endAt: Date.now() + HIDE_MS + PLAY_MS,
-            found: {}
+        // 이전 술래 제외 후 랜덤
+        getPlzRef().child('hideSeekLastSeekers').once('value', snap => {
+            const lastVal = snap.val()||[];
+            const lastSet = new Set(Array.isArray(lastVal) ? lastVal : Object.values(lastVal));
+            let pool = candidates.filter(uid => !lastSet.has(uid));
+            if(pool.length === 0) pool = candidates.slice();
+            const shuffled = [...pool].sort(() => Math.random() - 0.5);
+            const seekerCount = candidates.length >= 6 ? 2 : 1;
+            const seekerIds = shuffled.slice(0, seekerCount);
+            const HIDE_MS = ((db.cfg?.hideSeekHideSec) || (db.cfg?.plz?.hideSeekHideSec) || 10) * 1000;
+            const PLAY_MS = ((db.cfg?.hideSeekPlaySec) || (db.cfg?.plz?.hideSeekPlaySec) || 180) * 1000;
+            getPlzRef().child('hideseek').set({
+                active: true,
+                seekerIds,
+                participants: candidates,
+                hideStartAt: Date.now(),
+                playStartAt: Date.now() + HIDE_MS,
+                endAt: Date.now() + HIDE_MS + PLAY_MS,
+                found: {}
+            });
         });
     };
 
@@ -15597,13 +15648,14 @@ window.addCharRow = function() {
                 _hideSeekUpdateUI();
                 return;
             }
-            // 게임 종료 처리 — 다음 술래에게는 시작 여부 모달, 나머지에게는 결과 모달
+            // 게임 종료 — 모두 결과창. 다음 술래(마지막 잡힌 사람)에게 추가로 수락 모달
             if(g && g.active===false && g.endedAt && _hsWinPrompted !== g.endedAt){
                 _hsWinPrompted = g.endedAt;
-                if(me && me.cd===g.nextSeekerId){
-                    window._hideSeekWinnerModal && window._hideSeekWinnerModal(g);
-                } else if(me && me.cd !== 'teacher_main'){
+                if(me && me.cd !== 'teacher_main'){
                     window._hideSeekResultModal && window._hideSeekResultModal(g);
+                    if(me.cd === g.nextSeekerId){
+                        setTimeout(()=>{ window._hideSeekWinnerModal && window._hideSeekWinnerModal(g); }, 1200);
+                    }
                 }
             }
             window._hideSeekState = (g && g.active) ? g : null;
@@ -15900,16 +15952,29 @@ window.addCharRow = function() {
             if(nextSeeker) {
                 const outcome = allFound ? 'seeker_win' : 'hider_win';
                 const startedAt = g.playStartAt || g.hideStartAt || Date.now();
-                const newSeekerNm = _plzUserCache[nextSeeker]?.nm || '학생';
+                // 다음 시작 시 이전 술래 제외 위해 별도 노드에 저장
+                if(seekerIds.length){
+                    try { getPlzRef().child('hideSeekLastSeekers').set(seekerIds); } catch(_){}
+                }
+                const _endedAt = Date.now();
                 getPlzRef().child('hideseek').update({
-                    active:false, endedAt: Date.now(),
+                    active:false, endedAt: _endedAt,
                     nextSeekerId: nextSeeker,
                     outcome,
-                    durationMs: Math.max(0, Date.now() - startedAt)
+                    durationMs: Math.max(0, _endedAt - startedAt)
                 });
-                const cmsg = outcome==='seeker_win' ? `🔍 술래 승리! 다음 술래는 ${newSeekerNm}님!` : `🙈 도망자 승리! 다음 술래는 ${newSeekerNm}님!`;
-                try { getPlzRef().child('chat').push({ sys:true, nm:'🙈', msg:cmsg, ts:Date.now() }); } catch(_){}
-                setTimeout(()=>{ try{ getPlzRef().child('hideseek').remove(); }catch(_){} }, 8000);
+                const newSeekerNm = _plzUserCache[nextSeeker]?.nm || '학생';
+                const cmsg = outcome==='seeker_win' ? `🔍 술래 승리! 다음 술래는 ${newSeekerNm}님` : `🙈 도망자 승리! 다음 술래는 ${newSeekerNm}님`;
+                try { getPlzRef().child('chat').push({ sys:true, nm:'🙈', msg:cmsg, ts:_endedAt }); } catch(_){}
+                // 8초 후 정리 — 단, 새 게임이 시작됐으면 건드리지 않음
+                setTimeout(()=>{
+                    getPlzRef().child('hideseek').once('value', s => {
+                        const cur = s.val();
+                        if(cur && cur.endedAt === _endedAt && cur.active === false){
+                            try{ getPlzRef().child('hideseek').remove(); }catch(_){}
+                        }
+                    });
+                }, 8000);
             } else {
                 getPlzRef().child('hideseek').remove();
             }
@@ -16207,12 +16272,13 @@ window.addCharRow = function() {
             if(mafG && mafG.on){
                 isSpec = !mafG.roles || !mafG.roles[uid];
             } else if(liarG && liarG.on){
-                isSpec = !liarG.players || !liarG.players.includes(uid);
+                const lp = Array.isArray(liarG.players) ? liarG.players : Object.values(liarG.players||{});
+                isSpec = lp.length > 0 && !lp.includes(uid);
             } else if(hsG && hsG.active){
-                const parts = hsG.participants || [];
+                const parts = Array.isArray(hsG.participants) ? hsG.participants : Object.values(hsG.participants||{});
                 if(parts.length) isSpec = !parts.includes(uid);
             } else if(igG && igG.active){
-                const parts = igG.participants || [];
+                const parts = Array.isArray(igG.participants) ? igG.participants : Object.values(igG.participants||{});
                 if(parts.length) isSpec = !parts.includes(uid);
             }
             // OX 유령 진행 중이면 OX 효과가 우선 (filter는 OX 코드가 관리)
@@ -16265,9 +16331,18 @@ window.addCharRow = function() {
         if(!uid) return false;
         const mafG = window._mafiaState, liarG = window._liarState, hsG = window._hideSeekState, igG = window._iceTagState;
         if(mafG && mafG.on && (!mafG.roles || !mafG.roles[uid])) return true;
-        if(liarG && liarG.on && (!liarG.players || !liarG.players.includes(uid))) return true;
-        if(hsG && hsG.active && hsG.participants && !hsG.participants.includes(uid)) return true;
-        if(igG && igG.active && Array.isArray(igG.participants) && !igG.participants.includes(uid)) return true;
+        if(liarG && liarG.on){
+            const lp = Array.isArray(liarG.players) ? liarG.players : Object.values(liarG.players||{});
+            if(lp.length && !lp.includes(uid)) return true;
+        }
+        if(hsG && hsG.active && hsG.participants){
+            const hp = Array.isArray(hsG.participants) ? hsG.participants : Object.values(hsG.participants||{});
+            if(hp.length && !hp.includes(uid)) return true;
+        }
+        if(igG && igG.active && igG.participants){
+            const ip = Array.isArray(igG.participants) ? igG.participants : Object.values(igG.participants||{});
+            if(ip.length && !ip.includes(uid)) return true;
+        }
         return false;
     };
 
@@ -16278,20 +16353,34 @@ window.addCharRow = function() {
         if(window._gameIntroShown[key]){ if(onDismiss) onDismiss(); return; }
         window._gameIntroShown[key] = true;
         document.getElementById('_gameIntro')?.remove();
+        const AUTO_CLOSE_MS = 5000; // 5초 후 자동 닫힘
         const items = bullets.map(b => `<li style="margin-bottom:6px;">${b}</li>`).join('');
         const html = `<div id="_gameIntro" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99550;display:flex;align-items:center;justify-content:center;font-family:Jua;animation:fadeIn 0.3s;">
             <div style="background:white;border-radius:22px;padding:26px 30px;text-align:center;min-width:320px;max-width:440px;box-shadow:0 16px 48px rgba(0,0,0,0.5);border:4px solid ${color};">
                 <div style="font-size:60px;line-height:1;margin-bottom:6px;">${emoji}</div>
                 <div style="font-size:22px;font-weight:bold;color:${color};margin-bottom:14px;">${title}</div>
-                <ul style="text-align:left;font-size:13px;color:#5D4037;line-height:1.7;background:#FFF8E1;border-radius:12px;padding:14px 14px 14px 30px;margin-bottom:16px;">${items}</ul>
-                <button id="_gameIntroOk" style="padding:10px 28px;background:${color};color:white;border:none;border-radius:12px;font-family:Jua;font-size:15px;cursor:pointer;font-weight:bold;">시작!</button>
+                <ul style="text-align:left;font-size:13px;color:#5D4037;line-height:1.7;background:#FFF8E1;border-radius:12px;padding:14px 14px 14px 30px;margin-bottom:14px;">${items}</ul>
+                <div style="font-size:11px;color:#999;margin-bottom:8px;">⏱ <span id="_gameIntroSec">${Math.ceil(AUTO_CLOSE_MS/1000)}</span>초 후 자동으로 시작합니다</div>
+                <button id="_gameIntroOk" style="padding:10px 28px;background:${color};color:white;border:none;border-radius:12px;font-family:Jua;font-size:15px;cursor:pointer;font-weight:bold;">바로 시작!</button>
             </div>
         </div>`;
         document.body.insertAdjacentHTML('beforeend', html);
-        document.getElementById('_gameIntroOk').onclick = function(){
+        const _close = () => {
+            if(window._gameIntroTimer) { clearInterval(window._gameIntroTimer); window._gameIntroTimer = null; }
+            if(window._gameIntroAutoTimer) { clearTimeout(window._gameIntroAutoTimer); window._gameIntroAutoTimer = null; }
             document.getElementById('_gameIntro')?.remove();
             if(onDismiss) onDismiss();
         };
+        document.getElementById('_gameIntroOk').onclick = _close;
+        // 카운트다운
+        let remain = Math.ceil(AUTO_CLOSE_MS/1000);
+        window._gameIntroTimer = setInterval(()=>{
+            remain--;
+            const sEl = document.getElementById('_gameIntroSec');
+            if(sEl) sEl.textContent = remain;
+            if(remain <= 0 && window._gameIntroTimer) { clearInterval(window._gameIntroTimer); window._gameIntroTimer = null; }
+        }, 1000);
+        window._gameIntroAutoTimer = setTimeout(_close, AUTO_CLOSE_MS);
     };
 
     // ═══════════════ 마피아 게임 ═══════════════
@@ -16441,6 +16530,103 @@ window.addCharRow = function() {
             .then(() => console.log('[mafia] state 작성 성공'))
             .catch(err => { console.error('[mafia] state 작성 실패:', err); alert('마피아 시작 실패: '+err.message); });
         window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🕵️', msg:'🕵️ 마피아 게임 시작! 본인 역할을 확인하세요', ts:now });
+    };
+
+    // 밤 결과 상세 모달 — resolve 페이즈 진입 시 호출
+    window._mafiaShowNightResultModal = function(g){
+        if(!g || !g.lastReveal) return;
+        const lr = g.lastReveal;
+        const _nm = u => (_plzUserCache[u]||{}).nm || u;
+        const _roleKor = r => r==='mafia'?'마피아':r==='doctor'?'의사':r==='police'?'경찰':'시민';
+        const ad = lr.actionDetail || {mafia:[],doctor:[],police:[],citizen:[]};
+        const docTgt = lr.doctorTarget;
+        const docSavedSomeone = docTgt && (lr.mafiaKilled||[]).length === 0 && (ad.mafia||[]).some(a => a.t === docTgt);
+        // 마피아 살해 시도 대상(중복 제거)
+        const mafiaTargets = [...new Set((ad.mafia||[]).map(a=>a.t))].filter(Boolean);
+        const mafiaTargetsTxt = mafiaTargets.length ? mafiaTargets.map(_nm).map(n=>`<b>${n}</b>`).join(', ') + '을(를) 살해 시도' : '<span style="color:#999;">행동 없음</span>';
+        // 의사 보호
+        const doctorTxt = docTgt
+            ? (docSavedSomeone ? `<b>${_nm(docTgt)}</b>을(를) 살려냈어요 ✨` : `<b>${_nm(docTgt)}</b>을(를) 보호`)
+            : '<span style="color:#999;">행동 없음</span>';
+        // 경찰 — 모두에게는 익명(직업만), 본인(경찰)에게는 대상·결과 함께 표시
+        const myRole = me && g.roles && g.roles[me.cd];
+        const policeRound = lr.round;
+        const myPoliceResult = (g.policeResult && g.policeResult[me?.cd] && g.policeResult[me.cd][policeRound]) || null;
+        const policeTxt = (ad.police||[]).length
+            ? (ad.police||[]).map(a => {
+                const tgtRole = g.roles && g.roles[a.t];
+                const roleNm = _roleKor(tgtRole);
+                if(myRole === 'police' && me.cd === a.u){
+                    // 경찰 본인에게만 — 대상 이름 + 마피아 여부
+                    const isMaf = tgtRole === 'mafia';
+                    return `🔍 <b>${_nm(a.t)}</b> 조사 → <span style="color:${isMaf?'#C62828':'#2E7D32'};font-weight:bold;">${isMaf?'🚨 마피아!':'✓ 마피아 아님'}</span>`;
+                }
+                // 다른 사람에게는 익명 (직업만)
+                return `경찰이 <b>${roleNm}</b>을(를) 조사했어요`;
+            }).join('<br>')
+            : '<span style="color:#999;">행동 없음</span>';
+        // 시민 처형 — 다수결 결과 (이름 빼고 표 수)
+        const citizenVotes = {};
+        (ad.citizen||[]).forEach(a => { citizenVotes[a.t] = (citizenVotes[a.t]||0)+1; });
+        const citizenSummary = Object.entries(citizenVotes).sort((a,b)=>b[1]-a[1])
+            .map(([uid, cnt]) => `<b>${_nm(uid)}</b> ${cnt}표`).join(' · ') || '<span style="color:#999;">투표 없음</span>';
+        // 처형된 사람
+        const cKilled = lr.citizenKilled || [];
+        const cKilledTxt = cKilled.length
+            ? cKilled.map(u => {
+                const r = g.roles && g.roles[u];
+                return `다수결로 <b>${_roleKor(r)} ${_nm(u)}</b>이(가) 처형됐어요`;
+            }).join('<br>')
+            : (Object.keys(citizenVotes).length ? '동률로 아무도 처형되지 않았어요' : '투표 없음');
+        // 사망자 종합
+        const dedupKilled = [...new Set([...(lr.mafiaKilled||[]), ...(lr.citizenKilled||[])])];
+        // 효과음 — 아침 알림
+        try { if(window._plzPlayResultSnd) window._plzPlayResultSnd(dedupKilled.length ? 'lose' : 'win'); } catch(_){}
+        document.getElementById('_mafNightModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_mafNightModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99500;display:flex;align-items:center;justify-content:center;animation:voteFadeIn 0.25s ease-out;padding:20px;';
+        el.innerHTML = `
+        <div style="background:linear-gradient(160deg,#FFF8E1,#FFE082);border-radius:24px;width:min(460px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.45);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;border:3px solid #F9A825;">
+            <div style="background:linear-gradient(135deg,#FF8F00,#E65100);padding:18px 24px;text-align:center;color:white;font-family:'Jua';flex-shrink:0;">
+                <div style="font-size:42px;line-height:1;">🌅</div>
+                <div style="font-size:20px;font-weight:bold;margin-top:4px;">${lr.round}일차 아침</div>
+            </div>
+            <div style="padding:18px 22px;overflow-y:auto;font-family:'Jua';">
+                <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #EF5350;">
+                    <div style="font-size:13px;font-weight:bold;color:#C62828;margin-bottom:4px;">🔪 마피아</div>
+                    <div style="font-size:13px;color:#5D4037;line-height:1.6;">${mafiaTargetsTxt}</div>
+                </div>
+                <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #66BB6A;">
+                    <div style="font-size:13px;font-weight:bold;color:#2E7D32;margin-bottom:4px;">💊 의사</div>
+                    <div style="font-size:13px;color:#5D4037;line-height:1.6;">${doctorTxt}</div>
+                </div>
+                ${(ad.police||[]).length ? `
+                <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #42A5F5;">
+                    <div style="font-size:13px;font-weight:bold;color:#1565C0;margin-bottom:4px;">🔍 경찰</div>
+                    <div style="font-size:13px;color:#5D4037;line-height:1.6;">${policeTxt}</div>
+                </div>` : ''}
+                <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:${lr.citizenRevote?'8':'14'}px;border-left:4px solid #8D6E63;">
+                    <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:4px;">🙋 시민 다수결</div>
+                    <div style="font-size:12px;color:#888;margin-bottom:4px;">${citizenSummary}</div>
+                    <div style="font-size:13px;color:#5D4037;line-height:1.6;">${cKilledTxt}</div>
+                </div>
+                ${lr.citizenRevote ? `
+                <div style="background:#FFF3E0;border-radius:12px;padding:12px 14px;margin-bottom:14px;border-left:4px solid #FF9800;">
+                    <div style="font-size:13px;font-weight:bold;color:#E65100;margin-bottom:4px;">🗳️ 동률 재투표 (모든 생존자)</div>
+                    <div style="font-size:11px;color:#888;">후보: ${(lr.revoteCandidates||[]).map(u=>_nm(u)).join(', ') || '—'}</div>
+                </div>` : ''}
+                <div style="background:${dedupKilled.length?'#FFEBEE':'#E8F5E9'};border-radius:12px;padding:14px;text-align:center;border:2px solid ${dedupKilled.length?'#EF5350':'#66BB6A'};">
+                    <div style="font-size:13px;color:#5D4037;margin-bottom:4px;font-weight:bold;">${dedupKilled.length?'💀 최종 사망자':'🌿 평화로운 밤'}</div>
+                    <div style="font-size:16px;color:${dedupKilled.length?'#C62828':'#2E7D32'};font-weight:bold;">${dedupKilled.length?dedupKilled.map(u=>`${_roleKor(g.roles[u])} ${_nm(u)}`).join(', '):'아무도 죽지 않았어요'}</div>
+                </div>
+            </div>
+            <div style="padding:12px 22px;border-top:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
+                <button style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5E35B1,#311B92);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(49,27,146,0.4);" onclick="document.getElementById('_mafNightModal').remove()">확인</button>
+            </div>
+        </div>`;
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
     };
 
     // 본인 역할 재확인 모달
@@ -16632,39 +16818,121 @@ window.addCharRow = function() {
             ref.update({ _processing:null, phase:'night', phaseEndAt: now + 60*60*1000, discussEnd:null });
             window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🌙', msg:`🌙 ${round}일차 밤 — 본인 역할에 맞게 한 명을 입력하세요`, ts:now });
         } else if(g.phase === 'night'){
-            // 결과 집계 → 사망 처리 → resolve(발표)
+            // 결과 집계
             const result = _mafiaResolveNight(g);
-            const updates = { _processing:null, phase:'resolve', phaseEndAt: now + (c.resolveDur||8)*1000 };
-            const aliveAfter = {...g.alive};
-            const msgs = [];
-            const reveals = [];
-            const allKilled = [...new Set([...(result.mafiaKills||[]), ...(result.citizenKills||[])])];
-            allKilled.forEach(uid => {
-                if(!aliveAfter[uid]) return;
-                aliveAfter[uid] = false;
-                updates['alive/'+uid] = false;
-                const nm = (_plzUserCache[uid]||{}).nm || uid;
-                const role = g.roles[uid];
-                const byMafia = result.mafiaKills.includes(uid);
-                const byCitizen = result.citizenKills.includes(uid);
-                let how = byMafia && byCitizen ? '마피아·시민 동시 지목' : byMafia ? '마피아 살해' : '시민 처형';
-                msgs.push(`💀 ${nm} (${_mafiaRoleLabel(role)}) — ${how}`);
-                reveals.push({uid, nm, role, by:how});
+            // 시민 동률 → 재투표 페이즈로 전환 (모든 생존자가 후보 중 한 명 입력)
+            if(result.needRevote && (result.revoteCandidates||[]).length > 1){
+                const candNms = result.revoteCandidates.map(u => (_plzUserCache[u]||{}).nm || u).join(', ');
+                ref.update({
+                    _processing: null,
+                    phase: 'citizenRevote',
+                    phaseEndAt: now + 60*60*1000,
+                    revoteCandidates: result.revoteCandidates,
+                    revoteVotes: null,
+                    // 임시로 night 결과 보관 (재투표 후 합산)
+                    pendingNight: {
+                        mafiaKills: result.mafiaKills || [],
+                        doctorTarget: result.doctorTarget || null,
+                        partialCitizenKills: result.citizenKills || [], // 동률 그룹 외 확정 처형자
+                        actionDetailRaw: g.acts && g.acts[round] ? Object.entries(g.acts[round]).map(([u,t])=>({u,t,role:g.roles[u]})) : []
+                    }
+                });
+                window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 시민 처형 투표 동률 — 재투표\n후보: ${candNms}\n생존자 모두 후보 중 한 명 입력`, ts:now });
+                return;
+            }
+            // 정상 처리
+            _mafiaApplyNightResult(g, result, round, now, ref, c);
+        } else if(g.phase === 'citizenRevote'){
+            // 재투표 집계 — 모든 살아있는 플레이어가 후보 중 한 명 지목
+            const cands = g.revoteCandidates || [];
+            const rv = g.revoteVotes || {};
+            const tally = {};
+            Object.keys(rv).forEach(uid => {
+                if(!g.alive[uid]) return;
+                const t = rv[uid];
+                if(!t || !cands.includes(t)) return;
+                tally[t] = (tally[t]||0) + 1;
             });
-            if(!msgs.length) msgs.push('아무도 죽지 않았어요 (의사 보호·합의 실패)');
-            // 경찰 결과 (본인에게만 저장됨, 시스템 메시지는 안 함)
-            window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🌅', msg:`🌅 ${round}일차 아침\n${msgs.join('\n')}`, ts:now });
-            updates.lastReveal = { round, reveals, msgs };
-            updates.revealLog = (g.revealLog||[]).concat([{ round, killed: allKilled.map(u => ({uid:u,nm:(_plzUserCache[u]||{}).nm,role:g.roles[u]})) }]);
-            ref.update(updates).then(() => {
-                const win = _mafiaCheckWin({...g, alive:aliveAfter});
-                if(win) setTimeout(() => window._mafiaEnd(false), (c.resolveDur||8)*1000);
+            // 최다 득표자 산정
+            let topCnt = 0; const tied = [];
+            Object.keys(tally).forEach(t => {
+                if(tally[t] > topCnt){ topCnt = tally[t]; tied.length=0; tied.push(t); }
+                else if(tally[t] === topCnt){ tied.push(t); }
             });
+            const pn = g.pendingNight || {};
+            let extraKill = null;
+            if(topCnt > 0 && tied.length === 1){
+                extraKill = tied[0];
+                window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 재투표 결과: ${(_plzUserCache[extraKill]||{}).nm||extraKill} 처형 결정`, ts:now });
+            } else {
+                window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 재투표도 동률 — 시민이 결정 못해 아무도 처형되지 않아요`, ts:now });
+            }
+            // 합산해서 정상 결과로 처리
+            const finalCitizenKills = [...new Set([...(pn.partialCitizenKills||[]), ...(extraKill ? [extraKill] : [])])]
+                .filter(t => t !== pn.doctorTarget);
+            const result = {
+                mafiaKills: pn.mafiaKills || [],
+                citizenKills: finalCitizenKills,
+                doctorTarget: pn.doctorTarget || null,
+                revoteTally: tally,
+                revoteCandidates: cands,
+                revoteVotesRaw: rv
+            };
+            _mafiaApplyNightResult(g, result, round, now, ref, c);
         } else if(g.phase === 'resolve'){
             // 발표 끝 → 다시 토론(다음 라운드)
             ref.update({ _processing:null, phase:'discuss', round: round+1, phaseEndAt: now + 60*60*1000, acts:null, discussEnd:null });
             window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'💬', msg:`💬 ${round+1}일차 자유 토론`, ts:now });
         }
+    }
+
+    // 밤 결과를 적용하고 resolve 페이즈로 전환하는 공통 헬퍼
+    function _mafiaApplyNightResult(g, result, round, now, ref, c){
+        const updates = { _processing:null, phase:'resolve', phaseEndAt: now + (c.resolveDur||8)*1000, revoteCandidates:null, revoteVotes:null, pendingNight:null };
+        const aliveAfter = {...g.alive};
+        const msgs = [];
+        const reveals = [];
+        const allKilled = [...new Set([...(result.mafiaKills||[]), ...(result.citizenKills||[])])];
+        allKilled.forEach(uid => {
+            if(!aliveAfter[uid]) return;
+            aliveAfter[uid] = false;
+            updates['alive/'+uid] = false;
+            const nm = (_plzUserCache[uid]||{}).nm || uid;
+            const role = g.roles[uid];
+            const byMafia = (result.mafiaKills||[]).includes(uid);
+            const byCitizen = (result.citizenKills||[]).includes(uid);
+            let how = byMafia && byCitizen ? '마피아·시민 동시 지목' : byMafia ? '마피아 살해' : '시민 처형';
+            msgs.push(`💀 ${nm} (${_mafiaRoleLabel(role)}) — ${how}`);
+            reveals.push({uid, nm, role, by:how});
+        });
+        if(!msgs.length) msgs.push('아무도 죽지 않았어요 (의사 보호·합의 실패)');
+        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🌅', msg:`🌅 ${round}일차 아침\n${msgs.join('\n')}`, ts:now });
+        // 상세 행동 로그
+        const ra = (g.acts || {})[round] || {};
+        const actionDetail = { mafia:[], doctor:[], police:[], citizen:[] };
+        Object.entries(ra).forEach(([u, t]) => {
+            const r = g.roles[u]; if(!r || !actionDetail[r]) return;
+            actionDetail[r].push({ u, t });
+        });
+        // 재투표 정보가 있으면 같이 저장
+        const citizenRevote = (result.revoteVotesRaw && Object.keys(result.revoteVotesRaw).length)
+            ? Object.entries(result.revoteVotesRaw).map(([u,t])=>({u,t,role:g.roles[u]}))
+            : null;
+        updates.lastReveal = {
+            round, reveals, msgs,
+            actionDetail,
+            doctorTarget: result.doctorTarget || null,
+            mafiaKilled: result.mafiaKills || [],
+            citizenKilled: result.citizenKills || [],
+            citizenRevote,
+            revoteCandidates: result.revoteCandidates || null,
+            revoteTally: result.revoteTally || null
+        };
+        updates.revealLog = (g.revealLog||[]).concat([{ round, killed: allKilled.map(u => ({uid:u,nm:(_plzUserCache[u]||{}).nm,role:g.roles[u]})) }]);
+        ref.update(updates).then(() => {
+            const win = _mafiaCheckWin({...g, alive:aliveAfter});
+            if(win) setTimeout(() => window._mafiaEnd(false), (c.resolveDur||8)*1000);
+        });
     }
 
     // 라운드별 밤 결과 산정:
@@ -16702,6 +16970,8 @@ window.addCharRow = function() {
         const usedCounts = new Set();
         // top voted, but expand for ties
         let pick = 0;
+        let needRevote = false;
+        let revoteCandidates = [];
         while(pick < sorted.length && citizenKills.length < aliveMafia){
             const [t, cnt] = sorted[pick];
             if(cnt < 1) break;
@@ -16712,15 +16982,15 @@ window.addCharRow = function() {
                 tieGroup.forEach(u => { if(!citizenKills.includes(u)) citizenKills.push(u); });
                 pick += tieGroup.length;
             } else {
-                // 동률 그룹이 필요량보다 많음 → 무작위 N명 선택
-                const shuffled = [...tieGroup].sort(() => Math.random()-0.5);
-                shuffled.slice(0, need).forEach(u => citizenKills.push(u));
+                // 동률 그룹이 필요량보다 많음 → 재투표 필요 신호
+                needRevote = true;
+                revoteCandidates = tieGroup.slice();
                 break;
             }
         }
         // 의사 보호 적용
         const finalCitizenKills = citizenKills.filter(t => t !== doctorTarget);
-        return { mafiaKills, citizenKills: finalCitizenKills, doctorTarget };
+        return { mafiaKills, citizenKills: finalCitizenKills, doctorTarget, needRevote, revoteCandidates };
     }
 
     function _mafiaResolveDay(g){
@@ -16784,6 +17054,10 @@ window.addCharRow = function() {
                     const submitted = (g.acts && g.acts[g.round] && g.acts[g.round][me.cd]) || null;
                     return submitted ? 'night_submitted_'+submitted : 'night_input';
                 }
+                if(g.phase === 'citizenRevote'){
+                    const submitted = (g.revoteVotes && g.revoteVotes[me.cd]) || null;
+                    return submitted ? 'revote_submitted_'+submitted : 'revote_input_'+(g.revoteCandidates||[]).join(',');
+                }
                 if(g.phase === 'resolve') return 'resolve';
                 return 'idle';
             })();
@@ -16844,7 +17118,38 @@ window.addCharRow = function() {
             panel.innerHTML = `<div style="background:#E8F5E9;border:2px solid #66BB6A;border-radius:14px;padding:10px 16px;font-family:Jua;font-size:13px;color:#2E7D32;box-shadow:0 4px 12px rgba(0,0,0,0.3);">✅ <b>${tnm}</b> 제출 완료 — 다른 학생 대기</div>`;
             return;
         }
+        if(stateKey.startsWith('revote_input_')){
+            const cands = stateKey.slice('revote_input_'.length).split(',').filter(Boolean);
+            const candBtns = cands.map(uid => {
+                const nm = (_plzUserCache[uid]||{}).nm || uid;
+                return `<button onclick="window._mafiaSubmitCitizenRevote('${uid}')" style="padding:8px 12px;border:2px solid #FF9800;border-radius:10px;background:white;color:#E65100;font-family:Jua;font-size:13px;cursor:pointer;font-weight:bold;">${nm}</button>`;
+            }).join('');
+            panel.style.display = 'block';
+            panel.innerHTML = `<div style="background:white;border:3px solid #FF9800;border-radius:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,0.35);min-width:320px;max-width:420px;">
+                <div style="font-size:12px;color:#E65100;margin-bottom:8px;font-weight:bold;">🗳️ 시민 처형 재투표 — 모두 한 명 선택</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">${candBtns}</div>
+            </div>`;
+            return;
+        }
+        if(stateKey.startsWith('revote_submitted_')){
+            const tUid = stateKey.slice('revote_submitted_'.length);
+            const tnm = (_plzUserCache[tUid]||{}).nm || tUid;
+            panel.style.display = 'block';
+            panel.innerHTML = `<div style="background:#FFF3E0;border:2px solid #FF9800;border-radius:14px;padding:10px 16px;font-family:Jua;font-size:13px;color:#E65100;box-shadow:0 4px 12px rgba(0,0,0,0.3);">🗳️ <b>${tnm}</b> 재투표 완료 — 다른 학생 대기</div>`;
+            return;
+        }
     }
+
+    // 시민 재투표 제출 (마피아·의사·경찰도 함께 투표 — 정체 노출 방지)
+    window._mafiaSubmitCitizenRevote = function(targetUid){
+        const g = window._mafiaState;
+        if(!g || !g.on || g.phase !== 'citizenRevote' || !me) return;
+        if(!g.alive[me.cd]) return;
+        if(!(g.revoteCandidates||[]).includes(targetUid)) return;
+        getPlzRef().child(`mafia/revoteVotes/${me.cd}`).set(targetUid);
+        const tnm = (_plzUserCache[targetUid]||{}).nm || targetUid;
+        _mafiaToast(`🗳️ ${tnm} 처형 투표`);
+    };
 
     // 모달 다시 띄우기 도우미
     window._mafiaShowRoleModalForMe = function(){
@@ -16881,10 +17186,13 @@ window.addCharRow = function() {
         const inp = document.getElementById('_mafNightInput');
         const txt = (inp?.value||'').trim();
         if(!txt) return;
+        // 본인 이름 입력 감지 — 본인 이름이 후보에 없어서 매칭 실패하는 경우도 본인 안내
+        const allAlive = Object.keys(g.alive).filter(u => g.alive[u]);
+        const checkSelf = _mafiaMatchPlayer(txt, allAlive);
+        if(checkSelf === me.cd){ _mafiaToast('⚠️ 본인 이름이에요'); return; }
         const candidates = Object.keys(g.alive).filter(u => g.alive[u] && u !== me.cd);
         const targetUid = _mafiaMatchPlayer(txt, candidates);
         if(!targetUid){ _mafiaToast(`⚠️ '${txt}' 학생을 못 찾았어요`); return; }
-        if(targetUid === me.cd){ _mafiaToast('⚠️ 본인은 안 됩니다'); return; }
         const round = g.round;
         getPlzRef().child(`mafia/acts/${round}/${me.cd}`).set(targetUid);
         const targetNm = (_plzUserCache[targetUid]||{}).nm || targetUid;
@@ -16895,8 +17203,8 @@ window.addCharRow = function() {
                       `🤔 ${targetNm} 의심`;
         _mafiaToast(label);
         if(myRole === 'police'){
+            // 결과는 즉시 안 보여주고 밤 끝나면 결과 모달에서 공개. DB만 저장 (본인이 나중에 모달에서 확인)
             const isMafia = g.roles[targetUid] === 'mafia';
-            _mafiaShowPoliceResult(targetNm, isMafia);
             getPlzRef().child(`mafia/policeResult/${me.cd}/${round}`).set({target:targetUid, isMafia});
         }
     };
@@ -17082,6 +17390,9 @@ window.addCharRow = function() {
         } else if(g.phase === 'night'){
             const submitted = Object.keys((g.acts||{})[g.round]||{}).filter(u => aliveInRoom.includes(u)).length;
             phaseLabel = `🌙 ${g.round}일차 밤 — 입력 ${submitted}/${aliveInRoom.length}`;
+        } else if(g.phase === 'citizenRevote'){
+            const submitted = Object.keys(g.revoteVotes||{}).filter(u => aliveInRoom.includes(u)).length;
+            phaseLabel = `🗳️ ${g.round}일차 시민 처형 재투표 — ${submitted}/${aliveInRoom.length}`;
         } else if(g.phase === 'resolve'){
             phaseLabel = `📢 ${g.round}일차 결과 발표`;
         }
@@ -17239,6 +17550,15 @@ window.addCharRow = function() {
                             if(cur && cur.phase === 'night') ref.child('phaseEndAt').set(Date.now()-1);
                         }, 600);
                     }
+                } else if(v.phase === 'citizenRevote'){
+                    const rv = v.revoteVotes || {};
+                    const submitted = Object.keys(rv).filter(u => aliveInRoom.includes(u));
+                    if(aliveInRoom.length >= 1 && submitted.length >= aliveInRoom.length){
+                        setTimeout(() => {
+                            const cur = window._mafiaState;
+                            if(cur && cur.phase === 'citizenRevote') ref.child('phaseEndAt').set(Date.now()-1);
+                        }, 600);
+                    }
                 }
             }
             // Stale 게임 자동 정리
@@ -17265,6 +17585,14 @@ window.addCharRow = function() {
             if(v && v.phase === 'end' && v.endedAt && window._mafEndShownFor !== v.endedAt){
                 window._mafEndShownFor = v.endedAt;
                 if(window._mafiaShowEndModal) window._mafiaShowEndModal(v);
+            }
+            // resolve 페이즈 진입 시 밤 결과 모달 (라운드별 한 번)
+            if(v && v.phase === 'resolve' && v.lastReveal && me && v.roles && v.roles[me.cd]){
+                const key = 'rd_' + v.lastReveal.round;
+                if(window._mafNightShownFor !== key){
+                    window._mafNightShownFor = key;
+                    if(window._mafiaShowNightResultModal) window._mafiaShowNightResultModal(v);
+                }
             }
             window._mafiaState = v;
             if(v && v.on){
@@ -17642,6 +17970,7 @@ window.addCharRow = function() {
         } else if(g.phase === 'revote'){
             const tally = _liarTallyVote(g, true);
             if(tally.tied.length > 1){
+                // 재투표도 동률 → executedUid=null로 finalize → 시민이 결정 못한 것 → 라이어/스파이/바보 승
                 _liarFinalize(g, null);
             } else {
                 _liarFinalize(g, tally.topUid);
@@ -17769,14 +18098,14 @@ window.addCharRow = function() {
         const inp = document.getElementById('_lrVoteInput');
         const txt = (inp?.value||'').trim();
         if(!txt) return;
+        // 본인 이름 체크 — 본인 이름이 후보 풀에 없어 매칭 실패하는 경우도 본인 안내
+        const allPlayers = g.players || [];
+        const checkSelf = _liarMatchPlayer(txt, allPlayers);
+        if(checkSelf === me.cd){ _liarToast('⚠️ 본인 이름이에요'); return; }
         const candidates = g.phase === 'revote' ? (g.revoteCandidates||[]) : g.players.filter(u => u !== me.cd);
         const targetUid = _liarMatchPlayer(txt, candidates);
         if(!targetUid){
             _liarToast(`⚠️ '${txt}' 학생을 못 찾았어요`);
-            return;
-        }
-        if(targetUid === me.cd){
-            _liarToast('⚠️ 본인은 투표할 수 없어요');
             return;
         }
         getPlzRef().child(`liar/votes/${me.cd}`).set(targetUid);
@@ -18668,6 +18997,33 @@ window.addCharRow = function() {
         document.getElementById('_iceTagCountdown')?.remove();
     }
 
+    // 얼음땡/숨바꼭질 시간 설정 — 모든 광장에서 공유 (db.cfg 직속에 저장, 룸 cfg와 무관)
+    window._setIceTagDuration = function(){
+        const cur = (db.cfg?.iceTagSec) || 300;
+        const v = prompt('얼음땡 라운드 시간(초)을 입력하세요\n(모든 광장 공통, 기본 300초 = 5분, 권장 60~600초)', cur);
+        if(v===null) return;
+        const sec = Math.max(30, Math.min(1800, parseInt(v)||300));
+        if(!db.cfg) db.cfg = {};
+        db.cfg.iceTagSec = sec;
+        sv();
+        alert(`✅ 얼음땡 라운드 시간 = ${sec}초 (${Math.floor(sec/60)}분 ${sec%60}초) · 모든 광장 공통`);
+    };
+    window._setHideSeekDuration = function(){
+        const curHide = (db.cfg?.hideSeekHideSec) || 10;
+        const curPlay = (db.cfg?.hideSeekPlaySec) || 180;
+        const v1 = prompt('숨바꼭질 — 숨는 시간(초) 입력\n(모든 광장 공통, 기본 10초, 권장 5~30초)', curHide);
+        if(v1===null) return;
+        const v2 = prompt('숨바꼭질 — 찾는 시간(초) 입력\n(모든 광장 공통, 기본 180초 = 3분, 권장 60~600초)', curPlay);
+        if(v2===null) return;
+        const hideSec = Math.max(3, Math.min(60, parseInt(v1)||10));
+        const playSec = Math.max(30, Math.min(1800, parseInt(v2)||180));
+        if(!db.cfg) db.cfg = {};
+        db.cfg.hideSeekHideSec = hideSec;
+        db.cfg.hideSeekPlaySec = playSec;
+        sv();
+        alert(`✅ 숨기 ${hideSec}초 / 찾기 ${playSec}초 (${Math.floor(playSec/60)}분 ${playSec%60}초) · 모든 광장 공통`);
+    };
+
     window._iceTagStart = function() {
         if(!me) return;
         // 현재 접속자 중 학생들만 후보 (교사 제외)
@@ -18677,11 +19033,23 @@ window.addCharRow = function() {
             if(s) { s.style.display=''; s.textContent='⚠️ 3명 이상 모여야 시작할 수 있어요!'; setTimeout(()=>s.style.display='none', 2200); }
             return;
         }
-        // 6명 이상이면 술래 2명 선정
-        const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-        const taggerCount = candidates.length >= 6 ? 2 : 1;
-        const taggerIds = shuffled.slice(0, taggerCount);
-        const ROUND_MS = 5 * 60 * 1000; // 5분 고정
+        // 이전 술래 제외 (Firebase에서 한 번 가져와 처리)
+        getPlzRef().child('iceTagLastTaggers').once('value', snap => {
+            const lastTaggers = (snap.val()||[]);
+            const lastSet = new Set(Array.isArray(lastTaggers) ? lastTaggers : Object.values(lastTaggers));
+            // 이전 술래를 제외한 후보. 모두 이전 술래였으면 전체에서 랜덤
+            let pool = candidates.filter(uid => !lastSet.has(uid));
+            if(pool.length === 0) pool = candidates.slice();
+            const shuffled = [...pool].sort(() => Math.random() - 0.5);
+            const taggerCount = candidates.length >= 6 ? 2 : 1;
+            const taggerIds = shuffled.slice(0, taggerCount);
+            _iceTagDoStart(candidates, taggerIds);
+        });
+    };
+
+    function _iceTagDoStart(candidates, taggerIds){
+        const _sec = (db.cfg?.iceTagSec) || (db.cfg?.plz?.iceTagSec) || 300;
+        const ROUND_MS = _sec * 1000;
         getPlzRef().child('game').set({
             mode: 'icetag',
             active: true,
@@ -18692,7 +19060,7 @@ window.addCharRow = function() {
             roundEndAt: Date.now() + 5000 + ROUND_MS,
             frozen: {}
         });
-    };
+    }
 
     // ===== 광장 게임 공통 헬퍼: 참관자/종료/투표 =====
     window._isPlzSpectator = function(uid) {
@@ -19084,22 +19452,35 @@ window.addCharRow = function() {
         // outcome: 'tagger_win' (모두 얼림) | 'runner_win' (시간 초과 생존)
         const g = window._iceTagState;
         const startedAt = g?.startedAt || Date.now();
+        const taggerIds = g?.taggerIds || (g?.taggerId ? [g.taggerId] : []);
+        // 다음 시작 시 이전 술래 제외 — 별도 노드에 보관 (game 노드는 곧 제거됨)
+        if(taggerIds.length){
+            try { getPlzRef().child('iceTagLastTaggers').set(taggerIds); } catch(_){}
+        }
+        const _endedAt = Date.now();
         getPlzRef().child('game').update({
             active:false,
-            endedAt: Date.now(),
+            endedAt: _endedAt,
             winnerId: winnerId||null,
             outcome: outcome || null,
-            durationMs: Math.max(0, Date.now() - startedAt)
+            durationMs: Math.max(0, _endedAt - startedAt)
         });
         try {
             if(winnerId && _plzUserCache[winnerId]) {
                 const wnm = _plzUserCache[winnerId].nm || '학생';
                 const msg = outcome==='tagger_win' ? `🔥 술래 승리! 다음 술래는 ${wnm}님!` : `🏃 도망자 승리! 다음 술래는 ${wnm}님!`;
-                getPlzRef().child('chat').push({ sys:true, nm:'🧊', msg, ts:Date.now() });
+                getPlzRef().child('chat').push({ sys:true, nm:'🧊', msg, ts:_endedAt });
             }
         } catch(_){}
-        // 8초 후 게임 상태 완전 제거 (모달 표시 시간 확보)
-        setTimeout(()=>{ try{ getPlzRef().child('game').remove(); }catch(_){} }, 8000);
+        // 8초 후 게임 상태 제거 — 단, 새 게임이 시작됐으면 건드리지 않음 (endedAt 일치 확인)
+        setTimeout(()=>{
+            getPlzRef().child('game').once('value', s => {
+                const cur = s.val();
+                if(cur && cur.endedAt === _endedAt && cur.active === false){
+                    try{ getPlzRef().child('game').remove(); }catch(_){}
+                }
+            });
+        }, 8000);
     };
 
     function _iceTagSubscribe() {
@@ -19110,15 +19491,14 @@ window.addCharRow = function() {
             const g = snap.val();
             const prevActive = !!window._iceTagState;
             window._iceTagState = (g && g.mode==='icetag' && g.active) ? g : null;
-            // 게임 종료 알림
+            // 게임 종료 — 모두 결과창. 마지막 생존자(승자)는 추가로 다음 술래 수락 모달
             if(g && g.mode==='icetag' && g.active===false && g.endedAt && _winnerPromptedFor !== g.endedAt){
                 _winnerPromptedFor = g.endedAt;
-                if(me && me.cd===g.winnerId){
-                    // 승자(다음 술래): 다음 라운드 시작 여부 묻기
-                    window._iceTagWinnerModal && window._iceTagWinnerModal(g);
-                } else if(me && me.cd !== 'teacher_main'){
-                    // 나머지: 결과 모달
+                if(me && me.cd !== 'teacher_main'){
                     window._iceTagResultModal && window._iceTagResultModal(g);
+                    if(me.cd === g.winnerId){
+                        setTimeout(()=>{ window._iceTagWinnerModal && window._iceTagWinnerModal(g); }, 1200);
+                    }
                 }
             }
             // 게임 시작 시 인트로
@@ -21067,6 +21447,11 @@ window.addCharRow = function() {
                     _iceTagCheckCollision();
                     _iceTagEndCheckAsTagger();
                     _iceTagRoundTimeoutCheck();
+                }
+                // HUD 타이머 1초마다 갱신 (남은 시간 표시)
+                if(!window._iceTagLastHud || now - window._iceTagLastHud > 1000) {
+                    window._iceTagLastHud = now;
+                    if(typeof _iceTagUpdateUI === 'function') _iceTagUpdateUI();
                 }
             }
         } else {
