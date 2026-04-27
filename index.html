@@ -786,6 +786,22 @@
             100% { transform:translateX(-50%) translateY(-3px) rotate(6deg) scale(1.15); }
         }
         .plz-char.hider-found { filter: drop-shadow(0 0 6px #FF9800) saturate(1.2); opacity:1 !important; }
+        /* 숨바꼭질 본인 정지 위반 경고 — 빨강·노랑 펄스 아우라 */
+        .plz-char.hs-self-warn { animation: hsSelfWarnPulse 0.6s ease-in-out infinite alternate !important; }
+        @keyframes hsSelfWarnPulse {
+            0%   { filter: drop-shadow(0 0 6px #F44336) drop-shadow(0 0 14px #FF9800) saturate(1.4) brightness(1.05); }
+            100% { filter: drop-shadow(0 0 14px #FF1744) drop-shadow(0 0 26px #FFEA00) saturate(1.7) brightness(1.15); }
+        }
+        .plz-char.hs-self-warn::before {
+            content: '⚠️'; position: absolute; top: -42px; left: 50%; transform: translateX(-50%);
+            font-size: 32px; line-height: 1; pointer-events: none; z-index: 6;
+            text-shadow: 0 0 6px #F44336, 0 0 12px #FF9800;
+            animation: hsSelfWarnShake 0.25s ease-in-out infinite alternate;
+        }
+        @keyframes hsSelfWarnShake {
+            0%   { transform: translateX(-50%) rotate(-8deg) scale(1); }
+            100% { transform: translateX(-55%) rotate(8deg) scale(1.15); }
+        }
         .plz-char { position:absolute; transform:translate(-50%,-100%) scale(1.56); transform-origin:center bottom; transition:left 0.5s linear, top 0.5s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
         .plz-char.me { transition:none; }
         .plz-tit-slot { display:flex; justify-content:center; }
@@ -15776,22 +15792,31 @@ window.addCharRow = function() {
                 b.textContent = '🙈';
                 el.appendChild(b);
             }
-            // 숨는 학생: 완전 투명 (본인만 약간 보임) · 움직이면 hsFlash 중 살짝 보임
-            // 숨기 단계에도 적용해서 단계 전환 시 실루엣 노출 방지
+            // 숨는 학생: 완전 투명 · 움직이면 hsFlash 중 살짝 보임
+            // 본인은 평소 반투명, 정지 위반(hsFlash) 시 선명 + 빨간 경고 아우라
             if((inHidePhase || inPlayPhase) && !seekerIds.includes(uid) && !found[uid] && uid !== 'teacher_main') {
                 const u = _plzUserCache[uid] || {};
                 const isMeUid = me && uid === me.cd;
                 const flashing = inPlayPhase && u.hsFlash && Date.now() < u.hsFlash;
-                if(flashing && !isMeUid) {
-                    el.style.opacity = '0.5';
+                if(isMeUid){
+                    // 본인 시점
+                    if(flashing){
+                        el.style.opacity = '1';
+                        el.classList.add('hs-self-warn');
+                    } else {
+                        el.style.opacity = '0.4';
+                        el.classList.remove('hs-self-warn');
+                    }
                 } else {
-                    el.style.opacity = isMeUid ? '0.4' : '0';
+                    // 다른 사람 시점 — 평소 안 보이고 위반 시 살짝 보임
+                    el.style.opacity = flashing ? '0.5' : '0';
+                    el.classList.remove('hs-self-warn');
                 }
-                // 깜빡임 클래스 강제 제거 (잔존 데이터 방지)
                 el.classList.remove('hs-blink');
                 el.dataset.hsHidden = '1';
             } else {
                 if(el.dataset.hsHidden === '1') { el.style.opacity=''; el.style.transition=''; delete el.dataset.hsHidden; }
+                el.classList.remove('hs-self-warn');
             }
         });
     }
@@ -16353,7 +16378,7 @@ window.addCharRow = function() {
         if(window._gameIntroShown[key]){ if(onDismiss) onDismiss(); return; }
         window._gameIntroShown[key] = true;
         document.getElementById('_gameIntro')?.remove();
-        const AUTO_CLOSE_MS = 5000; // 5초 후 자동 닫힘
+        const AUTO_CLOSE_MS = 3000; // 3초 후 자동 닫힘
         const items = bullets.map(b => `<li style="margin-bottom:6px;">${b}</li>`).join('');
         const html = `<div id="_gameIntro" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99550;display:flex;align-items:center;justify-content:center;font-family:Jua;animation:fadeIn 0.3s;">
             <div style="background:white;border-radius:22px;padding:26px 30px;text-align:center;min-width:320px;max-width:440px;box-shadow:0 16px 48px rgba(0,0,0,0.5);border:4px solid ${color};">
@@ -19296,7 +19321,9 @@ window.addCharRow = function() {
     window._hideSeekStartAsSeeker = function(seekerId) {
         const candidates = Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main');
         if(candidates.length < 3) { alert('3명 이상 모여야 해요.'); getPlzRef().child('hideseek').remove(); return; }
-        const ANNOUNCE_MS = 4000, HIDE_MS = 10000, PLAY_MS = 3 * 60 * 1000;
+        const ANNOUNCE_MS = 4000;
+        const HIDE_MS = ((db.cfg?.hideSeekHideSec) || (db.cfg?.plz?.hideSeekHideSec) || 10) * 1000;
+        const PLAY_MS = ((db.cfg?.hideSeekPlaySec) || (db.cfg?.plz?.hideSeekPlaySec) || 180) * 1000;
         getPlzRef().child('hideseek').set({
             active: true,
             seekerIds: [seekerId],
@@ -19439,7 +19466,8 @@ window.addCharRow = function() {
         const candidates = Object.keys(_plzUserCache).filter(uid => uid !== 'teacher_main');
         if(candidates.length < 3) { alert('3명 이상 모여야 해요.'); getPlzRef().child('game').remove(); return; }
         if(!candidates.includes(taggerId)) taggerId = candidates[Math.floor(Math.random()*candidates.length)];
-        const ROUND_MS = 5 * 60 * 1000;
+        const _sec = (db.cfg?.iceTagSec) || (db.cfg?.plz?.iceTagSec) || 300;
+        const ROUND_MS = _sec * 1000;
         getPlzRef().child('game').set({
             mode:'icetag', active:true,
             taggerId, taggerIds:[taggerId],
@@ -19973,24 +20001,54 @@ window.addCharRow = function() {
 
         // Register presence
         const uid = me.cd;
-        // 장애물 없는 소환 위치 탐색 (랜덤 → 그리드 순회 → 최후 50,50)
-        let _spawnX = 50, _spawnY = 50;
-        let _spawnFound = false;
-        const _co = _plzCharBodyOffset();
-        for(let _t = 0; _t < 100; _t++) {
-            const _tx = 15 + Math.random() * 70;
-            const _ty = 15 + Math.random() * 70;
-            if(!_plzIsBlocked(_tx, _ty - _co)) { _spawnX = _tx; _spawnY = _ty; _spawnFound = true; break; }
-        }
-        if(!_spawnFound) {
-            // 그리드 체계적으로 훑어서 빈 셀 찾기
-            outer: for(let gy = 10; gy <= 90; gy += 5) {
-                for(let gx = 10; gx <= 90; gx += 5) {
-                    if(!_plzIsBlocked(gx, gy - _co)) { _spawnX = gx; _spawnY = gy; _spawnFound = true; break outer; }
+        // 장애물 없는 소환 위치 탐색 (캐릭터 본체 주변 다지점 체크)
+        const _findSpawn = () => {
+            const _co = _plzCharBodyOffset();
+            // 캐릭터 본체의 상·중·하 + 좌우 안전마진을 모두 확인
+            const _safe = (x, y) => {
+                if(_plzIsBlocked(x, y - _co)) return false;          // 본체 중심
+                if(_plzIsBlocked(x, y - _co*0.5)) return false;       // 본체 하부
+                if(_plzIsBlocked(x, y - _co*1.5)) return false;       // 본체 상부
+                if(_plzIsBlocked(x - 2, y - _co)) return false;       // 좌측
+                if(_plzIsBlocked(x + 2, y - _co)) return false;       // 우측
+                if(_plzIsBlocked(x, y - 1)) return false;             // 발 부근
+                return true;
+            };
+            // 1단계: 랜덤 200회
+            for(let _t = 0; _t < 200; _t++) {
+                const _tx = 15 + Math.random() * 70;
+                const _ty = 20 + Math.random() * 65;
+                if(_safe(_tx, _ty)) return { x:_tx, y:_ty, ok:true };
+            }
+            // 2단계: 그리드 (촘촘하게)
+            for(let gy = 20; gy <= 90; gy += 3) {
+                for(let gx = 10; gx <= 90; gx += 3) {
+                    if(_safe(gx, gy)) return { x:gx, y:gy, ok:true };
                 }
             }
-        }
-        _plzPos = { x: _spawnX, y: _spawnY };
+            // 최후의 수단: 더 거친 그리드 (안전 체크 완화 — 본체만)
+            for(let gy = 20; gy <= 90; gy += 5) {
+                for(let gx = 10; gx <= 90; gx += 5) {
+                    if(!_plzIsBlocked(gx, gy - _co)) return { x:gx, y:gy, ok:false };
+                }
+            }
+            return { x:50, y:50, ok:false };
+        };
+        let _spawn = _findSpawn();
+        _plzPos = { x: _spawn.x, y: _spawn.y };
+        // 맵·장애물이 늦게 렌더되는 태블릿 등에서는 100ms·400ms 후 재검증해 안전 위치로 보정
+        const _respawnIfBlocked = () => {
+            const _co2 = _plzCharBodyOffset();
+            if(_plzIsBlocked(_plzPos.x, _plzPos.y - _co2)) {
+                const _re = _findSpawn();
+                _plzPos.x = _re.x; _plzPos.y = _re.y;
+                const _myEl = document.querySelector(`.plz-char[data-uid="${uid}"]`);
+                if(_myEl){ _myEl.style.left = _plzPos.x+'%'; _myEl.style.top = _plzPos.y+'%'; }
+                if(plzMyRef) plzMyRef.update({ x:_plzPos.x, y:_plzPos.y });
+            }
+        };
+        setTimeout(_respawnIfBlocked, 200);
+        setTimeout(_respawnIfBlocked, 800);
         plzMyRef = getPlzRef().child('users').child(uid);
         const _presenceData = { nm: me.nm, no: me.no, x: _plzPos.x, y: _plzPos.y, ts: Date.now() };
         if(me.eq && Object.keys(me.eq).length) _presenceData.eq = me.eq;
