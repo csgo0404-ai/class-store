@@ -793,8 +793,8 @@
             100% { filter: drop-shadow(0 0 14px #FF1744) drop-shadow(0 0 26px #FFEA00) saturate(1.7) brightness(1.15); }
         }
         .plz-char.hs-self-warn::before {
-            content: '⚠️'; position: absolute; top: -42px; left: 50%; transform: translateX(-50%);
-            font-size: 32px; line-height: 1; pointer-events: none; z-index: 6;
+            content: '🚨'; position: absolute; top: -42px; left: 50%; transform: translateX(-50%);
+            font-size: 36px; line-height: 1; pointer-events: none; z-index: 6;
             text-shadow: 0 0 6px #F44336, 0 0 12px #FF9800;
             animation: hsSelfWarnShake 0.25s ease-in-out infinite alternate;
         }
@@ -807,13 +807,13 @@
         .plz-tit-slot { display:flex; justify-content:center; }
         .plz-nm-slot { display:flex; justify-content:center; margin-top:-4px; }
         @keyframes plzWalkBob {
-            0%   { transform:translateY(0px) scaleY(1); }
-            25%  { transform:translateY(-12px) scaleY(1.05); }
-            50%  { transform:translateY(0px) scaleY(0.95); }
-            75%  { transform:translateY(-6px) scaleY(1.02); }
-            100% { transform:translateY(0px) scaleY(1); }
+            0%   { transform:translateY(0) rotate(-1.5deg); }
+            25%  { transform:translateY(-2px) rotate(0deg); }
+            50%  { transform:translateY(0) rotate(1.5deg); }
+            75%  { transform:translateY(-2px) rotate(0deg); }
+            100% { transform:translateY(0) rotate(-1.5deg); }
         }
-        .plz-char.walking .plz-avatar-body { animation:plzWalkBob 0.45s ease-in-out infinite; transform-origin:center bottom; }
+        .plz-char.walking .plz-avatar-body { animation:plzWalkBob 0.55s ease-in-out infinite; transform-origin:center bottom; }
         .plz-chat-overlay { display:flex !important; flex-direction:column !important; }
         #plzChatPanel { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.22) transparent; }
         #plzChatPanel::-webkit-scrollbar { width:4px; }
@@ -1063,30 +1063,6 @@
                 <div id="tit_mgr_list" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;"></div>
             </div>
 
-            <!-- 도감 설정 -->
-            <div class="card" style="margin-bottom:16px;">
-                <h3>📖 도감 설정</h3>
-                <div style="font-size:13px;color:#888;margin-bottom:12px;">학생 화면에서 도감 탭을 언제 공개할지 설정합니다.</div>
-                <div style="display:flex;flex-direction:column;gap:10px;" id="colOpenSettings">
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-                        <input type="radio" name="colOpenMode" value="always" onchange="saveColOpenMode(this.value)" style="width:auto;margin:0;">
-                        <span>항상 공개</span>
-                    </label>
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-                        <input type="radio" name="colOpenMode" value="date" onchange="saveColOpenMode(this.value)" style="width:auto;margin:0;">
-                        <span>날짜 지정 공개</span>
-                    </label>
-                    <div id="colOpenDateRow" style="display:none;padding-left:24px;">
-                        <input type="date" id="colOpenDateInput" style="padding:6px 10px;border-radius:8px;border:2px solid #D7CCC8;font-family:'Jua';font-size:14px;"
-                            onchange="saveColOpenDate(this.value)">
-                        <div style="font-size:12px;color:#888;margin-top:4px;" id="colOpenDateHint"></div>
-                    </div>
-                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-                        <input type="radio" name="colOpenMode" value="hidden" onchange="saveColOpenMode(this.value)" style="width:auto;margin:0;">
-                        <span style="color:#E53935;">항상 숨김</span>
-                    </label>
-                </div>
-            </div>
 
         </div>
 
@@ -1125,6 +1101,16 @@
         </div>
         <div id="t_col" class="hidden">
             <h2>📖 도감 및 초월 관리 <span style="font-size:14px; color:#888;">(※초월 숫자를 0으로 변경하면 별이 삭제됩니다)</span></h2>
+            <div class="card" style="margin-bottom:14px;padding:12px 16px;background:#FFF8E1;">
+                <div style="font-size:14px;font-weight:bold;color:#5D4037;margin-bottom:8px;">📖 학생 도감 공개 설정</div>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px;" id="colOpenSettings2">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="colOpenMode2" value="auto" onchange="saveColOpenMode(this.value)" style="width:auto;margin:0;"><span>🔓 자동 (등록 아이템 있을 때)</span></label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="colOpenMode2" value="always" onchange="saveColOpenMode(this.value)" style="width:auto;margin:0;"><span>항상 공개</span></label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="colOpenMode2" value="date" onchange="saveColOpenMode(this.value)" style="width:auto;margin:0;"><span>날짜 지정</span></label>
+                    <input type="date" id="colOpenDateInput2" style="padding:4px 8px;border-radius:6px;border:1.5px solid #D7CCC8;font-family:'Jua';font-size:12px;" onchange="saveColOpenDate(this.value)">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="radio" name="colOpenMode2" value="hidden" onchange="saveColOpenMode(this.value)" style="width:auto;margin:0;"><span style="color:#E53935;">항상 숨김</span></label>
+                </div>
+            </div>
             <table>
                 <thead>
                     <tr>
@@ -1213,6 +1199,7 @@
                                     <button onclick="forceSyncCurRoom()" title="이 방의 db 설정을 Firebase로 강제 푸시 (불일치 복구)" style="flex:1;padding:5px 6px;border:1px solid #FFB74D;border-radius:6px;background:#FFF8E1;color:#E65100;font-size:11px;cursor:pointer;font-family:'Jua';">🔄 동기화</button>
                                     <button onclick="forceSyncAllRooms()" title="모든 방을 강제 동기화" style="flex:1;padding:5px 6px;border:1px solid #EF5350;border-radius:6px;background:#FFEBEE;color:#C62828;font-size:11px;cursor:pointer;font-family:'Jua';">🔄 전체</button>
                                 </div>
+                                <button onclick="window.showTrafficStats()" title="Firebase 다운로드 트래픽 일자별 누적" style="margin-top:6px;width:100%;padding:5px 6px;border:1px solid #4FC3F7;border-radius:6px;background:#E1F5FE;color:#0277BD;font-size:11px;cursor:pointer;font-family:'Jua';">📊 트래픽 통계</button>
                             </div>
                         </div>
                     </div>
@@ -1989,12 +1976,176 @@ let _renderLock = false; // 재진입 방지
     let _dbDebounceTimer = null;
     let _prevMeHash = null;
     let _prevCfgHash = null;
+    let _prevItmHash = null;
 
-    dbRef.on('value', (snapshot) => {
-        // 디바운스: 150ms 내 연속 업데이트는 마지막 것만 처리
+    // 트래픽 통계 누적 (path별 또는 전체 스냅샷 공통)
+    function _trackDownload(bytes) {
+        try {
+            const today = new Date().toISOString().slice(0,10);
+            let s = null;
+            try { s = JSON.parse(localStorage.getItem('rpg_dbStats')||'null'); } catch(_){}
+            if(!s || s.since && (Date.now() - new Date(s.since).getTime()) > 100*86400000) {
+                s = { since: new Date().toISOString(), count:0, totalBytes:0, byDay:{} };
+            }
+            s.count++; s.totalBytes += bytes;
+            s.lastBytes = bytes; s.lastAt = Date.now();
+            if(!s.byDay) s.byDay = {};
+            if(!s.byDay[today]) s.byDay[today] = { count:0, bytes:0 };
+            s.byDay[today].count++; s.byDay[today].bytes += bytes;
+            const cutoff = Date.now() - 30*86400000;
+            Object.keys(s.byDay).forEach(d => { if(new Date(d).getTime() < cutoff) delete s.byDay[d]; });
+            localStorage.setItem('rpg_dbStats', JSON.stringify(s));
+            window._dbDownloadStats = s;
+        } catch(_){}
+    }
+
+    // ===== 부분 구독 (path별 listener) — 학생/교사 모두 적용. log는 교사만. =====
+    // 롤백: localStorage.setItem('rpgUseSplitListeners','0') 하고 새로고침
+    const _useSplit = localStorage.getItem('rpgUseSplitListeners') !== '0';
+    // 라이브 구독: 변경 자주 일어나는 경로
+    const _splitLivePaths = ['cfg','stu','itm','gac','auc'];
+    // 1회 fetch (정적): 거의 안 변하는 정의 — 페이지 로드 시 1번만 다운로드 후 캐시. 트래픽 큰 절감.
+    const _splitOncePaths = ['avt','bdg','tit','petDef'];
+    const _splitPaths = [..._splitLivePaths, ..._splitOncePaths];
+    // C(plzRooms 분리) 롤백됨 — 데이터 손실 사고로 비활성. 재시도하려면 더 안전한 마이그레이션 필요.
+    let _splitInitialReceived = {};
+    let _splitInitialDone = false;
+    let _splitLogAttached = false;
+
+    function _splitFire() {
         if(_dbDebounceTimer) clearTimeout(_dbDebounceTimer);
-        _dbDebounceTimer = setTimeout(() => _handleDbUpdate(snapshot), 150);
-    });
+        _dbDebounceTimer = setTimeout(() => {
+            const synth = { val: () => db };
+            _handleDbUpdate(synth);
+        }, 350);
+    }
+
+    // C(plzRooms 분리) 비활성 — 데이터 손실 사고로 강제 OFF
+    const _useSplitPlzRooms = false;
+
+    function _attachSplitListeners() {
+        // 라이브 path: on('value')
+        _splitLivePaths.forEach(p => {
+            dbRef.child(p).on('value', snap => {
+                const v = snap.val();
+                try { _trackDownload(JSON.stringify(v||{}).length); } catch(_){}
+                if(!db || typeof db !== 'object') db = {};
+                if(p === 'cfg' && _useSplitPlzRooms) {
+                    // plzRooms는 별도 listener에서 관리 — cfg 통째 교체 시 보존
+                    const oldPlzRooms = db.cfg && db.cfg.plzRooms;
+                    db.cfg = v || {};
+                    if(oldPlzRooms) db.cfg.plzRooms = oldPlzRooms;
+                } else {
+                    db[p] = v;
+                }
+                _splitInitialReceived[p] = true;
+                if(!_splitInitialDone) {
+                    if(_splitPaths.every(k => _splitInitialReceived[k])) {
+                        _splitInitialDone = true;
+                        _splitFire();
+                    }
+                } else {
+                    _splitFire();
+                }
+            });
+        });
+        // plzRoomsCfg 별도 path 구독 — 학생은 once, 교사는 라이브 (로그인 시 attach)
+        if(_useSplitPlzRooms) {
+            // 초기 로드 race 방지: 첫 fire 전에 plzRoomsCfg 도착도 보장
+            _splitInitialReceived['plzRoomsCfg'] = false;
+            dbRef.child('plzRoomsCfg').once('value').then(snap => {
+                const v = snap.val();
+                try { _trackDownload(JSON.stringify(v||{}).length); } catch(_){}
+                if(!db.cfg) db.cfg = {};
+                if(v) db.cfg.plzRooms = v;
+                _splitInitialReceived['plzRoomsCfg'] = true;
+                if(!_splitInitialDone && _splitPaths.every(k => _splitInitialReceived[k]) && _splitInitialReceived['plzRoomsCfg']) {
+                    _splitInitialDone = true;
+                    _splitFire();
+                } else if(_splitInitialDone) _splitFire();
+            });
+        }
+        // 정적 path: once('value') — 1회만 다운로드. 변경 시 새로고침해야 보임.
+        _splitOncePaths.forEach(p => {
+            dbRef.child(p).once('value').then(snap => {
+                const v = snap.val();
+                try { _trackDownload(JSON.stringify(v||{}).length); } catch(_){}
+                if(!db || typeof db !== 'object') db = {};
+                db[p] = v;
+                _splitInitialReceived[p] = true;
+                if(!_splitInitialDone && _splitPaths.every(k => _splitInitialReceived[k])) {
+                    _splitInitialDone = true;
+                    _splitFire();
+                }
+            });
+        });
+    }
+    // stu 분할(B) 롤백됨: 학생도 전체 stu 라이브 구독으로 복귀. 호환을 위해 no-op 유지.
+    window._attachSplitStuOwnListener = function(){};
+    window._attachSplitStuFullListener = function(){};
+    window._refreshAllStu = function(){ return Promise.resolve(); };
+    // 교사가 정적 데이터 편집 시 즉시 다른 클라이언트에도 반영하려면 새로고침 권장
+    // 또는 수동 재구독: window._reloadStaticPaths()
+    window._reloadStaticPaths = function() {
+        _splitOncePaths.forEach(p => {
+            dbRef.child(p).once('value').then(snap => {
+                const v = snap.val();
+                try { _trackDownload(JSON.stringify(v||{}).length); } catch(_){}
+                db[p] = v;
+                _splitFire();
+            });
+        });
+    };
+    // 교사 로그인 시 log 경로도 추가 구독 (학생은 log 다운로드 안 함 → 트래픽 절감)
+    window._attachSplitLogListener = function() {
+        if(!_useSplit || _splitLogAttached) return;
+        _splitLogAttached = true;
+        dbRef.child('log').on('value', snap => {
+            const v = snap.val();
+            try { _trackDownload(JSON.stringify(v||{}).length); } catch(_){}
+            if(!db || typeof db !== 'object') db = {};
+            db.log = v || [];
+            if(_splitInitialDone) _splitFire();
+        });
+    };
+    // 교사 로그인 시 plzRoomsCfg 라이브 구독 (학생은 once만 — 광장 설정은 한 세션에 한 번만 fetch)
+    let _plzRoomsCfgLiveAttached = false;
+    window._attachSplitPlzRoomsCfgLive = function() {
+        if(!_useSplit || !_useSplitPlzRooms || _plzRoomsCfgLiveAttached) return;
+        _plzRoomsCfgLiveAttached = true;
+        dbRef.child('plzRoomsCfg').on('value', snap => {
+            const v = snap.val();
+            try { _trackDownload(JSON.stringify(v||{}).length); } catch(_){}
+            if(!db.cfg) db.cfg = {};
+            db.cfg.plzRooms = v || {};
+            if(_splitInitialDone) _splitFire();
+        });
+    };
+    // 학생 광장 진입 시 plzRoomsCfg 한 번 새로고침 (입장 직전 최신 상태 보장)
+    window._refreshPlzRoomsCfg = function() {
+        if(!_useSplitPlzRooms) return Promise.resolve();
+        return dbRef.child('plzRoomsCfg').once('value').then(snap => {
+            const v = snap.val();
+            try { _trackDownload(JSON.stringify(v||{}).length); } catch(_){}
+            if(!db.cfg) db.cfg = {};
+            if(v) db.cfg.plzRooms = v;
+        });
+    };
+
+    if(_useSplit) {
+        _attachSplitListeners();
+        // 교사 이미 로그인 상태면 log + plzRoomsCfg 라이브 같이 구독
+        if(localStorage.getItem('teacherLogged') === '1') {
+            window._attachSplitLogListener();
+            window._attachSplitPlzRoomsCfgLive();
+        }
+    } else {
+        dbRef.on('value', (snapshot) => {
+            try { _trackDownload(JSON.stringify(snapshot.val()||{}).length); } catch(_){}
+            if(_dbDebounceTimer) clearTimeout(_dbDebounceTimer);
+            _dbDebounceTimer = setTimeout(() => _handleDbUpdate(snapshot), 350);
+        });
+    }
 
     const _preloadCache = new Set();
     function _preloadAvatarImages() {
@@ -2583,9 +2734,10 @@ let _renderLock = false; // 재진입 방지
             if(!db.cfg.baseChar) db.cfg.baseChar = '';
             // 생활기록부 연동 쿠폰 자동 등록
             _ensureRecordCoupons();
-            // 교사 로그인 시 7일 지난 그림 1회 정리
+            // 교사 로그인 시 7일 지난 그림 1회 정리 + db 자동 정리
             if(localStorage.getItem('teacherLogged')==='1') {
                 setTimeout(() => window._cleanupOldDrawings && window._cleanupOldDrawings(), 4000);
+                setTimeout(() => window._autoCleanupDb && window._autoCleanupDb(), 6000);
             }
 
             // 아바타 이미지 프리로드 — 로그인 전에 캐시에 올림
@@ -2696,6 +2848,8 @@ let _renderLock = false; // 재진입 방지
                 if (_urlS) {
                     if(_urlS.shopRestrict){const _td2=new Date().toISOString().slice(0,10);const {from:_f2,to:_t2}=_urlS.shopRestrict;if(_f2&&_t2&&_td2>=_f2&&_td2<=_t2){_showShopRestrictScreen(_urlS.nm,_f2,_t2);return;}}
                     me = _urlS;
+                    // URL 자동 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
+                    if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
                     if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                     if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                     if(!me.col) me.col = [];
@@ -2752,13 +2906,17 @@ let _renderLock = false; // 재진입 방지
                     }
                     const newMeHash = JSON.stringify(updatedMe);
                     const newCfgHash = JSON.stringify(db.cfg);
+                    // 도감 자동 모드 감지를 위해 itm의 도감 등록 정보(s, excludeFromCol)도 해시
+                    const newItmHash = JSON.stringify((db.itm||[]).map(i => ({n:i?.n, s:i?.s, ex:i?.excludeFromCol})));
                     const meChanged = newMeHash !== _prevMeHash;
                     const cfgChanged = newCfgHash !== _prevCfgHash;
+                    const itmChanged = newItmHash !== _prevItmHash;
                     _prevMeHash = newMeHash;
                     _prevCfgHash = newCfgHash;
+                    _prevItmHash = newItmHash;
 
-                    // 자신의 데이터 또는 설정이 변경된 경우에만 학생 화면 재렌더
-                    if(meChanged || cfgChanged) {
+                    // 자신의 데이터 또는 설정/아이템(도감 등록 변경)이 변경된 경우에만 학생 화면 재렌더
+                    if(meChanged || cfgChanged || itmChanged) {
                         me = updatedMe;
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
@@ -2811,9 +2969,11 @@ let _renderLock = false; // 재진입 방지
 
     // 🌟 안전한 경매 타이머 루프
     setInterval(() => {
+        if(document.hidden) return; // 백그라운드 탭 스킵
+        if(!db.auc || !db.auc.some(a => a.st === 'active')) return; // 활성 경매 없으면 즉시 리턴
         let needSave = false;
         const now = Date.now();
-        
+
         if(db.auc) {
             db.auc.forEach(a => {
                 if(a.st === 'active') {
@@ -2887,11 +3047,40 @@ let _renderLock = false; // 재진입 방지
 
     let _localSaving = false;
     let _localSavingTimer = null;
+    let _svDebounceTimer = null;
+    function _svWriteSafe() {
+        try {
+            const isStudentTab = !!(me && me.cd && me.cd !== 'teacher_main');
+            // dbRef.set(db)는 db에 없는 top-level path(예: /plaza)를 모두 삭제 → 사고
+            // dbRef.update({k:v})는 지정한 key만 교체, 그 외는 보존 → 안전
+            const payload = {};
+            // 교사 탭에서만 쓰는 키 (학생은 안 건드림)
+            const TEACHER_KEYS = ['cfg','itm','gac','avt','bdg','tit','petDef','log','rec','ak'];
+            // 양쪽 다 쓰는 키
+            const SHARED_KEYS = ['stu','auc'];
+            const keys = isStudentTab ? SHARED_KEYS : [...TEACHER_KEYS, ...SHARED_KEYS];
+            for(const k of keys) {
+                if(!(k in db)) continue;
+                if(k === 'cfg') {
+                    // cfg.plz는 cfg.plzRooms[curRid].plz의 alias — 12KB 중복 방지
+                    const cfgCopy = { ...db.cfg };
+                    delete cfgCopy.plz;
+                    payload.cfg = cfgCopy;
+                } else {
+                    payload[k] = db[k];
+                }
+            }
+            return dbRef.update(payload);
+        } catch(e) { console.error('[sv] set error', e); }
+    }
+
     function sv(){
         _localSaving = true;
         clearTimeout(_localSavingTimer);
         _localSavingTimer = setTimeout(() => { _localSaving = false; }, 3000);
-        dbRef.set(db);
+        // 디바운스 1500ms
+        clearTimeout(_svDebounceTimer);
+        _svDebounceTimer = setTimeout(_svWriteSafe, 1500);
         // localStorage 자동 스냅샷 (긴급복구 토글이 꺼져 있으면 생략)
         if(db.cfg?.emergencyRestore !== false) {
             try {
@@ -2900,6 +3089,11 @@ let _renderLock = false; // 재진입 방지
             } catch(e) {}
         }
     }
+    // 즉시 저장 필요 시 사용 (앱 종료 직전 등)
+    window._svImmediate = function(){
+        clearTimeout(_svDebounceTimer);
+        _svWriteSafe();
+    };
 
     // 로컬 스냅샷으로 복구
     window.restoreFromLocalSnap = function() {
@@ -2924,9 +3118,75 @@ let _renderLock = false; // 재진입 방지
         }, {icon:'💾', okLabel:'복구', okClass:'btn-blue', cancelLabel:'취소'});
     };
 
+    // 백그라운드 탭 절전: 숨겨진 지 2분 지나면 Firebase goOffline (트래픽 절감), 다시 보이면 goOnline
+    let _idleOfflineTimer = null;
+    let _isOfflineByIdle = false;
+    document.addEventListener('visibilitychange', function() {
+        if(document.hidden) {
+            clearTimeout(_idleOfflineTimer);
+            _idleOfflineTimer = setTimeout(() => {
+                try {
+                    if(!_isOfflineByIdle && firebase?.database) {
+                        firebase.database().goOffline();
+                        _isOfflineByIdle = true;
+                    }
+                } catch(_){}
+            }, 2 * 60 * 1000);
+        } else {
+            clearTimeout(_idleOfflineTimer);
+            if(_isOfflineByIdle) {
+                try { firebase.database().goOnline(); } catch(_){}
+                _isOfflineByIdle = false;
+            }
+        }
+    });
+
+    // 활동 기반 절전: 학생 탭이 5분간 키보드/마우스/터치 활동 없으면 goOffline (광장 게임 중엔 제외)
+    // 롤백: localStorage.setItem('rpgIdleDetach','0') + 새로고침
+    if(localStorage.getItem('rpgIdleDetach') !== '0') {
+        let _activityTimer = null;
+        let _isOfflineByActivity = false;
+        const _ACTIVITY_IDLE_MS = 5 * 60 * 1000;
+        function _resetActivity() {
+            if(_isOfflineByActivity) {
+                try { firebase.database().goOnline(); } catch(_){}
+                _isOfflineByActivity = false;
+                document.getElementById('_idleOverlay')?.remove();
+            }
+            clearTimeout(_activityTimer);
+            // 학생 탭에서만 idle 적용 (교사 탭은 활동 부족해도 알림 받아야 함)
+            const isStudentTab = !!(me && me.cd && me.cd !== 'teacher_main');
+            if(!isStudentTab) return;
+            // 광장 게임 진행 중엔 절전 안 함
+            if(window._plzActive || window._mafiaState?.on || window._liarState?.on) return;
+            _activityTimer = setTimeout(() => {
+                try {
+                    if(!_isOfflineByActivity && firebase?.database) {
+                        firebase.database().goOffline();
+                        _isOfflineByActivity = true;
+                        // 화면에 안내 + 클릭 시 재연결
+                        const ov = document.createElement('div');
+                        ov.id = '_idleOverlay';
+                        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99998;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:\'Jua\';color:white;text-align:center;';
+                        ov.innerHTML = '<div style="background:rgba(40,40,40,0.95);padding:30px 40px;border-radius:18px;"><div style="font-size:44px;margin-bottom:12px;">💤</div><div style="font-size:18px;margin-bottom:8px;">절전 중</div><div style="font-size:13px;color:#bbb;">화면을 클릭하면 다시 연결돼요</div></div>';
+                        ov.onclick = () => _resetActivity();
+                        document.body.appendChild(ov);
+                    }
+                } catch(_){}
+            }, _ACTIVITY_IDLE_MS);
+        }
+        ['mousedown','keydown','touchstart','click'].forEach(ev => {
+            document.addEventListener(ev, _resetActivity, { passive: true });
+        });
+        // 첫 활성화는 로그인 후에 트리거되도록 약간 지연
+        setTimeout(_resetActivity, 3000);
+    }
+
     // 창 닫기/새로고침 시 백업 팝업 (교사 전용)
     // beforeunload: 브라우저 기본 "떠나시겠습니까?" 다이얼로그 + 자동 백업 시도
     window.addEventListener('beforeunload', function(e) {
+        // 디바운스된 sv() pending이면 즉시 저장
+        if(window._svImmediate) try { window._svImmediate(); } catch(_) {}
         if(localStorage.getItem('teacherLogged') !== '1') return;
         // 자동 백업 파일 다운로드 시도 (일부 브라우저에서 작동)
         try {
@@ -2968,8 +3228,10 @@ let _renderLock = false; // 재진입 방지
     function logCandy(targets, change, method) {
         const now = new Date();
         const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-        db.log.unshift({ time: timeStr, targets: targets, change: change, method: method });
-        if(db.log.length > 100) db.log.pop(); 
+        db.log.unshift({ time: timeStr, ts: Date.now(), targets: targets, change: change, method: method });
+        // 일주일 이상 된 로그 자동 삭제
+        const WEEK_AGO = Date.now() - 7*86400000;
+        db.log = db.log.filter(l => !l.ts || l.ts > WEEK_AGO);
         sv();
     }
 
@@ -3048,6 +3310,10 @@ let _renderLock = false; // 재진입 방지
         const pw = document.getElementById('tp').value;
         if(pw==='csgo10'){
             localStorage.setItem('teacherLogged','1');
+            // 교사 로그인 → log + plzRoomsCfg 라이브 구독
+            if(window._attachSplitLogListener) try { window._attachSplitLogListener(); } catch(_){}
+            if(window._attachSplitStuFullListener) try { window._attachSplitStuFullListener(); } catch(_){}
+            if(window._attachSplitPlzRoomsCfgLive) try { window._attachSplitPlzRoomsCfgLive(); } catch(_){}
             document.getElementById('login').classList.add('hidden');
             document.getElementById('appT').classList.remove('hidden');
             nav('t_stu');
@@ -3093,6 +3359,8 @@ let _renderLock = false; // 재진입 방지
                 }
             }
             me = s;
+            // 학생 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
+            if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
 
             // 로그인 시 다했니 쿠키 동기화 (조용하게)
             const data = await fetchDahessni(me.cd);
@@ -3385,6 +3653,8 @@ let _renderLock = false; // 재진입 방지
     }
     
     function navS(id,e){
+        // 학생 탭 화면 이동 시 다른 학생 데이터 새로고침 (30초 throttle, 도감·랭킹 등에 반영)
+        if(window._refreshAllStu) try { window._refreshAllStu(); } catch(_){}
         // 광장에서 나갈 때 cleanup
         if(window._plzActive && id !== 's_plz') exitPlaza();
         document.querySelectorAll('#appS .cont > div').forEach(d=>{
@@ -5814,7 +6084,9 @@ window.appU = function(y, si, k) {
 
     function rColT() {
         if(!db.stu) return;
-        const targetItms = db.itm.filter(i => i.s === true); 
+        // 도감 공개 설정 UI 갱신
+        if(typeof _renderColOpenUI === 'function') _renderColOpenUI();
+        const targetItms = db.itm.filter(i => i && !i.excludeFromCol);
         const total = targetItms.length;
         let displayList = db.stu.map((s, idx) => {
             const myCol = s.col || [];
@@ -5891,7 +6163,7 @@ window.appU = function(y, si, k) {
             window._plzChatPushPrune(getPlzRef().child('chat'), { sys: true, nm: '📖', msg: _rbMsg, ts: Date.now() });
         } catch(_) {}
 
-        const targetItms = db.itm.filter(i => i.s === true);
+        const targetItms = db.itm.filter(i => i && !i.excludeFromCol);
         targetItms.forEach(item => {
             let idx = me.inv.findIndex(i => i.n === item.n && i.st !== 'used' && i.st !== 'usd');
             if (idx === -1) {
@@ -5997,12 +6269,15 @@ window.appU = function(y, si, k) {
         _renderColOpenUI();
     };
     function _renderColOpenUI() {
-        const mode = db.cfg?.colOpenMode || 'always';
+        const mode = db.cfg?.colOpenMode || 'auto';
         document.querySelectorAll('input[name="colOpenMode"]').forEach(r => { r.checked = r.value === mode; });
+        document.querySelectorAll('input[name="colOpenMode2"]').forEach(r => { r.checked = r.value === mode; });
         const dateRow = document.getElementById('colOpenDateRow');
         if(dateRow) dateRow.style.display = mode === 'date' ? 'block' : 'none';
         const dateInput = document.getElementById('colOpenDateInput');
         if(dateInput) dateInput.value = db.cfg?.colOpenDate || '';
+        const dateInput2 = document.getElementById('colOpenDateInput2');
+        if(dateInput2) dateInput2.value = db.cfg?.colOpenDate || '';
         const hint = document.getElementById('colOpenDateHint');
         if(hint && mode === 'date') {
             const d = db.cfg?.colOpenDate;
@@ -6016,12 +6291,17 @@ window.appU = function(y, si, k) {
     }
     // 학생 도감 탭 가시성 체크
     window._isColOpen = function() {
-        const mode = db.cfg?.colOpenMode || 'always';
+        const mode = db.cfg?.colOpenMode || 'auto';
         if(mode === 'hidden') return false;
         if(mode === 'date') {
             const d = db.cfg?.colOpenDate;
             if(!d) return false;
             return new Date() >= new Date(d);
+        }
+        if(mode === 'auto') {
+            // 도감 등록 아이템(s===true)이 하나라도 있으면 공개
+            const itms = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
+            return itms.some(i => i && !i.excludeFromCol);
         }
         return true;
     };
@@ -6724,9 +7004,9 @@ window.appU = function(y, si, k) {
 
         if(!showTrash) {
             let pseudoItems = [];
-            if ((!db.cfg || db.cfg.show_cn !== false) && (me.cn > 0)) pseudoItems.push({ n: '캔디', i: '🍭', count: me.cn, pseudo: true, g: 'S' });
-            if ((!db.cfg || db.cfg.show_tk !== false) && (me.tk > 0)) pseudoItems.push({ n: '누구나 바구니', i: '🧺', count: me.tk, pseudo: true, g: 'S' });
-            if ((!db.cfg || db.cfg.show_co !== false) && (me.co > 0)) pseudoItems.push({ n: '꿀', i: '🍯', count: me.co, pseudo: true, g: 'S' });
+            if ((!db.cfg || db.cfg.show_cn !== false) && Number(me.cn||0) > 0) pseudoItems.push({ n: '캔디', i: '🍭', count: Number(me.cn||0), pseudo: true, g: 'S' });
+            if ((!db.cfg || db.cfg.show_tk !== false) && Number(me.tk||0) > 0) pseudoItems.push({ n: '누구나 바구니', i: '🧺', count: Number(me.tk||0), pseudo: true, g: 'S' });
+            if ((!db.cfg || db.cfg.show_co !== false) && Number(me.co||0) > 0) pseudoItems.push({ n: '꿀', i: '🍯', count: Number(me.co||0), pseudo: true, g: 'S' });
             const curCookie = Math.max(0, (me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0));
             if (curCookie > 0) pseudoItems.push({ n: '쿠키', i: '🍪', count: curCookie, pseudo: true, g: 'S' });
             itemList = [...pseudoItems, ...itemList];
@@ -6801,7 +7081,7 @@ window.appU = function(y, si, k) {
 
     function rCol(){ 
         let itmList = Array.isArray(db.itm) ? db.itm : Object.values(db.itm || {});
-        const targetItms = itmList.filter(i => i.s === true && !i.excludeFromCol);
+        const targetItms = itmList.filter(i => i && !i.excludeFromCol);
         const total = targetItms.length;
         if(!me.col) me.col = [];
         const myCount = targetItms.filter(i => me.col.includes(i.n)).length;
@@ -12489,21 +12769,26 @@ window.addCharRow = function() {
             // 이전 배경 경로 추출 (덮어쓰기 또는 삭제 대상)
             const prevUrl = (db.cfg && db.cfg.plz && db.cfg.plz.customBg) || '';
             const prevPath = _extractGhPath(prevUrl, gh);
-            // 파일명: 방별 고정 (덮어쓰기 가능). 확장자는 원본 유지
+            // 파일명: 광장 이름 기반 (광장 이름이 곧 파일 소유자). 확장자는 원본 유지
             const ext = (file.name.match(/\.[a-zA-Z0-9]+$/) || ['.jpg'])[0];
-            const safeName = `${_plzCurRoom}_bg${ext}`;
+            const rawName = (db.cfg?.plzRooms?.[_plzCurRoom]?.name || _plzCurRoom).trim();
+            // 파일 시스템 안전 문자만 (한글·영문·숫자·하이픈·언더스코어 허용, 그 외는 _)
+            const cleanName = rawName.replace(/[^\p{L}\p{N}_-]/gu, '_').slice(0, 40) || _plzCurRoom;
+            const safeName = `${cleanName}${ext}`;
             const filename = `plaza_bg/${safeName}`;
-            // 기존 파일 sha 조회 (덮어쓰기용)
+            // GitHub API path는 한글 등 비ASCII 문자를 URL 인코딩 필수
+            const apiPath = filename.split('/').map(encodeURIComponent).join('/');
+            // 같은 이름 파일이 있으면 sha 조회 후 덮어쓰기
             let sha = null;
             try {
-                const getResp = await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${filename}`, {
+                const getResp = await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${apiPath}`, {
                     headers: { 'Authorization': `token ${gh.token}` }
                 });
                 if(getResp.ok) { const gd = await getResp.json(); sha = gd.sha; }
             } catch(_) {}
             const body = { message: `Upload plaza bg: ${safeName}`, content: base64 };
             if(sha) body.sha = sha;
-            const resp = await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${filename}`, {
+            const resp = await fetch(`https://api.github.com/repos/${gh.owner}/${gh.repo}/contents/${apiPath}`, {
                 method: 'PUT',
                 headers: { 'Authorization': `token ${gh.token}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -12513,10 +12798,17 @@ window.addCharRow = function() {
             // 캐시 버스터로 URL 고유하게 (같은 이름이어도 갱신 반영)
             const url = data.content.download_url + '?v=' + Date.now();
             applyCustomBg(url);
-            // 이전 파일이 "이 방 전용" 파일일 때만 삭제 — 다른 방이 공유 중인 파일(복제 직후)은 보호
-            const myFilePrefix = `plaza_bg/${_plzCurRoom}_bg`;
-            const prevIsMine = prevPath && prevPath.startsWith(myFilePrefix);
-            if(prevPath && prevPath !== filename && prevIsMine) {
+            // 이전 파일 삭제 — 다른 방이 같은 URL을 참조 중이면 보호 (방 교환·복제 후 파일 공유 가능성)
+            const _refByOther = (() => {
+                const rooms = (db.cfg && db.cfg.plzRooms) || {};
+                for(const k in rooms){
+                    if(k === _plzCurRoom) continue;
+                    const u = rooms[k]?.plz?.customBg || '';
+                    if(u && _extractGhPath(u, gh) === prevPath) return true;
+                }
+                return false;
+            })();
+            if(prevPath && prevPath !== filename && !_refByOther) {
                 _deleteGhFile(gh, prevPath).catch(()=>{});
             }
             if(statusEl) statusEl.textContent = '✅ 업로드 완료!';
@@ -13507,9 +13799,15 @@ window.addCharRow = function() {
     const PLZ_SPEED = 0.12;  // % per frame
     window._plzActive = false;
 
-    // C: 접속자 수에 따라 throttle 자동 조정
-    // 모든 접속자가 동일한 속도로 보이도록 고정값 사용
-    function _plzGetThrottle() { return 500; }
+    // 접속자 수에 따라 throttle 자동 조정 (트래픽 절감)
+    //  ~5명: 1000ms / 6~15명: 1500ms / 16~30명: 2000ms / 30+명: 3000ms
+    function _plzGetThrottle() {
+        const n = Object.keys(_plzUserCache||{}).length || 1;
+        if(n <= 5) return 1000;
+        if(n <= 15) return 1500;
+        if(n <= 30) return 2000;
+        return 3000;
+    }
     // A: 실제로 위치가 바뀌었을 때만 Firebase 전송
     function _plzTrySyncPos() {
         if(!plzMyRef) return;
@@ -13540,7 +13838,10 @@ window.addCharRow = function() {
         }
         const dx = Math.abs(_plzPos.x - _plzLastSentX);
         const dy = Math.abs(_plzPos.y - _plzLastSentY);
-        if(dx < 0.01 && dy < 0.01) return; // 움직임 없음 → 전송 안 함
+        // 미세 움직임 무시 (1% 이상만 전송) — 트래픽 50%+ 절감
+        if(dx < 1.0 && dy < 1.0) return;
+        // 백그라운드 탭은 위치 동기화 일시 정지 (트래픽 절감)
+        if(document.hidden) return;
         const now = Date.now();
         if(now - _plzSyncThrottle < _plzGetThrottle()) return;
         _plzSyncThrottle = now;
@@ -13556,14 +13857,16 @@ window.addCharRow = function() {
     function _plzSyncRoomKeys() {
         if(!db.cfg || !db.cfg.plzRooms) return;
         const all = Object.keys(db.cfg.plzRooms);
-        const base = ['r1','r2','r3'].filter(k => all.includes(k));
-        const extras = all.filter(k => !['r1','r2','r3'].includes(k))
+        // 명시적 순서 배열이 있으면 그대로 사용 (드래그로 변경됨), 없으면 rid 숫자 순
+        const saved = Array.isArray(db.cfg.plzRoomOrder) ? db.cfg.plzRoomOrder.filter(k => all.includes(k)) : [];
+        const missing = all.filter(k => !saved.includes(k))
             .sort((a,b) => {
                 const na = parseInt(a.replace(/^r/,''),10) || 0;
                 const nb = parseInt(b.replace(/^r/,''),10) || 0;
                 return na - nb;
             });
-        _PLZ_ROOM_KEYS = [...base, ...extras];
+        _PLZ_ROOM_KEYS = [...saved, ...missing];
+        db.cfg.plzRoomOrder = _PLZ_ROOM_KEYS.slice();
     }
     // 방별 데이터: 배경/장애물/공지/얼음땡 설정 등
     const _PLZ_CFG_FIELDS = ['plz','plzIceTag'];
@@ -13574,10 +13877,16 @@ window.addCharRow = function() {
     window._plzSetCfg = function(field, value) {
         if(!db.cfg) db.cfg = {};
         db.cfg[field] = value;
-        if(_PLZ_GLOBAL_FIELDS.includes(field)) return; // 전역은 방별 저장 안 함
+        if(_PLZ_GLOBAL_FIELDS.includes(field)) {
+            // 전역 cfg 필드 surgical write — sv 디바운스 사이 listener echo가 되돌리는 것 방지
+            try { dbRef.child('cfg/' + field).set(value); } catch(_){}
+            return;
+        }
         if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
         if(!db.cfg.plzRooms[_plzCurRoom]) db.cfg.plzRooms[_plzCurRoom] = {};
         db.cfg.plzRooms[_plzCurRoom][field] = value;
+        // 방별 cfg 필드 surgical write
+        try { dbRef.child('cfg/plzRooms/' + _plzCurRoom + '/' + field).set(value); } catch(_){}
     };
 
     // db.cfg를 바인딩: db.cfg.plz 등이 현재 방의 데이터를 가리키도록
@@ -14725,6 +15034,12 @@ window.addCharRow = function() {
         }
         // 바인딩 재동기화: db.cfg.plz가 현재 방을 가리키도록 강제
         db.cfg.plz = roomPlz;
+        // ★ surgical 직접 쓰기 — sv() 디바운스를 우회해 손실 방지 (다른 _handleDbUpdate가 db를 덮어써도 안전)
+        const _curRid = _plzCurRoom;
+        try {
+            dbRef.child(`cfg/plzRooms/${_curRid}/plz/customBg`).set(url);
+            dbRef.child(`cfg/plzRooms/${_curRid}/plz/customBgs`).set([url]);
+        } catch(_){}
         sv();
         // 명시적으로 현재 방 경로에 직접 쓰기 (캐시된 plzRef에 의존하지 않음)
         firebase.database().ref('ClassData/EventShop/plaza/' + _plzCurRoom + '/cfg').update({ customBg: url, customBgs: [url] });
@@ -14738,6 +15053,11 @@ window.addCharRow = function() {
             if(!rp.bgAspectByBg) rp.bgAspectByBg = {};
             if(idx >= 0) rp.bgAspectByBg[idx] = ar;
             rp.bgAspect = ar;
+            // ★ surgical 직접 쓰기 — sv() 우회
+            try {
+                dbRef.child(`cfg/plzRooms/${_capturedRoom}/plz/bgAspect`).set(ar);
+                dbRef.child(`cfg/plzRooms/${_capturedRoom}/plz/bgAspectByBg`).set(rp.bgAspectByBg);
+            } catch(_){}
             sv();
             firebase.database().ref('ClassData/EventShop/plaza/' + _capturedRoom + '/cfg').update({
                 bgAspect: ar,
@@ -14917,6 +15237,8 @@ window.addCharRow = function() {
         const nv = !cur;
         db.cfg.plzRooms[rid].plz.open = nv;
         if(rid === _plzCurRoom && db.cfg.plz) db.cfg.plz.open = nv;
+        // sv() 디바운스 사이 cfg listener echo가 로컬 되돌리지 않도록 cfg path도 surgical write
+        try { dbRef.child('cfg/plzRooms/' + rid + '/plz/open').set(nv); } catch(_){}
         // db.plaza도 같이 갱신 — sv()가 전체 트리를 덮어쓰므로 stale 데이터로 plaza/cfg/open이 복구되는 것 방지
         if(!db.plaza) db.plaza = {};
         if(!db.plaza[rid]) db.plaza[rid] = {};
@@ -14948,6 +15270,7 @@ window.addCharRow = function() {
         const trimmed = v.trim();
         if(!trimmed) return;
         db.cfg.plzRooms[rid].name = trimmed;
+        try { dbRef.child('cfg/plzRooms/' + rid + '/name').set(trimmed); } catch(_){}
         sv();
         _renderPlzRoomTabs();
     };
@@ -14960,32 +15283,16 @@ window.addCharRow = function() {
         e.preventDefault();
         const srcRid = e.dataTransfer.getData('text/plain');
         if(!srcRid || srcRid === targetRid) return;
-        if(!confirm('방 설정(이름·배경·장애물·규칙 등)을 모두 교환할까요?')) return;
-        // 전체 방 데이터 교환
-        const a = JSON.parse(JSON.stringify(db.cfg.plzRooms[srcRid] || {}));
-        const b = JSON.parse(JSON.stringify(db.cfg.plzRooms[targetRid] || {}));
-        db.cfg.plzRooms[srcRid] = b;
-        db.cfg.plzRooms[targetRid] = a;
-        // 현재 편집 중인 방이 교환된 쪽이면 db.cfg.plz 등도 재바인딩
-        _plzBindCurRoom(_plzCurRoom);
+        // 순서만 변경 (방 내용·이미지·rid는 그대로 유지)
+        _plzSyncRoomKeys();
+        const order = _PLZ_ROOM_KEYS.slice();
+        const si = order.indexOf(srcRid), ti = order.indexOf(targetRid);
+        if(si < 0 || ti < 0) return;
+        order.splice(si, 1);
+        order.splice(order.indexOf(targetRid) + (si < ti ? 1 : 0), 0, srcRid);
+        db.cfg.plzRoomOrder = order;
+        _PLZ_ROOM_KEYS = order;
         sv();
-        // Firebase plaza/{rid}/cfg도 동기화 (배경/장애물 등 실시간 설정 반영)
-        const _pushCfg = (rid, data) => {
-            const plz = (data && data.plz) || {};
-            firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/cfg').update({
-                customBg: plz.customBg || null,
-                customBgs: plz.customBgs || null,
-                obstaclesByBg: plz.obstaclesByBg || null,
-                bgAspect: plz.bgAspect || null,
-                bgAspectByBg: plz.bgAspectByBg || null,
-                notice: plz.notice || null,
-                open: plz.open || null,
-                iceTagOn: plz.iceTagOn !== false,
-                hideSeekOn: plz.hideSeekOn !== false
-            });
-        };
-        _pushCfg(srcRid, b);
-        _pushCfg(targetRid, a);
         _renderPlzRoomTabs();
         _renderPlzStuListAll();
         _renderPlzChatLogTAll();
@@ -15139,6 +15446,138 @@ window.addCharRow = function() {
     };
 
     // 모든 방 강제 동기화
+    // db 크기 진단 — 어떤 섹션이 큰지 알려줌 (트래픽 폭증 원인 추적용)
+    window._dbSizeAudit = function() {
+        const sizes = {};
+        const fmt = b => b<1024 ? b+'B' : b<1024*1024 ? (b/1024).toFixed(1)+'KB' : (b/1024/1024).toFixed(2)+'MB';
+        const measure = (obj) => JSON.stringify(obj||{}).length;
+        const total = measure(db);
+        Object.keys(db).forEach(k => sizes[k] = measure(db[k]));
+        // 학생별 inv/ibx도 따로
+        let stuInvTotal=0, stuIbxTotal=0;
+        (db.stu||[]).forEach(s => { stuInvTotal += measure(s.inv); stuIbxTotal += measure(s.ibx); });
+        const sorted = Object.entries(sizes).sort((a,b)=>b[1]-a[1]);
+        const html = `
+        <div id="_dbAuditModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:'Jua';" onclick="if(event.target===this)this.remove();">
+            <div style="background:white;border-radius:16px;padding:20px;max-width:520px;width:100%;max-height:80vh;overflow:auto;">
+                <div style="font-size:20px;color:#0277BD;margin-bottom:10px;">📐 DB 크기 진단</div>
+                <div style="font-size:14px;color:#555;margin-bottom:14px;">전체: <b>${fmt(total)}</b> · 매 갱신마다 모든 학생이 이 양을 다운로드</div>
+                <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #ddd;">
+                    <thead><tr style="background:#E1F5FE;"><th style="padding:5px 8px;text-align:left;">섹션</th><th style="padding:5px 8px;text-align:right;">크기</th><th style="padding:5px 8px;text-align:right;">%</th></tr></thead>
+                    <tbody>${sorted.map(([k,v])=>`<tr><td style="padding:4px 8px;">${k}</td><td style="padding:4px 8px;text-align:right;">${fmt(v)}</td><td style="padding:4px 8px;text-align:right;color:#888;">${(v/total*100).toFixed(1)}%</td></tr>`).join('')}
+                        <tr style="background:#FFF8E1;"><td style="padding:4px 8px;">└ 모든 학생 inv 합</td><td style="padding:4px 8px;text-align:right;">${fmt(stuInvTotal)}</td><td></td></tr>
+                        <tr style="background:#FFF8E1;"><td style="padding:4px 8px;">└ 모든 학생 ibx 합</td><td style="padding:4px 8px;text-align:right;">${fmt(stuIbxTotal)}</td><td></td></tr>
+                    </tbody>
+                </table>
+                <div style="display:flex;gap:8px;margin-top:14px;">
+                    <button onclick="window._autoCleanupDb(true);alert('정리 완료. 다시 진단을 눌러보세요.')" style="flex:1;padding:8px;border:1px solid #66BB6A;border-radius:6px;background:#E8F5E9;color:#2E7D32;cursor:pointer;font-family:'Jua';">🧹 즉시 정리 실행</button>
+                    <button onclick="document.getElementById('_dbAuditModal').remove()" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer;font-family:'Jua';">닫기</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+
+    // db 자동 정리 — 교사 로그인 시 1일 1회 실행. 트래픽 절감용.
+    window._autoCleanupDb = function(force) {
+        try {
+            const lastKey = 'rpg_lastDbCleanup';
+            const today = new Date().toISOString().slice(0,10);
+            if(!force && localStorage.getItem(lastKey) === today) return;
+            const NOW = Date.now();
+            const WEEK = 7 * 86400000;
+            let removed = { auc:0, ibx:0, inv:0, log:0 };
+
+            // 0) db.log 일주일 이상 지난 항목 삭제
+            if(Array.isArray(db.log)) {
+                const before = db.log.length;
+                db.log = db.log.filter(l => !l.ts || (NOW - l.ts) < WEEK);
+                removed.log = before - db.log.length;
+            }
+
+            // 1) 종료된 경매(done/tie/denied) 7일 이상 지난 것 삭제
+            if(Array.isArray(db.auc)) {
+                const before = db.auc.length;
+                db.auc = db.auc.filter(a => {
+                    if(!a) return false;
+                    if(a.st === 'active' || a.st === 'req') return true;
+                    const t = a.et || a.id || NOW;
+                    return (NOW - t) < WEEK;
+                });
+                removed.auc = before - db.auc.length;
+            }
+
+            // 2) 우편함(ibx) — 사용 완료 OR 7일 이상 지난 항목 삭제
+            // 3) 가방(inv) — 사용 완료(st='used') 항목 삭제
+            (db.stu||[]).forEach(s => {
+                if(Array.isArray(s.ibx)) {
+                    const before = s.ibx.length;
+                    s.ibx = s.ibx.filter(it => {
+                        if(!it) return false;
+                        if(it.st === 'used') return false;
+                        const t = it.ts || it.t || 0;
+                        if(t && (NOW - t) > WEEK) return false;
+                        return true;
+                    });
+                    removed.ibx += before - s.ibx.length;
+                }
+                if(Array.isArray(s.inv)) {
+                    const before = s.inv.length;
+                    s.inv = s.inv.filter(it => it && it.st !== 'used');
+                    removed.inv += before - s.inv.length;
+                }
+            });
+
+            if(removed.auc + removed.ibx + removed.inv > 0) {
+                sv();
+                if(window._svImmediate) try { window._svImmediate(); } catch(_){}
+                console.log('[autoCleanup]', removed);
+            }
+            localStorage.setItem(lastKey, today);
+        } catch(e) { console.error('[autoCleanup] error', e); }
+    };
+
+    window.showTrafficStats = function() {
+        let s = null;
+        try { s = JSON.parse(localStorage.getItem('rpg_dbStats')||'null'); } catch(_){}
+        if(!s) { alert('통계 없음'); return; }
+        const fmtMB = b => (b/1024/1024).toFixed(2)+'MB';
+        const days = Object.keys(s.byDay||{}).sort().reverse();
+        const rows = days.map(d => {
+            const x = s.byDay[d];
+            return `<tr><td style="padding:4px 8px;">${d}</td><td style="padding:4px 8px;text-align:right;">${x.count}회</td><td style="padding:4px 8px;text-align:right;">${fmtMB(x.bytes)}</td></tr>`;
+        }).join('');
+        const sinceDays = Math.max(1, Math.round((Date.now() - new Date(s.since).getTime())/86400000));
+        const avg = (s.totalBytes/sinceDays/1024/1024).toFixed(2);
+        const html = `
+        <div id="_trafModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.remove();">
+            <div style="background:white;border-radius:16px;padding:20px;max-width:520px;width:100%;max-height:80vh;overflow:auto;font-family:'Jua';">
+                <div style="font-size:20px;color:#0277BD;margin-bottom:12px;">📊 Firebase 다운로드 트래픽</div>
+                <div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:12px;">
+                    추적 시작: ${s.since.slice(0,10)} (${sinceDays}일)<br>
+                    누적 다운로드: <b>${fmtMB(s.totalBytes)}</b> / 갱신 ${s.count}회<br>
+                    하루 평균: <b>${avg}MB</b><br>
+                    마지막 갱신 크기: ${(s.lastBytes/1024).toFixed(1)}KB
+                </div>
+                <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #ddd;">
+                    <thead><tr style="background:#E1F5FE;"><th style="padding:6px 8px;text-align:left;">날짜</th><th style="padding:6px 8px;text-align:right;">횟수</th><th style="padding:6px 8px;text-align:right;">다운로드</th></tr></thead>
+                    <tbody>${rows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:#888;">데이터 없음</td></tr>'}</tbody>
+                </table>
+                <div style="font-size:11px;color:#888;margin-top:10px;padding:8px;background:#FAFAFA;border-radius:6px;">
+                    부분 구독: <b style="color:${localStorage.getItem('rpgUseSplitListeners')==='0'?'#C62828':'#2E7D32'};">${localStorage.getItem('rpgUseSplitListeners')==='0'?'OFF (전체 구독)':'ON (path별 구독)'}</b>
+                    <button onclick="if(confirm('부분 구독 모드를 토글하고 새로고침할까요?')){const cur=localStorage.getItem('rpgUseSplitListeners');localStorage.setItem('rpgUseSplitListeners',cur==='0'?'1':'0');location.reload();}" style="margin-left:8px;padding:2px 8px;font-size:10px;border:1px solid #999;border-radius:4px;background:white;cursor:pointer;">토글</button>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+                    <button onclick="document.getElementById('_trafModal').remove();window._dbSizeAudit()" style="flex:1;min-width:120px;padding:8px;border:1px solid #4FC3F7;border-radius:6px;background:#E1F5FE;color:#0277BD;cursor:pointer;font-family:'Jua';">📐 DB 크기 진단</button>
+                    <button onclick="window._reloadStaticPaths&&window._reloadStaticPaths();alert('아바타·뱃지·칭호·펫 정의를 다시 불러왔어요')" style="flex:1;min-width:120px;padding:8px;border:1px solid #BA68C8;border-radius:6px;background:#F3E5F5;color:#6A1B9A;cursor:pointer;font-family:'Jua';">🔄 정적 데이터 새로고침</button>
+                    <button onclick="if(confirm('통계 초기화할까요?')){localStorage.removeItem('rpg_dbStats');document.getElementById('_trafModal').remove();}" style="flex:1;min-width:80px;padding:8px;border:1px solid #EF5350;border-radius:6px;background:#FFEBEE;color:#C62828;cursor:pointer;font-family:'Jua';">🗑️ 초기화</button>
+                    <button onclick="document.getElementById('_trafModal').remove()" style="flex:1;min-width:80px;padding:8px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer;font-family:'Jua';">닫기</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+
     window.forceSyncAllRooms = function() {
         if(!confirm('모든 방의 db 설정을 Firebase로 강제 푸시할까요?\n(설정 불일치 복구용)')) return;
         const rooms = Object.keys(db.cfg?.plzRooms||{});
@@ -15169,6 +15608,7 @@ window.addCharRow = function() {
         if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
         if(!db.cfg.plzRooms[_plzCurRoom]) db.cfg.plzRooms[_plzCurRoom] = {};
         db.cfg.plzRooms[_plzCurRoom].name = v;
+        try { dbRef.child('cfg/plzRooms/' + _plzCurRoom + '/name').set(v); } catch(_){}
         sv();
         _renderPlzRoomTabs();
     };
@@ -15278,6 +15718,8 @@ window.addCharRow = function() {
             if(!db.cfg.plzRooms[rid]) db.cfg.plzRooms[rid] = {};
             if(!db.cfg.plzRooms[rid].plz) db.cfg.plzRooms[rid].plz = {};
             db.cfg.plzRooms[rid].plz.open = openState;
+            // sv() 디바운스 1.5초 사이 cfg listener echo가 로컬을 되돌리지 않도록 cfg path도 surgical write
+            try { dbRef.child('cfg/plzRooms/' + rid + '/plz/open').set(openState); } catch(_){}
             // db.plaza도 같이 갱신 (sv()가 전체 트리 덮어쓰는 것 대비)
             if(!db.plaza[rid]) db.plaza[rid] = {};
             if(!db.plaza[rid].cfg) db.plaza[rid].cfg = {};
@@ -15311,6 +15753,8 @@ window.addCharRow = function() {
             if(!db.cfg.plzRooms[_plzCurRoom].plz) db.cfg.plzRooms[_plzCurRoom].plz = {};
             db.cfg.plzRooms[_plzCurRoom].plz.open = nowOpen;
         }
+        // sv() 디바운스 사이 cfg listener echo가 로컬 되돌리지 않도록 cfg path도 surgical write
+        try { dbRef.child('cfg/plzRooms/' + _plzCurRoom + '/plz/open').set(nowOpen); } catch(_){}
         // db.plaza도 같이 갱신 (sv()가 전체 트리 덮어쓰는 것 대비)
         if(!db.plaza) db.plaza = {};
         if(!db.plaza[_plzCurRoom]) db.plaza[_plzCurRoom] = {};
@@ -15345,10 +15789,11 @@ window.addCharRow = function() {
             btn.textContent = open ? '🟢 열림' : '🔴 닫힘';
             btn.className = open ? 'btn btn-gray' : 'btn btn-green';
         }
-        // 통합 버튼 라벨 갱신
+        // 통합 버튼 라벨 갱신 — 동작과 동일하게 OX 방 제외한 룸 기준
         const allBtn = document.getElementById('plz_toggle_all_btn');
         if(allBtn) {
-            const allOpen = _PLZ_ROOM_KEYS.every(rid => !!(db.cfg.plzRooms?.[rid]?.plz?.open));
+            const targetRids = (typeof _plzNonOxRoomKeys === 'function') ? _plzNonOxRoomKeys() : _PLZ_ROOM_KEYS;
+            const allOpen = targetRids.length > 0 && targetRids.every(rid => !!(db.cfg.plzRooms?.[rid]?.plz?.open));
             allBtn.textContent = allOpen ? '🔴 모두 닫기' : '🟢 모두 열기';
             allBtn.className = allOpen ? 'btn btn-gray' : 'btn btn-green';
         }
@@ -15443,8 +15888,14 @@ window.addCharRow = function() {
 
     // 학생 광장 나가기 (방 선택 화면으로 복귀)
     window._studentExitPlaza = function() {
-        // 게임 진행 중이고 내가 참가자면 나가기 차단 (참관자는 가능)
-        if(me && me.cd && window._anyPlzGameActive && window._anyPlzGameActive() && !(window._isPlzSpectator && window._isPlzSpectator(me.cd))){
+        // 게임 진행 중이고 내가 살아있는 참가자면 나가기 차단 (참관자·유령은 가능)
+        const isSpec = window._isPlzSpectator && window._isPlzSpectator(me?.cd);
+        // 유령(사망자) 체크 — 마피아/라이어에서 죽었으면 나가기 허용
+        const mafG = window._mafiaState;
+        const liarG = window._liarState;
+        const isMafiaDead = mafG && mafG.on && mafG.alive && me && (mafG.alive[me.cd] === false);
+        const isLiarDead = liarG && liarG.on && liarG.eliminated && me && liarG.eliminated[me.cd];
+        if(me && me.cd && window._anyPlzGameActive && window._anyPlzGameActive() && !isSpec && !isMafiaDead && !isLiarDead){
             alert('게임 진행 중에는 나갈 수 없어요. 게임이 끝나면 이동해주세요.');
             return;
         }
@@ -15789,7 +16240,7 @@ window.addCharRow = function() {
                 const b = document.createElement('div');
                 b.className = 'hs-badge';
                 b.style.cssText = 'position:absolute;top:-32px;left:50%;transform:translateX(-50%);font-size:20px;pointer-events:none;z-index:3;';
-                b.textContent = '🙈';
+                b.textContent = '🧟';
                 el.appendChild(b);
             }
             // 숨는 학생: 완전 투명 · 움직이면 hsFlash 중 살짝 보임
@@ -15989,8 +16440,8 @@ window.addCharRow = function() {
                     durationMs: Math.max(0, _endedAt - startedAt)
                 });
                 const newSeekerNm = _plzUserCache[nextSeeker]?.nm || '학생';
-                const cmsg = outcome==='seeker_win' ? `🔍 술래 승리! 다음 술래는 ${newSeekerNm}님` : `🙈 도망자 승리! 다음 술래는 ${newSeekerNm}님`;
-                try { getPlzRef().child('chat').push({ sys:true, nm:'🙈', msg:cmsg, ts:_endedAt }); } catch(_){}
+                const cmsg = outcome==='seeker_win' ? `🔍 술래 승리! 다음 술래는 ${newSeekerNm}님` : `🧟 도망자 승리! 다음 술래는 ${newSeekerNm}님`;
+                try { getPlzRef().child('chat').push({ sys:true, nm:'🧟', msg:cmsg, ts:_endedAt }); } catch(_){}
                 // 8초 후 정리 — 단, 새 게임이 시작됐으면 건드리지 않음
                 setTimeout(()=>{
                     getPlzRef().child('hideseek').once('value', s => {
@@ -16033,15 +16484,19 @@ window.addCharRow = function() {
             window._hideSeekLastPos = { x:_plzPos.x, y:_plzPos.y };
             window._hideSeekLastMove = now;
         }
-        // 30초 이상 정지 시: 본인에게 자연스러운 경고 + 3초간 위치 노출 (반복 가능)
+        // 10초 이상 정지 시: 본인에게 자연스러운 경고 + 3초간 위치 노출 (반복 가능)
         const stillFor = now - (window._hideSeekLastMove||now);
-        if(stillFor > 30000) {
-            window._hideSeekLastMove = now; // 다음 30초 사이클 시작
+        if(stillFor > 10000) {
+            window._hideSeekLastMove = now; // 다음 10초 사이클 시작
             _hsShowSelfIdleWarn();
             const newUntil = now + 3000;
             if(newUntil > (window._hsFlashUntil||0)) {
                 window._hsFlashUntil = newUntil;
+                // 본인 캐시도 즉시 갱신 → Firebase round-trip 기다리지 않고 바로 hs-self-warn 효과 적용
+                if(me && _plzUserCache[me.cd]) _plzUserCache[me.cd].hsFlash = newUntil;
                 if(plzMyRef) plzMyRef.update({ hsFlash: newUntil });
+                // UI 즉시 갱신
+                if(typeof _hideSeekUpdateUI === 'function') _hideSeekUpdateUI();
             }
         }
     }
@@ -16053,7 +16508,7 @@ window.addCharRow = function() {
         const el = document.createElement('div');
         el.id = '_hsIdleWarn';
         el.style.cssText = 'position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);background:rgba(229,57,53,0.92);color:white;padding:14px 22px;border-radius:14px;font-family:"Jua";font-size:16px;z-index:90;box-shadow:0 6px 20px rgba(0,0,0,0.4);pointer-events:none;animation:_hsIdleWarnAnim 3s ease forwards;';
-        el.innerHTML = '⚠️ 너무 오래 정지했어요!<br><span style="font-size:13px;opacity:0.9;">3초간 위치가 노출됐어요</span>';
+        el.innerHTML = '🚨 너무 오래 정지했어요!<br><span style="font-size:13px;opacity:0.9;">3초간 위치가 노출됐어요</span>';
         mp.appendChild(el);
         if(!document.getElementById('_hsIdleWarnStyle')) {
             const s = document.createElement('style');
@@ -16293,19 +16748,30 @@ window.addCharRow = function() {
                 el.style.filter = '';
                 return;
             }
-            let isSpec = false;
+            // 모든 활성 게임 합쳐 판정 — 어느 한 게임에라도 참가자면 spectator 아님
+            // (stale 게임 상태가 남아 있어도 다른 활성 게임 플레이어는 보호)
+            let inAnyGame = false;
+            let anyGameOn = false;
             if(mafG && mafG.on){
-                isSpec = !mafG.roles || !mafG.roles[uid];
-            } else if(liarG && liarG.on){
-                const lp = Array.isArray(liarG.players) ? liarG.players : Object.values(liarG.players||{});
-                isSpec = lp.length > 0 && !lp.includes(uid);
-            } else if(hsG && hsG.active){
-                const parts = Array.isArray(hsG.participants) ? hsG.participants : Object.values(hsG.participants||{});
-                if(parts.length) isSpec = !parts.includes(uid);
-            } else if(igG && igG.active){
-                const parts = Array.isArray(igG.participants) ? igG.participants : Object.values(igG.participants||{});
-                if(parts.length) isSpec = !parts.includes(uid);
+                anyGameOn = true;
+                if(mafG.roles && mafG.roles[uid]) inAnyGame = true;
             }
+            if(liarG && liarG.on){
+                anyGameOn = true;
+                const lp = Array.isArray(liarG.players) ? liarG.players : Object.values(liarG.players||{});
+                if(lp.includes(uid)) inAnyGame = true;
+            }
+            if(hsG && hsG.active){
+                anyGameOn = true;
+                const parts = Array.isArray(hsG.participants) ? hsG.participants : Object.values(hsG.participants||{});
+                if(parts.includes(uid)) inAnyGame = true;
+            }
+            if(igG && igG.active){
+                anyGameOn = true;
+                const parts = Array.isArray(igG.participants) ? igG.participants : Object.values(igG.participants||{});
+                if(parts.includes(uid)) inAnyGame = true;
+            }
+            let isSpec = anyGameOn && !inAnyGame;
             // OX 유령 진행 중이면 OX 효과가 우선 (filter는 OX 코드가 관리)
             const oxG = window._oxQuizState;
             const isOxOut = oxG && oxG.out && oxG.out[uid];
@@ -16548,7 +17014,7 @@ window.addCharRow = function() {
             startedBy: me.cd,
             leadUid: allUids.sort()[0],
             roles, alive,
-            cfg: { resolveDur: 8 }
+            cfg: { resolveDur: 15 }
         };
         console.log('[mafia] state 작성 시도:', state);
         getPlzRef().child('mafia').set(state)
@@ -16560,6 +17026,8 @@ window.addCharRow = function() {
     // 밤 결과 상세 모달 — resolve 페이즈 진입 시 호출
     window._mafiaShowNightResultModal = function(g){
         if(!g || !g.lastReveal) return;
+        // 새벽 차임 (밤→낮 전환)
+        try { window._sfxDawnChime?.(); } catch(_){}
         const lr = g.lastReveal;
         const _nm = u => (_plzUserCache[u]||{}).nm || u;
         const _roleKor = r => r==='mafia'?'마피아':r==='doctor'?'의사':r==='police'?'경찰':'시민';
@@ -16586,8 +17054,9 @@ window.addCharRow = function() {
                     const isMaf = tgtRole === 'mafia';
                     return `🔍 <b>${_nm(a.t)}</b> 조사 → <span style="color:${isMaf?'#C62828':'#2E7D32'};font-weight:bold;">${isMaf?'🚨 마피아!':'✓ 마피아 아님'}</span>`;
                 }
-                // 다른 사람에게는 익명 (직업만)
-                return `경찰이 <b>${roleNm}</b>을(를) 조사했어요`;
+                // 다른 사람에게는 결과만 (대상 이름·역할 숨김)
+                const isMafTgt = tgtRole === 'mafia';
+                return `경찰 조사 결과 → <span style="color:${isMafTgt?'#C62828':'#2E7D32'};font-weight:bold;">${isMafTgt?'🚨 마피아!':'✓ 마피아 아님'}</span>`;
             }).join('<br>')
             : '<span style="color:#999;">행동 없음</span>';
         // 시민 처형 — 다수결 결과 (이름 빼고 표 수)
@@ -16595,14 +17064,25 @@ window.addCharRow = function() {
         (ad.citizen||[]).forEach(a => { citizenVotes[a.t] = (citizenVotes[a.t]||0)+1; });
         const citizenSummary = Object.entries(citizenVotes).sort((a,b)=>b[1]-a[1])
             .map(([uid, cnt]) => `<b>${_nm(uid)}</b> ${cnt}표`).join(' · ') || '<span style="color:#999;">투표 없음</span>';
-        // 처형된 사람
+        // 처형된 사람 — 처형 안 된 경우 동률/의사보호/투표없음 정확히 구분
         const cKilled = lr.citizenKilled || [];
-        const cKilledTxt = cKilled.length
-            ? cKilled.map(u => {
+        let cKilledTxt;
+        if(cKilled.length){
+            cKilledTxt = cKilled.map(u => {
                 const r = g.roles && g.roles[u];
                 return `다수결로 <b>${_roleKor(r)} ${_nm(u)}</b>이(가) 처형됐어요`;
-            }).join('<br>')
-            : (Object.keys(citizenVotes).length ? '동률로 아무도 처형되지 않았어요' : '투표 없음');
+            }).join('<br>');
+        } else if(!Object.keys(citizenVotes).length){
+            cKilledTxt = '투표 없음';
+        } else {
+            // 동률 vs 의사 보호 vs 기타 구분
+            const _sortedCV = Object.entries(citizenVotes).sort((a,b)=>b[1]-a[1]);
+            const _topCnt = _sortedCV[0][1];
+            const _topTied = _sortedCV.filter(([,c]) => c===_topCnt).map(([u])=>u);
+            if(_topTied.length > 1) cKilledTxt = `🤝 동률(${_topCnt}표 ${_topTied.length}명)로 처형 안됨`;
+            else if(_topTied[0] === docTgt) cKilledTxt = `💊 의사 보호로 처형 무효`;
+            else cKilledTxt = '아무도 처형되지 않았어요';
+        }
         // 사망자 종합
         const dedupKilled = [...new Set([...(lr.mafiaKilled||[]), ...(lr.citizenKilled||[])])];
         // 효과음 — 아침 알림
@@ -16654,6 +17134,23 @@ window.addCharRow = function() {
         document.body.appendChild(el);
     };
 
+    // resolve 페이즈에서 누구나 강제로 다음 라운드 진행 (자동 8초 안 될 때 폴백)
+    window._mafiaForceNextDay = function(){
+        const g = window._mafiaState;
+        if(!g || !g.on || g.phase !== 'resolve') return;
+        // phaseEndAt을 지금으로 당겨서 leadUid가 다음 tick에 advance하도록 강제
+        getPlzRef().child('mafia/phaseEndAt').set(Date.now() - 1);
+        // leadUid가 응답 없으면 본인이 leadUid를 가져와 직접 advance
+        setTimeout(() => {
+            const cur = window._mafiaState;
+            if(cur && cur.phase === 'resolve' && me) {
+                getPlzRef().child('mafia/leadUid').transaction(c => c === me.cd ? undefined : me.cd, () => {
+                    setTimeout(() => { if(typeof _mafiaAdvancePhase === 'function') try { _mafiaAdvancePhase(); } catch(_){} }, 100);
+                });
+            }
+        }, 1500);
+    };
+
     // 본인 역할 재확인 모달
     window._mafiaShowMyRole = function(){
         const g = window._mafiaState;
@@ -16661,6 +17158,15 @@ window.addCharRow = function() {
         const role = g.roles[me.cd];
         const ic = role==='mafia'?'🔪':role==='doctor'?'💊':role==='police'?'🔍':'🙋';
         const nm = role==='mafia'?'마피아':role==='doctor'?'의사':role==='police'?'경찰':'시민';
+        // 마피아끼리 서로 식별 — 동료 마피아 이름 표시
+        let mateNote = '';
+        if(role === 'mafia') {
+            const mates = Object.keys(g.roles).filter(u => u !== me.cd && g.roles[u] === 'mafia');
+            if(mates.length) {
+                const mateNames = mates.map(u => (_plzUserCache[u]||{}).nm || u).join(', ');
+                mateNote = `<div style="background:#FFCDD2;border:2px solid #C62828;border-radius:10px;padding:10px;margin-bottom:10px;font-family:'Jua';font-size:13px;color:#B71C1C;text-align:center;line-height:1.5;">🤝 동료 마피아: <b>${mateNames}</b><br><span style="font-size:11px;">밤에 한 명을 합의해서 노리세요</span></div>`;
+            }
+        }
         const desc = role==='mafia'?'밤에 죽일 사람 한 명을 지목하세요'
             : role==='doctor'?'밤에 살릴 사람 한 명을 지목하세요'
             : role==='police'?'밤에 조사할 사람 한 명을 지목하면 마피아 여부를 알 수 있어요'
@@ -16677,6 +17183,7 @@ window.addCharRow = function() {
                 <div style="font-size:24px;font-weight:bold;margin-top:6px;">${nm}</div>
             </div>
             <div style="padding:18px 22px;font-family:'Jua';">
+                ${mateNote}
                 <div style="font-size:13px;color:#5D4037;line-height:1.6;text-align:center;background:#FFF8E1;border-radius:10px;padding:12px;margin-bottom:14px;">${desc}</div>
                 <button style="width:100%;padding:11px;border:none;border-radius:12px;background:${col};color:white;font-family:'Jua';font-size:15px;cursor:pointer;" onclick="document.getElementById('_mafRoleModal').remove()">확인</button>
             </div>
@@ -16722,9 +17229,101 @@ window.addCharRow = function() {
         setTimeout(() => { getPlzRef().child('mafia').remove(); }, 8000);
     };
 
-    // 마피아 결과 모달
+    // 게임 종료 미니 팝업 — 화면 중앙 상단 애니메이션
+    window._showGameWinnerPopup = function(emoji, title, color){
+        document.getElementById('_gameWinnerPopup')?.remove();
+        const el = document.createElement('div');
+        el.id = '_gameWinnerPopup';
+        el.style.cssText = 'position:fixed;top:18%;left:50%;transform:translate(-50%,-30px) scale(0.7);background:linear-gradient(160deg,'+color+');color:white;padding:28px 48px;border-radius:24px;font-family:Jua;text-align:center;z-index:99950;box-shadow:0 20px 60px rgba(0,0,0,0.55);border:5px solid rgba(255,255,255,0.4);opacity:0;transition:transform 0.45s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s;';
+        el.innerHTML = '<div style="font-size:60px;line-height:1;margin-bottom:8px;">'+emoji+'</div><div style="font-size:30px;font-weight:bold;letter-spacing:1px;">'+title+'</div>';
+        document.body.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translate(-50%,0) scale(1)'; });
+        setTimeout(() => { el.style.opacity='0'; el.style.transform='translate(-50%,-20px) scale(0.9)'; }, 4500);
+        setTimeout(() => el.remove(), 5000);
+    };
+
+    // 합성 효과음 4종 — 0 트래픽, Web Audio API 사용
+    function _audioCtx(){
+        try { const Ctx = window.AudioContext || window.webkitAudioContext; return Ctx ? new Ctx() : null; } catch(_){ return null; }
+    }
+    function _tone(ctx, freq, start, dur, type, peakVol){
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = type || 'sine'; o.frequency.setValueAtTime(freq, start);
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(peakVol||0.15, start + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+        o.start(start); o.stop(start + dur + 0.05);
+    }
+
+    // 1) 다크 스팅어 — 마피아 승리 (낮은 드론 + 마이너 코드 + 강조음)
+    window._sfxDarkSting = function(){
+        const ctx = _audioCtx(); if(!ctx) return;
+        const t = ctx.currentTime;
+        const drone = ctx.createOscillator(); const dG = ctx.createGain();
+        drone.connect(dG); dG.connect(ctx.destination);
+        drone.type='sawtooth'; drone.frequency.setValueAtTime(55, t);
+        dG.gain.setValueAtTime(0, t); dG.gain.linearRampToValueAtTime(0.18, t+0.3);
+        dG.gain.linearRampToValueAtTime(0.12, t+1.5); dG.gain.exponentialRampToValueAtTime(0.001, t+3);
+        drone.start(t); drone.stop(t+3);
+        // A minor 화음 (A3 C4 E4)
+        [220, 261.63, 329.63].forEach((f,i) => _tone(ctx, f, t+0.5+i*0.15, 2.0, 'triangle', 0.13));
+        // 마지막 강조 (E5)
+        _tone(ctx, 659.25, t+1.6, 0.6, 'sine', 0.22);
+    };
+
+    // 2) 승리 팡파레 — 시민·바보 승리 (메이저 상승 + 종)
+    window._sfxVictoryFanfare = function(){
+        const ctx = _audioCtx(); if(!ctx) return;
+        const t = ctx.currentTime;
+        // C4 E4 G4 C5 메이저 상승 (각 0.12초 간격)
+        [261.63, 329.63, 392.00, 523.25].forEach((f,i) => _tone(ctx, f, t + i*0.12, 0.4, 'triangle', 0.18));
+        // 마지막 화음 (C5+E5+G5)
+        [523.25, 659.25, 783.99].forEach(f => _tone(ctx, f, t+0.55, 1.3, 'sine', 0.16));
+        // 반짝이는 종소리 (high)
+        _tone(ctx, 1318.51, t+0.55, 0.8, 'sine', 0.10);
+        _tone(ctx, 1567.98, t+0.85, 0.7, 'sine', 0.08);
+    };
+
+    // 3) 종료 차임 — 무승부·강제 종료 (부드러운 종 2음)
+    window._sfxNeutralChime = function(){
+        const ctx = _audioCtx(); if(!ctx) return;
+        const t = ctx.currentTime;
+        _tone(ctx, 587.33, t, 1.2, 'sine', 0.18);   // D5
+        _tone(ctx, 440.00, t+0.4, 1.5, 'sine', 0.16); // A4
+    };
+
+    // 4) 새벽 차임 — 1일차/2일차 결과 발표 (밤→낮 전환, 밝아지는 느낌)
+    window._sfxDawnChime = function(){
+        const ctx = _audioCtx(); if(!ctx) return;
+        const t = ctx.currentTime;
+        // 낮은 종 → 높은 종 (G3 → D5 → G5)
+        _tone(ctx, 196.00, t, 0.8, 'sine', 0.15);
+        _tone(ctx, 587.33, t+0.2, 1.0, 'sine', 0.13);
+        _tone(ctx, 783.99, t+0.45, 1.2, 'sine', 0.12);
+        // 따뜻한 화음
+        _tone(ctx, 392.00, t+0.7, 1.2, 'triangle', 0.10);
+    };
+
+    // 호환: 기존 _playDramaticReveal 호출은 다크 스팅어로 폴백
+    window._playDramaticReveal = function(){ window._sfxDarkSting(); };
+
     window._mafiaShowEndModal = function(g){
         if(!g) return;
+        // 승자별 효과음 + 미니 팝업
+        const w = g.winner;
+        try {
+            if(w === 'mafia') window._sfxDarkSting?.();
+            else if(w === 'citizen') window._sfxVictoryFanfare?.();
+            else window._sfxNeutralChime?.();
+        } catch(_){}
+        if(window._showGameWinnerPopup){
+            try {
+                if(w === 'mafia') window._showGameWinnerPopup('🔪', '마피아 승리!', '#C62828,#7B0F0F');
+                else if(w === 'citizen') window._showGameWinnerPopup('🙋', '시민 승리!', '#2E7D32,#1B5E20');
+                else window._showGameWinnerPopup('⏹️', '게임 종료', '#5D4037,#3E2723');
+            } catch(_){}
+        }
         const _nm = u => (_plzUserCache[u]||{}).nm || u;
         const roles = g.roles || {};
         const winner = g.winner;
@@ -16803,20 +17402,31 @@ window.addCharRow = function() {
     function _mafiaTick(){
         const g = window._mafiaState;
         if(!g || !g.on){ _mafiaTickStop(); return; }
+        if(document.hidden) return; // 백그라운드 탭은 페이즈 전환·렌더 스킵
         // HUD + 액션 패널 + 관전자 배지 갱신
         _mafiaRenderHud();
         _mafiaRenderActionPanel();
         if(window._renderSpectatorBadges) window._renderSpectatorBadges();
-        // 승패 조건이 충족되면 종료 (leadUid만 트리거)
-        if(me && me.cd === g.leadUid){
-            const win = _mafiaCheckWin(g);
-            if(win){ window._mafiaEnd(false); return; }
-            // 마피아·시민 모두 죽으면 강제 종료 (아무도 안 살아있음)
-            const aliveCnt = Object.keys(g.alive||{}).filter(u => g.alive[u] && _plzUserCache[u]).length;
-            if(aliveCnt <= 1){ window._mafiaEnd(true); return; }
+        // 페이즈 전환·승패 검사 — 누구든 trigger 가능. _processing 트랜잭션으로 race 방지.
+        // leadUid에만 의존하지 않아 lead가 idle/끊겨도 게임 진행
+        if(!me || !(g.roles||{})[me.cd]) return;
+        // 승패 조건 검사
+        const win = _mafiaCheckWin(g);
+        if(win){
+            // 한 명만 종료 호출하도록 _processing flag로 race 방지
+            getPlzRef().child('mafia/_processing').transaction(c => c ? undefined : me.cd, (err, ok) => {
+                if(!err && ok) window._mafiaEnd(false);
+            });
+            return;
         }
-        // 페이즈 전환은 leadUid만 (race 방지)
-        if(!me || me.cd !== g.leadUid) return;
+        const aliveCnt = Object.keys(g.alive||{}).filter(u => g.alive[u] && _plzUserCache[u]).length;
+        // 광장 내 생존자 3명 미만이면 자동 종료 (1~2명만 남으면 무한 루프 방지)
+        if(aliveCnt < 3){
+            getPlzRef().child('mafia/_processing').transaction(c => c ? undefined : me.cd, (err, ok) => {
+                if(!err && ok) window._mafiaEnd(true);
+            });
+            return;
+        }
         if(Date.now() < (g.phaseEndAt||0)) return;
         // 이미 처리 중이면 스킵
         if(g._processing) return;
@@ -17088,9 +17698,17 @@ window.addCharRow = function() {
             })();
         if(panel.dataset.state === stateKey) return;
         panel.dataset.state = stateKey;
-        if(stateKey === 'off' || stateKey === 'spec' || stateKey === 'dead' || stateKey === 'idle' || stateKey === 'resolve'){
+        // 기본 위치(하단)로 리셋 — 투표/입력 상태에서 중앙으로 변경됨
+        panel.style.cssText = 'display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:auto;';
+        if(stateKey === 'off' || stateKey === 'spec' || stateKey === 'dead' || stateKey === 'idle'){
             panel.style.display = 'none';
             panel.innerHTML = '';
+            return;
+        }
+        if(stateKey === 'resolve'){
+            // 결과 발표 중 — 8초 자동 진행이지만 수동 진행 버튼도 제공 (lead가 자리 비울 때 대비)
+            panel.style.display = 'block';
+            panel.innerHTML = `<button onclick="window._mafiaForceNextDay&&window._mafiaForceNextDay()" style="padding:11px 24px;border:none;border-radius:14px;background:linear-gradient(135deg,#FF7043,#E64A19);color:white;font-family:Jua;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.35);">▶️ 다음 날 시작</button>`;
             return;
         }
         if(stateKey === 'reveal_unacked'){
@@ -17106,8 +17724,9 @@ window.addCharRow = function() {
         if(stateKey.startsWith('discuss_pending_')){
             const parts = stateKey.split('_'); const cnt = parts[2]; const total = parts[3];
             const need = Math.ceil(parseInt(total)/2);
-            panel.style.display = 'block';
-            panel.innerHTML = `<button onclick="window._mafiaVoteToEndDiscuss()" style="padding:11px 24px;border:none;border-radius:14px;background:linear-gradient(135deg,#7E57C2,#5E35B1);color:white;font-family:Jua;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.35);">✋ 토론 종료 (${cnt}/${total}, ${need}명 이상 시 밤)</button>`;
+            // 토론 종료 버튼 화면 중앙에 크게
+            panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
+            panel.innerHTML = `<button onclick="window._mafiaVoteToEndDiscuss()" style="padding:22px 40px;border:none;border-radius:20px;background:linear-gradient(135deg,#7E57C2,#5E35B1);color:white;font-family:Jua;font-size:22px;font-weight:bold;cursor:pointer;box-shadow:0 16px 40px rgba(0,0,0,0.5);">✋ 토론 종료<div style="font-size:13px;opacity:0.95;font-weight:normal;margin-top:6px;">토론이 끝나면 눌러주세요</div><div style="font-size:12px;opacity:0.85;font-weight:normal;margin-top:2px;">${cnt}/${total} · ${need}명 이상 시 밤 진입</div></button>`;
             return;
         }
         if(stateKey.startsWith('discuss_agreed_')){
@@ -17119,16 +17738,17 @@ window.addCharRow = function() {
         }
         if(stateKey === 'night_input'){
             const myRole = g.roles[me.cd];
-            const label = myRole==='mafia' ? '🔪 죽일 사람 이름' :
-                          myRole==='doctor' ? '💊 살릴 사람 이름' :
-                          myRole==='police' ? '🔍 조사할 사람 이름' :
-                          '🤔 의심가는 사람 이름';
-            panel.style.display = 'block';
-            panel.innerHTML = `<div style="background:white;border:3px solid #5E35B1;border-radius:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,0.35);min-width:320px;">
-                <div style="font-size:11px;color:#5E35B1;margin-bottom:6px;">${label}</div>
-                <div style="display:flex;gap:6px;">
-                    <input id="_mafNightInput" maxlength="20" placeholder="이름 입력 (띄어쓰기 무관)" style="flex:1;padding:8px;border:1px solid #B39DDB;border-radius:8px;font-family:Jua;font-size:13px;">
-                    <button onclick="window._mafiaSubmitNightVote()" style="padding:8px 14px;background:linear-gradient(135deg,#7E57C2,#5E35B1);color:white;border:none;border-radius:8px;font-family:Jua;cursor:pointer;">제출</button>
+            const label = myRole==='mafia' ? '🔪 죽일 사람' :
+                          myRole==='doctor' ? '💊 살릴 사람' :
+                          myRole==='police' ? '🔍 조사할 사람' :
+                          '🤔 의심가는 사람';
+            // 투표 입력은 화면 중앙에 크게 표시
+            panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
+            panel.innerHTML = `<div style="background:white;border:4px solid #5E35B1;border-radius:22px;padding:24px 28px;box-shadow:0 18px 48px rgba(0,0,0,0.55);width:min(440px,92vw);">
+                <div style="font-size:22px;color:#5E35B1;margin-bottom:14px;font-weight:bold;text-align:center;font-family:Jua;">${label}</div>
+                <div style="display:flex;gap:10px;">
+                    <input id="_mafNightInput" maxlength="20" placeholder="이름 입력 (띄어쓰기 무관)" style="flex:1;padding:14px 12px;border:2px solid #B39DDB;border-radius:12px;font-family:Jua;font-size:16px;">
+                    <button onclick="window._mafiaSubmitNightVote()" style="padding:12px 20px;background:linear-gradient(135deg,#7E57C2,#5E35B1);color:white;border:none;border-radius:12px;font-family:Jua;font-size:16px;font-weight:bold;cursor:pointer;">제출</button>
                 </div>
             </div>`;
             setTimeout(() => document.getElementById('_mafNightInput')?.focus(), 50);
@@ -17147,12 +17767,13 @@ window.addCharRow = function() {
             const cands = stateKey.slice('revote_input_'.length).split(',').filter(Boolean);
             const candBtns = cands.map(uid => {
                 const nm = (_plzUserCache[uid]||{}).nm || uid;
-                return `<button onclick="window._mafiaSubmitCitizenRevote('${uid}')" style="padding:8px 12px;border:2px solid #FF9800;border-radius:10px;background:white;color:#E65100;font-family:Jua;font-size:13px;cursor:pointer;font-weight:bold;">${nm}</button>`;
+                return `<button onclick="window._mafiaSubmitCitizenRevote('${uid}')" style="padding:14px 22px;border:3px solid #FF9800;border-radius:14px;background:white;color:#E65100;font-family:Jua;font-size:18px;cursor:pointer;font-weight:bold;">${nm}</button>`;
             }).join('');
-            panel.style.display = 'block';
-            panel.innerHTML = `<div style="background:white;border:3px solid #FF9800;border-radius:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,0.35);min-width:320px;max-width:420px;">
-                <div style="font-size:12px;color:#E65100;margin-bottom:8px;font-weight:bold;">🗳️ 시민 처형 재투표 — 모두 한 명 선택</div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;">${candBtns}</div>
+            // 재투표는 화면 중앙에 크게
+            panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
+            panel.innerHTML = `<div style="background:white;border:4px solid #FF9800;border-radius:22px;padding:24px 28px;box-shadow:0 18px 48px rgba(0,0,0,0.55);width:min(500px,92vw);">
+                <div style="font-size:22px;color:#E65100;margin-bottom:16px;font-weight:bold;text-align:center;font-family:Jua;">🗳️ 시민 처형 재투표</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">${candBtns}</div>
             </div>`;
             return;
         }
@@ -17545,8 +18166,9 @@ window.addCharRow = function() {
                 const ap = document.getElementById('mafiaActionPanel');
                 if(ap){ ap.dataset.state = ''; ap.innerHTML = ''; }
             }
-            // 전체 ack/agree/입력 자동 advance (leadUid 트리거)
-            if(v && v.on && me && me.cd === v.leadUid){
+            // 자동 advance — 누구든 조건 충족 시 phaseEndAt 트리거 (idempotent, race 안전)
+            // leadUid가 idle/goOffline 등으로 멈춰도 다른 플레이어가 이어받음
+            if(v && v.on && me && (v.roles||{})[me.cd]){
                 const inRoom = Object.keys(v.roles||{}).filter(u => _plzUserCache[u]);
                 const aliveInRoom = inRoom.filter(u => v.alive[u]);
                 if(v.phase === 'reveal'){
@@ -17612,7 +18234,8 @@ window.addCharRow = function() {
                 if(window._mafiaShowEndModal) window._mafiaShowEndModal(v);
             }
             // resolve 페이즈 진입 시 밤 결과 모달 (라운드별 한 번)
-            if(v && v.phase === 'resolve' && v.lastReveal && me && v.roles && v.roles[me.cd]){
+            // 살아있는 플레이어 + 유령(사망자) + 관전자 모두 표시
+            if(v && v.phase === 'resolve' && v.lastReveal && me){
                 const key = 'rd_' + v.lastReveal.round;
                 if(window._mafNightShownFor !== key){
                     window._mafNightShownFor = key;
@@ -17952,10 +18575,13 @@ window.addCharRow = function() {
     function _liarTick(){
         const g = window._liarState;
         if(!g || !g.on){ _liarTickStop(); return; }
+        if(document.hidden) return; // 백그라운드 탭은 페이즈 전환·렌더 스킵
         _liarRenderHud();
         _liarRenderDescribePanel();
         if(window._renderSpectatorBadges) window._renderSpectatorBadges();
-        if(!me || me.cd !== g.leadUid) return;
+        // leadUid가 광장에 없으면 누구든 인계 가능
+        const _leadIn = g.leadUid && _plzUserCache[g.leadUid];
+        if(!me || (me.cd !== g.leadUid && _leadIn)) return;
         // 광장 내 plyer 3명 미만이면 자동 종료
         const inRoomPlayers = (g.players||[]).filter(u => _plzUserCache[u]).length;
         if(inRoomPlayers < 3){
@@ -18333,6 +18959,8 @@ window.addCharRow = function() {
             })();
         if(panel.dataset.state === stateKey) return; // 동일 상태면 재렌더 안 함 (input 보존)
         panel.dataset.state = stateKey;
+        // 기본 위치(하단)로 리셋
+        panel.style.cssText = 'display:none;position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:auto;';
         if(stateKey === 'off' || stateKey.startsWith('spec_') || stateKey.startsWith('idle_')){
             panel.style.display = 'none';
             panel.innerHTML = '';
@@ -18344,11 +18972,13 @@ window.addCharRow = function() {
             const cnt = parts[1] || '0';
             const total = parts[2] || '0';
             const need = Math.ceil(parseInt(total)/2);
-            panel.style.display = 'block';
             if(agreed){
+                panel.style.display = 'block';
                 panel.innerHTML = `<div style="background:#E8F5E9;border:2px solid #66BB6A;border-radius:14px;padding:10px 16px;font-family:Jua;font-size:13px;color:#2E7D32;box-shadow:0 4px 12px rgba(0,0,0,0.3);">✅ 토론 종료 동의 완료 — ${cnt}/${total} (${need}명 이상 시 투표 시작)</div>`;
             } else {
-                panel.innerHTML = `<button onclick="window._liarVoteToEndDiscuss()" style="padding:11px 24px;border:none;border-radius:14px;background:linear-gradient(135deg,#FF7043,#D84315);color:white;font-family:Jua;font-size:14px;font-weight:bold;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,0.35);">✋ 토론 종료 (${cnt}/${total}, ${need}명 이상 필요)</button>`;
+                // 토론 종료 버튼 화면 중앙에 크게
+                panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
+                panel.innerHTML = `<button onclick="window._liarVoteToEndDiscuss()" style="padding:22px 40px;border:none;border-radius:20px;background:linear-gradient(135deg,#FF7043,#D84315);color:white;font-family:Jua;font-size:22px;font-weight:bold;cursor:pointer;box-shadow:0 16px 40px rgba(0,0,0,0.5);">✋ 토론 종료<div style="font-size:13px;opacity:0.95;font-weight:normal;margin-top:6px;">토론이 끝나면 눌러주세요</div><div style="font-size:12px;opacity:0.85;font-weight:normal;margin-top:2px;">${cnt}/${total} · ${need}명 이상 시 투표</div></button>`;
             }
             return;
         }
@@ -18367,12 +18997,12 @@ window.addCharRow = function() {
             return;
         }
         if(stateKey.startsWith('spyVoting_')){
-            panel.style.display = 'block';
-            panel.innerHTML = `<div style="background:white;border:3px solid #1565C0;border-radius:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,0.35);min-width:320px;">
-                <div style="font-size:11px;color:#1565C0;margin-bottom:6px;">🕵️ 당신은 스파이! 아무 이름이나 적어 위장하세요</div>
-                <div style="display:flex;gap:6px;">
-                    <input id="_lrVoteInput" maxlength="20" placeholder="이름 입력 (위장용)" style="flex:1;padding:8px;border:1px solid #90CAF9;border-radius:8px;font-family:Jua;font-size:13px;">
-                    <button onclick="window._liarSubmitNameVote()" style="padding:8px 14px;background:linear-gradient(135deg,#42A5F5,#1565C0);color:white;border:none;border-radius:8px;font-family:Jua;cursor:pointer;">제출</button>
+            panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
+            panel.innerHTML = `<div style="background:white;border:4px solid #1565C0;border-radius:22px;padding:24px 28px;box-shadow:0 18px 48px rgba(0,0,0,0.55);width:min(440px,92vw);">
+                <div style="font-size:20px;color:#1565C0;margin-bottom:14px;font-weight:bold;text-align:center;font-family:Jua;">🕵️ 스파이 — 위장 입력</div>
+                <div style="display:flex;gap:10px;">
+                    <input id="_lrVoteInput" maxlength="20" placeholder="이름 입력 (위장용)" style="flex:1;padding:14px 12px;border:2px solid #90CAF9;border-radius:12px;font-family:Jua;font-size:16px;">
+                    <button onclick="window._liarSubmitNameVote()" style="padding:12px 20px;background:linear-gradient(135deg,#42A5F5,#1565C0);color:white;border:none;border-radius:12px;font-family:Jua;font-size:16px;font-weight:bold;cursor:pointer;">제출</button>
                 </div>
             </div>`;
             setTimeout(() => document.getElementById('_lrVoteInput')?.focus(), 50);
@@ -18384,13 +19014,14 @@ window.addCharRow = function() {
             const isRevote = stateKey === 'voting_revote';
             const labelTxt = isRevote
                 ? `재투표 후보: ${(g.revoteCandidates||[]).map(u=>(_plzUserCache[u]||{}).nm||u).join(', ')}`
-                : '의심되는 사람의 이름을 적어주세요';
-            panel.style.display = 'block';
-            panel.innerHTML = `<div style="background:white;border:3px solid #D84315;border-radius:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,0.35);min-width:320px;">
-                <div style="font-size:11px;color:#D84315;margin-bottom:6px;">🗳️ ${labelTxt}</div>
-                <div style="display:flex;gap:6px;">
-                    <input id="_lrVoteInput" maxlength="20" placeholder="이름 입력 (띄어쓰기 무관)" style="flex:1;padding:8px;border:1px solid #FFAB91;border-radius:8px;font-family:Jua;font-size:13px;">
-                    <button onclick="window._liarSubmitNameVote()" style="padding:8px 14px;background:linear-gradient(135deg,#FF7043,#D84315);color:white;border:none;border-radius:8px;font-family:Jua;cursor:pointer;">투표</button>
+                : '🗳️ 의심되는 사람의 이름';
+            // 투표는 화면 중앙에 크게
+            panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
+            panel.innerHTML = `<div style="background:white;border:4px solid #D84315;border-radius:22px;padding:24px 28px;box-shadow:0 18px 48px rgba(0,0,0,0.55);width:min(440px,92vw);">
+                <div style="font-size:22px;color:#D84315;margin-bottom:14px;font-weight:bold;text-align:center;font-family:Jua;">${labelTxt}</div>
+                <div style="display:flex;gap:10px;">
+                    <input id="_lrVoteInput" maxlength="20" placeholder="이름 입력 (띄어쓰기 무관)" style="flex:1;padding:14px 12px;border:2px solid #FFAB91;border-radius:12px;font-family:Jua;font-size:16px;">
+                    <button onclick="window._liarSubmitNameVote()" style="padding:12px 20px;background:linear-gradient(135deg,#FF7043,#D84315);color:white;border:none;border-radius:12px;font-family:Jua;font-size:16px;font-weight:bold;cursor:pointer;">투표</button>
                 </div>
             </div>`;
             setTimeout(() => document.getElementById('_lrVoteInput')?.focus(), 50);
@@ -18399,16 +19030,15 @@ window.addCharRow = function() {
             return;
         }
         if(stateKey.startsWith('liarGuessing_')){
-            // 바보 모드는 본인이 라이어인지 모름 → 일반/스파이와 다른 안내
             const labelTxt = g.mode === 'fool'
-                ? '🎯 정답 단어를 적어주세요 (제시어가 무엇인지 추리)'
-                : '🎯 당신은 라이어! 정답 단어를 적어주세요';
-            panel.style.display = 'block';
-            panel.innerHTML = `<div style="background:white;border:3px solid #D84315;border-radius:14px;padding:10px 14px;box-shadow:0 6px 18px rgba(0,0,0,0.35);min-width:320px;">
-                <div style="font-size:11px;color:#D84315;margin-bottom:6px;">${labelTxt}</div>
-                <div style="display:flex;gap:6px;">
-                    <input id="_lrGuessInput" maxlength="30" placeholder="단어 입력 (띄어쓰기 무관)" style="flex:1;padding:8px;border:1px solid #FFAB91;border-radius:8px;font-family:Jua;font-size:13px;">
-                    <button onclick="window._liarSubmitGuess()" style="padding:8px 14px;background:linear-gradient(135deg,#FF7043,#D84315);color:white;border:none;border-radius:8px;font-family:Jua;cursor:pointer;">제출</button>
+                ? '🎯 정답 단어 추리'
+                : '🎯 라이어 — 정답 단어';
+            panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
+            panel.innerHTML = `<div style="background:white;border:4px solid #D84315;border-radius:22px;padding:24px 28px;box-shadow:0 18px 48px rgba(0,0,0,0.55);width:min(440px,92vw);">
+                <div style="font-size:22px;color:#D84315;margin-bottom:14px;font-weight:bold;text-align:center;font-family:Jua;">${labelTxt}</div>
+                <div style="display:flex;gap:10px;">
+                    <input id="_lrGuessInput" maxlength="30" placeholder="단어 입력 (띄어쓰기 무관)" style="flex:1;padding:14px 12px;border:2px solid #FFAB91;border-radius:12px;font-family:Jua;font-size:16px;">
+                    <button onclick="window._liarSubmitGuess()" style="padding:12px 20px;background:linear-gradient(135deg,#FF7043,#D84315);color:white;border:none;border-radius:12px;font-family:Jua;font-size:16px;font-weight:bold;cursor:pointer;">제출</button>
                 </div>
             </div>`;
             setTimeout(() => document.getElementById('_lrGuessInput')?.focus(), 50);
@@ -18425,6 +19055,21 @@ window.addCharRow = function() {
 
     function _liarShowResult(g){
         document.getElementById('_lrResult')?.remove();
+        // 승자별 효과음 + 미니 팝업
+        const _w = g.winner;
+        try {
+            if(_w === 'citizen') window._sfxVictoryFanfare?.();
+            else if(_w === 'liar') window._sfxDarkSting?.();
+            else window._sfxNeutralChime?.();
+        } catch(_){}
+        if(window._showGameWinnerPopup){
+            try {
+                if(_w === 'citizen') window._showGameWinnerPopup('🙋', '시민 승리!', '#2E7D32,#1B5E20');
+                else if(_w === 'liar') window._showGameWinnerPopup(g.mode==='fool'?'🤡':'🎭', g.mode==='fool'?'바보 승리!':'라이어 승리!', '#D84315,#BF360C');
+                else if(_w === 'draw') window._showGameWinnerPopup('🤝', '무승부', '#1565C0,#0D47A1');
+                else window._showGameWinnerPopup('⏹️', '게임 종료', '#5D4037,#3E2723');
+            } catch(_){}
+        }
         const winner = g.winner;
         const headline = winner==='citizen' ? '🙋 시민 승리!' : winner==='liar' ? (g.mode==='fool'?'🤡 바보 승리!':'🎭 라이어 승리!') : winner==='draw' ? '🤝 무승부!' : '⏹️ 종료';
         const subEmoji = winner==='citizen' ? '🎉' : winner==='liar' ? '🎭' : winner==='draw' ? '🤝' : '⏹️';
@@ -18914,6 +19559,7 @@ window.addCharRow = function() {
     setInterval(() => {
         const g = window._oxQuizState;
         if(!g) return;
+        if(document.hidden) return; // 백그라운드 탭 스킵
         _oxQuizRender();
         // 종료 3초 전: 선 위(±2.5%) 학생 경고 + 마지막 1초엔 가까운 쪽으로 밀어냄
         if(g.phase === 'answer' && g.endAt) {
@@ -19162,8 +19808,8 @@ window.addCharRow = function() {
                         </div>
                     </div>
                     <div style="display:flex;gap:8px;">
-                        <button onclick="document.getElementById('_voteEndModal').remove()" style="flex:1;padding:12px;border:2px solid #BDBDBD;border-radius:14px;background:white;color:#666;font-family:'Jua';font-size:15px;cursor:pointer;transition:0.15s;" onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background='white'">취소</button>
-                        <button ${already?'disabled':''} onclick="window._plzCastVoteEnd()" style="flex:2;padding:12px;border:none;border-radius:14px;background:${already?'#BDBDBD':'linear-gradient(135deg,#EF5350,#C62828)'};color:white;font-family:'Jua';font-size:15px;cursor:${already?'default':'pointer'};box-shadow:${already?'none':'0 4px 0 rgba(198,40,40,0.4)'};transition:0.1s;" ${already?'':'onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"'}>${already?'✅ 투표 완료':'🗳️ 종료 투표'}</button>
+                        <button onclick="document.getElementById('_voteEndModal').remove()" style="flex:1;padding:12px;border:2px solid #66BB6A;border-radius:14px;background:white;color:#2E7D32;font-family:'Jua';font-size:15px;cursor:pointer;transition:0.15s;" onmouseover="this.style.background='#E8F5E9'" onmouseout="this.style.background='white'">👎 반대</button>
+                        <button ${already?'disabled':''} onclick="window._plzCastVoteEnd()" style="flex:2;padding:12px;border:none;border-radius:14px;background:${already?'#BDBDBD':'linear-gradient(135deg,#EF5350,#C62828)'};color:white;font-family:'Jua';font-size:15px;cursor:${already?'default':'pointer'};box-shadow:${already?'none':'0 4px 0 rgba(198,40,40,0.4)'};transition:0.1s;" ${already?'':'onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'"'}>${already?'✅ 찬성 완료':'👍 찬성'}</button>
                     </div>
                 </div>
             </div>`;
@@ -19191,12 +19837,42 @@ window.addCharRow = function() {
                 modal.remove();
                 if(votes < need) window._plzVoteEnd(); // 다시 열어서 투표 완료 상태 반영
             }
+            // 모든 학생에게 채팅 알림 — 첫 투표면 "시작", 그 이후는 "진행중"
+            try {
+                const myNm = (me && me.nm) || '학생';
+                const startMsg = votes === 1
+                    ? `🗳️ ${myNm}님이 게임 종료 투표를 시작했어요! (1/${need} 필요)`
+                    : `🗳️ 종료 투표 진행중 — ${votes}/${need} 필요`;
+                getPlzRef().child('chat').push({ sys:true, nm:'🗳️', msg: startMsg, ts:Date.now() });
+            } catch(_){}
             if(votes >= need) {
-                try { getPlzRef().child('chat').push({ sys:true, nm:'🗳️', msg:`과반수 동의로 게임이 종료되었어요! (${votes}/${total})`, ts:Date.now() }); } catch(_){}
+                try { getPlzRef().child('chat').push({ sys:true, nm:'🗳️', msg:`✅ 과반수 동의로 게임이 종료되었어요! (${votes}/${total})`, ts:Date.now() }); } catch(_){}
+                // 모든 클라이언트에 토스트
+                if(window._plzShowVoteEndToast) window._plzShowVoteEndToast(`✅ 투표로 게임 종료! (${votes}/${total})`);
                 window._endAllPlzGames();
             }
         });
     };
+
+    // 종료 투표 토스트 (가운데 상단)
+    window._plzShowVoteEndToast = function(msg){
+        document.getElementById('_plzVoteEndToast')?.remove();
+        const el = document.createElement('div');
+        el.id = '_plzVoteEndToast';
+        el.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#FF8F00,#E65100);color:white;padding:14px 28px;border-radius:18px;font-family:Jua;font-size:15px;font-weight:bold;z-index:99800;box-shadow:0 8px 24px rgba(0,0,0,0.4);border:3px solid rgba(255,255,255,0.3);animation:_voteEndToastIn 0.35s ease-out;';
+        el.textContent = msg;
+        if(!document.getElementById('_voteEndToastStyle')){
+            const s = document.createElement('style');
+            s.id = '_voteEndToastStyle';
+            s.textContent = '@keyframes _voteEndToastIn{0%{opacity:0;transform:translate(-50%,-30px) scale(0.85);}100%{opacity:1;transform:translate(-50%,0) scale(1);}}';
+            document.head.appendChild(s);
+        }
+        document.body.appendChild(el);
+        setTimeout(()=>el.remove(), 4500);
+    };
+
+    // 종료 투표 시작/진행 토스트 — chat 시스템 메시지로부터 자동 트리거 (모든 학생에게 표시)
+    // (이미 chat 채널로 메시지 전달되므로 별도 listener는 _plzChatListen이 처리)
     // 강제 종료 투표 버튼 가시성 갱신
     window._updatePlzVoteBtn = function() {
         const b = document.getElementById('plzVoteEndBtn'); if(!b) return;
@@ -19759,6 +20435,8 @@ window.addCharRow = function() {
     /* ---------- Student: enterPlaza / exitPlaza ---------- */
     function enterPlaza() {
         if(!me) return;
+        // C: 학생 탭은 광장 진입 직전 plzRoomsCfg를 한 번 새로고침해 최신 광장 설정 사용
+        if(window._refreshPlzRoomsCfg) try { window._refreshPlzRoomsCfg(); } catch(_){}
 
         // 접속 연타 방지 (교사 설정 기준)
         const rateCfg = (db.cfg && db.cfg.plzRate) || {};
@@ -20060,20 +20738,18 @@ window.addCharRow = function() {
         plzMyRef.set(_presenceData);
         plzMyRef.onDisconnect().remove();
 
-        // 다중 탭 테스트 안정성: presence 주기적 재작성 (Firebase 타이밍 경쟁·백그라운드 탭 슬로우다운 보정)
+        // presence 안정성: 60초마다 누락 시에만 재작성 (ts 갱신 제거 — 다른 학생 listener 트래픽 절감)
         if(window._plzPresenceTimer) clearInterval(window._plzPresenceTimer);
         window._plzPresenceTimer = setInterval(() => {
             if(!plzMyRef || !window._plzActive) return;
-            // 본인 record 누락 시 재기록, 있으면 ts만 갱신
             plzMyRef.once('value', snap => {
                 if(!snap.exists()){
                     plzMyRef.set({..._presenceData, x:_plzPos.x, y:_plzPos.y, ts:Date.now()});
                     plzMyRef.onDisconnect().remove();
-                } else {
-                    plzMyRef.update({ ts: Date.now() });
                 }
+                // 있으면 아무것도 하지 않음 (불필요한 update 트래픽 차단)
             });
-        }, 8000);
+        }, 120000);
         // 탭이 다시 활성화될 때 즉시 presence 복구
         if(window._plzVisibilityHandler) document.removeEventListener('visibilitychange', window._plzVisibilityHandler);
         window._plzVisibilityHandler = () => {
@@ -20105,6 +20781,38 @@ window.addCharRow = function() {
         if(typeof window._mafiaSubscribe === 'function') window._mafiaSubscribe();
         // 라이어 게임 상태 구독
         if(typeof window._liarSubscribe === 'function') window._liarSubscribe();
+        // 종료 투표 구독 — 모든 학생이 토스트 알림 받음
+        (function _voteEndSubscribe(){
+            const vRef = getPlzRef().child('endVote');
+            let _lastVoteCnt = -1;
+            const fn = snap => {
+                const v = snap.val() || {};
+                const cnt = Object.keys(v).length;
+                if(cnt === _lastVoteCnt) return;
+                const prev = _lastVoteCnt;
+                _lastVoteCnt = cnt;
+                if(prev === -1) return; // 첫 진입 시 기존 표 무시
+                if(cnt > 0 && window._anyPlzGameActive && window._anyPlzGameActive()){
+                    // 필요 인원 계산
+                    let total = 0;
+                    const ig = window._iceTagState; if(ig && ig.participants) total = Math.max(total, ig.participants.length);
+                    const hg = window._hideSeekState; if(hg && hg.participants) total = Math.max(total, hg.participants.length);
+                    const lg = window._liarState; if(lg && lg.players) total = Math.max(total, lg.players.length);
+                    const mg = window._mafiaState; if(mg && mg.roles) total = Math.max(total, Object.keys(mg.roles).length);
+                    if(total === 0) total = Object.keys(_plzUserCache||{}).filter(u=>u!=='teacher_main').length;
+                    const need = Math.ceil(total/2);
+                    const msg = (prev === 0)
+                        ? `🗳️ 게임 종료 투표가 시작됐어요! (${cnt}/${need})`
+                        : `🗳️ 종료 투표 진행 — ${cnt}/${need}`;
+                    if(window._plzShowVoteEndToast) window._plzShowVoteEndToast(msg);
+                } else if(cnt === 0 && prev > 0){
+                    // 투표가 끝나서 endVote 노드가 정리됨 → 전원에게 종료 알림
+                    if(window._plzShowVoteEndToast) window._plzShowVoteEndToast(`✅ 투표로 게임이 종료됐어요!`);
+                }
+            };
+            vRef.on('value', fn);
+            plzListeners.push({ ref:vRef, type:'value', fn, who:'student' });
+        })();
 
         // Keyboard listeners (arrow 키 기본 스크롤 차단)
         window._plzKeyDown = e => {
@@ -20349,7 +21057,7 @@ window.addCharRow = function() {
             _addChatPanelMsg(msg);
         };
         // 최근 50개만 구독 — 광장 초기 로딩 속도 향상
-        const limited = ref.orderByChild('ts').limitToLast(50);
+        const limited = ref.orderByChild('ts').limitToLast(5);
         limited.on('child_added', fn);
         plzListeners.push({ref: limited, type:'child_added', fn, who:'student'});
     }
@@ -21771,8 +22479,8 @@ window.addCharRow = function() {
             window._plzPruneCount[key] = 0;
             chatRef.once('value', snap => {
                 const keys = Object.keys(snap.val()||{});
-                if(keys.length > 30) {
-                    keys.slice(0, keys.length - 30).forEach(k => chatRef.child(k).remove());
+                if(keys.length > 5) {
+                    keys.slice(0, keys.length - 5).forEach(k => chatRef.child(k).remove());
                 }
             });
         }
