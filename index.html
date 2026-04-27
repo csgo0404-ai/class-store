@@ -13431,37 +13431,27 @@ window.addCharRow = function() {
     let plzMyRef = null;
     let plzListeners = [];   // {ref, type, fn} — for cleanup
     let _plzRAF = null;      // requestAnimationFrame handle
-    let _plzKeys = {};       // currently pressed keys
+    let _plzKeys = window._plzKeys = window._plzKeys || {};       // currently pressed keys (전역과 공유)
     window._plzKeySet = function(key, down) { if(down) _plzKeys[key]=true; else delete _plzKeys[key]; };
-    let _plzDpadIv = null;
+    // D패드 → 가상 화살표 키. 실제 이동은 키보드와 동일하게 _plzLoop(60fps)이 처리해서 매끄럽고 빠르게.
+    window._plzDpadKeyMap = { u:'ArrowUp', d:'ArrowDown', l:'ArrowLeft', r:'ArrowRight' };
+    window._plzDpadActiveKey = null;
     window._plzDpadStart = function(dir) {
-        window._plzDpadStop();
-        function step() {
-            if(!window._plzActive || !me) { window._plzDpadStop(); return; }
-            // 얼음 상태 또는 카운트다운 중엔 이동 불가
-            const _gt = window._iceTagState;
-            if(_gt && (_gt.frozen && _gt.frozen[me.cd] || Date.now() < (_gt.startedAt||0))) { return; }
-            let dx=0, dy=0;
-            const _mul = (typeof _plzSpeedMul === 'function') ? _plzSpeedMul() : 1;
-            const _sp = PLZ_SPEED * _mul;
-            if(dir==='u') dy=-_sp; else if(dir==='d') dy=_sp;
-            else if(dir==='l') dx=-_sp*0.65; else dx=_sp*0.65;
-            const b=_plzGetBounds();
-            const nx=Math.max(b.xMin,Math.min(b.xMax,_plzPos.x+dx));
-            const ny=Math.max(b.yMin,Math.min(b.yMax,_plzPos.y+dy));
-            const co=_plzCharBodyOffset();
-            if(!_plzIsBlocked(nx,ny-co)){_plzPos.x=nx;_plzPos.y=ny;}
-            else if(!_plzIsBlocked(nx,_plzPos.y-co)){_plzPos.x=nx;}
-            else if(!_plzIsBlocked(_plzPos.x,ny-co)){_plzPos.y=ny;}
-            const myEl=document.querySelector(`.plz-char[data-uid="${me.cd}"]`);
-            if(myEl){myEl.style.left=_plzPos.x+'%';myEl.style.top=_plzPos.y+'%';myEl.classList.add('walking');}
-            _plzTrySyncPos();
+        const key = window._plzDpadKeyMap[dir];
+        if(!key) return;
+        // 이전 키가 다르면 해제
+        if(window._plzDpadActiveKey && window._plzDpadActiveKey !== key && window._plzKeys) {
+            delete window._plzKeys[window._plzDpadActiveKey];
         }
-        step();
-        _plzDpadIv = setInterval(step, 100);
+        window._plzDpadActiveKey = key;
+        if(!window._plzKeys) window._plzKeys = {};
+        window._plzKeys[key] = true;
     };
     window._plzDpadStop = function() {
-        if(_plzDpadIv){clearInterval(_plzDpadIv);_plzDpadIv=null;}
+        if(window._plzDpadActiveKey && window._plzKeys) {
+            delete window._plzKeys[window._plzDpadActiveKey];
+        }
+        window._plzDpadActiveKey = null;
         if(me){const el=document.querySelector(`.plz-char[data-uid="${me.cd}"]`);if(el)el.classList.remove('walking');}
     };
     let _plzPos = { x:50, y:50 }; // my position (%)
@@ -21744,7 +21734,8 @@ window.addCharRow = function() {
         // Remove key listeners
         if(window._plzKeyDown) document.removeEventListener('keydown', window._plzKeyDown);
         if(window._plzKeyUp)   document.removeEventListener('keyup',   window._plzKeyUp);
-        _plzKeys = {};
+        // 키 객체는 비우되 참조는 유지 (window._plzKeys와 같은 객체)
+        Object.keys(_plzKeys).forEach(k => delete _plzKeys[k]);
         _plzUserCache = {};
         if(window._plzDpadStop) window._plzDpadStop();
         // 마피아 타이머 정리
