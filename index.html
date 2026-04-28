@@ -2758,6 +2758,13 @@ let _renderLock = false; // 재진입 방지
         const data = snapshot.val();
         if (data) {
             db = data;
+            // 데이터 본 적 있음 플래그 — Firebase null 반환 시 자동 초기화 차단용
+            try {
+                if((db.stu && (Array.isArray(db.stu)?db.stu.length:Object.keys(db.stu).length) > 0) ||
+                   (db.itm && (Array.isArray(db.itm)?db.itm.length:Object.keys(db.itm).length) > 0)) {
+                    localStorage.setItem('rpgShop_hasData', '1');
+                }
+            } catch(_){}
 
             // 광장 멀티룸 바인딩 (db.cfg.plz 등이 현재 방을 가리키도록)
             if(window._plzBindCurRoom) window._plzBindCurRoom();
@@ -3012,13 +3019,27 @@ let _renderLock = false; // 재진입 방지
                 setTimeout(window._updateShopBadge||function(){}, 0);
             }
         } else {
-            // Firebase에서 null 수신 = DB 미초기화 상태일 때만 최초 1회 기본값 세팅
-            // ⚠️ Firebase 정지/일시오류로 null이 올 수 있으므로 sv() 호출 금지
+            // Firebase에서 null 수신 — 신규 DB 또는 Firebase 일시 오류 둘 다 가능
+            // ⚠️ 한번이라도 데이터를 본 적이 있으면 절대 자동 초기화 안 함 (데이터 보호)
+            const _hasSeenData = localStorage.getItem('rpgShop_hasData') === '1';
+            if(_hasSeenData) {
+                console.warn('[db] Firebase null 반환 감지 — 이전에 데이터 본 적 있어 자동 초기화 차단');
+                // 학생/교사 화면이 비어 보이지 않도록 안내
+                if(!document.getElementById('_dbNullWarn')){
+                    const w = document.createElement('div');
+                    w.id = '_dbNullWarn';
+                    w.style.cssText = 'position:fixed;top:14px;left:50%;transform:translateX(-50%);background:#FFEBEE;border:2px solid #EF5350;color:#C62828;padding:12px 20px;border-radius:14px;font-family:Jua;font-size:14px;z-index:99999;box-shadow:0 6px 20px rgba(0,0,0,0.3);max-width:90vw;';
+                    w.innerHTML = '⚠️ Firebase 연결이 일시 끊어졌어요.<br><span style="font-size:12px;">잠시 후 자동 복구됩니다. 새로고침하지 마세요.</span>';
+                    document.body.appendChild(w);
+                    setTimeout(()=>w.remove(), 8000);
+                }
+                return;
+            }
+            // 신규 설치만 기본 데이터 생성
             if(!db.stu || db.stu.length === 0) {
                 db.stu = [{no:1, nm:'학생1', cd:'1234', cn:100, tk:10, co:5, cookie:0, usedCookie:0, level:1, inv:[], ibx:[], col:[], rd:{}, rb:0}];
-                sv(); // 진짜 신규 DB일 때만 저장
+                sv();
             }
-            // null이지만 db.stu가 이미 메모리에 있으면 아무것도 하지 않음
         }
     }
 
@@ -3103,30 +3124,81 @@ let _renderLock = false; // 재진입 방지
     let _localSaving = false;
     let _localSavingTimer = null;
     let _svDebounceTimer = null;
+    let _lastKnownStuCount = 0; // 안전장치용 — 직전 sv() 시점 학생 수
+    let _stuCountInitialized = false;
     function _svWriteSafe() {
         try {
             const isStudentTab = !!(me && me.cd && me.cd !== 'teacher_main');
-            // dbRef.set(db)는 db에 없는 top-level path(예: /plaza)를 모두 삭제 → 사고
-            // dbRef.update({k:v})는 지정한 key만 교체, 그 외는 보존 → 안전
-            const payload = {};
-            // 교사 탭에서만 쓰는 키 (학생은 안 건드림)
-            const TEACHER_KEYS = ['cfg','itm','gac','avt','bdg','tit','petDef','log','rec','ak'];
-            // 양쪽 다 쓰는 키
-            const SHARED_KEYS = ['stu','auc'];
-            const keys = isStudentTab ? SHARED_KEYS : [...TEACHER_KEYS, ...SHARED_KEYS];
-            for(const k of keys) {
-                if(!(k in db)) continue;
-                if(k === 'cfg') {
-                    // cfg.plz는 cfg.plzRooms[curRid].plz의 alias — 12KB 중복 방지
-                    const cfgCopy = { ...db.cfg };
-                    delete cfgCopy.plz;
-                    payload.cfg = cfgCopy;
-                } else {
-                    payload[k] = db[k];
+            const curCount = (db.stu||[]).length;
+            const _hasSeenData = localStorage.getItem('rpgShop_hasData') === '1';
+
+            // ════════ 🛡️ 0차 안전장치: 메모리 비어있는데 데이터 본 적 있음 → 무조건 거부 ════════
+            // 페이지 새로고침 직후 listener 도착 전 sv() 호출되는 경우 방지
+            if(!isStudentTab && curCount === 0 && _hasSeenData){
+                console.error('[sv] 메모리 비어있는데 이전에 데이터 본 적 있음 — 저장 거부 (Firebase 보호)');
+                return;
+            }
+
+            // ════════ 안전장치 1: 메모리 학생 수가 직전 대비 50% 이상 줄면 거부 ════════
+            if(!isStudentTab && _stuCountInitialized && _lastKnownStuCount >= 5){
+                if(curCount < _lastKnownStuCount * 0.5){
+                    console.error('[sv] 학생 수 급감 감지 — 저장 거부:', _lastKnownStuCount, '→', curCount);
+                    alert(`⚠️ 학생 수가 급격히 줄어들어 저장이 취소되었습니다.\n(${_lastKnownStuCount}명 → ${curCount}명)\n\n다른 탭이 열려 있거나 데이터가 꼬였을 수 있어요.\n페이지를 새로고침해서 데이터를 다시 받아오세요.`);
+                    return;
                 }
             }
-            return dbRef.update(payload);
-        } catch(e) { console.error('[sv] set error', e); }
+
+            // ════════ 안전장치 2: Firebase 현재 stu 개수와 비교 (다중 탭 + 빈배열 보호) ════════
+            // curCount === 0 인 경우에도 항상 검증 (이전 버전은 0이면 스킵 — 치명적 버그였음)
+            if(!isStudentTab){
+                dbRef.child('stu').once('value', snap => {
+                    const fbCount = snap.numChildren();
+                    // 1) 메모리는 0인데 Firebase에 학생이 있음 → 무조건 거부
+                    if(fbCount > 0 && curCount === 0){
+                        console.error('[sv] 메모리 0명 vs Firebase', fbCount, '명 — 저장 거부');
+                        alert(`⚠️ 메모리에 학생이 없는데 Firebase에는 ${fbCount}명이 있어요.\n저장이 취소되었습니다.\n\n페이지 새로고침 후 다시 시도하세요.`);
+                        return;
+                    }
+                    // 2) Firebase에 메모리보다 50%+ 많은 학생 → 다른 탭이 새로 추가했을 가능성. 거부.
+                    if(fbCount > 0 && curCount < fbCount * 0.5){
+                        console.error('[sv] Firebase 학생 수 불일치 — 저장 거부:', '메모리', curCount, 'vs Firebase', fbCount);
+                        alert(`⚠️ 다른 탭에서 더 많은 학생 데이터가 감지되어 저장이 취소되었습니다.\n(이 탭: ${curCount}명, Firebase: ${fbCount}명)\n\n페이지를 새로고침하면 최신 데이터를 받아옵니다.`);
+                        return;
+                    }
+                    _doWrite();
+                }, err => {
+                    console.warn('[sv] Firebase 검증 실패 — 빈 배열은 안전을 위해 거부', err);
+                    if(curCount === 0 && _hasSeenData) return; // 검증 실패 + 0명이면 거부
+                    _doWrite();
+                });
+                return;
+            }
+            // 학생 탭은 stu 안 건드리므로 바로 진행
+            _doWrite();
+
+            function _doWrite(){
+                _lastKnownStuCount = curCount;
+                _stuCountInitialized = true;
+                const payload = {};
+                const TEACHER_KEYS = ['cfg','itm','gac','avt','bdg','tit','petDef','log','rec','ak'];
+                const SHARED_KEYS = ['stu','auc'];
+                const keys = isStudentTab ? SHARED_KEYS : [...TEACHER_KEYS, ...SHARED_KEYS];
+                for(const k of keys) {
+                    if(!(k in db)) continue;
+                    if(k === 'cfg') {
+                        const cfgCopy = { ...db.cfg };
+                        delete cfgCopy.plz;
+                        payload.cfg = cfgCopy;
+                    } else {
+                        payload[k] = db[k];
+                    }
+                }
+                // 마지막 쓰기 시각 기록 (다른 탭 디버깅용)
+                payload.lastWriteTs = firebase.database.ServerValue.TIMESTAMP;
+                payload.lastWriter = (me && me.cd) || 'unknown';
+                dbRef.update(payload);
+            }
+        } catch(e) { console.error('[sv] write error', e); }
     }
 
     function sv(){
@@ -20713,6 +20785,7 @@ window.addCharRow = function() {
                     ? `<img src="${cfg.customBg}" id="plzMapBg" style="display:block;width:100%;height:100%;object-fit:contain;position:absolute;inset:0;user-select:none;pointer-events:none;" draggable="false" onload="const mp=document.getElementById('plzMap');if(mp){mp.style.aspectRatio=this.naturalWidth+'/'+this.naturalHeight;}">`
                     : `<div class="plz-map-bg" id="plzMapBg" style="background:#b8d4a8;"></div>`}
                 <button onclick="${me && me.cd === 'teacher_main' ? 'window.exitPlazaAsTeacher()' : 'window._studentExitPlaza()'}" style="position:absolute;top:10px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(239,83,80,0.9);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🚪 나가기</button>
+                ${me && me.cd === 'teacher_main' ? `<button onclick="window._lmSeatingMode()" title="라이어/마피아 게임 자리를 순서대로 클릭으로 등록 (학생이 들어온 순서대로 1번부터 자동 배정)" style="position:absolute;top:10px;right:90px;z-index:30;padding:6px 12px;border-radius:16px;border:none;background:rgba(94,53,177,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🪑 자리 세팅</button>` : ''}
                 ${me && me.cd !== 'teacher_main' ? `<button id="plzVoteEndBtn" onclick="window._plzVoteEnd()" style="position:absolute;top:10px;right:100px;z-index:30;padding:6px 12px;border-radius:16px;border:none;background:rgba(255,167,38,0.95);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:none;">🗳️ 종료 투표</button>` : ''}
                 ${me && me.cd === 'teacher_main' ? `<div style="position:absolute;top:90px;left:10px;z-index:30;background:rgba(0,0,0,0.55);border-radius:14px;padding:4px 10px;font-family:'Jua';color:white;font-size:12px;white-space:nowrap;line-height:1;">
                     <span style="vertical-align:middle;">속도</span> <select id="tchSpeedSel" onchange="window._setTchSpeed(this.value)" style="background:white;color:#333;border:none;border-radius:6px;padding:2px 6px;font-family:'Jua';font-size:12px;cursor:pointer;vertical-align:middle;">
@@ -22348,7 +22421,19 @@ window.addCharRow = function() {
         const hsHideBlock = gHS && Date.now() < gHS.playStartAt && gHS.seekerIds && gHS.seekerIds.includes(me.cd);
         // OX 퀴즈 reveal 단계: 모든 학생 이동 잠금 + 부활전 관전자(생존자) 잠금
         const oxFreeze = (window._oxQuizFrozen || window._oxSpectatorFreeze) && me && me.cd !== 'teacher_main';
-        if(iAmFrozen || (inCountdown && amTagger) || hsHideBlock || oxFreeze) {
+        // 라이어·마피아 게임 진행 중: 교사가 지정한 위치로 학생들 강제 고정
+        const _liG = window._liarState, _mafG = window._mafiaState;
+        const liarMafiaFreeze = ((_liG && _liG.on) || (_mafG && _mafG.on)) && me && me.cd !== 'teacher_main';
+        if(liarMafiaFreeze){
+            // 교사가 지정한 좌표 적용 (한 번만)
+            if(!window._lmFreezeApplied){
+                window._lmFreezeApplied = true;
+                window._lmTeleportToFixedSpot && window._lmTeleportToFixedSpot();
+            }
+        } else {
+            window._lmFreezeApplied = false;
+        }
+        if(iAmFrozen || (inCountdown && amTagger) || hsHideBlock || oxFreeze || liarMafiaFreeze) {
             _plzRAF = requestAnimationFrame(_plzLoop);
             return;
         }
@@ -22393,10 +22478,140 @@ window.addCharRow = function() {
     }
 
     // 교사 전용 클릭 순간이동
+    // ════════ 라이어/마피아 게임용 자리 세팅 시스템 ════════
+    // 교사가 자리를 순서대로 클릭으로 등록 → Firebase 저장 → 게임 시작 시 학생들이 들어온 순서대로 자리 배정
+    window._lmSeatingActive = false;
+    window._lmSeatingMode = function(){
+        if(!me || me.cd !== 'teacher_main'){ alert('교사만 사용 가능합니다.'); return; }
+        // 토글
+        window._lmSeatingActive = !window._lmSeatingActive;
+        const map = document.getElementById('plzMap');
+        if(!map) return;
+        if(window._lmSeatingActive){
+            // 진입: Firebase에서 기존 자리 불러와 표시
+            getPlzRef().child('lmSeats').once('value', snap => {
+                const seats = snap.val() || [];
+                window._lmSeatsDraft = Array.isArray(seats) ? seats.slice() : Object.values(seats);
+                _lmRenderSeatMarkers();
+                _lmShowSeatingHud();
+            });
+        } else {
+            _lmExitSeatingMode();
+        }
+    };
+    window._lmAddSeatAt = function(e){
+        if(!window._lmSeatingActive) return;
+        const map = document.getElementById('plzMap');
+        if(!map) return;
+        // 마커·HUD 클릭은 무시
+        if(e.target && (e.target.classList?.contains('lm-seat-marker') || e.target.closest?.('.lm-seat-marker') || e.target.closest?.('#_lmSeatHud'))) return;
+        const rect = map.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        const b = _plzGetBounds();
+        const nx = Math.max(b.xMin, Math.min(b.xMax, x));
+        const ny = Math.max(b.yMin, Math.min(b.yMax, y));
+        if(!window._lmSeatsDraft) window._lmSeatsDraft = [];
+        window._lmSeatsDraft.push({ x:nx, y:ny });
+        _lmRenderSeatMarkers();
+        _lmShowSeatingHud();
+    };
+    window._lmRemoveSeat = function(i){
+        if(!window._lmSeatsDraft) return;
+        window._lmSeatsDraft.splice(i, 1);
+        _lmRenderSeatMarkers();
+        _lmShowSeatingHud();
+    };
+    window._lmClearSeats = function(){
+        if(!confirm('자리 전체를 지울까요?')) return;
+        window._lmSeatsDraft = [];
+        _lmRenderSeatMarkers();
+        _lmShowSeatingHud();
+    };
+    window._lmSaveSeats = function(){
+        const seats = window._lmSeatsDraft || [];
+        getPlzRef().child('lmSeats').set(seats);
+        alert(`✅ 라이어/마피아 자리 ${seats.length}개 저장됨\n\n게임 시작 시 학생이 들어온 순서대로 1번 자리부터 배정됩니다.`);
+        _lmExitSeatingMode();
+    };
+    function _lmExitSeatingMode(){
+        window._lmSeatingActive = false;
+        document.getElementById('_lmSeatHud')?.remove();
+        document.querySelectorAll('.lm-seat-marker').forEach(el => el.remove());
+        const map = document.getElementById('plzMap');
+        if(map) map.style.cursor = '';
+    }
+    function _lmRenderSeatMarkers(){
+        const map = document.getElementById('plzMap');
+        if(!map) return;
+        document.querySelectorAll('.lm-seat-marker').forEach(el => el.remove());
+        const seats = window._lmSeatsDraft || [];
+        seats.forEach((s, i) => {
+            const m = document.createElement('div');
+            m.className = 'lm-seat-marker';
+            m.style.cssText = `position:absolute;left:${s.x}%;top:${s.y}%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#7E57C2,#5E35B1);color:white;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Jua';font-size:18px;font-weight:bold;box-shadow:0 4px 10px rgba(0,0,0,0.4);border:3px solid white;z-index:25;cursor:pointer;user-select:none;`;
+            m.textContent = (i+1);
+            m.title = `자리 ${i+1} — 클릭하면 삭제`;
+            m.onclick = (ev) => { ev.stopPropagation(); window._lmRemoveSeat(i); };
+            map.appendChild(m);
+        });
+    }
+    function _lmShowSeatingHud(){
+        document.getElementById('_lmSeatHud')?.remove();
+        const map = document.getElementById('plzMap');
+        if(!map) return;
+        const cnt = (window._lmSeatsDraft||[]).length;
+        const hud = document.createElement('div');
+        hud.id = '_lmSeatHud';
+        hud.style.cssText = 'position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:40;background:rgba(94,53,177,0.96);color:white;padding:12px 18px;border-radius:18px;font-family:Jua;box-shadow:0 6px 24px rgba(0,0,0,0.45);display:flex;align-items:center;gap:10px;';
+        hud.innerHTML = `
+            <div style="font-size:14px;">🪑 자리 세팅 중 — 클릭으로 추가, 마커 클릭으로 삭제 (현재 ${cnt}개)</div>
+            <button onclick="window._lmClearSeats()" style="background:rgba(255,255,255,0.18);border:none;color:white;padding:6px 12px;border-radius:10px;font-family:Jua;font-size:12px;cursor:pointer;">전체 삭제</button>
+            <button onclick="window._lmSaveSeats()" style="background:#66BB6A;border:none;color:white;padding:6px 14px;border-radius:10px;font-family:Jua;font-size:13px;font-weight:bold;cursor:pointer;">✅ 저장</button>
+            <button onclick="window._lmSeatingMode()" style="background:rgba(255,255,255,0.18);border:none;color:white;padding:6px 12px;border-radius:10px;font-family:Jua;font-size:12px;cursor:pointer;">취소</button>
+        `;
+        map.appendChild(hud);
+        map.style.cursor = 'crosshair';
+    }
+    // 학생이 호출 — Firebase에서 자리 목록 읽어 본인 인덱스(참가자 정렬)에 맞는 자리로 텔레포트
+    window._lmTeleportToFixedSpot = function(){
+        if(!me || me.cd === 'teacher_main') return;
+        getPlzRef().child('lmSeats').once('value', snap => {
+            const raw = snap.val();
+            const seats = Array.isArray(raw) ? raw : (raw ? Object.values(raw) : []);
+            if(!seats.length) return; // 교사가 자리 미설정
+            // 참가자 목록 (uid 정렬 — 모든 클라이언트 동일 순서 보장)
+            const lg = window._liarState, mg = window._mafiaState;
+            let participants = [];
+            if(lg && lg.on && lg.players){
+                participants = Array.isArray(lg.players) ? lg.players.slice() : Object.values(lg.players);
+            } else if(mg && mg.on && mg.roles){
+                participants = Object.keys(mg.roles);
+            }
+            participants.sort();
+            const idx = participants.indexOf(me.cd);
+            if(idx === -1) return; // 참가자 아님 (관전자)
+            const seat = seats[idx % seats.length]; // 자리 부족하면 순환
+            if(!seat || typeof seat.x !== 'number') return;
+            const b = _plzGetBounds();
+            _plzPos.x = Math.max(b.xMin, Math.min(b.xMax, seat.x));
+            _plzPos.y = Math.max(b.yMin, Math.min(b.yMax, seat.y));
+            const myEl = document.querySelector(`.plz-char[data-uid="${me.cd}"]`);
+            if(myEl){
+                myEl.style.transition = 'left 0.6s ease-out, top 0.6s ease-out';
+                myEl.style.left = _plzPos.x + '%';
+                myEl.style.top  = _plzPos.y + '%';
+            }
+            if(plzMyRef) plzMyRef.update({ x:_plzPos.x, y:_plzPos.y });
+        });
+    };
+
     window.plzTeleport = function(e) {
         if(!me || me.cd !== 'teacher_main' || !window._plzActive) return;
         // 장애물 편집 모드면 순간이동 안 함
         if(window._plzObsEditMode) return;
+        // 라이어/마피아 자리 세팅 모드면 자리 추가로 위임
+        if(window._lmSeatingActive){ window._lmAddSeatAt(e); return; }
         // 버튼 클릭이면 무시
         if(e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button') || e.target.tagName === 'SELECT' || e.target.closest('select') || e.target.tagName === 'INPUT')) return;
         const mapEl = document.getElementById('plzMap');
