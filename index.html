@@ -155,6 +155,20 @@
         #_gtip { position:fixed; z-index:99999; background:rgba(0,0,0,0.82); color:#fff; font-size:12px; padding:5px 12px; border-radius:7px; pointer-events:none; white-space:nowrap; line-height:1.4; transform:translateX(-50%); }
 
         /* === 펫 합성·강화 애니메이션 === */
+        @keyframes petCosmosSpin { from{transform:rotate(0);} to{transform:rotate(360deg);} }
+        @keyframes petCosmosSpinSlow { from{transform:rotate(0);} to{transform:rotate(-360deg);} }
+        @keyframes petCamShake { 0%,100%{transform:translate(0,0);} 10%{transform:translate(-3px,2px);} 20%{transform:translate(3px,-1px);} 30%{transform:translate(-2px,-2px);} 40%{transform:translate(2px,1px);} 50%{transform:translate(-3px,1px);} 60%{transform:translate(2px,-2px);} 70%{transform:translate(-1px,2px);} 80%{transform:translate(2px,-1px);} 90%{transform:translate(-2px,1px);} }
+        @keyframes petCamShakeStrong { 0%,100%{transform:translate(0,0);} 10%{transform:translate(-6px,4px);} 30%{transform:translate(6px,-3px);} 50%{transform:translate(-5px,-4px);} 70%{transform:translate(5px,3px);} 90%{transform:translate(-4px,2px);} }
+        @keyframes petPrologueFade { from{opacity:0;} to{opacity:1;} }
+        @keyframes petSubtitleIn { 0%{opacity:0;transform:translateY(14px) scale(0.96);} 100%{opacity:1;transform:translateY(0) scale(1);} }
+        @keyframes petPulseHeart { 0%,100%{transform:scale(1);opacity:0.8;} 50%{transform:scale(1.15);opacity:1;} }
+        .pet-prologue { position:fixed;inset:0;z-index:99988;background:radial-gradient(ellipse at center, #1a1a3a 0%, #050510 70%, #000 100%);overflow:hidden;animation:petPrologueFade 0.5s ease forwards; }
+        .pet-prologue-cosmos { position:absolute;inset:-30%;animation:petCosmosSpin 60s linear infinite;pointer-events:none; }
+        .pet-prologue-cosmos.slow { animation:petCosmosSpinSlow 120s linear infinite; }
+        .pet-prologue-shake { position:absolute;inset:0;animation:petCamShake 0.18s linear infinite; }
+        .pet-prologue-shake.strong { animation:petCamShakeStrong 0.12s linear infinite; }
+        .pet-subtitle { position:absolute;left:50%;bottom:18%;transform:translateX(-50%);color:#FFD54F;font-family:'Jua';font-size:32px;font-weight:bold;text-shadow:0 0 24px rgba(255,213,79,0.8),0 0 48px rgba(255,150,0,0.5),0 4px 14px rgba(0,0,0,0.85);text-align:center;white-space:nowrap;letter-spacing:2px;animation:petSubtitleIn 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+        .pet-prologue-skip { position:absolute;bottom:24px;right:28px;color:rgba(255,255,255,0.45);font-family:'Jua';font-size:12px;pointer-events:none; }
         @keyframes petMatFly { 0%{opacity:1;} 80%{opacity:0.3;} 100%{opacity:0;transform:translate(-50%,-50%) scale(0.3);} }
         @keyframes petGlowPulse { 0%,100%{box-shadow:0 0 20px #FFD700,0 0 40px #FF8C00;} 50%{box-shadow:0 0 60px #FFD700,0 0 100px #FFA500;} }
         @keyframes petReveal { 0%{opacity:0;transform:scale(0) rotate(-20deg);} 60%{transform:scale(1.2) rotate(5deg);} 100%{opacity:1;transform:scale(1) rotate(0deg);} }
@@ -857,7 +871,7 @@
             0%   { transform: translateX(-50%) rotate(-8deg) scale(1); }
             100% { transform: translateX(-55%) rotate(8deg) scale(1.15); }
         }
-        .plz-char { position:absolute; transform:translate(-50%,-100%) scale(1.56); transform-origin:center bottom; transition:left 0.5s linear, top 0.5s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
+        .plz-char { position:absolute; transform:translate(-50%,-100%) scale(1.56); transform-origin:center bottom; transition:left 1.2s linear, top 1.2s linear; text-align:center; pointer-events:none; user-select:none; z-index:10; display:flex; flex-direction:column; align-items:center; }
         .plz-char.me { transition:none; }
         .plz-tit-slot { display:flex; justify-content:center; }
         .plz-nm-slot { display:flex; justify-content:center; margin-top:-4px; }
@@ -1226,6 +1240,7 @@
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 단어 관리" oncontextmenu="event.preventDefault();window._liarWordEditor&&window._liarWordEditor();return false;"><input type="checkbox" id="plz_room_liar_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🎭 라이어 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_mafia_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🕵️ 마피아</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="체크 시 OX 퀴즈 방 — 인원 제한·전체 열기/닫기 무시"><input type="checkbox" id="plz_room_oxquiz_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">📝 OX 퀴즈</label>
+                                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_omok_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">⚫ 오목</label>
                             </div>
                         </div>
                     </div>
@@ -2253,7 +2268,7 @@ let _renderLock = false; // 재진입 방지
                 <div style="padding:18px 20px;overflow-y:auto;flex:1;min-height:0;">
                     ${newTickets.length ? `<div style="font-size:14px;font-weight:bold;color:#E65100;margin-bottom:8px;">🎫 골든 티켓 ${newTickets.length}개</div>${ticketRows}${newTickets.length>5?`<div style="font-size:11px;color:#888;text-align:center;">...외 ${newTickets.length-5}개 더</div>`:''}<div style="margin:12px 0;"></div>`:''}
                     ${newDalgona.length ? `<div style="font-size:14px;font-weight:bold;color:#C2185B;margin-bottom:8px;">🍯 달고나 ${newDalgona.length}개</div>${dalgonaRows}${newDalgona.length>5?`<div style="font-size:11px;color:#888;text-align:center;">...외 ${newDalgona.length-5}개 더</div>`:''}<div style="margin:12px 0;"></div>`:''}
-                    ${newDrawings.length ? `<div style="background:linear-gradient(135deg,#E1F5FE,#FFF3E0);border:2px dashed #FF9800;border-radius:12px;padding:12px 14px;font-size:13px;color:#E65100;font-weight:bold;line-height:1.5;">🖼️ <b>새 그림 ${newDrawings.length}개</b>도 도착!<br><span style="font-weight:normal;color:#5D4037;">⏳ 3일 안에 가방에서 다운로드해주세요. 안 받으면 자동 삭제!</span></div>`:''}
+                    ${newDrawings.length ? `<div style="background:linear-gradient(135deg,#E1F5FE,#FFF3E0);border:2px dashed #FF9800;border-radius:12px;padding:12px 14px;font-size:13px;color:#E65100;font-weight:bold;line-height:1.5;">🖼️ <b>새 그림 ${newDrawings.length}개</b>도 도착!<br><span style="font-weight:normal;color:#5D4037;">가방에서 언제든지 다운로드할 수 있어요.</span></div>`:''}
                 </div>
                 <div style="padding:14px 20px;border-top:2px solid rgba(255,152,0,0.3);background:rgba(255,255,255,0.5);">
                     <button onclick="window._closeCouponArrival()" style="width:100%;padding:14px;background:linear-gradient(135deg,#FF7BA9,#FF5C8D);color:white;border:none;border-radius:14px;font-family:'Jua';font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 0 #D94F75;">가방에서 자세히 보기 🎒</button>
@@ -2326,9 +2341,8 @@ let _renderLock = false; // 재진입 방지
         document.getElementById('_newDrawingBanner')?.remove();
         const dal = (me.inv||[]).find(i => i && i.special === 'dalgona');
         if(!dal) return;
-        const now = Date.now();
-        const SEVEN = 3*24*3600*1000;
-        const fresh = (dal.events||[]).filter(e => e && e.drawingId && !e.downloadedAt && (e.ts||0) >= now - SEVEN);
+        const lastView = me.lastCouponView || 0;
+        const fresh = (dal.events||[]).filter(e => e && e.drawingId && !e.downloadedAt && (e.ts||0) > lastView);
         if(!fresh.length) return;
         const banner = document.createElement('div');
         banner.id = '_newDrawingBanner';
@@ -2345,9 +2359,7 @@ let _renderLock = false; // 재진입 방지
     window._receiveAllNewDrawings = async function() {
         const dal = (me.inv||[]).find(i => i && i.special === 'dalgona');
         if(!dal) return;
-        const now = Date.now();
-        const SEVEN = 3*24*3600*1000;
-        const fresh = (dal.events||[]).filter(e => e && e.drawingId && !e.downloadedAt && (e.ts||0) >= now - SEVEN);
+        const fresh = (dal.events||[]).filter(e => e && e.drawingId && !e.downloadedAt);
         if(!fresh.length) { alert('받을 새 그림이 없어요'); return; }
         let downloaded = 0;
         for(const e of fresh) {
@@ -2397,8 +2409,6 @@ let _renderLock = false; // 재진입 방지
     window._showGiftDrawing = function(idx) {
         const e = (window._giftDrawings||[])[idx];
         if(!e) return;
-        const ageDays = (Date.now() - (e.ts||0)) / (24*3600*1000);
-        const remainHours = Math.max(0, Math.ceil((3 - ageDays) * 24));
         document.getElementById('_giftDrawModal')?.remove();
         const safeName = (e.fromName||'friend').replace(/[^\w가-힣]/g,'_');
         const dlName = `달고나_${safeName}_${new Date(e.ts||0).toISOString().slice(0,10)}.png`;
@@ -2409,8 +2419,7 @@ let _renderLock = false; // 재진입 방지
                     <button onclick="document.getElementById('_giftDrawModal').remove()" style="background:#EEE;border:none;border-radius:50%;width:30px;height:30px;font-size:18px;cursor:pointer;">✕</button>
                 </div>
                 <div style="background:linear-gradient(135deg,#FFF3E0,#FFE0B2);border:2px solid #FFB74D;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#E65100;font-weight:bold;line-height:1.5;">
-                    💾 <b>꼭 다운로드해서 저장하세요!</b><br>
-                    <span style="font-weight:normal;">⏳ <b>${remainHours}시간</b> 후 자동 삭제돼요. 받은 그림은 PC/태블릿 기본 저장 폴더(다운로드)에 저장돼요.</span>
+                    💾 <b>다운로드해서 저장하세요!</b>
                 </div>
                 <img src="${e.drawing}" style="width:100%;border-radius:12px;background:white;border:2px solid #FFE0B2;">
                 ${e.message ? `<div style="margin-top:12px;background:#FFF8E1;border-radius:10px;padding:12px;font-size:14px;color:#5D4037;white-space:pre-wrap;">${(e.message||'').replace(/</g,'&lt;')}</div>` : ''}
@@ -2751,6 +2760,32 @@ let _renderLock = false; // 재진입 방지
             }
         });
         if(!db.cfg.recordCoupons) db.cfg.recordCoupons = { ticketThreshold:5, ticketGachaIdx:null };
+        // 마이그레이션: 교사가 따로 지급한 골든티켓·달고나 inv 항목을 events 배열로 병합
+        // (외부 시스템과 카운트 호환을 위해 단일 항목 + events 형태로 통일)
+        (db.stu||[]).forEach(s => {
+            if(!s || !Array.isArray(s.inv) || !s.inv.length) return;
+            ['goldenTicket', 'dalgona'].forEach(specKey => {
+                const itemsOfKind = s.inv.filter(x => x && (x.special === specKey || (x.n === (specKey==='goldenTicket'?'골든 티켓':'달고나') && !x.special)));
+                if(itemsOfKind.length <= 1) return; // 1개 이하면 병합 불필요
+                // 첫 항목을 master로, 나머지를 events 추가 후 제거
+                const master = itemsOfKind.find(x => x.special === specKey) || itemsOfKind[0];
+                if(!master.special) master.special = specKey;
+                if(!Array.isArray(master.events)) master.events = [];
+                let extraCount = 0;
+                itemsOfKind.forEach(x => {
+                    if(x === master) return;
+                    if(Array.isArray(x.events)) master.events.push(...x.events);
+                    else extraCount++;
+                });
+                // 'events' 없는 단순 항목들은 1개당 1 event 추가
+                if(extraCount > 0){
+                    const _nt = Date.now();
+                    for(let k=0; k<extraCount; k++) master.events.push({ts:_nt-k, by:'migrate', gift: specKey==='dalgona'?'cookie':'ticket'});
+                }
+                // 중복 항목 제거
+                s.inv = s.inv.filter(x => !x || !(itemsOfKind.includes(x) && x !== master));
+            });
+        });
     }
 
     function _handleDbUpdate(snapshot) {
@@ -2798,7 +2833,6 @@ let _renderLock = false; // 재진입 방지
             _ensureRecordCoupons();
             // 교사 로그인 시 7일 지난 그림 1회 정리 + db 자동 정리
             if(localStorage.getItem('teacherLogged')==='1') {
-                setTimeout(() => window._cleanupOldDrawings && window._cleanupOldDrawings(), 4000);
                 setTimeout(() => window._autoCleanupDb && window._autoCleanupDb(), 6000);
             }
 
@@ -3129,7 +3163,9 @@ let _renderLock = false; // 재진입 방지
     function _svWriteSafe() {
         try {
             const isStudentTab = !!(me && me.cd && me.cd !== 'teacher_main');
-            const curCount = (db.stu||[]).length;
+            // 안전장치 카운트는 테스트 학생(T로 시작) 제외 — 진짜 학생 변동만 검증
+            const _isRealStu = s => s && s.cd && !/^T0\d$/.test(String(s.cd));
+            const curCount = (db.stu||[]).filter(_isRealStu).length;
             const _hasSeenData = localStorage.getItem('rpgShop_hasData') === '1';
 
             // ════════ 🛡️ 0차 안전장치: 메모리 비어있는데 데이터 본 적 있음 → 무조건 거부 ════════
@@ -3152,7 +3188,9 @@ let _renderLock = false; // 재진입 방지
             // curCount === 0 인 경우에도 항상 검증 (이전 버전은 0이면 스킵 — 치명적 버그였음)
             if(!isStudentTab){
                 dbRef.child('stu').once('value', snap => {
-                    const fbCount = snap.numChildren();
+                    // Firebase에서도 T- 학생 제외하고 카운트
+                    let fbCount = 0;
+                    snap.forEach(c => { const v = c.val(); if(_isRealStu(v)) fbCount++; });
                     // 1) 메모리는 0인데 Firebase에 학생이 있음 → 무조건 거부
                     if(fbCount > 0 && curCount === 0){
                         console.error('[sv] 메모리 0명 vs Firebase', fbCount, '명 — 저장 거부');
@@ -3246,6 +3284,8 @@ let _renderLock = false; // 재진입 방지
     };
 
     // 백그라운드 탭 절전: 숨겨진 지 2분 지나면 Firebase goOffline (트래픽 절감), 다시 보이면 goOnline
+    // ※ 광장 입장 중에는 절전하지 않음 — onDisconnect로 plaza users에서 제거되어 다른 학생에게 사라져 보이는 사고 방지
+    //    (장시간 미사용 시 학생 자동 퇴장은 광장 설정의 '비활성/최대 접속 시간'으로 관리)
     let _idleOfflineTimer = null;
     let _isOfflineByIdle = false;
     document.addEventListener('visibilitychange', function() {
@@ -3253,6 +3293,7 @@ let _renderLock = false; // 재진입 방지
             clearTimeout(_idleOfflineTimer);
             _idleOfflineTimer = setTimeout(() => {
                 try {
+                    if(window._plzActive) return; // 광장 입장 중엔 절전 금지
                     if(!_isOfflineByIdle && firebase?.database) {
                         firebase.database().goOffline();
                         _isOfflineByIdle = true;
@@ -3288,6 +3329,8 @@ let _renderLock = false; // 재진입 방지
             if(window._plzActive || window._mafiaState?.on || window._liarState?.on) return;
             _activityTimer = setTimeout(() => {
                 try {
+                    // 타이머 발동 시점에 광장 입장 중이면 절전 금지 (학생 사라지는 사고 방지)
+                    if(window._plzActive) return;
                     if(!_isOfflineByActivity && firebase?.database) {
                         firebase.database().goOffline();
                         _isOfflineByActivity = true;
@@ -4494,7 +4537,16 @@ let _renderLock = false; // 재진입 방지
                 if(g.y==='avt'){
                     const s=stuList[g.si];if(!s)return;
                     if(s.avtOwned){const i=s.avtOwned.indexOf(g.k);if(i>=0)s.avtOwned.splice(i,1);}
-                    if(s.eq){Object.keys(s.eq).forEach(cat=>{if(s.eq[cat]===g.k)s.eq[cat]='';});}
+                    if(s.eq){Object.keys(s.eq).forEach(cat=>{
+                        const cur=s.eq[cat];
+                        const curId=(cur&&typeof cur==='object')?cur.id:cur;
+                        if(curId===g.k) s.eq[cat]='';
+                    });}
+                    // 펫: displayPets 배열도 정리 — 누락 시 캐릭터에 잔존
+                    if(s.displayPets){
+                        const dp=Array.isArray(s.displayPets)?s.displayPets:Object.values(s.displayPets||{}).filter(Boolean);
+                        s.displayPets=dp.filter(id=>id!==g.k);
+                    }
                 } else if(g.y==='bdg'){
                     const s=(g.cd?stuList.find(x=>x.cd===g.cd):null)||stuList[g.si];if(!s)return;
                     const arr=Array.isArray(s.earnedBdg)?s.earnedBdg:Object.values(s.earnedBdg||{});
@@ -5354,7 +5406,15 @@ window.appU = function(y, si, k) {
             if(g.y==='avt') {
                 const s=stuList[g.si]; if(!s) return;
                 if(s.avtOwned){const i=s.avtOwned.indexOf(g.k);if(i>=0)s.avtOwned.splice(i,1);}
-                if(s.eq){Object.keys(s.eq).forEach(cat=>{if(s.eq[cat]===g.k)s.eq[cat]='';});}
+                if(s.eq){Object.keys(s.eq).forEach(cat=>{
+                    const cur=s.eq[cat];
+                    const curId=(cur&&typeof cur==='object')?cur.id:cur;
+                    if(curId===g.k) s.eq[cat]='';
+                });}
+                if(s.displayPets){
+                    const dp=Array.isArray(s.displayPets)?s.displayPets:Object.values(s.displayPets||{}).filter(Boolean);
+                    s.displayPets=dp.filter(id=>id!==g.k);
+                }
             } else if(g.y==='bdg') {
                 const s=(g.cd?stuList.find(x=>x.cd===g.cd):null)||stuList[g.si]; if(!s) return;
                 const bdgArr=Array.isArray(s.earnedBdg)?s.earnedBdg:Object.values(s.earnedBdg||{});
@@ -5556,8 +5616,12 @@ window.appU = function(y, si, k) {
                 if(legacy > 0) s.usedCookie = Math.max(0, (s.usedCookie||0) - legacy);
             }
             s.inv = (s.inv||[]).filter(e => e.avtId !== g.k);
-            // 착용 중이면 해제 (displayPets 포함)
-            if(s.eq) { Object.keys(s.eq).forEach(cat => { if(s.eq[cat]===g.k) s.eq[cat]=''; }); }
+            // 착용 중이면 해제 (displayPets 포함, 펫 객체 형식 대응)
+            if(s.eq) { Object.keys(s.eq).forEach(cat => {
+                const cur=s.eq[cat];
+                const curId=(cur&&typeof cur==='object')?cur.id:cur;
+                if(curId===g.k) s.eq[cat]='';
+            }); }
             if(s.displayPets) s.displayPets = (Array.isArray(s.displayPets) ? s.displayPets : Object.values(s.displayPets||{})).filter(id => id !== g.k);
         } else if(g.y==='bdg') {
             const s = (g.cd ? stuList.find(x=>x.cd===g.cd) : null) || stuList[g.si];
@@ -5795,7 +5859,19 @@ window.appU = function(y, si, k) {
                     const it = _itmList[idx]; if(!it) return;
                     if(!s.inv) s.inv=[];
                     else if(!Array.isArray(s.inv)) s.inv = Object.values(s.inv);
-                    for(let q=0;q<multiQty;q++) s.inv.push({n:it.n, i:it.i, st:'active', g:it.g||'C'});
+                    // 골든티켓·달고나는 외부 시스템과 호환 위해 events 배열에 추가 (단일 inv 항목 유지)
+                    if(it.special === 'goldenTicket' || it.special === 'dalgona'){
+                        let existing = s.inv.find(x => x && x.special === it.special);
+                        if(!existing){
+                            existing = {n:it.n, i:it.i, st:'active', g:it.g||'L', special:it.special, events:[]};
+                            s.inv.push(existing);
+                        }
+                        if(!Array.isArray(existing.events)) existing.events = [];
+                        const _now = Date.now();
+                        for(let q=0;q<multiQty;q++) existing.events.push({ts: _now+q, by:'teacher', gift: it.special==='dalgona' ? 'cookie' : 'ticket'});
+                    } else {
+                        for(let q=0;q<multiQty;q++) s.inv.push({n:it.n, i:it.i, st:'active', g:it.g||'C'});
+                    }
                     if(!s.col) s.col=[]; if(!s.col.includes(it.n)) s.col.push(it.n);
                 } else if(type==='avt'){
                     const a=(db.avt||[])[idx]; if(!a) return;
@@ -5887,21 +5963,26 @@ window.appU = function(y, si, k) {
         const ti=document.getElementById('gt').value, ii=document.getElementById('gi').value, it=db.itm[ii];
         const qty = Math.max(1, parseInt(document.getElementById('gq_cnt').value) || 1);
         const o={n:it.n, i:it.i, st:'active', g:it.g||'C'};
-
-        if(ti==='all') {
-            db.stu.forEach(s => {
-                if(!s.inv) s.inv=[];
-                for(let k=0; k<qty; k++) s.inv.push({...o});
-                if(!s.col) s.col = [];
-                if(!s.col.includes(it.n)) s.col.push(it.n);
-            });
-        } else {
-            const s = db.stu[ti];
+        const _addToStudent = (s) => {
             if(!s.inv) s.inv=[];
-            for(let k=0; k<qty; k++) s.inv.push({...o});
+            // 골든티켓·달고나는 events 배열에 추가 (외부 시스템과 호환)
+            if(it.special === 'goldenTicket' || it.special === 'dalgona'){
+                let existing = s.inv.find(x => x && x.special === it.special);
+                if(!existing){
+                    existing = {n:it.n, i:it.i, st:'active', g:it.g||'L', special:it.special, events:[]};
+                    s.inv.push(existing);
+                }
+                if(!Array.isArray(existing.events)) existing.events = [];
+                const _nt = Date.now();
+                for(let k=0;k<qty;k++) existing.events.push({ts:_nt+k, by:'teacher', gift: it.special==='dalgona' ? 'cookie' : 'ticket'});
+            } else {
+                for(let k=0;k<qty;k++) s.inv.push({...o});
+            }
             if(!s.col) s.col = [];
             if(!s.col.includes(it.n)) s.col.push(it.n);
-        }
+        };
+        if(ti==='all') db.stu.forEach(_addToStudent);
+        else { const s = db.stu[ti]; if(s) _addToStudent(s); }
         sv(); alert("지급됨"); rAs(); rColT();
     }
 
@@ -6036,7 +6117,18 @@ window.appU = function(y, si, k) {
             if(type==='itm'){
                 const it = db.itm[idx]; if(!it) return;
                 if(!s.inv) s.inv=[];
-                for(let q=0;q<givQty;q++) s.inv.push({n:it.n, i:it.i, st:'active', g:it.g||'C'});
+                if(it.special === 'goldenTicket' || it.special === 'dalgona'){
+                    let existing = s.inv.find(x => x && x.special === it.special);
+                    if(!existing){
+                        existing = {n:it.n, i:it.i, st:'active', g:it.g||'L', special:it.special, events:[]};
+                        s.inv.push(existing);
+                    }
+                    if(!Array.isArray(existing.events)) existing.events = [];
+                    const _nowT = Date.now();
+                    for(let q=0;q<givQty;q++) existing.events.push({ts:_nowT+q, by:'teacher', gift: it.special==='dalgona' ? 'cookie' : 'ticket'});
+                } else {
+                    for(let q=0;q<givQty;q++) s.inv.push({n:it.n, i:it.i, st:'active', g:it.g||'C'});
+                }
                 if(!s.col) s.col=[];
                 if(!s.col.includes(it.n)) s.col.push(it.n);
             } else if(type==='avt'){
@@ -6183,7 +6275,19 @@ window.appU = function(y, si, k) {
         const reqKeys = [..._selAvt].filter(k=>k.startsWith('req_')).map(k=>{const p=k.slice(4).split('_');return{si:Number(p[0]),ri:Number(p[1])};}).sort((a,b)=>b.ri-a.ri);
         const ownKeys = [..._selAvt].filter(k=>k.startsWith('own_')).map(k=>{const p=k.slice(4).split('|');return{si:Number(p[0]),id:p[1]};});
         reqKeys.forEach(({si,ri})=>{ const s=stuList[si]; if(s&&s.avtReqs) s.avtReqs.splice(ri,1); });
-        ownKeys.forEach(({si,id})=>{ const s=stuList[si]; if(!s) return; if(s.avtOwned) { const idx=s.avtOwned.indexOf(id); if(idx>=0) s.avtOwned.splice(idx,1); } if(s.eq){Object.keys(s.eq).forEach(cat=>{if(s.eq[cat]===id)s.eq[cat]='';});} });
+        ownKeys.forEach(({si,id})=>{
+            const s=stuList[si]; if(!s) return;
+            if(s.avtOwned) { const idx=s.avtOwned.indexOf(id); if(idx>=0) s.avtOwned.splice(idx,1); }
+            if(s.eq){Object.keys(s.eq).forEach(cat=>{
+                const cur=s.eq[cat];
+                const curId=(cur&&typeof cur==='object')?cur.id:cur;
+                if(curId===id) s.eq[cat]='';
+            });}
+            if(s.displayPets){
+                const dp=Array.isArray(s.displayPets)?s.displayPets:Object.values(s.displayPets||{}).filter(Boolean);
+                s.displayPets=dp.filter(x=>x!==id);
+            }
+        });
         _selAvt.clear(); sv(); renderAvtReqs();
     };
 
@@ -6882,7 +6986,12 @@ window.appU = function(y, si, k) {
                         <label style="font-size:12px;color:#888;margin-top:6px;">필요 개수</label>
                         <input id="m_gc_altQty" type="number" min="1" placeholder="예: 5" value="${g.altItemQty||''}">
                     </div>
-                    <label>뽑기 유형</label><select id="m_gy">${typeOpts}</select>
+                    <label>뽑기 유형</label><select id="m_gy" onchange="document.getElementById('m_g_premiumWrap').style.display=this.value==='premium_skill'?'block':'none'">${typeOpts}</select>
+                    <div id="m_g_premiumWrap" style="display:${g.t==='premium_skill'?'block':'none'};background:#FFF3E0;border:2px dashed #FF9800;border-radius:10px;padding:8px 12px;margin-bottom:8px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:#E65100;font-weight:bold;margin:0;">
+                            <input type="checkbox" id="m_g_excludeOwned" style="width:auto;margin:0;" ${g.excludeOwned?'checked':''}> ⭐ 보유한 스킬은 풀에서 제외 (무조건 신규)
+                        </label>
+                    </div>
                     <label>공개 월 <span style="font-weight:normal;color:#aaa;font-size:12px;">(미설정=즉시)</span></label>
                     <select id="m_g_openMonth" style="margin-bottom:10px;">
                         <option value="">즉시 공개</option>
@@ -6946,6 +7055,7 @@ window.appU = function(y, si, k) {
         const altQty = parseInt(document.getElementById('m_gc_altQty')?.value)||0;
         if(altItem && altQty > 0) { item.altItemName = altItem; item.altItemQty = altQty; }
         if(openMonth) item.openMonth = openMonth;
+        if(item.t === 'premium_skill') item.excludeOwned = !!document.getElementById('m_g_excludeOwned')?.checked;
         if(offline) { item.offline = true; item.offlineMax = offlineMax; }
         const dualGacId = document.getElementById('m_g_dualGacId')?.value.trim();
         if(dualGacId) item.dualGacId = dualGacId;
@@ -7718,6 +7828,12 @@ window.appU = function(y, si, k) {
         // 오프라인 신청 모드
         if(g.offline) { showOfflineGacReqModal(g); return; }
 
+        // 펫 스킬 다시·프리미엄 스킬 — 가챠 시작 전 보유 스킬 선택 모달
+        if(g.t === 'skill_reroll' || g.t === 'premium_skill') {
+            window._showSkillRerollPicker(gachaName);
+            return;
+        }
+
         const cType = g.cur || 'cn';
         // 대체 아이템 결제 옵션 — 화폐와 함께 선택 가능
         if(g.altItemName && g.altItemQty > 0) {
@@ -7863,6 +7979,58 @@ window.appU = function(y, si, k) {
                 executeGachaCurrent(gachaName);
             }
         }
+    };
+
+    /* ===== 펫 스킬 다시·프리미엄 스킬 — 카드 뒤집기 재활용 ===== */
+    // 학생이 보유한 스킬(earnedBdg) 1개를 선택 → 비용 지불 → 가챠 → 새 묶음 지급 + 옛 스킬 제거
+    window._showSkillRerollPicker = function(gachaName){
+        const g = (db.gac||[]).find(i => i.n === gachaName);
+        if(!g) return;
+        const owned = (me.earnedBdg||[]).map(id => (db.bdg||[]).find(b => b.id===id)).filter(Boolean);
+        document.getElementById('_skillRerollPicker')?.remove();
+        const skillsHtml = owned.length ? owned.map(b => {
+            const img = b.img || b.icon || '';
+            const isImg = img && (img.startsWith('http')||img.startsWith('data:'));
+            return `<div onclick="window._selectRerollSkill('${b.id}', '${gachaName}')" style="background:white;border:2.5px solid #FFE0B2;border-radius:14px;padding:12px 14px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:0.15s;font-family:'Jua';" onmouseover="this.style.borderColor='#FF7043';this.style.background='#FFF8E1';" onmouseout="this.style.borderColor='#FFE0B2';this.style.background='white';">
+                ${isImg?`<img src="${img}" style="width:54px;height:54px;object-fit:contain;flex-shrink:0;">`:`<div style="font-size:40px;flex-shrink:0;">${img||'🏷️'}</div>`}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:15px;font-weight:bold;color:#5D4037;">${(b.name||b.n||'').replace(/</g,'&lt;')}</div>
+                    <div style="font-size:11px;color:#888;line-height:1.4;margin-top:2px;">${(b.desc||'').replace(/</g,'&lt;')}</div>
+                </div>
+            </div>`;
+        }).join('') : '<div style="text-align:center;color:#888;padding:20px;font-size:13px;">교체할 펫 스킬이 없어요</div>';
+        const cost = g.c || 0;
+        const cType = g.cur || 'cn';
+        const curLb = cType==='kc'?'🍪 쿠키':cType==='cn'?'🍭 캔디':cType==='co'?'🍯 꿀':'';
+        const isPremium = g.t === 'premium_skill';
+        const exclMsg = isPremium && g.excludeOwned ? '<div style="background:#FFF3E0;border:2px dashed #FF9800;border-radius:10px;padding:10px;font-size:12px;color:#E65100;text-align:center;margin-bottom:10px;">⭐ 프리미엄: 보유한 스킬은 제외 — 무조건 신규 스킬 보장!</div>' : '';
+        document.body.insertAdjacentHTML('beforeend', `
+        <div id="_skillRerollPicker" class="modal-overlay" onclick="if(event.target===this)this.remove()" style="z-index:99000;">
+            <div class="modal-window" onclick="event.stopPropagation()" style="max-width:480px;width:96vw;">
+                <button class="modal-close-btn" onclick="document.getElementById('_skillRerollPicker').remove()">X</button>
+                <div class="modal-inner" style="padding:20px;">
+                    <div style="font-size:22px;font-weight:bold;color:${isPremium?'#FF6F00':'#5D4037'};margin-bottom:6px;text-align:center;font-family:'Jua';">${isPremium?'⭐ 프리미엄 스킬':'🔄 스킬 다시'}</div>
+                    <div style="font-size:13px;color:#888;margin-bottom:14px;text-align:center;">교체할 펫 스킬을 선택하세요. 선택한 스킬은 사라지고 새로운 묶음(펫+스킬)을 받아요.</div>
+                    ${exclMsg}
+                    <div style="background:#FFF8E1;border-radius:12px;padding:8px 14px;font-size:13px;color:#E65100;text-align:center;margin-bottom:12px;font-weight:bold;font-family:'Jua';">💰 비용: ${cost}${curLb}</div>
+                    <div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">${skillsHtml}</div>
+                </div>
+            </div>
+        </div>`);
+    };
+    window._selectRerollSkill = function(skillId, gachaName){
+        document.getElementById('_skillRerollPicker')?.remove();
+        const g = (db.gac||[]).find(i => i.n === gachaName);
+        if(!g || !skillId) return;
+        // 비용 검증 (executeGachaCurrent가 차감하지만 여기서도 미리 체크)
+        const cType = g.cur || 'cn';
+        const cost = g.c || 0;
+        const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[cType]||0);
+        if(myBal < cost) { alert('화폐가 부족해요!'); return; }
+        // 스킬 교체 컨텍스트 저장 — 가챠 완료 후 이 ID 제거
+        window._skillRerollOldId = skillId;
+        // 비용 차감 + 가챠 실행 (기존 흐름 그대로)
+        window.executeGachaCurrent(gachaName);
     };
 
     window.executeGachaCurrent = function(gachaName, skipCharge) {
@@ -8347,6 +8515,20 @@ window.appU = function(y, si, k) {
         window._gachaRunning = true;
         hideTip();
         window._curGacNm = g.n || '뽑기'; // 현재 뽑기 기계 이름 저장
+        // 프리미엄 스킬: 보유한 스킬을 가진 묶음을 풀에서 제외
+        if(g.t === 'premium_skill' && g.excludeOwned){
+            const ownedSkillNames = (me.earnedBdg||[])
+                .map(id => (db.bdg||[]).find(b => b.id===id))
+                .filter(Boolean)
+                .map(b => b.name || b.n);
+            const filteredR = (g.r||[]).filter(r => {
+                const skillNm = r.ns ? r.ns[1] : null;
+                return !skillNm || !ownedSkillNames.includes(skillNm);
+            });
+            if(filteredR.length){
+                g = {...g, r: filteredR}; // 임시 g 사본
+            }
+        }
         let pkName = "";
         let qty = 1;
 
@@ -8387,19 +8569,45 @@ window.appU = function(y, si, k) {
                 if(_prev) _prev();
             };
         }
+        // 스킬 다시/프리미엄: 가챠 종료 후 옛 스킬 제거
+        if(window._skillRerollOldId && !me.isTest){
+            const _oldSkillId = window._skillRerollOldId;
+            window._skillRerollOldId = null;
+            const _prevSR = window._postGachaCallback;
+            window._postGachaCallback = () => {
+                if(_prevSR) _prevSR();
+                const arr = Array.isArray(me.earnedBdg) ? me.earnedBdg : Object.values(me.earnedBdg||{});
+                const idx = arr.indexOf(_oldSkillId);
+                if(idx >= 0) {
+                    arr.splice(idx, 1);
+                    me.earnedBdg = arr;
+                    const oldDef = (db.bdg||[]).find(b => b.id === _oldSkillId);
+                    showToast(`🔄 옛 스킬 [${oldDef?.name||oldDef?.n||'?'}] 사라짐`, 2500);
+                }
+                upMe(); rBg();
+            };
+        }
         
+        // 단일/세트 모두 동일하게 4개 컬렉션(avt/itm/bdg/petDef) 전수 조회로 이미지 찾기
+        const _resolveItemImg = (nm) => {
+            const _avt = (db.avt||[]).find(a=>a.nm===nm||a.id===nm);
+            const _itm = (db.itm||[]).find(it=>it.n===nm);
+            const _bdg = (db.bdg||[]).find(b=>b.name===nm||b.n===nm);
+            const _pet = [...(db.petDef||[]),...(db.spPetDef||[])].find(p=>p.name===nm);
+            const img = _avt?.img || _itm?.i || (_bdg?.img||_bdg?.icon) || _pet?.img || '🎁';
+            const grade = (_avt||_itm)?.g || 'C';
+            return { img, grade, found: !!(_avt||_itm||_bdg||_pet) };
+        };
         if(_pickedBundle) {
+            // 세트: 첫 번째 아이템 이미지로 표시
             const _fNm = _pickedBundle[0];
-            const _fAvt = (db.avt||[]).find(a=>a.nm===_fNm||a.id===_fNm);
-            const _fItm = (db.itm||[]).find(it=>it.n===_fNm);
-            const _fBdg = (db.bdg||[]).find(b=>b.name===_fNm||b.n===_fNm);
-            const _fPet = [...(db.petDef||[]),...(db.spPetDef||[])].find(p=>p.name===_fNm);
-            const _fImg = _fAvt?.img || _fItm?.i || (_fBdg?.img||_fBdg?.icon) || _fPet?.img || '🎁';
+            const _r = _resolveItemImg(_fNm);
             const _displayNm = (pkName && pkName !== _fNm) ? pkName : _fNm;
-            winItem = {n:_fNm, _nm:_displayNm, i:_fImg, g:(_fAvt||_fItm)?.g||'C', _qty:qty};
+            winItem = {n:_fNm, _nm:_displayNm, i:_r.img, g:_r.grade, _qty:qty};
         } else {
-            winItem = db.itm.find(it => it.n === pkName) || {n:pkName, i:'🎁', g:'C'};
-            winItem = {...winItem, _qty: qty};
+            // 단일: 4개 컬렉션 전수 조회
+            const _r = _resolveItemImg(pkName);
+            winItem = {n:pkName, i:_r.img, g:_r.grade, _qty:qty};
         }
         
         // 더미는 이 뽑기의 g.r 목록에서만 선택 (설정 안 된 아이템 노출 방지)
@@ -8413,14 +8621,9 @@ window.appU = function(y, si, k) {
             .map(r => {
                 const lookupNm = r.ns ? r.ns[0] : r.n; // 이미지 조회용 실제 아이템명
                 const displayNm = r.n || lookupNm;       // 표시할 이름
-                const _pd = [...(db.petDef||[]),...(db.spPetDef||[])].find(p=>p.name===lookupNm);
-                const found = (db.itm||[]).find(it=>it.n===lookupNm)
-                    || (db.avt||[]).find(a=>a.nm===lookupNm)
-                    || (_pd ? {n:_pd.name, i:_pd.img||'🎁', g:'C'} : null)
-                    || (db.bdg||[]).find(b=>b.name===lookupNm||b.n===lookupNm);
-                return found
-                    ? {...found, n: displayNm}
-                    : {n: displayNm, i:'🎁', g:'C'};
+                // 4개 컬렉션 전수 조회로 이미지 필드 정규화 (.i 통일)
+                const _r = _resolveItemImg(lookupNm);
+                return { n: displayNm, i: _r.img, g: _r.grade };
             });
         if(others.length >= 2) {
             const shuffled = others.sort(() => 0.5 - Math.random());
@@ -8434,7 +8637,7 @@ window.appU = function(y, si, k) {
         scratchItem = winItem; 
         
         if(g.t === 'lotto') initLotto();
-        else if(g.t === 'card') initCardFlipMode();
+        else if(g.t === 'card' || g.t === 'skill_reroll' || g.t === 'premium_skill') initCardFlipMode();
         else initScratch(winItem);
     }
 
@@ -9995,7 +10198,94 @@ window.addCharRow = function() {
         }
     }
 
+    // 별·달이 회전하는 우주 배경 + 카메라 흔들림 + 코러스 사운드 + 자막 — 합성/강화 직전에 재생
+    function _playPetCinematicIntro(opts, done){
+        const o = opts || {};
+        const subtitle = o.subtitle || '두 영혼이 하나가 됩니다';
+        const subtitle2 = o.subtitle2 || '';
+        const isEnh = !!o.strong;
+        const dur = o.duration || (isEnh ? 4200 : 3400);
+        // 별 SVG 제너레이터
+        const stars = [];
+        for(let i=0;i<60;i++){
+            const x = Math.random()*200-50, y = Math.random()*200-50;
+            const r = Math.random()*1.6+0.3;
+            const op = (0.4+Math.random()*0.6).toFixed(2);
+            const tw = (1+Math.random()*2.5).toFixed(2);
+            stars.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#fff" opacity="${op}"><animate attributeName="opacity" values="${op};0.1;${op}" dur="${tw}s" repeatCount="indefinite"/></circle>`);
+        }
+        const sparks = [];
+        for(let i=0;i<14;i++){
+            const ang = (i/14)*360;
+            sparks.push(`<g transform="rotate(${ang})"><polygon points="0,-3 0.6,-0.6 3,0 0.6,0.6 0,3 -0.6,0.6 -3,0 -0.6,-0.6" fill="#FFD54F" opacity="0.7"/></g>`);
+        }
+        const overlay = document.createElement('div');
+        overlay.className = 'pet-prologue';
+        overlay.innerHTML = `
+            <div class="pet-prologue-shake${isEnh?' strong':''}">
+                <div class="pet-prologue-cosmos">
+                    <svg viewBox="-50 -50 100 100" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;">${stars.join('')}</svg>
+                </div>
+                <div class="pet-prologue-cosmos slow" style="opacity:0.55;">
+                    <svg viewBox="-50 -50 100 100" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;">
+                        <g transform="translate(-22,-15)"><circle cx="0" cy="0" r="4.5" fill="url(#moonGrad)"/><circle cx="-1.2" cy="-1.2" r="0.8" fill="rgba(255,255,255,0.3)"/></g>
+                        <g transform="translate(28,18)" style="opacity:0.6;">${sparks.join('')}</g>
+                        <defs><radialGradient id="moonGrad"><stop offset="0%" stop-color="#FFF8E1"/><stop offset="60%" stop-color="#FFE082"/><stop offset="100%" stop-color="#FFA000"/></radialGradient></defs>
+                    </svg>
+                </div>
+                <div style="position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.25),rgba(255,100,0,0.05) 60%,transparent 80%);animation:petPulseHeart 2s ease-in-out infinite;pointer-events:none;"></div>
+                <div class="pet-subtitle">${subtitle}</div>
+                ${subtitle2?`<div class="pet-subtitle" style="bottom:11%;font-size:18px;color:#FFE082;animation-delay:0.6s;animation-fill-mode:both;">${subtitle2}</div>`:''}
+            </div>
+            <div class="pet-prologue-skip">탭하면 건너뛰기</div>`;
+        document.body.appendChild(overlay);
+        // 사운드 — Web Audio 합성: 베이스 드론 + 종소리 (3단)
+        let audioCtx, _stopAudio = ()=>{};
+        try {
+            audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+            const t0 = audioCtx.currentTime;
+            // 베이스 드론
+            const drone = audioCtx.createOscillator(); const dG = audioCtx.createGain();
+            drone.connect(dG); dG.connect(audioCtx.destination);
+            drone.type='sawtooth'; drone.frequency.setValueAtTime(55, t0);
+            dG.gain.setValueAtTime(0,t0); dG.gain.linearRampToValueAtTime(0.22, t0+0.6);
+            dG.gain.linearRampToValueAtTime(0.16, t0+dur/1000-0.3);
+            dG.gain.linearRampToValueAtTime(0,    t0+dur/1000);
+            drone.start(t0); drone.stop(t0+dur/1000+0.05);
+            // 코러스 코드 (메이저 7th 상승)
+            const mkTone = (f, st, du, vol, type) => {
+                const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+                o.connect(g); g.connect(audioCtx.destination);
+                o.type=type||'triangle'; o.frequency.setValueAtTime(f,t0+st);
+                g.gain.setValueAtTime(0,t0+st); g.gain.linearRampToValueAtTime(vol||0.18, t0+st+0.05);
+                g.gain.exponentialRampToValueAtTime(0.001, t0+st+du);
+                o.start(t0+st); o.stop(t0+st+du+0.05);
+            };
+            // 베이스 노트 → 코드 → 절정
+            [220, 277.18, 329.63, 415.30].forEach((f,i) => mkTone(f, 0.4 + i*0.18, 1.6, 0.14, 'triangle'));
+            // 종소리 강조 (마지막에)
+            mkTone(659.25, dur/1000-1.2, 1.0, 0.22, 'sine');
+            mkTone(783.99, dur/1000-0.9, 0.9, 0.18, 'sine');
+            mkTone(987.77, dur/1000-0.6, 0.7, 0.14, 'sine');
+            if(isEnh) mkTone(1318.51, dur/1000-0.3, 0.5, 0.12, 'sine');
+            _stopAudio = () => { try { audioCtx.close(); } catch(_){} };
+        } catch(_) {}
+        let fired=false;
+        const finish = () => { if(fired) return; fired=true; _stopAudio(); overlay.remove(); done?.(); };
+        overlay.addEventListener('click', finish);
+        setTimeout(finish, dur);
+    }
+
     function _playPetSynthAnim(pd, cb) {
+        // 우주 배경 인트로 → 기존 합성 애니메이션
+        const _runMain = () => { _playPetSynthAnimCore(pd, cb); };
+        _playPetCinematicIntro({
+            subtitle: '⚗️ 펫 합성 의식이 시작됩니다',
+            subtitle2: '재료의 영혼이 모입니다...',
+            duration: 3600
+        }, _runMain);
+    }
+    function _playPetSynthAnimCore(pd, cb) {
         try { snd('forge'); } catch(_){}
         const _grps = pd.matGroups || (pd.matIds||[]).map(id=>({ids:[id]}));
         const _ownedNow = me?.avtOwned || [];
@@ -10045,6 +10335,15 @@ window.addCharRow = function() {
     }
 
     function _playPetEnhanceAnim(pet1, pet2, spDef, cb) {
+        // 더 강한 카메라 흔들림 + 길어진 인트로 → 기존 강화 애니메이션
+        const _runMain = () => { _playPetEnhanceAnimCore(pet1, pet2, spDef, cb); };
+        _playPetCinematicIntro({
+            subtitle: '🌟 두 영혼이 하나가 됩니다',
+            subtitle2: '강화의 힘이 깨어나는 중...',
+            duration: 4400, strong: true
+        }, _runMain);
+    }
+    function _playPetEnhanceAnimCore(pet1, pet2, spDef, cb) {
         try { snd('forge'); } catch(_){}
         const defs = db.petDef||[];
         const def1 = defs.find(d=>d.id===pet1?.defId);
@@ -13934,10 +14233,10 @@ window.addCharRow = function() {
     //  ~5명: 1000ms / 6~15명: 1500ms / 16~30명: 2000ms / 30+명: 3000ms
     function _plzGetThrottle() {
         const n = Object.keys(_plzUserCache||{}).length || 1;
-        if(n <= 5) return 1000;
-        if(n <= 15) return 1500;
-        if(n <= 30) return 2000;
-        return 3000;
+        if(n <= 5) return 800;
+        if(n <= 15) return 1200;
+        if(n <= 30) return 1800;
+        return 2500;
     }
     // A: 실제로 위치가 바뀌었을 때만 Firebase 전송
     function _plzTrySyncPos() {
@@ -13975,8 +14274,8 @@ window.addCharRow = function() {
         }
         const dx = Math.abs(_plzPos.x - _plzLastSentX);
         const dy = Math.abs(_plzPos.y - _plzLastSentY);
-        // 미세 움직임 무시 (1% 이상만 전송) — 트래픽 50%+ 절감
-        if(dx < 1.0 && dy < 1.0) return;
+        // 미세 움직임 무시 (2% 이상만 전송) — 트래픽 추가 절감
+        if(dx < 2.0 && dy < 2.0) return;
         // 백그라운드 탭은 위치 동기화 일시 정지 (트래픽 절감)
         if(document.hidden) return;
         const now = Date.now();
@@ -15360,6 +15659,8 @@ window.addCharRow = function() {
         if(mfChk) mfChk.checked = !!plzC.mafiaOn;
         const lrChk = document.getElementById('plz_room_liar_on');
         if(lrChk) lrChk.checked = !!plzC.liarOn;
+        const omChk = document.getElementById('plz_room_omok_on');
+        if(omChk) omChk.checked = !!plzC.omokOn;
         // 배경 카드에 현재 편집 중인 방 명시 (잘못된 방에 업로드 방지)
         const _bgEditing = document.getElementById('_bgEditingRoom');
         if(_bgEditing) _bgEditing.textContent = `(${(db.cfg.plzRooms[_plzCurRoom]?.name) || _plzCurRoom})`;
@@ -15503,7 +15804,8 @@ window.addCharRow = function() {
             hideSeekOn: copy.plz?.hideSeekOn !== false,
             oxQuizOn: !!copy.plz?.oxQuizOn,
             mafiaOn: !!copy.plz?.mafiaOn,
-            liarOn: !!copy.plz?.liarOn
+            liarOn: !!copy.plz?.liarOn,
+            omokOn: !!copy.plz?.omokOn
         });
         _renderPlzRoomTabs();
         _renderPlzStuListAll && _renderPlzStuListAll();
@@ -15530,6 +15832,7 @@ window.addCharRow = function() {
         const ox = document.getElementById('plz_room_oxquiz_on')?.checked;
         const mf = document.getElementById('plz_room_mafia_on')?.checked;
         const lr = document.getElementById('plz_room_liar_on')?.checked;
+        const om = document.getElementById('plz_room_omok_on')?.checked;
         if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
         if(!db.cfg.plzRooms[_plzCurRoom]) db.cfg.plzRooms[_plzCurRoom] = {};
         if(!db.cfg.plzRooms[_plzCurRoom].plz) db.cfg.plzRooms[_plzCurRoom].plz = {};
@@ -15539,13 +15842,14 @@ window.addCharRow = function() {
         rp.oxQuizOn = !!ox;
         rp.mafiaOn = !!mf;
         rp.liarOn = !!lr;
+        rp.omokOn = !!om;
         // 바인딩 재동기화 (현재 방 데이터를 db.cfg.plz가 정확히 가리키도록)
         db.cfg.plz = rp;
         sv();
         // 게임 플래그 + 배경 + 비율 + 장애물까지 모두 한 번에 푸시 (다른 코드 경로의 불일치 방지)
         const _capturedRoom = _plzCurRoom;
         firebase.database().ref('ClassData/EventShop/plaza/' + _capturedRoom + '/cfg').update({
-            iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr,
+            iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr, omokOn: !!om,
             customBg: rp.customBg || null,
             customBgs: rp.customBgs || null,
             bgAspect: rp.bgAspect || null,
@@ -15568,6 +15872,7 @@ window.addCharRow = function() {
             oxQuizOn: rp.oxQuizOn === true,
             mafiaOn: rp.mafiaOn === true,
             liarOn: rp.liarOn === true,
+            omokOn: rp.omokOn === true,
             customBg: rp.customBg || null,
             customBgs: rp.customBgs || null,
             bgAspect: rp.bgAspect || null,
@@ -15727,6 +16032,7 @@ window.addCharRow = function() {
                 oxQuizOn: rp.oxQuizOn === true,
                 mafiaOn: rp.mafiaOn === true,
                 liarOn: rp.liarOn === true,
+                omokOn: rp.omokOn === true,
                 customBg: rp.customBg || null,
                 customBgs: rp.customBgs || null,
                 bgAspect: rp.bgAspect || null,
@@ -16284,8 +16590,8 @@ window.addCharRow = function() {
             }
             window._hideSeekState = (g && g.active) ? g : null;
             if(window._updatePlzVoteBtn) window._updatePlzVoteBtn();
-            if(g && g.active && g.startedAt){
-                window._showGameIntro('hs_'+g.startedAt, '🔎', '숨바꼭질', [
+            if(g && g.active && g.hideStartAt){
+                window._showGameIntro('hs_'+g.hideStartAt, '🔎', '숨바꼭질', [
                     '🔍 <b>술래</b>는 숨은 친구들을 찾아내야 해요',
                     '🙈 숨은 친구는 <b>거의 안 보이게</b> 표시돼요. 가까이 가면 잡혀요!',
                     '🤝 <b>잡힌 친구는 술래 편이 되어 같이 잡으러 다녀요</b>',
@@ -16546,7 +16852,6 @@ window.addCharRow = function() {
             if(uid === me.cd || uid === 'teacher_main') return;
             if(seekerIds.includes(uid)) return;
             if(found[uid]) return;
-            // 참관자는 잡기 대상에서 제외
             if(parts && !parts.includes(uid)) return;
             const dx = (u.x||0) - _plzPos.x;
             const dy = (u.y||0) - _plzPos.y;
@@ -17150,6 +17455,14 @@ window.addCharRow = function() {
 
     window._mafiaStart = function(){
         if(!me) { console.warn('[mafia] me 없음'); return; }
+        // 시작 즉시 이전 게임 모달·플래그 잔재 정리 (subscribe 도착 전 보호)
+        document.getElementById('_mafEndModal')?.remove();
+        document.getElementById('_mafFinale')?.remove();
+        document.getElementById('_mafNightModal')?.remove();
+        document.getElementById('_gameWinnerPopup')?.remove();
+        window._mafEndShownFor = null;
+        window._mafNightShownFor = null;
+        window._mafiaShownRoleRound = null;
         const allUids = Object.keys(_plzUserCache||{}).filter(u => u !== 'teacher_main');
         console.log('[mafia] start clicked. 학생 수:', allUids.length, allUids);
         if(allUids.length < 6){
@@ -17188,37 +17501,38 @@ window.addCharRow = function() {
     // 밤 결과 상세 모달 — resolve 페이즈 진입 시 호출
     window._mafiaShowNightResultModal = function(g){
         if(!g || !g.lastReveal) return;
-        // 새벽 차임 (밤→낮 전환)
-        try { window._sfxDawnChime?.(); } catch(_){}
+        // 마지막 밤(게임 종료 직전)이면 비장한 효과음, 아니면 새벽 차임
+        try {
+            if(g._pendingEnd) window._sfxDarkSting?.();
+            else window._sfxDawnChime?.();
+        } catch(_){}
         const lr = g.lastReveal;
         const _nm = u => (_plzUserCache[u]||{}).nm || u;
         const _roleKor = r => r==='mafia'?'마피아':r==='doctor'?'의사':r==='police'?'경찰':'시민';
         const ad = lr.actionDetail || {mafia:[],doctor:[],police:[],citizen:[]};
         const docTgt = lr.doctorTarget;
         const docSavedSomeone = docTgt && (lr.mafiaKilled||[]).length === 0 && (ad.mafia||[]).some(a => a.t === docTgt);
-        // 마피아 살해 시도 대상(중복 제거)
+        // 마피아: 000을 살해 (의사 보호 시 살해 실패 표시)
         const mafiaTargets = [...new Set((ad.mafia||[]).map(a=>a.t))].filter(Boolean);
-        const mafiaTargetsTxt = mafiaTargets.length ? mafiaTargets.map(_nm).map(n=>`<b>${n}</b>`).join(', ') + '을(를) 살해 시도' : '<span style="color:#999;">행동 없음</span>';
-        // 의사 보호
+        const mafiaKilledByMaf = lr.mafiaKilled || [];
+        let mafiaTargetsTxt;
+        if(!mafiaTargets.length){
+            mafiaTargetsTxt = '<span style="color:#999;">행동 없음</span>';
+        } else if(mafiaKilledByMaf.length){
+            mafiaTargetsTxt = mafiaKilledByMaf.map(u => `<b>${_nm(u)}</b>을(를) 살해 💀`).join(', ');
+        } else {
+            mafiaTargetsTxt = mafiaTargets.map(u => `<b>${_nm(u)}</b>을(를) 살해 시도 (의사 보호로 무산)`).join(', ');
+        }
+        // 의사: 000을 살림
         const doctorTxt = docTgt
-            ? (docSavedSomeone ? `<b>${_nm(docTgt)}</b>을(를) 살려냈어요 ✨` : `<b>${_nm(docTgt)}</b>을(를) 보호`)
+            ? `<b>${_nm(docTgt)}</b>을(를) 살림${docSavedSomeone?' ✨':''}`
             : '<span style="color:#999;">행동 없음</span>';
-        // 경찰 — 모두에게는 익명(직업만), 본인(경찰)에게는 대상·결과 함께 표시
-        const myRole = me && g.roles && g.roles[me.cd];
-        const policeRound = lr.round;
-        const myPoliceResult = (g.policeResult && g.policeResult[me?.cd] && g.policeResult[me.cd][policeRound]) || null;
+        // 경찰: 결과만 공개 (대상 이름 비공개)
         const policeTxt = (ad.police||[]).length
             ? (ad.police||[]).map(a => {
                 const tgtRole = g.roles && g.roles[a.t];
-                const roleNm = _roleKor(tgtRole);
-                if(myRole === 'police' && me.cd === a.u){
-                    // 경찰 본인에게만 — 대상 이름 + 마피아 여부
-                    const isMaf = tgtRole === 'mafia';
-                    return `🔍 <b>${_nm(a.t)}</b> 조사 → <span style="color:${isMaf?'#C62828':'#2E7D32'};font-weight:bold;">${isMaf?'🚨 마피아!':'✓ 마피아 아님'}</span>`;
-                }
-                // 다른 사람에게는 결과만 (대상 이름·역할 숨김)
-                const isMafTgt = tgtRole === 'mafia';
-                return `경찰 조사 결과 → <span style="color:${isMafTgt?'#C62828':'#2E7D32'};font-weight:bold;">${isMafTgt?'🚨 마피아!':'✓ 마피아 아님'}</span>`;
+                const isMaf = tgtRole === 'mafia';
+                return `조사 결과 → <span style="color:${isMaf?'#C62828':'#2E7D32'};font-weight:bold;">${isMaf?'🚨 마피아':'✓ 시민'}</span>`;
             }).join('<br>')
             : '<span style="color:#999;">행동 없음</span>';
         // 시민 처형 — 다수결 결과 (이름 빼고 표 수)
@@ -17257,7 +17571,7 @@ window.addCharRow = function() {
         <div style="background:linear-gradient(160deg,#FFF8E1,#FFE082);border-radius:24px;width:min(460px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,0.45);overflow:hidden;animation:iceTagPopIn 0.3s ease-out;border:3px solid #F9A825;">
             <div style="background:linear-gradient(135deg,#FF8F00,#E65100);padding:18px 24px;text-align:center;color:white;font-family:'Jua';flex-shrink:0;">
                 <div style="font-size:42px;line-height:1;">🌅</div>
-                <div style="font-size:20px;font-weight:bold;margin-top:4px;">${lr.round}일차 아침</div>
+                <div style="font-size:20px;font-weight:bold;margin-top:4px;">${lr.round}일차 밤 결과</div>
             </div>
             <div style="padding:18px 22px;overflow-y:auto;font-family:'Jua';">
                 <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #EF5350;">
@@ -17289,11 +17603,38 @@ window.addCharRow = function() {
                 </div>
             </div>
             <div style="padding:12px 22px;border-top:1px solid rgba(0,0,0,0.08);flex-shrink:0;">
-                <button style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5E35B1,#311B92);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(49,27,146,0.4);" onclick="document.getElementById('_mafNightModal').remove()">확인</button>
+                <button style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5E35B1,#311B92);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(49,27,146,0.4);" onclick="window._mafiaConfirmNightResult&&window._mafiaConfirmNightResult()">확인</button>
             </div>
         </div>`;
         el.onclick = e => { if(e.target===el) el.remove(); };
         document.body.appendChild(el);
+    };
+
+    // 밤 결과 모달의 '확인' 버튼 — 게임 종료면 최종 승자 모달, 아니면 다음 날 진행
+    window._mafiaConfirmNightResult = function(){
+        document.getElementById('_mafNightModal')?.remove();
+        const g = window._mafiaState;
+        if(!g) return;
+        const isEnd = g._pendingEnd || g.phase === 'end';
+        if(isEnd){
+            // leadUid (또는 부재 시 누구나) Firebase에 종료 상태 업데이트
+            const leadGone = !g.leadUid || !_plzUserCache[g.leadUid];
+            if(me && (me.cd === g.leadUid || leadGone) && g.phase !== 'end'){
+                window._mafiaEnd(false);
+            }
+            // 본인 화면에 즉시 최종 승자 모달 표시 (Firebase 도착 기다리지 않음)
+            const showEnd = () => {
+                const cur = window._mafiaState;
+                if(cur && (cur.phase === 'end' || cur._pendingEnd)){
+                    if(window._mafiaShowEndModal) window._mafiaShowEndModal(cur);
+                } else {
+                    setTimeout(showEnd, 200);
+                }
+            };
+            setTimeout(showEnd, 100);
+            return;
+        }
+        if(window._mafiaForceNextDay) window._mafiaForceNextDay();
     };
 
     // resolve 페이즈에서 누구나 강제로 다음 라운드 진행 (자동 8초 안 될 때 폴백)
@@ -17357,7 +17698,9 @@ window.addCharRow = function() {
     window._mafiaEnd = function(forced){
         const g = window._mafiaState;
         if(!g) return;
-        const winner = forced ? null : _mafiaCheckWin(g);
+        // 강제 종료라도 실제 승패가 결정된 상태면 그 결과를 우선 사용
+        // (예: 마피아가 처형되어 alive<3로 종료될 때 시민 승리로 표시)
+        const winner = _mafiaCheckWin(g); // null이면 아래 update에서 ||'forced' 폴백
         const allUids = Object.keys(g.roles||{});
         const _nm = u => (_plzUserCache[u]||{}).nm || u;
         // 역할 공개 메시지
@@ -17366,8 +17709,9 @@ window.addCharRow = function() {
             const ico = role==='mafia'?'🔪':role==='doctor'?'💊':role==='police'?'🔍':'🙋';
             return `${ico} ${_nm(u)}`;
         }).join(' · ');
-        const winMsg = forced ? '⏹️ 마피아 게임이 강제 종료됐어요' :
-            (winner==='mafia' ? '🔪 마피아 승리!' : '🙋 시민 승리!');
+        const winMsg = winner==='mafia' ? '🔪 마피아 승리!'
+            : winner==='citizen' ? '🙋 시민 승리!'
+            : '⏹️ 마피아 게임이 강제 종료됐어요';
         // 행동 로그 빌드 (라운드별)
         const actsAll = g.acts || {};
         const rounds = Object.keys(actsAll).map(Number).sort((a,b)=>a-b);
@@ -17387,8 +17731,8 @@ window.addCharRow = function() {
             actionLog: log
         });
         window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🏆', msg: winMsg+' / '+reveal, ts:now });
-        // 8초 뒤 mafia 노드 제거 (결과 모달 보는 시간 확보)
-        setTimeout(() => { getPlzRef().child('mafia').remove(); }, 8000);
+        // 게임 종료 후 mafia 노드 자동 삭제 안 함 — 죽은 학생 유령 효과 유지
+        // (다음 게임 시작 시 _mafiaStart 가 덮어쓰며, 60분 stale 정리로 자동 처리)
     };
 
     // 게임 종료 미니 팝업 — 화면 중앙 상단 애니메이션
@@ -17486,7 +17830,12 @@ window.addCharRow = function() {
                 else window._showGameWinnerPopup('⏹️', '게임 종료', '#5D4037,#3E2723');
             } catch(_){}
         }
-        const _nm = u => (_plzUserCache[u]||{}).nm || u;
+        // 광장 떠난 학생도 db.stu에서 이름 찾기
+        const _nm = u => {
+            if(_plzUserCache[u]?.nm) return _plzUserCache[u].nm;
+            const s = (db.stu||[]).find(x => x && String(x.cd).trim() === String(u).trim());
+            return s?.nm || u;
+        };
         const roles = g.roles || {};
         const winner = g.winner;
         const isMafiaWin = winner === 'mafia';
@@ -17504,18 +17853,28 @@ window.addCharRow = function() {
         const _roleColor = r => r==='mafia'?'#EF5350':r==='doctor'?'#66BB6A':r==='police'?'#42A5F5':'#A1887F';
         const _roleIc = r => r==='mafia'?'🔪':r==='doctor'?'💊':r==='police'?'🔍':'🙋';
         const _roleNm = r => r==='mafia'?'마피아':r==='doctor'?'의사':r==='police'?'경찰':'시민';
-        // 최종 명단 (생사 + 역할)
+        // 최종 명단 — 역할별 한 줄씩. 정보 없는(완전히 떠난) 학생은 제외.
         const allUids = Object.keys(roles);
-        const rosterHtml = allUids.map(u => {
-            const r = roles[u];
-            const aliveAtEnd = !!(g.alive && g.alive[u]);
-            return `<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;background:${aliveAtEnd?'#F5F5F5':'#FFEBEE'};${aliveAtEnd?'':'opacity:0.7;'}">
-                <span style="font-size:18px;">${_roleIc(r)}</span>
-                <span style="font-size:13px;font-weight:bold;color:${_roleColor(r)};">${_roleNm(r)}</span>
-                <span style="font-size:13px;color:#3E2723;">${_nm(u)}</span>
-                ${aliveAtEnd?'<span style="font-size:10px;color:#2E7D32;margin-left:auto;">생존</span>':'<span style="font-size:10px;color:#C62828;margin-left:auto;">💀 사망</span>'}
+        const _byRole = { mafia:[], doctor:[], police:[], citizen:[] };
+        allUids.forEach(u => {
+            const nm = _nm(u);
+            if(nm === u) return; // 이름 못 찾으면 (cd 그대로) 제외
+            const r = roles[u]; if(_byRole[r]) _byRole[r].push(u);
+        });
+        const _renderRoleLine = (key) => {
+            const list = _byRole[key];
+            if(!list.length) return '';
+            const names = list.map(u => {
+                const aliveAtEnd = !!(g.alive && g.alive[u]);
+                const nm = _nm(u);
+                return aliveAtEnd ? nm : `<span style="text-decoration:line-through;color:#999;">${nm}</span>💀`;
+            }).join(', ');
+            return `<div style="display:flex;align-items:baseline;gap:8px;padding:10px 14px;background:white;border-radius:10px;margin-bottom:8px;border-left:5px solid ${_roleColor(key)};">
+                <div style="font-size:15px;font-weight:bold;color:${_roleColor(key)};min-width:80px;">${_roleIc(key)} ${_roleNm(key)}</div>
+                <div style="font-size:15px;color:#3E2723;flex:1;">${names}</div>
             </div>`;
-        }).join('');
+        };
+        const rosterHtml = ['mafia','doctor','police','citizen'].map(_renderRoleLine).join('');
         // 라운드별 행동 로그
         const log = g.actionLog || [];
         const _ts = arr => arr.length ? arr.map(a => `${_nm(a.u)} → ${_nm(a.t)}`).join(', ') : '—';
@@ -17540,10 +17899,8 @@ window.addCharRow = function() {
                 <div style="font-size:24px;font-weight:bold;margin-top:6px;letter-spacing:1px;">${headTxt}</div>
             </div>
             <div style="padding:18px 22px;overflow-y:auto;font-family:'Jua';">
-                <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:8px;">👥 최종 역할 공개</div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px;">${rosterHtml}</div>
-                <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:8px;">📜 행동 기록</div>
-                ${logHtml}
+                <div style="font-size:15px;font-weight:bold;color:#5D4037;margin-bottom:12px;">👥 최종 역할 공개</div>
+                ${rosterHtml}
             </div>
             <div style="padding:14px 22px;border-top:1px solid #EEE;flex-shrink:0;">
                 <button style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5E35B1,#311B92);color:white;font-family:'Jua';font-size:15px;cursor:pointer;box-shadow:0 4px 0 rgba(49,27,146,0.4);" onclick="document.getElementById('_mafEndModal').remove()">확인</button>
@@ -17570,19 +17927,19 @@ window.addCharRow = function() {
         _mafiaRenderActionPanel();
         if(window._renderSpectatorBadges) window._renderSpectatorBadges();
         // 페이즈 전환·승패 검사 — 누구든 trigger 가능. _processing 트랜잭션으로 race 방지.
-        // leadUid에만 의존하지 않아 lead가 idle/끊겨도 게임 진행
         if(!me || !(g.roles||{})[me.cd]) return;
-        // 승패 조건 검사
+        // 승패 조건 검사 — resolve 단계(밤 결과 모달 표시 중)이거나 _pendingEnd면 보류
+        // 사용자가 '확인' 누른 뒤 _mafiaConfirmNightResult가 _mafiaEnd를 호출
         const win = _mafiaCheckWin(g);
-        if(win){
-            // 한 명만 종료 호출하도록 _processing flag로 race 방지
+        if(win && g.phase !== 'resolve' && !g._pendingEnd){
             getPlzRef().child('mafia/_processing').transaction(c => c ? undefined : me.cd, (err, ok) => {
                 if(!err && ok) window._mafiaEnd(false);
             });
             return;
         }
-        const aliveCnt = Object.keys(g.alive||{}).filter(u => g.alive[u] && _plzUserCache[u]).length;
-        // 광장 내 생존자 3명 미만이면 자동 종료 (1~2명만 남으면 무한 루프 방지)
+        // DB 기준 생존자 (cache 깜빡임으로 인한 오판 방지)
+        const aliveCnt = Object.keys(g.alive||{}).filter(u => g.alive[u]).length;
+        // 생존자 3명 미만이면 자동 종료 (1~2명만 남으면 무한 루프 방지)
         if(aliveCnt < 3){
             getPlzRef().child('mafia/_processing').transaction(c => c ? undefined : me.cd, (err, ok) => {
                 if(!err && ok) window._mafiaEnd(true);
@@ -17615,6 +17972,16 @@ window.addCharRow = function() {
             ref.update({ _processing:null, phase:'night', phaseEndAt: now + 60*60*1000, discussEnd:null });
             window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🌙', msg:`🌙 ${round}일차 밤 — 본인 역할에 맞게 한 명을 입력하세요`, ts:now });
         } else if(g.phase === 'night'){
+            // 가드: 모든 생존 플레이어가 입력하지 않았다면 advance 차단
+            // (timer/leadUid race 등으로 미입력 자동 진행 방지)
+            const _inRoom = Object.keys(g.roles||{}).filter(u => _plzUserCache[u]);
+            const _aliveInRoom = _inRoom.filter(u => g.alive[u]);
+            const _acts = (g.acts && g.acts[g.round]) || {};
+            const _submitted = Object.keys(_acts).filter(u => _aliveInRoom.includes(u));
+            if(_aliveInRoom.length > 0 && _submitted.length < _aliveInRoom.length){
+                ref.update({ _processing: null, phaseEndAt: now + 60*60*1000 });
+                return;
+            }
             // 결과 집계
             const result = _mafiaResolveNight(g);
             // 시민 동률 → 재투표 페이즈로 전환 (모든 생존자가 후보 중 한 명 입력)
@@ -17640,6 +18007,14 @@ window.addCharRow = function() {
             // 정상 처리
             _mafiaApplyNightResult(g, result, round, now, ref, c);
         } else if(g.phase === 'citizenRevote'){
+            // 가드: 모든 생존 플레이어가 재투표하지 않았다면 advance 차단
+            const _inRoomR = Object.keys(g.roles||{}).filter(u => _plzUserCache[u]);
+            const _aliveInRoomR = _inRoomR.filter(u => g.alive[u]);
+            const _rvSub = Object.keys(g.revoteVotes||{}).filter(u => _aliveInRoomR.includes(u));
+            if(_aliveInRoomR.length > 0 && _rvSub.length < _aliveInRoomR.length){
+                ref.update({ _processing: null, phaseEndAt: now + 60*60*1000 });
+                return;
+            }
             // 재투표 집계 — 모든 살아있는 플레이어가 후보 중 한 명 지목
             const cands = g.revoteCandidates || [];
             const rv = g.revoteVotes || {};
@@ -17685,7 +18060,7 @@ window.addCharRow = function() {
 
     // 밤 결과를 적용하고 resolve 페이즈로 전환하는 공통 헬퍼
     function _mafiaApplyNightResult(g, result, round, now, ref, c){
-        const updates = { _processing:null, phase:'resolve', phaseEndAt: now + (c.resolveDur||8)*1000, revoteCandidates:null, revoteVotes:null, pendingNight:null };
+        const updates = { _processing:null, phase:'resolve', phaseEndAt: now + 60*60*1000, revoteCandidates:null, revoteVotes:null, pendingNight:null };
         const aliveAfter = {...g.alive};
         const msgs = [];
         const reveals = [];
@@ -17728,7 +18103,12 @@ window.addCharRow = function() {
         updates.revealLog = (g.revealLog||[]).concat([{ round, killed: allKilled.map(u => ({uid:u,nm:(_plzUserCache[u]||{}).nm,role:g.roles[u]})) }]);
         ref.update(updates).then(() => {
             const win = _mafiaCheckWin({...g, alive:aliveAfter});
-            if(win) setTimeout(() => window._mafiaEnd(false), (c.resolveDur||8)*1000);
+            // 게임 종료 시: 즉시 end 모달 띄우지 않고 lastReveal 결과 모달의 '확인'에서 진입
+            // (기존 자동 setTimeout 제거 — 사용자가 결과 다 보고 확인 누른 뒤 최종 승자 모달 노출)
+            if(win){
+                // 종료 플래그만 미리 저장. 결과 모달의 확인 버튼이 _mafiaEnd 호출
+                ref.update({ _pendingEnd: true });
+            }
         });
     }
 
@@ -17739,7 +18119,7 @@ window.addCharRow = function() {
     //  시민 다수결: 시민 투표 빈도 top-N (N=마피아 수). 동률 시 무작위 선택
     function _mafiaResolveNight(g){
         const acts = (g.acts && g.acts[g.round]) || {};
-        const mafiaTargets = []; // 각 마피아의 지목
+        const mafiaVotes = {}; // 마피아 지목도 다수결 (1명만 살해)
         const citizenVotes = {};
         const doctorVotes = {};
         Object.keys(acts).forEach(uid => {
@@ -17747,7 +18127,8 @@ window.addCharRow = function() {
             const role = g.roles[uid];
             const tgt = acts[uid];
             if(!tgt) return;
-            if(role === 'mafia') mafiaTargets.push(tgt);
+            if(!g.alive[tgt]) return; // 죽은 학생은 대상에서 제외
+            if(role === 'mafia') mafiaVotes[tgt] = (mafiaVotes[tgt]||0)+1;
             else if(role === 'doctor') doctorVotes[tgt] = (doctorVotes[tgt]||0)+1;
             else if(role === 'citizen') citizenVotes[tgt] = (citizenVotes[tgt]||0)+1;
         });
@@ -17758,31 +18139,29 @@ window.addCharRow = function() {
             else if(doctorVotes[t] === dMax){ dTied.push(t); }
         });
         if(dTied.length > 1) doctorTarget = dTied[Math.floor(Math.random()*dTied.length)];
-        // 마피아 살해: 각 마피아 타깃에서 의사 보호 제외 (중복 제거)
-        const mafiaKills = [...new Set(mafiaTargets)].filter(t => t !== doctorTarget);
-        // 시민 다수결: top-N (N = 살아있는 마피아 수)
-        const aliveMafia = Object.keys(g.roles).filter(u => g.roles[u]==='mafia' && g.alive[u]).length;
+        // 마피아 살해: 마피아 다수결 1명 (동률 시 무작위)
+        let mafiaKills = [];
+        const mSorted = Object.entries(mafiaVotes).sort((a,b)=>b[1]-a[1]);
+        if(mSorted.length){
+            const mTopCnt = mSorted[0][1];
+            const mTied = mSorted.filter(([,c])=>c===mTopCnt).map(([u])=>u);
+            const mTarget = mTied[Math.floor(Math.random()*mTied.length)];
+            if(mTarget !== doctorTarget) mafiaKills = [mTarget];
+        }
+        // 시민 다수결: 1명 처형 (동률 시 재투표)
         const sorted = Object.entries(citizenVotes).sort((a,b) => b[1]-a[1]);
         const citizenKills = [];
-        const usedCounts = new Set();
-        // top voted, but expand for ties
-        let pick = 0;
         let needRevote = false;
         let revoteCandidates = [];
-        while(pick < sorted.length && citizenKills.length < aliveMafia){
-            const [t, cnt] = sorted[pick];
-            if(cnt < 1) break;
-            // 같은 표수 묶음 처리
-            const tieGroup = sorted.filter(([_,c]) => c === cnt).map(([t,_]) => t);
-            const need = aliveMafia - citizenKills.length;
-            if(tieGroup.length <= need){
-                tieGroup.forEach(u => { if(!citizenKills.includes(u)) citizenKills.push(u); });
-                pick += tieGroup.length;
+        if(sorted.length){
+            const topCnt = sorted[0][1];
+            const tied = sorted.filter(([,c])=>c===topCnt).map(([u])=>u);
+            if(tied.length === 1){
+                citizenKills.push(tied[0]);
             } else {
-                // 동률 그룹이 필요량보다 많음 → 재투표 필요 신호
+                // 동률 → 재투표
                 needRevote = true;
-                revoteCandidates = tieGroup.slice();
-                break;
+                revoteCandidates = tied;
             }
         }
         // 의사 보호 적용
@@ -17843,9 +18222,10 @@ window.addCharRow = function() {
                 if(g.phase === 'reveal') return (g.roleAcked && g.roleAcked[me.cd]) ? 'reveal_acked' : 'reveal_unacked';
                 if(g.phase === 'discuss'){
                     const myAgreed = !!(g.discussEnd && g.discussEnd[me.cd]);
-                    const inRoom = Object.keys(g.alive).filter(u => g.alive[u] && _plzUserCache[u]);
-                    const cnt = Object.keys(g.discussEnd||{}).filter(u => inRoom.includes(u)).length;
-                    return (myAgreed?'discuss_agreed_':'discuss_pending_') + cnt + '_' + inRoom.length;
+                    // DB 기준 생존자 (cache 깜빡임으로 정족수 흔들림 방지)
+                    const aliveAll = Object.keys(g.alive).filter(u => g.alive[u]);
+                    const cnt = Object.keys(g.discussEnd||{}).filter(u => aliveAll.includes(u)).length;
+                    return (myAgreed?'discuss_agreed_':'discuss_pending_') + cnt + '_' + aliveAll.length;
                 }
                 if(g.phase === 'night'){
                     const submitted = (g.acts && g.acts[g.round] && g.acts[g.round][me.cd]) || null;
@@ -17934,8 +18314,9 @@ window.addCharRow = function() {
             // 재투표는 화면 중앙에 크게
             panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
             panel.innerHTML = `<div style="background:white;border:4px solid #FF9800;border-radius:22px;padding:24px 28px;box-shadow:0 18px 48px rgba(0,0,0,0.55);width:min(500px,92vw);">
-                <div style="font-size:22px;color:#E65100;margin-bottom:16px;font-weight:bold;text-align:center;font-family:Jua;">🗳️ 시민 처형 재투표</div>
-                <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">${candBtns}</div>
+                <div style="font-size:22px;color:#E65100;margin-bottom:8px;font-weight:bold;text-align:center;font-family:Jua;">🗳️ 시민 처형 재투표</div>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:14px;">${candBtns}</div>
+                <div style="font-size:13px;color:#BF360C;text-align:center;font-family:Jua;line-height:1.5;background:#FFF3E0;border:2px dashed #FF9800;border-radius:10px;padding:10px;font-weight:bold;">⚠️ 재투표시 다수결로 정해지지 않으면 아무도 처형되지 않습니다</div>
             </div>`;
             return;
         }
@@ -18391,17 +18772,27 @@ window.addCharRow = function() {
             // 새 쪽지 도착 감지 (state 갱신 전에 비교)
             _mafiaCheckNoteArrival(prev, v);
             // 종료 페이즈 진입 시 결과 모달 (한 번만)
+            // ※ 광장 (재)진입한 비-플레이어나 종료된 지 오래된 게임은 표시 안 함
             if(v && v.phase === 'end' && v.endedAt && window._mafEndShownFor !== v.endedAt){
+                const _wasPlayer = me && v.roles && v.roles[me.cd];
+                const _ageMs = Date.now() - v.endedAt;
+                const _isFresh = _ageMs < 60*1000; // 60초 이내 종료된 게임만
                 window._mafEndShownFor = v.endedAt;
-                if(window._mafiaShowEndModal) window._mafiaShowEndModal(v);
+                if(_wasPlayer && _isFresh){
+                    const _nightOpen = !!document.getElementById('_mafNightModal');
+                    if(!_nightOpen && window._mafiaShowEndModal) window._mafiaShowEndModal(v);
+                }
             }
             // resolve 페이즈 진입 시 밤 결과 모달 (라운드별 한 번)
-            // 살아있는 플레이어 + 유령(사망자) + 관전자 모두 표시
+            // ※ 비-플레이어가 광장에 (재)진입했을 땐 보여주지 않음
             if(v && v.phase === 'resolve' && v.lastReveal && me){
-                const key = 'rd_' + v.lastReveal.round;
-                if(window._mafNightShownFor !== key){
+                const _wasPlayer = v.roles && v.roles[me.cd];
+                const key = 'rd_' + (v.startedAt||0) + '_' + v.lastReveal.round;
+                if(_wasPlayer && window._mafNightShownFor !== key){
                     window._mafNightShownFor = key;
                     if(window._mafiaShowNightResultModal) window._mafiaShowNightResultModal(v);
+                } else if(!_wasPlayer){
+                    window._mafNightShownFor = key; // 마크만 (재진입 시 모달 방지)
                 }
             }
             window._mafiaState = v;
@@ -18411,6 +18802,20 @@ window.addCharRow = function() {
                 if(me && v.roles && v.roles[me.cd] && window._mafiaShownRoleRound !== v.startedAt){
                     window._mafiaShownRoleRound = v.startedAt;
                     window._mafiaShownPolice = {};
+                    // 새 게임 시작 — 이전 게임의 모달·플래그 잔재 강제 정리
+                    document.getElementById('_mafEndModal')?.remove();
+                    document.getElementById('_mafFinale')?.remove();
+                    document.getElementById('_mafNightModal')?.remove();
+                    document.getElementById('_gameWinnerPopup')?.remove();
+                    window._mafEndShownFor = null;
+                    window._mafNightShownFor = null;
+                    // 이전 게임 유령 효과 시각적 정리 (새 게임은 모두 살아있는 상태)
+                    document.querySelectorAll('.plz-char').forEach(el => {
+                        el.style.filter = '';
+                        el.querySelector('.maf-ghost')?.remove();
+                        el.querySelector('.maf-dead')?.remove();
+                        el.querySelector('.maf-vote')?.remove();
+                    });
                     const role = v.roles[me.cd];
                     const mates = (role==='mafia'||role==='doctor'||role==='police')
                         ? Object.keys(v.roles).filter(u => v.roles[u]===role && u !== me.cd)
@@ -18429,10 +18834,7 @@ window.addCharRow = function() {
             } else {
                 _mafiaTickStop();
                 _mafiaRenderHud();
-                // 종료 시 finalRoles가 있으면 결과 모달
-                if(v && v.phase==='end' && v.winner && (!prev || prev.phase!=='end')){
-                    _mafiaShowFinaleModal(v);
-                }
+                // (단순 finale 모달 제거 — 위쪽 _mafiaShowEndModal 호출이 역할 그룹·승자 모두 표시)
                 if(!v){
                     if(window._renderSpectatorBadges) window._renderSpectatorBadges();
                     window._mafiaShownRoleRound = null;
@@ -18459,10 +18861,37 @@ window.addCharRow = function() {
                          winner==='citizen' ? '🙋 시민 승리!' :
                          '⏹️ 게임 종료';
         const col = winner==='mafia' ? '#C62828' : winner==='citizen' ? '#2E7D32' : '#5D4037';
-        const html = `<div id="_mafFinale" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99500;display:flex;align-items:center;justify-content:center;font-family:Jua;" onclick="document.getElementById('_mafFinale').remove()">
-            <div style="background:white;border-radius:22px;padding:32px 36px;text-align:center;min-width:340px;max-width:480px;box-shadow:0 16px 56px rgba(0,0,0,0.55);" onclick="event.stopPropagation()">
-                <div style="font-size:32px;font-weight:bold;color:${col};margin-bottom:14px;">${headline}</div>
-                <div style="font-size:13px;color:#5D4037;line-height:1.7;background:#FFF8E1;border-radius:12px;padding:12px 14px;margin-bottom:16px;text-align:left;">${(v.finalRoles||'').split(' · ').join('<br>')}</div>
+        const _nm = u => {
+            if(_plzUserCache[u]?.nm) return _plzUserCache[u].nm;
+            const s = (db.stu||[]).find(x => x && String(x.cd).trim() === String(u).trim());
+            return s?.nm || u;
+        };
+        const roles = v.roles || {};
+        const _byRole = { mafia:[], doctor:[], police:[], citizen:[] };
+        Object.keys(roles).forEach(u => {
+            const nm = _nm(u);
+            if(nm === u) return; // 광장을 떠나 정보가 없는 학생은 제외
+            const r = roles[u]; if(_byRole[r]) _byRole[r].push(u);
+        });
+        const _roleColor = r => r==='mafia'?'#C62828':r==='doctor'?'#2E7D32':r==='police'?'#1565C0':'#8D6E63';
+        const _roleIc = r => r==='mafia'?'🔪':r==='doctor'?'💊':r==='police'?'🔍':'🙋';
+        const _roleNm = r => r==='mafia'?'마피아':r==='doctor'?'의사':r==='police'?'경찰':'시민';
+        const lines = ['mafia','doctor','police','citizen'].map(k => {
+            const list = _byRole[k]; if(!list.length) return '';
+            const names = list.map(u => {
+                const aliveAtEnd = !!(v.alive && v.alive[u]);
+                const nm = _nm(u);
+                return aliveAtEnd ? nm : `<span style="text-decoration:line-through;color:#999;">${nm}</span>💀`;
+            }).join(', ');
+            return `<div style="display:flex;align-items:baseline;gap:8px;padding:8px 12px;background:white;border-radius:9px;margin-bottom:6px;border-left:4px solid ${_roleColor(k)};">
+                <div style="font-size:14px;font-weight:bold;color:${_roleColor(k)};min-width:74px;">${_roleIc(k)} ${_roleNm(k)}</div>
+                <div style="font-size:14px;color:#3E2723;flex:1;text-align:left;">${names}</div>
+            </div>`;
+        }).join('');
+        const html = `<div id="_mafFinale" style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:99500;display:flex;align-items:center;justify-content:center;font-family:Jua;padding:20px;" onclick="document.getElementById('_mafFinale').remove()">
+            <div style="background:white;border-radius:22px;padding:24px 26px;text-align:center;min-width:340px;max-width:480px;width:100%;box-shadow:0 16px 56px rgba(0,0,0,0.55);" onclick="event.stopPropagation()">
+                <div style="font-size:30px;font-weight:bold;color:${col};margin-bottom:14px;">${headline}</div>
+                <div style="background:#FFF8E1;border-radius:12px;padding:10px;margin-bottom:16px;">${lines || '<div style="font-size:13px;color:#888;padding:10px;">역할 정보 없음</div>'}</div>
                 <button class="btn btn-blue" style="padding:10px 28px;" onclick="document.getElementById('_mafFinale').remove()">확인</button>
             </div>
         </div>`;
@@ -19772,6 +20201,706 @@ window.addCharRow = function() {
         }
     }
 
+    /* ========== 오목 게임 (한 광장 내 여러 방 동시 진행 가능) ========== */
+    window._omokGames = {};            // {gameId: state} — gameId = 호스트 uid
+    window._omokOpenedId = null;       // 현재 풀스크린으로 보고 있는 게임 ID
+    window._omokEndShownIds = {};      // {gameId: true} — 종료 모달 1회만 표시
+    window._omokPendingByGame = {};    // {gameId: idx} — 본인의 미리보기 위치
+    window._omokLastMoveTs = 0;
+    const _OMOK_N = 15;
+
+    function _omokGameRef(gid){ return getPlzRef().child('omok').child(gid); }
+    function _omokGet(gid){ return window._omokGames[gid]; }
+
+    function _omokIsPlayer(g){
+        if(!g || !me) return false;
+        return (g.black && g.black.uid === me.cd) || (g.white && g.white.uid === me.cd);
+    }
+
+    window._omokOpenBoard = function(gid){
+        // 이전에 관전 중이던 게임 spectators에서 제거
+        const prev = window._omokOpenedId;
+        if(prev && prev !== gid && me){
+            const pg = _omokGet(prev);
+            if(pg && !_omokIsPlayer(pg)){
+                _omokGameRef(prev).child('spectators/'+me.cd).remove();
+            }
+        }
+        window._omokOpenedId = gid;
+        if(gid && me){
+            const g = _omokGet(gid);
+            if(g && !_omokIsPlayer(g)){
+                _omokGameRef(gid).child('spectators/'+me.cd).set(true);
+                _omokGameRef(gid).child('spectators/'+me.cd).onDisconnect().remove();
+            }
+        }
+        _omokRender();
+        _omokRenderAllBadges();
+    };
+    window._omokCloseBoard = function(){
+        const gid = window._omokOpenedId;
+        if(gid && me){
+            const g = _omokGet(gid);
+            if(g && !_omokIsPlayer(g)){
+                _omokGameRef(gid).child('spectators/'+me.cd).remove();
+            }
+            delete window._omokPendingByGame[gid];
+        }
+        window._omokOpenedId = null;
+        document.getElementById('_omokPanel')?.remove();
+        _omokRenderAllBadges();
+    };
+
+    window._omokMenu = function(){
+        if(!me) return;
+        if(window._isPlzSpectator && window._isPlzSpectator(me.cd)) { alert('👻 참관자는 시작할 수 없어요.'); return; }
+        // 본인이 이미 호스트인 게임이 있으면 — 자동으로 풀스크린 열지 않고 메뉴에서 선택
+        const myGame = _omokGet(me.cd);
+        const hasMyGame = !!(myGame && myGame.on);
+        document.getElementById('_omokMenu')?.remove();
+        const el = document.createElement('div');
+        el.id = '_omokMenu';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Jua;';
+        el.innerHTML = `
+        <div style="background:linear-gradient(160deg,#FFF8E1,#FFE0B2);border-radius:22px;width:min(340px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.4);overflow:hidden;border:3px solid #6D4C41;">
+            <div style="background:linear-gradient(135deg,#5D4037,#3E2723);padding:18px;text-align:center;color:white;">
+                <div style="font-size:46px;line-height:1;">⚫⚪</div>
+                <div style="font-size:20px;font-weight:bold;margin-top:4px;">오목</div>
+            </div>
+            <div style="padding:20px;">
+                <div style="font-size:12px;color:#5D4037;margin-bottom:14px;line-height:1.6;">
+                    15×15 바둑판에 흑·백이 번갈아 돌을 놓아 가로/세로/대각선으로 <b>5개를 먼저 잇는 사람이 승리</b>합니다.<br>방을 만들면 본인 캐릭터 위에 미니 바둑판이 떠오릅니다. 다른 학생이 그걸 클릭해 참가할 수 있어요. 한 광장에서 여러 방이 동시 진행 가능!
+                </div>
+                ${hasMyGame ? `
+                <div style="background:#FFF3E0;border:2px solid #FF9800;border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#E65100;text-align:center;">📌 이미 만든 방이 있어요</div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="document.getElementById('_omokMenu').remove()" style="flex:1;padding:11px;border:2px solid #ccc;border-radius:12px;background:white;font-family:Jua;cursor:pointer;">취소</button>
+                    <button id="_omokOpenMineBtn" style="flex:1;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5D4037,#3E2723);color:white;font-family:Jua;font-size:14px;cursor:pointer;">🎯 내 방 보기</button>
+                    <button id="_omokCloseMineBtn" style="flex:1;padding:11px;border:2px solid #EF5350;border-radius:12px;background:white;color:#C62828;font-family:Jua;font-size:14px;cursor:pointer;">🗑️ 내 방 닫기</button>
+                </div>` : `
+                <div style="display:flex;gap:8px;">
+                    <button onclick="document.getElementById('_omokMenu').remove()" style="flex:1;padding:11px;border:2px solid #ccc;border-radius:12px;background:white;font-family:Jua;cursor:pointer;">취소</button>
+                    <button id="_omokStartBtn" style="flex:2;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5D4037,#3E2723);color:white;font-family:Jua;font-size:15px;cursor:pointer;">⚫ 방 만들기 (흑)</button>
+                </div>`}
+            </div>
+        </div>`;
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
+        const startBtn = el.querySelector('#_omokStartBtn');
+        if(startBtn) startBtn.onclick = () => { el.remove(); _omokStart(); };
+        const openMineBtn = el.querySelector('#_omokOpenMineBtn');
+        if(openMineBtn) openMineBtn.onclick = () => { el.remove(); window._omokOpenBoard(me.cd); };
+        const closeMineBtn = el.querySelector('#_omokCloseMineBtn');
+        if(closeMineBtn) closeMineBtn.onclick = () => {
+            if(!confirm('내 오목방을 닫을까요?')) return;
+            el.remove();
+            _omokGameRef(me.cd).remove();
+        };
+    };
+
+    function _omokStart(){
+        if(!me) return;
+        const now = Date.now();
+        const gid = me.cd;
+        _omokGameRef(gid).set({
+            on:true, phase:'lobby',
+            hostUid: me.cd,
+            black:{ uid: me.cd, nm: me.nm || '' },
+            white: null,
+            board: {}, turn: 'b',
+            score: {},
+            startedAt: now
+        }).then(()=>{
+            // 호스트가 광장을 떠나면 방 자동 정리 (stale 방지)
+            try { _omokGameRef(gid).onDisconnect().remove(); } catch(_){}
+            try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'⚫', msg:`⚫ ${me.nm||'학생'}님이 오목방을 열었어요. ${me.nm||''}님 캐릭터 위 바둑판 클릭해서 참가/관전!`, ts:now }); } catch(_){}
+        });
+    }
+
+    window._omokJoinAsWhite = function(gid){
+        const g = _omokGet(gid); if(!g || !g.on) return;
+        if(!g.black || !me) return;
+        if(g.black.uid === me.cd) return;
+        if(g.white) return; // 이미 참가자 있음
+        _omokGameRef(gid).update({
+            white: { uid: me.cd, nm: me.nm || '' },
+            phase: 'playing',
+            playStartedAt: Date.now()
+        }).then(()=>{
+            try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'⚪', msg:`⚪ ${me.nm||'학생'}님 참가! 오목 시작 — 흑 ${g.black.nm} vs 백 ${me.nm||''}`, ts:Date.now() }); } catch(_){}
+        });
+    };
+
+    window._omokPreview = function(gid, idx){
+        const g = _omokGet(gid); if(!g || !g.on) return;
+        if(g.phase !== 'playing' || g.winner) return;
+        if(!me) return;
+        const myColor = (g.black && g.black.uid === me.cd) ? 'b'
+                      : (g.white && g.white.uid === me.cd) ? 'w' : null;
+        if(!myColor || g.turn !== myColor) return;
+        if(g.board && g.board[idx]) return;
+        if(window._omokPendingByGame[gid] === idx){
+            window._omokConfirmMove(gid);
+            return;
+        }
+        window._omokPendingByGame[gid] = idx;
+        _omokRender();
+    };
+
+    window._omokCancelPending = function(gid){
+        delete window._omokPendingByGame[gid];
+        _omokRender();
+    };
+
+    window._omokConfirmMove = function(gid){
+        const idx = window._omokPendingByGame[gid];
+        if(idx == null) return;
+        delete window._omokPendingByGame[gid];
+        _omokSubmitMove(gid, idx);
+    };
+
+    function _omokSubmitMove(gid, idx){
+        const g = _omokGet(gid); if(!g || !g.on) return;
+        if(g.phase !== 'playing' || g.winner) return;
+        if(!me) return;
+        const myColor = (g.black && g.black.uid === me.cd) ? 'b'
+                      : (g.white && g.white.uid === me.cd) ? 'w' : null;
+        if(!myColor || g.turn !== myColor) return;
+        if(g.board && g.board[idx]) return;
+        const now = Date.now();
+        if(now - window._omokLastMoveTs < 300) return;
+        window._omokLastMoveTs = now;
+        const update = {};
+        update['board/'+idx] = myColor;
+        update['turn'] = (myColor === 'b') ? 'w' : 'b';
+        update['lastMove'] = idx;
+        update['lastMoveAt'] = now;
+        const newBoard = Object.assign({}, g.board||{});
+        newBoard[idx] = myColor;
+        const winLine = _omokCheckWin(newBoard, idx, myColor);
+        if(winLine){
+            update['winner'] = myColor;
+            update['winnerUid'] = me.cd;
+            update['winLine'] = winLine;
+            update['phase'] = 'end';
+            update['endedAt'] = now;
+            const prevScore = (g.score && g.score[me.cd]) || 0;
+            update['score/'+me.cd] = prevScore + 1;
+        }
+        _omokGameRef(gid).update(update);
+    }
+
+    function _omokCheckWin(board, lastIdx, color){
+        const N = _OMOK_N;
+        const r = Math.floor(lastIdx / N), c = lastIdx % N;
+        const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+        for(const [dr,dc] of dirs){
+            const line = [lastIdx];
+            for(let k=1;k<5;k++){
+                const nr=r+dr*k, nc=c+dc*k;
+                if(nr<0||nr>=N||nc<0||nc>=N) break;
+                if(board[nr*N+nc] !== color) break;
+                line.push(nr*N+nc);
+            }
+            for(let k=1;k<5;k++){
+                const nr=r-dr*k, nc=c-dc*k;
+                if(nr<0||nr>=N||nc<0||nc>=N) break;
+                if(board[nr*N+nc] !== color) break;
+                line.unshift(nr*N+nc);
+            }
+            if(line.length >= 5) return line.slice(0,5);
+        }
+        return null;
+    }
+
+    window._omokResign = function(gid){
+        const g = _omokGet(gid); if(!g || !g.on || !me) return;
+        const myColor = (g.black && g.black.uid === me.cd) ? 'b'
+                      : (g.white && g.white.uid === me.cd) ? 'w' : null;
+        if(!myColor) return;
+        if(!confirm('정말 기권할까요?')) return;
+        const winColor = myColor === 'b' ? 'w' : 'b';
+        const winUid = winColor === 'b' ? (g.black?.uid) : (g.white?.uid);
+        const prevScore = (g.score && winUid && g.score[winUid]) || 0;
+        const update = {
+            winner: winColor, winnerUid: winUid, phase:'end',
+            resigned: me.cd, endedAt: Date.now()
+        };
+        if(winUid) update['score/'+winUid] = prevScore + 1;
+        _omokGameRef(gid).update(update);
+    };
+
+    window._omokEndGame = function(gid){
+        const g = _omokGet(gid); if(!g || !g.on || !me) return;
+        const isHost = g.hostUid === me.cd;
+        if(!isHost) return;
+        if(!confirm('오목 방을 닫을까요?')) return;
+        _omokGameRef(gid).remove();
+    };
+
+    window._omokRequestRematch = function(gid){
+        const g = _omokGet(gid); if(!g) return;
+        if(!me) return;
+        const isPlayer = (g.black && g.black.uid === me.cd) || (g.white && g.white.uid === me.cd);
+        if(!isPlayer) return;
+        const rematch = Object.assign({}, g.rematch || {});
+        rematch[me.cd] = true;
+        const blackOk = g.black && rematch[g.black.uid];
+        const whiteOk = g.white && rematch[g.white.uid];
+        if(blackOk && whiteOk){
+            _omokGameRef(gid).update({
+                board: null, turn: 'b', winner: null, winnerUid: null,
+                winLine: null, lastMove: null, lastMoveAt: null,
+                resigned: null, phase: 'playing', endedAt: null,
+                rematch: null,
+                black: { uid: g.white.uid, nm: g.white.nm },
+                white: { uid: g.black.uid, nm: g.black.nm },
+                rematchAt: Date.now()
+            });
+            try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'⚫', msg:`⚫ 다시하기 — 흑백 교체! 흑 ${g.white.nm} vs 백 ${g.black.nm}`, ts:Date.now() }); } catch(_){}
+        } else {
+            _omokGameRef(gid).child('rematch').update(rematch);
+        }
+    };
+
+    window._omokDeclineRematch = function(gid){
+        const g = _omokGet(gid); if(!g) return;
+        if(!me) return;
+        const isPlayer = (g.black && g.black.uid === me.cd) || (g.white && g.white.uid === me.cd);
+        if(!isPlayer) return;
+        _omokGameRef(gid).remove();
+    };
+
+    function _omokSubscribe(){
+        window._omokGames = {};
+        window._omokOpenedId = null;
+        window._omokEndShownIds = {};
+        window._omokPendingByGame = {};
+        const ref = getPlzRef().child('omok');
+        // 진입 시 stale 방 정리: 호스트가 광장에 없거나 1시간 이상 된 방 제거
+        ref.once('value', snap => {
+            const all = snap.val() || {};
+            const now = Date.now();
+            Object.entries(all).forEach(([gid, g]) => {
+                if(!g) return;
+                const stale = g.startedAt && (now - g.startedAt > 60*60*1000);
+                const hostGone = g.hostUid && !_plzUserCache[g.hostUid];
+                if(stale || hostGone){
+                    try { ref.child(gid).remove(); } catch(_){}
+                }
+            });
+        });
+        const fn = snap => {
+            const all = snap.val() || {};
+            const prev = window._omokGames || {};
+            window._omokGames = all;
+            // 종료된 게임 정리
+            Object.keys(prev).forEach(gid => {
+                if(!all[gid]){
+                    delete window._omokEndShownIds[gid];
+                    delete window._omokPendingByGame[gid];
+                    if(window._omokOpenedId === gid){
+                        window._omokOpenedId = null;
+                        document.getElementById('_omokPanel')?.remove();
+                    }
+                    document.getElementById('_omokEndModal_'+gid)?.remove();
+                }
+            });
+            // 각 게임 상태 변화 처리
+            Object.keys(all).forEach(gid => {
+                const g = all[gid];
+                const p = prev[gid];
+                // rematch 시 미리보기·종료 플래그 리셋
+                if(p && p.phase==='end' && g.phase==='playing'){
+                    delete window._omokEndShownIds[gid];
+                    delete window._omokPendingByGame[gid];
+                    document.getElementById('_omokEndModal_'+gid)?.remove();
+                }
+                // 다른 학생이 참가 (lobby → playing) 시 양쪽 플레이어 자동으로 풀스크린
+                if(p && p.phase==='lobby' && g.phase==='playing' && me){
+                    if(g.black?.uid === me.cd || g.white?.uid === me.cd){
+                        window._omokOpenedId = gid;
+                    }
+                }
+                // 상대 턴 진입 시 본인 미리보기 자동 취소
+                if(p && p.turn !== g.turn) delete window._omokPendingByGame[gid];
+                // 종료 모달 (각 참가자/관전자에게 1회)
+                if(g.phase === 'end' && g.winner && !window._omokEndShownIds[gid]){
+                    const myColor = me && (g.black?.uid === me.cd ? 'b' : g.white?.uid === me.cd ? 'w' : null);
+                    // 플레이어 또는 풀스크린으로 보고 있던 사람에게만 모달
+                    if(myColor || window._omokOpenedId === gid){
+                        window._omokEndShownIds[gid] = true;
+                        _omokShowEndModal(gid, g);
+                    } else {
+                        window._omokEndShownIds[gid] = true;
+                    }
+                } else if(g.phase === 'end' && document.getElementById('_omokEndModal_'+gid)){
+                    _omokRenderEndModal(gid, g);
+                }
+            });
+            _omokRenderAllBadges();
+            _omokRender();
+        };
+        ref.on('value', fn);
+        plzListeners.push({ref, type:'value', fn, who:'student'});
+        // 캐릭터 이동에 따라 배지 따라가도록 주기적 재부착
+        if(!window._omokBadgeTimer){
+            window._omokBadgeTimer = setInterval(_omokRenderAllBadges, 1500);
+        }
+    }
+
+    // 각 진행 중 게임의 호스트 캐릭터 위에 미니 바둑판 배지 + 참가자/관전자 표시
+    function _omokRenderAllBadges(){
+        const games = window._omokGames || {};
+        const liveHostUids = new Set();
+        const guestMap = {}; // uid -> {gid, color}
+        const spectatorSet = new Set();
+        Object.entries(games).forEach(([gid, g]) => {
+            if(!g || !g.on) return;
+            if(g.hostUid) liveHostUids.add(g.hostUid);
+            // guest = 호스트가 아닌 플레이어
+            if(g.black && g.black.uid !== g.hostUid) guestMap[g.black.uid] = {gid, color:'b'};
+            if(g.white && g.white.uid !== g.hostUid) guestMap[g.white.uid] = {gid, color:'w'};
+            // 관전자 (플레이어 제외)
+            if(g.spectators){
+                Object.keys(g.spectators).forEach(uid => {
+                    if(uid === g.black?.uid || uid === g.white?.uid) return;
+                    if(uid === g.hostUid) return;
+                    spectatorSet.add(uid);
+                });
+            }
+        });
+        // 더 이상 해당하지 않는 캐릭터의 배지 제거
+        document.querySelectorAll('._omokBadge').forEach(el => {
+            if(!liveHostUids.has(el.dataset.host)) el.remove();
+        });
+        document.querySelectorAll('._omokGuestBadge').forEach(el => {
+            if(!guestMap[el.dataset.uid]) el.remove();
+        });
+        document.querySelectorAll('._omokSpectatorBadge').forEach(el => {
+            if(!spectatorSet.has(el.dataset.uid)) el.remove();
+        });
+        // 참가자 (게스트) 배지 부착 — 상대 이름 표시
+        Object.entries(guestMap).forEach(([uid, info]) => {
+            const game = games[info.gid] || {};
+            const oppUid = (game.black?.uid === uid) ? game.white?.uid : game.black?.uid;
+            const oppNm = (oppUid && (_plzUserCache[oppUid]?.nm || (db.stu||[]).find(s => s && s.cd === oppUid)?.nm)) || '상대';
+            const sigKey = `${info.color}:${oppNm}`;
+            const charEl = document.querySelector(`.plz-char[data-uid="${uid}"]`);
+            if(!charEl) return;
+            const existing = charEl.querySelector('._omokGuestBadge');
+            if(existing){
+                if(existing.dataset.sig !== sigKey){
+                    existing.textContent = `${info.color === 'b' ? '⚫' : '⚪'} ${oppNm}과 대국 중`;
+                    existing.dataset.sig = sigKey;
+                }
+                return;
+            }
+            const b = document.createElement('div');
+            b.className = '_omokGuestBadge';
+            b.dataset.uid = uid;
+            b.dataset.sig = sigKey;
+            b.style.cssText = 'position:absolute;top:-72px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#FFF,#F5F5F5);color:#1A1A1A;font-family:Jua;font-size:12px;font-weight:bold;padding:4px 10px;border-radius:11px;border:2px solid #FF5722;box-shadow:0 4px 8px rgba(0,0,0,0.45);z-index:30;pointer-events:auto;cursor:pointer;white-space:nowrap;';
+            const ic = info.color === 'b' ? '⚫' : '⚪';
+            b.textContent = `${ic} ${oppNm}과 대국 중`;
+            b.title = '오목 보기';
+            const localGid = info.gid;
+            b.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); window._omokOpenBoard(localGid); };
+            b.ontouchstart = (ev) => { ev.stopPropagation(); };
+            charEl.appendChild(b);
+        });
+        // 관전자 배지 부착
+        spectatorSet.forEach(uid => {
+            const charEl = document.querySelector(`.plz-char[data-uid="${uid}"]`);
+            if(!charEl) return;
+            if(charEl.querySelector('._omokSpectatorBadge')) return;
+            const b = document.createElement('div');
+            b.className = '_omokSpectatorBadge';
+            b.dataset.uid = uid;
+            b.style.cssText = 'position:absolute;top:-72px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.78);color:white;font-family:Jua;font-size:12px;font-weight:bold;padding:3px 9px;border-radius:11px;border:2px solid #FFC107;box-shadow:0 4px 8px rgba(0,0,0,0.45);z-index:30;pointer-events:none;white-space:nowrap;';
+            b.textContent = '👀 관전 중';
+            charEl.appendChild(b);
+        });
+        // 각 호스트 캐릭터에 배지 부착 (없으면)
+        Object.entries(games).forEach(([gid, g]) => {
+            if(!g || !g.on || !g.hostUid) return;
+            const hostEl = document.querySelector(`.plz-char[data-uid="${g.hostUid}"]`);
+            if(!hostEl) return;
+            const sc = g.score || {};
+            const bs = (g.black && sc[g.black.uid]) || 0;
+            const ws = (g.white && sc[g.white.uid]) || 0;
+            const scoreKey = `${bs}:${ws}:${g.black?.uid}:${g.white?.uid||''}`;
+            const existing = hostEl.querySelector('._omokBadge');
+            if(existing){
+                if(existing.dataset.scoreKey !== scoreKey){
+                    const sl = existing.querySelector('._omokScoreLine');
+                    if(sl) sl.textContent = `⚫ ${bs} : ${ws} ⚪`;
+                    existing.dataset.scoreKey = scoreKey;
+                }
+                return;
+            }
+            const badge = document.createElement('div');
+            badge.className = '_omokBadge';
+            badge.dataset.host = g.hostUid;
+            badge.dataset.gid = gid;
+            badge.style.cssText = 'position:absolute;top:-94px;left:50%;transform:translateX(-50%);width:68px;cursor:pointer;z-index:30;pointer-events:auto;animation:_omokFloat 2.4s ease-in-out infinite;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.5));';
+            badge.title = '오목 보기/참가';
+            badge.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); window._omokOpenBoard(gid); };
+            badge.ontouchstart = (ev) => { ev.stopPropagation(); };
+            badge.innerHTML = `
+                <div style="width:68px;height:68px;background:linear-gradient(135deg,#E6C381,#C49B5C);border:2px solid #6D4C41;border-radius:8px;padding:4px;box-sizing:border-box;position:relative;">
+                    <svg viewBox="0 0 30 30" style="width:100%;height:100%;display:block;pointer-events:none;">
+                        <line x1="5" y1="5" x2="25" y2="5" stroke="#3E2723" stroke-width="0.6"/>
+                        <line x1="5" y1="15" x2="25" y2="15" stroke="#3E2723" stroke-width="0.6"/>
+                        <line x1="5" y1="25" x2="25" y2="25" stroke="#3E2723" stroke-width="0.6"/>
+                        <line x1="5" y1="5" x2="5" y2="25" stroke="#3E2723" stroke-width="0.6"/>
+                        <line x1="15" y1="5" x2="15" y2="25" stroke="#3E2723" stroke-width="0.6"/>
+                        <line x1="25" y1="5" x2="25" y2="25" stroke="#3E2723" stroke-width="0.6"/>
+                        <circle cx="15" cy="15" r="3.5" fill="#1A1A1A" stroke="#000" stroke-width="0.3"/>
+                        <circle cx="25" cy="15" r="3.5" fill="#FAFAFA" stroke="#888" stroke-width="0.3"/>
+                    </svg>
+                    <div style="position:absolute;top:-8px;right:-8px;background:#FF5722;color:white;font-size:10px;font-weight:bold;padding:2px 5px;border-radius:8px;font-family:Jua;border:1.5px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);pointer-events:none;">오목</div>
+                </div>
+                <div class="_omokScoreLine" style="margin-top:3px;background:rgba(0,0,0,0.78);color:white;font-family:Jua;font-size:12px;font-weight:bold;text-align:center;padding:2px 6px;border-radius:8px;letter-spacing:1px;border:1.5px solid #FFD54F;pointer-events:none;white-space:nowrap;">⚫ ${bs} : ${ws} ⚪</div>`;
+            badge.dataset.scoreKey = scoreKey;
+            hostEl.appendChild(badge);
+        });
+        if(!document.getElementById('_omokBadgeStyle')){
+            const s = document.createElement('style');
+            s.id = '_omokBadgeStyle';
+            s.textContent = '@keyframes _omokFloat { 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(-4px);} }';
+            document.head.appendChild(s);
+        }
+    }
+
+    function _omokRender(){
+        const gid = window._omokOpenedId;
+        const old = document.getElementById('_omokPanel');
+        if(!gid || !me){ if(old) old.remove(); return; }
+        const g = _omokGet(gid);
+        if(!g || !g.on){
+            window._omokOpenedId = null;
+            if(old) old.remove();
+            return;
+        }
+        const N = _OMOK_N;
+        const board = g.board || {};
+        const winSet = new Set(g.winLine || []);
+        const myColor = (g.black && g.black.uid === me.cd) ? 'b'
+                      : (g.white && g.white.uid === me.cd) ? 'w' : null;
+        const myTurn = !!myColor && g.turn === myColor && g.phase === 'playing' && !g.winner;
+        const isPlayer = !!myColor;
+        const pending = window._omokPendingByGame[gid];
+        const sz = 100/(N-1);
+        // 격자선
+        let lines = '';
+        for(let i=0;i<N;i++){
+            lines += `<line x1="${i*sz}" y1="0" x2="${i*sz}" y2="100" stroke="#6D4C41" stroke-width="0.15"/>`;
+            lines += `<line x1="0" y1="${i*sz}" x2="100" y2="${i*sz}" stroke="#6D4C41" stroke-width="0.15"/>`;
+        }
+        const dots = [3,7,11];
+        let star = '';
+        dots.forEach(r => dots.forEach(c => { star += `<circle cx="${c*sz}" cy="${r*sz}" r="0.55" fill="#3E2723"/>`; }));
+        let stones = '';
+        for(let i=0;i<N*N;i++){
+            const v = board[i]; if(!v) continue;
+            const r = Math.floor(i/N), c = i%N;
+            const isWin = winSet.has(i);
+            const fill = v === 'b' ? '#1A1A1A' : '#FAFAFA';
+            const stroke = v === 'b' ? '#000' : '#888';
+            stones += `<circle cx="${c*sz}" cy="${r*sz}" r="${sz*0.44}" fill="${fill}" stroke="${stroke}" stroke-width="0.15"${isWin?' filter="url(#omWin)"':''}/>`;
+            if(g.lastMove === i && !isWin){
+                stones += `<circle cx="${c*sz}" cy="${r*sz}" r="${sz*0.2}" fill="none" stroke="${v==='b'?'#FF5252':'#1976D2'}" stroke-width="0.3"/>`;
+            }
+        }
+        // 미리보기 돌 (반투명 + 펄스)
+        let preview = '';
+        if(pending != null && myTurn && !board[pending]){
+            const r = Math.floor(pending/N), c = pending%N;
+            const fill = myColor === 'b' ? '#1A1A1A' : '#FAFAFA';
+            const stroke = myColor === 'b' ? '#000' : '#888';
+            preview = `
+                <circle cx="${c*sz}" cy="${r*sz}" r="${sz*0.7}" fill="none" stroke="#FFD54F" stroke-width="0.4" opacity="0.9">
+                    <animate attributeName="r" values="${sz*0.55};${sz*0.7};${sz*0.55}" dur="1s" repeatCount="indefinite"/>
+                </circle>
+                <circle cx="${c*sz}" cy="${r*sz}" r="${sz*0.44}" fill="${fill}" stroke="${stroke}" stroke-width="0.15" opacity="0.55"/>`;
+        }
+        // 클릭 영역
+        let clicks = '';
+        if(isPlayer && myTurn){
+            for(let i=0;i<N*N;i++){
+                if(board[i]) continue;
+                const r = Math.floor(i/N), c = i%N;
+                clicks += `<rect x="${c*sz - sz/2}" y="${r*sz - sz/2}" width="${sz}" height="${sz}" fill="rgba(0,0,0,0)" style="cursor:pointer;" onclick="window._omokPreview('${gid}', ${i})"></rect>`;
+            }
+        }
+        const blackNm = g.black ? (g.black.nm || '?') : '대기 중';
+        const whiteNm = g.white ? (g.white.nm || '?') : '대기 중';
+        let turnLabel;
+        if(g.phase === 'lobby') turnLabel = '👋 백 참가자 대기 중';
+        else if(g.winner) turnLabel = '🏁 게임 종료';
+        else if(myTurn) turnLabel = pending!=null ? '👇 확정하시겠습니까?' : '🎯 내 차례 — 둘 곳 선택';
+        else turnLabel = (g.turn==='b' ? `⚫ ${blackNm}` : `⚪ ${whiteNm}`) + ' 차례';
+
+        // 액션 버튼
+        let actions = '';
+        if(g.phase === 'lobby'){
+            if(g.black && g.black.uid !== me.cd){
+                actions = `<button onclick="window._omokJoinAsWhite('${gid}')" style="flex:1;padding:16px;border:2px solid #888;border-radius:12px;background:linear-gradient(135deg,#FAFAFA,#E0E0E0);color:#333;font-family:Jua;font-size:17px;cursor:pointer;font-weight:bold;box-shadow:0 4px 0 rgba(0,0,0,0.15);">⚪ 백으로 참가하기</button>`;
+            } else {
+                actions = `<div style="flex:1;text-align:center;font-size:14px;color:#666;padding:14px;background:rgba(0,0,0,0.92);color:#FFE0B2;border-radius:12px;">⏳ 상대방 대기 중... (다른 학생이 캐릭터 위 바둑판을 클릭하면 참가)</div>`;
+            }
+        } else if(g.phase === 'playing'){
+            if(isPlayer){
+                actions = `<button onclick="window._omokResign('${gid}')" style="flex:1;padding:11px;border:2px solid #EF5350;border-radius:10px;background:white;color:#C62828;font-family:Jua;font-size:13px;cursor:pointer;">🏳️ 기권</button>`;
+            } else {
+                actions = `<div style="flex:1;text-align:center;font-size:13px;color:white;background:rgba(0,0,0,0.55);padding:11px;border-radius:10px;">👀 관전 중</div>`;
+            }
+        }
+
+        const turnColor = g.phase==='playing' && myTurn ? (pending!=null ? '#43A047' : '#FF8F00') : '#5D4037';
+        const myBadge = myColor ? `<span style="font-size:13px;color:#1976D2;font-weight:bold;margin-left:6px;">(나)</span>` : '';
+        const blackHi = g.phase==='playing' && g.turn==='b' && !g.winner;
+        const whiteHi = g.phase==='playing' && g.turn==='w' && !g.winner;
+        const moveCount = Object.keys(board).length;
+
+        // 점수 계산 (rematch로 흑백 바뀌어도 uid 기준 누적)
+        const score = g.score || {};
+        const blackScore = (g.black && score[g.black.uid]) || 0;
+        const whiteScore = (g.white && score[g.white.uid]) || 0;
+        const totalGames = blackScore + whiteScore;
+
+        // 로비 가운데 큰 참가 버튼
+        const lobbyJoin = (g.phase === 'lobby' && g.black && g.black.uid !== me.cd && !g.white)
+            ? `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;background:rgba(0,0,0,0.35);backdrop-filter:blur(2px);">
+                  <button onclick="window._omokJoinAsWhite('${gid}')" style="padding:24px 40px;border:4px solid #6D4C41;border-radius:22px;background:linear-gradient(135deg,#FAFAFA,#E0E0E0);color:#1A1A1A;font-family:Jua;font-size:24px;cursor:pointer;font-weight:bold;box-shadow:0 12px 32px rgba(0,0,0,0.5);">⚪ 백으로 참가하기</button>
+               </div>`
+            : '';
+        // 우상단 액션: 기권 (플레이어만) + ✕ 닫기
+        const topRightActions = (g.phase === 'playing' && isPlayer && !g.winner)
+            ? `<button onclick="window._omokResign('${gid}')" style="padding:8px 12px;border:2px solid #EF5350;border-radius:10px;background:white;color:#C62828;font-family:Jua;font-size:13px;font-weight:bold;cursor:pointer;flex-shrink:0;">🏳️ 기권</button>`
+            : '';
+
+        if(old) old.remove();
+        const panel = document.createElement('div');
+        panel.id = '_omokPanel';
+        // 풀스크린: 상단 헤더(80px)·턴 라벨 strip(36px)·하단 힌트(40px) 영역을 보드가 침범하지 않도록 inset 조정
+        panel.style.cssText = 'position:fixed;inset:0;background:linear-gradient(160deg,#3E2723,#1B0F0C);z-index:99000;font-family:Jua;box-sizing:border-box;';
+        panel.innerHTML = `
+            <!-- 상단 중앙: [흑][점수+턴][백] 하나의 가로 카드. ✕는 우상단 분리. -->
+            <div style="position:absolute;top:6px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;gap:6px;z-index:8;max-width:calc(100vw - 60px);">
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:14px;background:${blackHi?'rgba(255,213,79,0.95)':'rgba(255,255,255,0.92)'};border:2px solid ${blackHi?'#FF8F00':'#3E2723'};color:#1A1A1A;box-shadow:0 4px 12px rgba(0,0,0,0.4);min-width:0;">
+                    <div style="width:24px;height:24px;border-radius:50%;background:#1A1A1A;border:2px solid #FFF;flex-shrink:0;"></div>
+                    <div style="min-width:0;">
+                        <div style="font-size:10px;opacity:0.7;line-height:1;">흑 (선)</div>
+                        <div style="font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;max-width:22vw;">${blackNm}${myColor==='b'?myBadge:''}</div>
+                    </div>
+                </div>
+                <div style="background:rgba(255,255,255,0.97);padding:4px 14px;border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,0.4);text-align:center;border:2.5px solid #FFD54F;flex-shrink:0;">
+                    <div style="font-size:20px;font-weight:bold;letter-spacing:2px;color:#5D4037;line-height:1;white-space:nowrap;">
+                        <span style="color:#1A1A1A;">${blackScore}</span> <span style="color:#888;">:</span> <span style="color:#666;">${whiteScore}</span>
+                    </div>
+                    <div style="font-size:11px;color:${turnColor};font-weight:bold;margin-top:2px;line-height:1.1;white-space:nowrap;">${turnLabel}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:14px;background:${whiteHi?'rgba(255,213,79,0.95)':'rgba(255,255,255,0.92)'};border:2px solid ${whiteHi?'#FF8F00':'#3E2723'};color:#1A1A1A;box-shadow:0 4px 12px rgba(0,0,0,0.4);min-width:0;">
+                    <div style="min-width:0;text-align:right;">
+                        <div style="font-size:10px;opacity:0.7;line-height:1;">백 (후)</div>
+                        <div style="font-size:14px;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2;max-width:22vw;">${whiteNm}${myColor==='w'?myBadge:''}</div>
+                    </div>
+                    <div style="width:24px;height:24px;border-radius:50%;background:#FAFAFA;border:2px solid #888;flex-shrink:0;"></div>
+                </div>
+            </div>
+            <!-- 우상단: 기권 + ✕ 닫기 -->
+            <div style="position:absolute;top:8px;right:8px;display:flex;align-items:center;gap:6px;z-index:8;">
+                ${topRightActions}
+                <button onclick="window._omokCloseBoard()" style="width:38px;height:38px;border-radius:50%;border:2px solid white;background:rgba(0,0,0,0.55);color:white;font-family:Jua;font-size:18px;cursor:pointer;flex-shrink:0;">✕</button>
+            </div>
+            <!-- 보드: 헤더(~70px) 아래, 하단 힌트(~38px) 위. 좌우 4px만 여백. -->
+            <div style="position:absolute;top:74px;bottom:42px;left:4px;right:4px;display:flex;align-items:center;justify-content:center;">
+                <div style="background:linear-gradient(135deg,#E6C381,#D4A574);border-radius:12px;padding:8px;box-shadow:0 12px 36px rgba(0,0,0,0.6),inset 0 0 0 3px #6D4C41;aspect-ratio:1;height:100%;max-width:100%;display:flex;">
+                    <svg viewBox="-${sz*0.6} -${sz*0.6} ${100+sz*1.2} ${100+sz*1.2}" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%;display:block;touch-action:manipulation;">
+                        <defs><filter id="omWin"><feGaussianBlur stdDeviation="0.5" result="blur"/><feFlood flood-color="#FFD700"/><feComposite in2="blur" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+                        ${lines}${star}${stones}${preview}${clicks}
+                    </svg>
+                </div>
+            </div>
+            <!-- 하단 힌트 -->
+            <div style="position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;z-index:5;">
+                ${myTurn ? `<div style="font-size:12px;color:white;background:rgba(0,0,0,0.65);padding:6px 14px;border-radius:10px;font-weight:bold;">💡 같은 칸을 두 번 누르면 돌이 놓입니다${pending!=null?' (한 번 더 누르세요!)':''}</div>` : (isPlayer ? '' : `<div style="font-size:12px;color:white;background:rgba(0,0,0,0.55);padding:5px 12px;border-radius:10px;">👀 관전 중</div>`)}
+            </div>
+            ${lobbyJoin}`;
+        document.body.appendChild(panel);
+    }
+
+    function _omokShowEndModal(gid, g){
+        document.getElementById('_omokEndModal_'+gid)?.remove();
+        const winColor = g.winner;
+        const winNm = winColor === 'b' ? (g.black?.nm || '?') : (g.white?.nm || '?');
+        const loseNm = winColor === 'b' ? (g.white?.nm || '?') : (g.black?.nm || '?');
+        const winIc = winColor === 'b' ? '⚫' : '⚪';
+        const reason = g.resigned ? '(상대 기권)' : '(5목 완성)';
+        try { window._sfxVictoryFanfare && window._sfxVictoryFanfare(); } catch(_){}
+        try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🏆', msg:`🏆 ${winIc} ${winNm} 오목 승리! ${reason} (vs ${loseNm})`, ts:Date.now() }); } catch(_){}
+        _omokRenderEndModal(gid, g);
+    }
+
+    function _omokRenderEndModal(gid, g){
+        const existing = document.getElementById('_omokEndModal_'+gid);
+        const winColor = g.winner;
+        const winNm = winColor === 'b' ? (g.black?.nm || '?') : (g.white?.nm || '?');
+        const winIc = winColor === 'b' ? '⚫' : '⚪';
+        const isPlayer = me && ((g.black && g.black.uid === me.cd) || (g.white && g.white.uid === me.cd));
+        const myWin = isPlayer && (winColor === 'b' ? g.black.uid === me.cd : g.white.uid === me.cd);
+        const rematch = g.rematch || {};
+        const iWantRematch = me && rematch[me.cd];
+        const oppUid = me && (g.black?.uid === me.cd ? g.white?.uid : g.black?.uid);
+        const oppWantsRematch = oppUid && rematch[oppUid];
+
+        let buttons = '';
+        if(isPlayer){
+            const rematchLabel = iWantRematch
+                ? (oppWantsRematch ? '✨ 새 판 시작 중...' : '⏳ 상대 응답 대기 중')
+                : (oppWantsRematch ? '🎯 상대가 다시하기 원함! 수락' : '🔄 다시하기');
+            const rematchDis = iWantRematch && !oppWantsRematch;
+            buttons = `
+                <button ${rematchDis?'disabled':''} onclick="window._omokRequestRematch('${gid}')" style="flex:1;padding:14px;border:none;border-radius:12px;background:${rematchDis?'#BDBDBD':'linear-gradient(135deg,#43A047,#1B5E20)'};color:white;font-family:Jua;font-size:15px;cursor:${rematchDis?'default':'pointer'};font-weight:bold;box-shadow:${rematchDis?'none':'0 4px 0 rgba(27,94,32,0.4)'};">${rematchLabel}</button>
+                <button onclick="window._omokDeclineRematch('${gid}')" style="flex:1;padding:14px;border:2px solid #ccc;border-radius:12px;background:white;color:#555;font-family:Jua;font-size:15px;cursor:pointer;">🚪 종료</button>`;
+        } else {
+            buttons = `<button onclick="document.getElementById('_omokEndModal_${gid}').remove()" style="flex:1;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#5D4037,#3E2723);color:white;font-family:Jua;font-size:14px;cursor:pointer;">확인</button>`;
+        }
+
+        const headTitle = myWin ? '🎉 축하합니다! 🎉' : (isPlayer ? '😢 졌어요' : '🏁 게임 종료');
+        const headColor = myWin ? 'linear-gradient(135deg,#FF8F00,#E65100)' : 'linear-gradient(135deg,#5D4037,#3E2723)';
+
+        const html = `
+        <div style="background:linear-gradient(160deg,#FFF8E1,#FFE0B2);border-radius:24px;width:min(420px,96vw);overflow:hidden;border:4px solid #FFD54F;box-shadow:0 24px 64px rgba(0,0,0,0.6);animation:iceTagPopIn 0.35s cubic-bezier(0.34,1.56,0.64,1);">
+            <div style="background:${headColor};padding:24px;text-align:center;color:white;">
+                <div style="font-size:18px;font-weight:bold;margin-bottom:6px;letter-spacing:1px;">${headTitle}</div>
+                <div style="font-size:64px;line-height:1;margin:6px 0;">${winIc}</div>
+                <div style="font-size:32px;font-weight:bold;color:#FFD54F;text-shadow:0 3px 10px rgba(0,0,0,0.5);">${winNm}</div>
+                <div style="font-size:14px;margin-top:4px;opacity:0.95;">승리!</div>
+                <div style="font-size:12px;margin-top:8px;opacity:0.8;">${g.resigned ? '상대 기권' : '5목 완성'}</div>
+                <div style="margin-top:12px;background:rgba(0,0,0,0.25);padding:8px 16px;border-radius:12px;display:inline-block;font-size:18px;font-weight:bold;letter-spacing:2px;">
+                    ${(g.black?.nm||'?')} <span style="color:#FFD54F;">${(g.score?.[g.black?.uid]||0)}</span> : <span style="color:#FFD54F;">${(g.score?.[g.white?.uid]||0)}</span> ${(g.white?.nm||'?')}
+                </div>
+            </div>
+            <div style="padding:18px 22px;text-align:center;">
+                ${isPlayer ? `<div style="font-size:14px;color:#5D4037;margin-bottom:14px;font-weight:bold;">계속 이어서 하실래요?</div>
+                <div style="font-size:11px;color:#888;margin-bottom:12px;">다시하기 시 흑백이 자동 교체됩니다</div>` : ''}
+                <div style="display:flex;gap:8px;">${buttons}</div>
+            </div>
+        </div>`;
+        if(existing){
+            existing.firstElementChild.outerHTML = html.trim();
+        } else {
+            const el = document.createElement('div');
+            el.id = '_omokEndModal_'+gid;
+            el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Jua;animation:voteFadeIn 0.3s ease;padding:20px;';
+            el.innerHTML = html;
+            document.body.appendChild(el);
+        }
+    }
+
     /* ========== 얼음땡 게임 ========== */
     window._iceTagState = null;
     window._iceTagAudioCtx = null;
@@ -19909,7 +21038,7 @@ window.addCharRow = function() {
         return false;
     };
     window._anyPlzGameActive = function() {
-        return !!(window._iceTagState || window._hideSeekState || (window._liarState&&window._liarState.on) || (window._mafiaState&&window._mafiaState.on) || window._oxQuizState);
+        return !!(window._iceTagState || window._hideSeekState || (window._liarState&&window._liarState.on) || (window._mafiaState&&window._mafiaState.on) || window._oxQuizState || (window._omokGames && Object.keys(window._omokGames).length > 0));
     };
     // 광장의 모든 게임을 강제 종료
     window._endAllPlzGames = function() {
@@ -19918,6 +21047,7 @@ window.addCharRow = function() {
         try { getPlzRef().child('mafia').remove(); } catch(_){}
         try { getPlzRef().child('liar').remove(); } catch(_){}
         try { getPlzRef().child('oxQuiz').remove(); } catch(_){}
+        try { getPlzRef().child('omok').remove(); } catch(_){}
         try { getPlzRef().child('endVote').remove(); } catch(_){}
     };
     // 종료 투표 모달 (예쁜 디자인) — 현재 표/참가자 수 표시 + 진행 바
@@ -20490,12 +21620,12 @@ window.addCharRow = function() {
         const myFrozen = !!frozen[me.cd];
         const taggerIds = g.taggerIds || (g.taggerId ? [g.taggerId] : []);
         const amTagger = taggerIds.includes(me.cd);
-        const RADIUS = 10;
+        const RADIUS = 5;
         Object.entries(_plzUserCache).forEach(([uid, u]) => {
             if(uid === me.cd || uid === 'teacher_main') return;
-            if(taggerIds.includes(uid)) return; // 다른 술래는 건너뛰기
-            if(participants && !participants.includes(uid)) return; // 참관자는 건너뛰기
-            // 투명화 중이어도 접촉은 판정됨 (보이지만 않을 뿐)
+            if(taggerIds.includes(uid)) return;
+            if(participants && !participants.includes(uid)) return;
+            // Broadcast된 logical 위치 기준 (false positive 방지)
             const dx = (u.x||0) - _plzPos.x;
             const dy = (u.y||0) - _plzPos.y;
             const dist = Math.sqrt(dx*dx + dy*dy);
@@ -20822,6 +21952,8 @@ window.addCharRow = function() {
                     if(oxOn && me && me.cd === 'teacher_main') html += `<button id="plzOxQuizBtn" onclick="window._oxQuizMenu()" style="position:absolute;top:130px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(76,175,80,0.9);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">📝 OX 퀴즈</button>`;
                     if(mfOn && me) html += `<button id="plzMafiaBtn" onclick="window._mafiaMenu()" style="position:absolute;top:170px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(94,53,177,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🕵️ 마피아</button>`;
                     if(lrOn && me) html += `<button id="plzLiarBtn" onclick="window._liarMenu()" style="position:absolute;top:210px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(216,67,21,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🎭 라이어</button>`;
+                    const omOn = cfg.omokOn === true;
+                    if(omOn && me) html += `<button id="plzOmokBtn" onclick="window._omokMenu()" style="position:absolute;top:250px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(62,39,35,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">⚫ 오목</button>`;
                     return html;
                 })()}
                 <div id="liarHud" style="display:none;position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:none;"></div>
@@ -20919,20 +22051,74 @@ window.addCharRow = function() {
         setTimeout(_respawnIfBlocked, 200);
         setTimeout(_respawnIfBlocked, 800);
         plzMyRef = getPlzRef().child('users').child(uid);
-        const _presenceData = { nm: me.nm, no: me.no, x: _plzPos.x, y: _plzPos.y, ts: Date.now() };
-        if(me.eq && Object.keys(me.eq).length) _presenceData.eq = me.eq;
-        if(uid === 'teacher_main') {
-            _presenceData.isTeacher = true;
-            const _tchTitD = db.cfg && db.cfg.teacherChar && db.cfg.teacherChar.tit;
-            if(_tchTitD) _presenceData.tit = _tchTitD;
+        // ⭐ 자리 세팅이 있고 학생이면 — presence 쓰기 전에 자리 미리 계산해서 처음부터 자리 좌표로 입장 (이동 애니메이션 없음)
+        // _presenceData를 함수 외부 스코프에 선언해서 timer/visibility/connection 핸들러가 참조 가능하도록 함
+        // (이전 const 함수 지역 선언 → 외부에서 ReferenceError → presence 복구 영영 안 되던 버그 수정)
+        let _presenceData = null;
+        const _writePresenceWithSeat = (px, py) => {
+            _plzPos.x = px; _plzPos.y = py;
+            _presenceData = { nm: me.nm, no: me.no, x: px, y: py, ts: Date.now() };
+            if(me.eq && Object.keys(me.eq).length) _presenceData.eq = me.eq;
+            if(uid === 'teacher_main') {
+                _presenceData.isTeacher = true;
+                const _tchTitD = db.cfg && db.cfg.teacherChar && db.cfg.teacherChar.tit;
+                if(_tchTitD) _presenceData.tit = _tchTitD;
+            }
+            plzMyRef.set(_presenceData);
+            plzMyRef.onDisconnect().remove();
+            window._lmAppliedThisRoom = true; // 텔레포트 중복 방지
+        };
+        if(uid !== 'teacher_main'){
+            // 1단계: 일단 빈 자리 좌표(0,0 대신 학생 본인 번호 기반 추정)에 임시 위치로 presence 작성
+            // 본인 학생 데이터에서 no 가져오기
+            const myNo = (db.stu||[]).find(s => s.cd === uid)?.no || 999;
+            const _doSeatAssign = () => {
+                getPlzRef().child('lmSeats').once('value', sSnap => {
+                    const sraw = sSnap.val();
+                    const seats = (window._lmReadSeats||(r=>r?(Array.isArray(r)?r:Object.keys(r).filter(k=>/^s\d+$/.test(k)).sort().map(k=>r[k])):[]))(sraw);
+                    if(!seats.length){
+                        _writePresenceWithSeat(_plzPos.x, _plzPos.y);
+                        return;
+                    }
+                    getPlzRef().child('users').once('value', uSnap => {
+                        // {uid, no} 객체 배열로 모음 (no 기준 정렬용)
+                        const entries = [];
+                        uSnap.forEach(c => {
+                            if(c.key === 'teacher_main') return;
+                            const v = c.val()||{};
+                            entries.push({ uid: c.key, no: v.no || 999 });
+                        });
+                        // 본인이 아직 없으면 추가
+                        if(!entries.find(e => e.uid === uid)){
+                            entries.push({ uid, no: myNo });
+                        }
+                        // 학생 번호(no) 오름차순 정렬 — 동일 no면 uid 알파벳 보조
+                        entries.sort((a,b) => a.no - b.no || a.uid.localeCompare(b.uid));
+                        let idx = entries.findIndex(e => e.uid === uid);
+                        if(idx === -1) idx = 0;
+                        if(idx >= seats.length){
+                            console.warn('[lm] 자리 부족 — 자리', seats.length, '학생 idx', idx, '(no=', myNo, ')');
+                        }
+                        const seat = seats[idx % seats.length];
+                        const b = _plzGetBounds();
+                        const sx = Math.max(b.xMin, Math.min(b.xMax, seat.x));
+                        const sy = Math.max(b.yMin, Math.min(b.yMax, seat.y));
+                        _writePresenceWithSeat(sx, sy);
+                        console.log('[lm] 자리 배정 — no=', myNo, 'idx=', idx, '/', entries.length, '명, 자리', seats.length, '개', '→ seat', idx+1);
+                    });
+                });
+            };
+            _doSeatAssign();
+            // 1.5초 후 재계산 (다른 학생들 presence 도착 후 정확한 idx로 보정)
+            setTimeout(_doSeatAssign, 1500);
+        } else {
+            _writePresenceWithSeat(_plzPos.x, _plzPos.y);
         }
-        plzMyRef.set(_presenceData);
-        plzMyRef.onDisconnect().remove();
 
-        // presence 안정성: 60초마다 누락 시에만 재작성 (ts 갱신 제거 — 다른 학생 listener 트래픽 절감)
+        // presence 안정성: 20초마다 누락 시에만 재작성 (ts 갱신 제거 — 다른 학생 listener 트래픽 절감)
         if(window._plzPresenceTimer) clearInterval(window._plzPresenceTimer);
         window._plzPresenceTimer = setInterval(() => {
-            if(!plzMyRef || !window._plzActive) return;
+            if(!plzMyRef || !window._plzActive || !_presenceData) return;
             plzMyRef.once('value', snap => {
                 if(!snap.exists()){
                     plzMyRef.set({..._presenceData, x:_plzPos.x, y:_plzPos.y, ts:Date.now()});
@@ -20940,11 +22126,11 @@ window.addCharRow = function() {
                 }
                 // 있으면 아무것도 하지 않음 (불필요한 update 트래픽 차단)
             });
-        }, 120000);
+        }, 20000);
         // 탭이 다시 활성화될 때 즉시 presence 복구
         if(window._plzVisibilityHandler) document.removeEventListener('visibilitychange', window._plzVisibilityHandler);
         window._plzVisibilityHandler = () => {
-            if(document.visibilityState === 'visible' && plzMyRef && window._plzActive){
+            if(document.visibilityState === 'visible' && plzMyRef && window._plzActive && _presenceData){
                 plzMyRef.once('value', snap => {
                     if(!snap.exists()){
                         plzMyRef.set({..._presenceData, x:_plzPos.x, y:_plzPos.y, ts:Date.now()});
@@ -20955,6 +22141,22 @@ window.addCharRow = function() {
         };
         document.addEventListener('visibilitychange', window._plzVisibilityHandler);
 
+        // Firebase 재연결 즉시 presence 복구 (와이파이 깜빡임·셀룰러 전환 등 네트워크 블립 대응)
+        if(window._plzConnHandler){
+            try { firebase.database().ref('.info/connected').off('value', window._plzConnHandler); } catch(_){}
+        }
+        window._plzConnHandler = (snap) => {
+            if(snap.val() === true && plzMyRef && window._plzActive && _presenceData){
+                plzMyRef.once('value', s => {
+                    if(!s.exists()){
+                        plzMyRef.set({..._presenceData, x:_plzPos.x, y:_plzPos.y, ts:Date.now()});
+                        plzMyRef.onDisconnect().remove();
+                    }
+                });
+            }
+        };
+        firebase.database().ref('.info/connected').on('value', window._plzConnHandler);
+
         // Subscribe to all users
         _plzSubscribeUsers();
         // Subscribe to chat
@@ -20963,11 +22165,31 @@ window.addCharRow = function() {
         _plzSubscribeCfg();
         // 기존 게임 UI 잔재 정리
         document.querySelectorAll('#_hsRhythmBadge, #_hsHideDark, #_iceTagCountdown').forEach(el => el.remove());
+        // 자리 세팅 구독 — 캐시만 갱신 (진입 시 텔레포트는 enterPlaza에서 한 번만 처리, race 방지)
+        // 공통 reader: 새 형식 {s000,s001,...} 키 정렬 + 구버전 배열 호환
+        window._lmReadSeats = function(raw){
+            if(!raw) return [];
+            if(Array.isArray(raw)) return raw.filter(s => s);
+            return Object.keys(raw)
+                .filter(k => /^s\d+$/.test(k))
+                .sort()
+                .map(k => raw[k]);
+        };
+        (function _lmSeatsSubscribe(){
+            const sRef = getPlzRef().child('lmSeats');
+            const fn = snap => {
+                window._lmSeatsCache = window._lmReadSeats(snap.val());
+            };
+            sRef.on('value', fn);
+            plzListeners.push({ ref:sRef, type:'value', fn, who:'student' });
+        })();
         // 얼음땡 게임 상태 구독
         _iceTagSubscribe();
         // 숨바꼭질 구독
         _hideSeekSubscribe();
         _oxQuizSubscribe();
+        // 오목 구독
+        if(typeof _omokSubscribe === 'function') _omokSubscribe();
         // 마피아 게임 상태 구독
         if(typeof window._mafiaSubscribe === 'function') window._mafiaSubscribe();
         // 라이어 게임 상태 구독
@@ -21185,13 +22407,15 @@ window.addCharRow = function() {
             if(posOnly) {
                 const isMe = me && snap.key === me.cd;
                 if(!isMe) {
-                    el.style.transition = `left 500ms linear, top 500ms linear`;
+                    // transition은 CSS의 1.2s linear 사용 (인라인 override 제거)
+                    el.style.transition = '';
                     el.style.left = u.x + '%';
                     el.style.top  = u.y + '%';
                     el.dataset.px = u.x; el.dataset.py = u.y;
                     el.classList.add('walking');
                     clearTimeout(el._walkTimer);
-                    el._walkTimer = setTimeout(() => el.classList.remove('walking'), 600);
+                    // 걷기 애니메이션을 transition 시간과 맞춰 끊기지 않게
+                    el._walkTimer = setTimeout(() => el.classList.remove('walking'), 1200);
                 }
                 // 투명화 상태 실시간 반영
                 const _isInv = u.invisUntil && Date.now() < u.invisUntil;
@@ -22421,19 +23645,19 @@ window.addCharRow = function() {
         const hsHideBlock = gHS && Date.now() < gHS.playStartAt && gHS.seekerIds && gHS.seekerIds.includes(me.cd);
         // OX 퀴즈 reveal 단계: 모든 학생 이동 잠금 + 부활전 관전자(생존자) 잠금
         const oxFreeze = (window._oxQuizFrozen || window._oxSpectatorFreeze) && me && me.cd !== 'teacher_main';
-        // 라이어·마피아 게임 진행 중: 교사가 지정한 위치로 학생들 강제 고정
-        const _liG = window._liarState, _mafG = window._mafiaState;
-        const liarMafiaFreeze = ((_liG && _liG.on) || (_mafG && _mafG.on)) && me && me.cd !== 'teacher_main';
-        if(liarMafiaFreeze){
-            // 교사가 지정한 좌표 적용 (한 번만)
-            if(!window._lmFreezeApplied){
-                window._lmFreezeApplied = true;
+        // 자리 세팅이 있으면 학생은 광장 진입 즉시 자리에 고정 (게임 무관)
+        const _seatsExist = (window._lmSeatsCache||[]).length > 0;
+        const seatFreeze = _seatsExist && me && me.cd !== 'teacher_main';
+        if(seatFreeze){
+            // 처음 진입 또는 자리 변경 시 텔레포트
+            if(!window._lmAppliedThisRoom){
+                window._lmAppliedThisRoom = true;
                 window._lmTeleportToFixedSpot && window._lmTeleportToFixedSpot();
             }
         } else {
-            window._lmFreezeApplied = false;
+            window._lmAppliedThisRoom = false;
         }
-        if(iAmFrozen || (inCountdown && amTagger) || hsHideBlock || oxFreeze || liarMafiaFreeze) {
+        if(iAmFrozen || (inCountdown && amTagger) || hsHideBlock || oxFreeze || seatFreeze) {
             _plzRAF = requestAnimationFrame(_plzLoop);
             return;
         }
@@ -22491,7 +23715,7 @@ window.addCharRow = function() {
             // 진입: Firebase에서 기존 자리 불러와 표시
             getPlzRef().child('lmSeats').once('value', snap => {
                 const seats = snap.val() || [];
-                window._lmSeatsDraft = Array.isArray(seats) ? seats.slice() : Object.values(seats);
+                window._lmSeatsDraft = (window._lmReadSeats||(r=>r?(Array.isArray(r)?r:Object.keys(r).filter(k=>/^s\d+$/.test(k)).sort().map(k=>r[k])):[]))(seats);
                 _lmRenderSeatMarkers();
                 _lmShowSeatingHud();
             });
@@ -22503,8 +23727,8 @@ window.addCharRow = function() {
         if(!window._lmSeatingActive) return;
         const map = document.getElementById('plzMap');
         if(!map) return;
-        // 마커·HUD 클릭은 무시
-        if(e.target && (e.target.classList?.contains('lm-seat-marker') || e.target.closest?.('.lm-seat-marker') || e.target.closest?.('#_lmSeatHud'))) return;
+        // 마커·HUD·버튼·입력 클릭은 무시
+        if(e.target && (e.target.classList?.contains('lm-seat-marker') || e.target.closest?.('.lm-seat-marker') || e.target.closest?.('#_lmSeatHud') || e.target.tagName === 'BUTTON' || e.target.closest?.('button') || e.target.tagName === 'SELECT' || e.target.closest?.('select') || e.target.tagName === 'INPUT' || e.target.tagName === 'A' || e.target.closest?.('a'))) return;
         const rect = map.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -22530,8 +23754,22 @@ window.addCharRow = function() {
     };
     window._lmSaveSeats = function(){
         const seats = window._lmSeatsDraft || [];
-        getPlzRef().child('lmSeats').set(seats);
-        alert(`✅ 라이어/마피아 자리 ${seats.length}개 저장됨\n\n게임 시작 시 학생이 들어온 순서대로 1번 자리부터 배정됩니다.`);
+        // Firebase 배열 변환 이슈 방지 — 명시적 객체 형태로 저장
+        const seatMap = {};
+        seats.forEach((s, i) => { seatMap['s' + String(i).padStart(3,'0')] = { x: s.x, y: s.y, n: i }; });
+        const seatRef = getPlzRef().child('lmSeats');
+        seatRef.set(seatMap, () => {
+            // 저장 후 검증 — Firebase에서 다시 읽어 개수 확인
+            seatRef.once('value', snap => {
+                const v = snap.val();
+                const cnt = v ? Object.keys(v).length : 0;
+                if(cnt === seats.length){
+                    alert(`✅ 라이어/마피아 자리 ${cnt}개 저장 확인 완료\n\n학생 입장 시 학생 번호 순으로 1~${cnt}번 자리에 자동 배정됩니다.`);
+                } else {
+                    alert(`⚠️ 저장 불일치!\n로컬: ${seats.length}개 / Firebase: ${cnt}개\n네트워크 문제일 수 있어요. 다시 시도해주세요.`);
+                }
+            });
+        });
         _lmExitSeatingMode();
     };
     function _lmExitSeatingMode(){
@@ -22544,16 +23782,69 @@ window.addCharRow = function() {
     function _lmRenderSeatMarkers(){
         const map = document.getElementById('plzMap');
         if(!map) return;
-        document.querySelectorAll('.lm-seat-marker').forEach(el => el.remove());
+        document.querySelectorAll('.lm-seat-marker').forEach(el => { try{ el._cleanup && el._cleanup(); }catch(_){} el.remove(); });
         const seats = window._lmSeatsDraft || [];
         seats.forEach((s, i) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'lm-seat-marker';
+            wrap.style.cssText = `position:absolute;left:${s.x}%;top:${s.y}%;transform:translate(-50%,-50%);z-index:25;user-select:none;`;
+            // 번호 원
             const m = document.createElement('div');
-            m.className = 'lm-seat-marker';
-            m.style.cssText = `position:absolute;left:${s.x}%;top:${s.y}%;transform:translate(-50%,-50%);background:linear-gradient(135deg,#7E57C2,#5E35B1);color:white;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Jua';font-size:18px;font-weight:bold;box-shadow:0 4px 10px rgba(0,0,0,0.4);border:3px solid white;z-index:25;cursor:pointer;user-select:none;`;
+            m.style.cssText = `background:linear-gradient(135deg,#7E57C2,#5E35B1);color:white;width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Jua';font-size:18px;font-weight:bold;box-shadow:0 4px 10px rgba(0,0,0,0.4);border:3px solid white;cursor:grab;`;
             m.textContent = (i+1);
-            m.title = `자리 ${i+1} — 클릭하면 삭제`;
-            m.onclick = (ev) => { ev.stopPropagation(); window._lmRemoveSeat(i); };
-            map.appendChild(m);
+            m.title = `자리 ${i+1} — 드래그로 이동, ✕로 삭제`;
+            // X 삭제 버튼
+            const x = document.createElement('div');
+            x.textContent = '✕';
+            x.style.cssText = 'position:absolute;top:-6px;right:-6px;background:#EF5350;color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.4);border:2px solid white;';
+            x.title = '자리 삭제';
+            x.onclick = (ev) => { ev.stopPropagation(); window._lmRemoveSeat(i); };
+            wrap.appendChild(m);
+            wrap.appendChild(x);
+            // 드래그 이동
+            let dragging = false;
+            const startDrag = (ev) => {
+                ev.stopPropagation(); ev.preventDefault();
+                dragging = true;
+                m.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+            };
+            const onMove = (ev) => {
+                if(!dragging) return;
+                const rect = map.getBoundingClientRect();
+                const cx = ev.clientX || (ev.touches && ev.touches[0]?.clientX);
+                const cy = ev.clientY || (ev.touches && ev.touches[0]?.clientY);
+                if(cx == null) return;
+                const nx = ((cx - rect.left) / rect.width) * 100;
+                const ny = ((cy - rect.top) / rect.height) * 100;
+                const b = _plzGetBounds();
+                const fx = Math.max(b.xMin, Math.min(b.xMax, nx));
+                const fy = Math.max(b.yMin, Math.min(b.yMax, ny));
+                window._lmSeatsDraft[i] = { x: fx, y: fy };
+                wrap.style.left = fx + '%';
+                wrap.style.top = fy + '%';
+            };
+            const endDrag = () => {
+                if(!dragging) return;
+                dragging = false;
+                m.style.cursor = 'grab';
+                document.body.style.userSelect = '';
+                _lmShowSeatingHud(); // 카운트 갱신
+            };
+            m.addEventListener('mousedown', startDrag);
+            m.addEventListener('touchstart', startDrag, { passive:false });
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('touchmove', onMove, { passive:false });
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+            // 클린업용
+            wrap._cleanup = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('touchmove', onMove);
+                document.removeEventListener('mouseup', endDrag);
+                document.removeEventListener('touchend', endDrag);
+            };
+            map.appendChild(wrap);
         });
     }
     function _lmShowSeatingHud(){
@@ -22573,36 +23864,90 @@ window.addCharRow = function() {
         map.appendChild(hud);
         map.style.cursor = 'crosshair';
     }
+    // 자리 적용 토스트
+    function _lmToast(msg, color){
+        const id = '_lmToast';
+        document.getElementById(id)?.remove();
+        const el = document.createElement('div'); el.id = id;
+        el.style.cssText = `position:fixed;top:14px;left:50%;transform:translateX(-50%);background:${color||'#5E35B1'};color:white;padding:10px 18px;border-radius:14px;font-family:Jua;font-size:13px;z-index:99700;box-shadow:0 4px 14px rgba(0,0,0,0.4);`;
+        el.textContent = msg;
+        document.body.appendChild(el);
+        setTimeout(()=>el.remove(), 4000);
+    }
     // 학생이 호출 — Firebase에서 자리 목록 읽어 본인 인덱스(참가자 정렬)에 맞는 자리로 텔레포트
     window._lmTeleportToFixedSpot = function(){
         if(!me || me.cd === 'teacher_main') return;
         getPlzRef().child('lmSeats').once('value', snap => {
             const raw = snap.val();
-            const seats = Array.isArray(raw) ? raw : (raw ? Object.values(raw) : []);
-            if(!seats.length) return; // 교사가 자리 미설정
-            // 참가자 목록 (uid 정렬 — 모든 클라이언트 동일 순서 보장)
+            const seats = (window._lmReadSeats||(r=>r?(Array.isArray(r)?r:Object.keys(r).filter(k=>/^s\d+$/.test(k)).sort().map(k=>r[k])):[]))(raw);
+            console.log('[lm] 자리 텔레포트 시도', { seats: seats.length, me: me.cd });
+            if(!seats.length){
+                console.warn('[lm] 자리 미설정 — 교사가 🪑 자리 세팅에서 자리를 등록하지 않음');
+                _lmToast('⚠️ 교사가 자리를 세팅하지 않았어요', '#FF9800');
+                return;
+            }
+            // 게임 진행 중이면 게임 참가자 명단 사용, 아니면 Firebase plaza/users에서 직접 조회 (캐시 race 방지)
             const lg = window._liarState, mg = window._mafiaState;
-            let participants = [];
-            if(lg && lg.on && lg.players){
-                participants = Array.isArray(lg.players) ? lg.players.slice() : Object.values(lg.players);
+            const _applySeat = (participants) => {
+                participants.sort();
+                let idx = participants.indexOf(me.cd);
+                if(idx === -1){
+                    console.warn('[lm] 참가자 목록에 본인 없음 — uid 해시 폴백', participants);
+                    let hash = 0;
+                    for(const c of String(me.cd)) hash = (hash*31 + c.charCodeAt(0)) & 0xffff;
+                    idx = hash % seats.length;
+                }
+                if(idx >= seats.length){
+                    // 자리 부족 — 마지막 자리 옆에 살짝 산포해 배치 + 토스트로 안내
+                    console.warn('[lm] 자리 부족 — 자리', seats.length, '개, 본인 idx', idx);
+                    _lmToast(`⚠️ 자리 부족 (${seats.length}자리 < ${idx+1}번째). 교사가 자리 추가 필요`, '#FF9800');
+                }
+                const seat = seats[idx % seats.length];
+                if(!seat || typeof seat.x !== 'number'){
+                    console.error('[lm] 자리 좌표 오류', seat); return;
+                }
+                const b = _plzGetBounds();
+                _plzPos.x = Math.max(b.xMin, Math.min(b.xMax, seat.x));
+                _plzPos.y = Math.max(b.yMin, Math.min(b.yMax, seat.y));
+                const myEl = document.querySelector(`.plz-char[data-uid="${me.cd}"]`);
+                if(myEl){
+                    myEl.style.transition = 'left 0.6s ease-out, top 0.6s ease-out';
+                    myEl.style.left = _plzPos.x + '%';
+                    myEl.style.top  = _plzPos.y + '%';
+                }
+                if(plzMyRef){
+                    plzMyRef.update({ x:_plzPos.x, y:_plzPos.y });
+                    _plzLastSentX = _plzPos.x;
+                    _plzLastSentY = _plzPos.y;
+                }
+                console.log('[lm] 텔레포트 완료 — idx=', idx, '/ 참가자', participants.length, '명, 자리', seats.length, '개');
+                _lmToast(`🪑 ${idx+1}번 자리로 이동 (${idx+1}/${seats.length})`);
+            };
+            if(lg && lg.on){
+                const pl = lg.players;
+                _applySeat(Array.isArray(pl) ? pl.slice() : (pl ? Object.values(pl) : []));
             } else if(mg && mg.on && mg.roles){
-                participants = Object.keys(mg.roles);
+                _applySeat(Object.keys(mg.roles));
+            } else {
+                // 게임 없음 — Firebase에서 학생 번호(no) 기준 정렬로 자리 배정
+                getPlzRef().child('users').once('value', usnap => {
+                    const entries = [];
+                    usnap.forEach(c => {
+                        if(c.key === 'teacher_main') return;
+                        const v = c.val()||{};
+                        entries.push({ uid: c.key, no: v.no || 999 });
+                    });
+                    if(!entries.find(e => e.uid === me.cd)){
+                        const myNo = (db.stu||[]).find(s => s.cd === me.cd)?.no || 999;
+                        entries.push({ uid: me.cd, no: myNo });
+                    }
+                    entries.sort((a,b) => a.no - b.no || a.uid.localeCompare(b.uid));
+                    _applySeat(entries.map(e => e.uid));
+                });
             }
-            participants.sort();
-            const idx = participants.indexOf(me.cd);
-            if(idx === -1) return; // 참가자 아님 (관전자)
-            const seat = seats[idx % seats.length]; // 자리 부족하면 순환
-            if(!seat || typeof seat.x !== 'number') return;
-            const b = _plzGetBounds();
-            _plzPos.x = Math.max(b.xMin, Math.min(b.xMax, seat.x));
-            _plzPos.y = Math.max(b.yMin, Math.min(b.yMax, seat.y));
-            const myEl = document.querySelector(`.plz-char[data-uid="${me.cd}"]`);
-            if(myEl){
-                myEl.style.transition = 'left 0.6s ease-out, top 0.6s ease-out';
-                myEl.style.left = _plzPos.x + '%';
-                myEl.style.top  = _plzPos.y + '%';
-            }
-            if(plzMyRef) plzMyRef.update({ x:_plzPos.x, y:_plzPos.y });
+        }, err => {
+            console.error('[lm] lmSeats 조회 실패', err);
+            _lmToast('❌ 자리 조회 실패', '#F44336');
         });
     };
 
@@ -22635,6 +23980,15 @@ window.addCharRow = function() {
 
     window.plzClickMove = function(e) {
         if(!me || !window._plzActive) return;
+        if(me.cd !== 'teacher_main'){
+            // 자리 세팅이 있으면 학생은 항상 클릭 이동 차단 (자리 고정)
+            if((window._lmSeatsCache||[]).length > 0) return;
+            // OX 퀴즈 freeze 중 차단
+            if(window._oxQuizFrozen || window._oxSpectatorFreeze) return;
+            // 얼음땡 얼음 상태 차단
+            const gTag = window._iceTagState;
+            if(gTag && gTag.frozen && gTag.frozen[me.cd]) return;
+        }
         const rect = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -22701,6 +24055,13 @@ window.addCharRow = function() {
         // 게임 참관자 (중간 입장자) 채팅 차단 — 모든 게임 공통
         if(!isTeacher && window._isPlzSpectator && window._isPlzSpectator(uid)){
             inp.value = ''; inp.placeholder = '👻 참관 중에는 채팅할 수 없어요';
+            setTimeout(() => { inp.placeholder = '메시지 입력 후 Enter...'; }, 2500);
+            return;
+        }
+        // 마피아 유령(사망자) 채팅 차단
+        const _mafGhost = window._mafiaState;
+        if(!isTeacher && _mafGhost && _mafGhost.on && _mafGhost.roles && _mafGhost.roles[uid] && _mafGhost.alive && _mafGhost.alive[uid] === false){
+            inp.value = ''; inp.placeholder = '👻 유령은 채팅할 수 없어요';
             setTimeout(() => { inp.placeholder = '메시지 입력 후 Enter...'; }, 2500);
             return;
         }
@@ -23211,6 +24572,10 @@ window.addCharRow = function() {
         // 다중 탭 안정성 타이머/리스너 정리
         if(window._plzPresenceTimer){ clearInterval(window._plzPresenceTimer); window._plzPresenceTimer = null; }
         if(window._plzVisibilityHandler){ document.removeEventListener('visibilitychange', window._plzVisibilityHandler); window._plzVisibilityHandler = null; }
+        if(window._plzConnHandler){
+            try { firebase.database().ref('.info/connected').off('value', window._plzConnHandler); } catch(_){}
+            window._plzConnHandler = null;
+        }
         // Remove from presence
         if(plzMyRef) { plzMyRef.remove(); plzMyRef = null; }
         // Cancel game loop
@@ -23242,6 +24607,17 @@ window.addCharRow = function() {
         document.getElementById('_lrMenu')?.remove();
         document.getElementById('_gameIntro')?.remove();
         window._gameIntroShown = {};
+        // 오목 정리
+        window._omokGames = {};
+        window._omokOpenedId = null;
+        window._omokEndShownIds = {};
+        window._omokPendingByGame = {};
+        window._omokLastMoveTs = 0;
+        if(window._omokBadgeTimer){ clearInterval(window._omokBadgeTimer); window._omokBadgeTimer = null; }
+        document.getElementById('_omokPanel')?.remove();
+        document.getElementById('_omokMenu')?.remove();
+        document.querySelectorAll('._omokBadge').forEach(el => el.remove());
+        document.querySelectorAll('[id^="_omokEndModal_"]').forEach(el => el.remove());
         // Unsubscribe Firebase listeners
         plzListeners.filter(l=>l.who==='student').forEach(l=>l.ref.off(l.type, l.fn));
         plzListeners = plzListeners.filter(l=>l.who!=='student');
