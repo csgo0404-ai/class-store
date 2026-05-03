@@ -4877,15 +4877,8 @@ let _renderLock = false; // 재진입 방지
     }
     
     function navS(id,e){
-        // 학생 탭 화면 이동 시 다른 학생 데이터 새로고침 (30초 throttle)
-        // 광장은 자체 presence가 있으므로 stu refresh 불필요
-        if(id !== 's_plz' && window._refreshAllStu) {
-            const now = Date.now();
-            if(!window._lastStuRefresh || now - window._lastStuRefresh > 30000) {
-                window._lastStuRefresh = now;
-                try { window._refreshAllStu(); } catch(_){}
-            }
-        }
+        // ※ 일반 탭 전환 시에는 다른 학생 정보 fetch 안 함 — 순위표 진입 시에만 rRank()가 강제 refresh (트래픽 절감)
+        // 광장은 자체 presence(per-uid 구독)로 별도 처리됨
         // 광장에서 나갈 때 cleanup
         if(window._plzActive && id !== 's_plz') exitPlaza();
         document.querySelectorAll('#appS .cont > div').forEach(d=>{
@@ -11053,31 +11046,33 @@ window.addCharRow = function() {
         // ── 착용중인 뱃지 (획득한 뱃지 중 마지막) ──
         const equippedBadge = customBadges2[customBadges2.length - 1] || null;
 
-        // ── 용사 랭킹 ──
-        const rankStus = (db.stu||[]).slice().sort((a,b)=>{
-            const d = (b.cookie||0)-(a.cookie||0);
-            return d!==0 ? d : (b.rb||0)-(a.rb||0);
-        });
-        const medals2 = ['🥇','🥈','🥉'];
-        const rankRows = rankStus.map((s,idx)=>{
-            const rank = idx+1;
-            const isMe2 = s.cd===me.cd;
-            const rlv = Math.floor((s.cookie||0)/10);
-            const rrb = s.rb||0;
-            const stars2 = rrb>0?`<span style="color:#FFB300;font-size:12px;">${'★'.repeat(Math.min(rrb,5))}${rrb>5?'…':''}</span>`:'';
-            const rankEl2 = rank<=3 ? `<div class="rank-num medal">${medals2[rank-1]}</div>` : `<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
-            const rowClass2 = `rank-row${isMe2?' me':rank===1?' top1':rank===2?' top2':rank===3?' top3':''}`;
-            return `<div class="${rowClass2}">${rankEl2}${renderAvatar(s.eq||{},40)}<div class="rank-info"><div class="rank-nm">${s.nm}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}쿠키 ${s.cookie||0}개</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
-        }).join('');
-        const myRank2 = rankStus.findIndex(s=>s.cd===me.cd)+1;
-        const myRankStu = rankStus[myRank2-1];
-        const myRankRowHtml = myRankStu ? (()=>{
-            const s=myRankStu, rank=myRank2, rlv=Math.floor((s.cookie||0)/10), rrb=s.rb||0;
-            const stars2=rrb>0?`<span style="color:#FFB300;font-size:12px;">${'★'.repeat(Math.min(rrb,5))}${rrb>5?'…':''}</span>`:'';
-            const rankEl2=rank<=3?`<div class="rank-num medal">${medals2[rank-1]}</div>`:`<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
-            return `<div class="rank-row me">${rankEl2}${renderAvatar(s.eq||{},40)}<div class="rank-info"><div class="rank-nm">${s.nm} <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span></div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}쿠키 ${s.cookie||0}개</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
-        })() : '<div style="color:#ccc;text-align:center;padding:20px;">순위 정보 없음</div>';
+        // ── 용사 랭킹 ── (트래픽 절감: 펼치기 전엔 db.stu 조회 안 함, + 버튼 클릭 시 fetch)
         if(window._rankExpanded===undefined) window._rankExpanded=false;
+        const medals2 = ['🥇','🥈','🥉'];
+        let rankRows = '', myRank2 = 0, myRankRowHtml = '';
+        if(window._rankExpanded){
+            const rankStus = (db.stu||[]).slice().sort((a,b)=>{
+                const d = (b.cookie||0)-(a.cookie||0);
+                return d!==0 ? d : (b.rb||0)-(a.rb||0);
+            });
+            rankRows = rankStus.map((s,idx)=>{
+                const rank = idx+1;
+                const isMe2 = s.cd===me.cd;
+                const rlv = Math.floor((s.cookie||0)/10);
+                const rrb = s.rb||0;
+                const stars2 = rrb>0?`<span style="color:#FFB300;font-size:12px;">${'★'.repeat(Math.min(rrb,5))}${rrb>5?'…':''}</span>`:'';
+                const rankEl2 = rank<=3 ? `<div class="rank-num medal">${medals2[rank-1]}</div>` : `<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
+                const rowClass2 = `rank-row${isMe2?' me':rank===1?' top1':rank===2?' top2':rank===3?' top3':''}`;
+                const avtSize = rank<=3 ? 110 : 75;
+                return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;">${s.nm}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}쿠키 ${s.cookie||0}개</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
+            }).join('');
+            myRank2 = rankStus.findIndex(s=>s.cd===me.cd)+1;
+        } else {
+            // 접힌 상태 — 본인 정보만 표시 (db.stu 다른 학생 데이터 의존 X)
+            const rrb = me.rb||0;
+            const stars2 = rrb>0?`<span style="color:#FFB300;font-size:12px;">${'★'.repeat(Math.min(rrb,5))}${rrb>5?'…':''}</span>`:'';
+            myRankRowHtml = `<div class="rank-row me" style="padding:10px 14px;gap:14px;"><div class="rank-num" style="color:#BDBDBD;">나</div>${renderAvatar(me.eq||{},90)}<div class="rank-info"><div class="rank-nm" style="font-size:16px;">${me.nm} <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span></div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}쿠키 ${me.cookie||0}개</div></div><div class="rank-lv">Lv.${lv}</div></div>`;
+        }
 
         // 칭호 정보
         const equippedTitId = me.equippedTit;
@@ -11223,11 +11218,11 @@ window.addCharRow = function() {
             </div>
 
             <div style="margin-top:20px; background:white; border-radius:20px; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); border:2px solid #F5F5F5; margin-bottom:20px;">
-                <div class="rank-header" style="cursor:pointer;user-select:none;" onclick="window._rankExpanded=!window._rankExpanded;rChar()">
+                <div class="rank-header" style="cursor:pointer;user-select:none;" onclick="window._toggleRankExpanded()">
                     <div style="font-size:36px;">🏆</div>
                     <div style="flex:1;">
                         <div style="font-size:18px;font-weight:bold;color:#4E342E;">용사 랭킹</div>
-                        <div style="font-size:13px;color:#888;">내 순위: <b style="color:#FF9800;">${myRank2}위</b> &nbsp;·&nbsp; Lv.${lv} &nbsp;·&nbsp; 쿠키 ${totalCookie}개</div>
+                        <div style="font-size:13px;color:#888;">${window._rankExpanded?`내 순위: <b style="color:#FF9800;">${myRank2}위</b> &nbsp;·&nbsp; `:''}Lv.${lv} &nbsp;·&nbsp; 쿠키 ${totalCookie}개</div>
                     </div>
                     <div style="font-size:22px;color:#FF9800;font-weight:bold;line-height:1;padding:4px 8px;border-radius:10px;background:#FFF3E0;">${window._rankExpanded?'−':'+'}</div>
                 </div>
@@ -11238,6 +11233,24 @@ window.addCharRow = function() {
                 </div>
             </div>`;
     }
+
+    // 용사 랭킹 토글 — 펼칠 때만 다른 학생 데이터 fetch (트래픽 절감)
+    window._toggleRankExpanded = function() {
+        if(window._rankExpanded) {
+            // 접기 — fetch 불필요
+            window._rankExpanded = false;
+            rChar();
+            return;
+        }
+        // 펼치기 — db.stu 다른 학생 데이터 새로 받아옴
+        window._rankExpanded = true;
+        if(window._refreshAllStu) {
+            try { window._refreshAllStu().finally(() => { window._lastStuRefresh = Date.now(); rChar(); }); }
+            catch(_){ rChar(); }
+        } else {
+            rChar();
+        }
+    };
 
     window.equipTit = function(titId) {
         if(!me) return;
@@ -16851,14 +16864,26 @@ window.addCharRow = function() {
     window._plzActive = false;
 
     // 접속자 수에 따라 throttle 자동 조정 (트래픽 절감)
-    //  ~5명: 1000ms / 6~15명: 1500ms / 16~30명: 2000ms / 30+명: 3000ms
+    // 얼음땡/숨바꼭질 진행 중: 이동이 게임 메커니즘 — 부드러움 우선 (기존 값 유지)
+    //   ~7명: 800ms / ~15명: 1200ms / ~30명: 1800ms / 30+명: 2500ms
+    // 일반 광장: 이동이 게임 메커니즘 아님 — throttle 상향 (트래픽 절감)
+    //   ~7명: 1500ms / ~15명: 2000ms / ~30명: 2800ms / 30+명: 3500ms
     function _plzGetThrottle() {
         const n = Object.keys(_plzUserCache||{}).length || 1;
-        // 7명 이하 광장: 부드러운 이동 우선 (원래 값 유지)
-        if(n <= 7) return 800;
-        if(n <= 15) return 1200;
-        if(n <= 30) return 1800;
-        return 2500;
+        // 이동 기반 게임이 실제 진행 중일 때만 fast throttle
+        const ig = window._iceTagState, hg = window._hideSeekState;
+        const moveGameActive = (ig && ig.active) || (hg && hg.active);
+        if(moveGameActive){
+            if(n <= 7) return 800;
+            if(n <= 15) return 1200;
+            if(n <= 30) return 1800;
+            return 2500;
+        }
+        // 일반 광장 — 이동 정밀도보다 트래픽 절감 우선
+        if(n <= 7) return 1500;
+        if(n <= 15) return 2000;
+        if(n <= 30) return 2800;
+        return 3500;
     }
     // A: 실제로 위치가 바뀌었을 때만 Firebase 전송
     function _plzTrySyncPos() {
@@ -19550,7 +19575,7 @@ window.addCharRow = function() {
         // 인원 부족 (3명 미만 — 시작 조건과 동일) → 자동 종료
         if(liveParts.length < 3) {
             try { getPlzRef().child('hideseek').remove(); } catch(_){}
-            try { getPlzRef().child('chat').push({ sys:true, nm:'⚠️', msg:'⚠️ 인원 부족으로 숨바꼭질이 자동 종료됐어요', ts:Date.now() }); } catch(_){}
+            // 숨바꼭질 자동 종료 알림은 각자 화면 UI로 표시됨
             return;
         }
         // 진행자(술래) 이탈 → 게임 즉시 종료
@@ -19559,7 +19584,7 @@ window.addCharRow = function() {
         const liveSeekers = seekerIds0.filter(u => liveUids0.has(u));
         if(!_justStarted && liveSeekers.length === 0) {
             try { getPlzRef().child('hideseek').remove(); } catch(_){}
-            try { getPlzRef().child('chat').push({ sys:true, nm:'⚠️', msg:'⚠️ 진행자 이탈로 숨바꼭질이 종료됐어요', ts:Date.now() }); } catch(_){}
+            // 숨바꼭질 진행자 이탈 종료 알림은 각자 화면 UI로 표시됨
         }
     }
 
@@ -19891,8 +19916,7 @@ window.addCharRow = function() {
             } else {
                 msg = `📝 OX 퀴즈 종료 (공동 생존: ${winners.join(', ')})`;
             }
-            window._plzChatPushPrune(getPlzRef().child('chat'), { sys: true, nm: '📝', msg, ts: Date.now() });
-            // Firebase에 우승자 발표 푸시 (모든 클라이언트가 화면에 띄움)
+            // 우승 발표는 oxQuizFinale 노드 — 모든 클라이언트가 팝업으로 표시 (채팅 알림 제거: 트래픽 절감)
             getPlzRef().child('oxQuizFinale').set({
                 winners, ts: Date.now(),
                 kind: aliveList.length === 1 ? 'solo' : (aliveList.length === 0 ? 'none' : 'tie')
@@ -20235,7 +20259,7 @@ window.addCharRow = function() {
             .then(() => getPlzRef().child('mafia').set(state))
             .then(() => console.log('[mafia] state + roles 작성 성공'))
             .catch(err => { console.error('[mafia] state 작성 실패:', err); alert('마피아 시작 실패: '+err.message); });
-        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🕵️', msg:'🕵️ 마피아 게임 시작! 본인 역할을 확인하세요', ts:now });
+        // 마피아 시작 알림은 각자 화면에 모달로 표시됨 (채팅 sys 메시지 제거: 트래픽 절감)
     };
 
     // 밤 결과 상세 모달 — resolve 페이즈 진입 시 호출
@@ -20605,7 +20629,7 @@ window.addCharRow = function() {
             roles: _allRolesMap,
             actionLog: log
         });
-        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🏆', msg: winMsg+' / '+reveal, ts:now });
+        // 마피아 승패 결과는 각자 화면 모달로 표시됨 (채팅 sys 메시지 제거: 트래픽 절감)
         // 1초 뒤 노드 정리 — 결과창과 왕관은 클라이언트가 이미 표시
         setTimeout(() => { try {
             getPlzRef().child('mafia').remove();
@@ -20882,11 +20906,11 @@ window.addCharRow = function() {
         if(g.phase === 'reveal'){
             // 모두 역할 확인 ack 완료 → 자유 토론
             ref.update({ _processing:null, phase:'discuss', phaseEndAt: now + 60*60*1000 });
-            window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'💬', msg:`💬 ${round}일차 자기소개·자유 토론 — 절반 이상 종료 동의 시 밤 진입`, ts:now });
+            // 마피아 phase 알림은 각자 화면 UI로 표시됨
         } else if(g.phase === 'discuss'){
             // 절반 이상 동의 → 밤
             ref.update({ _processing:null, phase:'night', phaseEndAt: now + 60*60*1000, discussEnd:null });
-            window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🌙', msg:`🌙 ${round}일차 밤 — 본인 역할에 맞게 한 명을 입력하세요`, ts:now });
+            // 마피아 밤 phase 알림은 각자 화면 UI로 표시됨
         } else if(g.phase === 'night'){
             // 가드: 모든 생존 플레이어가 제출해야 advance
             const _aliveAll = Object.keys(g.alive||{}).filter(u => g.alive[u]);
@@ -20916,7 +20940,7 @@ window.addCharRow = function() {
                             actionDetailRaw: gWithRoles.acts && gWithRoles.acts[round] ? Object.entries(gWithRoles.acts[round]).map(([u,t])=>({u,t,role:fullRoles[u]})) : []
                         }
                     });
-                    window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 시민 처형 투표 동률 — 재투표\n후보: ${candNms}\n생존자 모두 후보 중 한 명 입력`, ts:now });
+                    // 재투표 알림은 각자 화면 UI로 표시됨
                     return;
                 }
                 _mafiaApplyNightResult(gWithRoles, result, round, now, ref, c);
@@ -20951,9 +20975,9 @@ window.addCharRow = function() {
             let extraKill = null;
             if(topCnt > 0 && tied.length === 1){
                 extraKill = tied[0];
-                window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 재투표 결과: ${(_plzUserCache[extraKill]||{}).nm||extraKill} 처형 결정`, ts:now });
+                // 재투표 결과는 각자 화면 UI로 표시됨
             } else {
-                window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 재투표도 동률 — 시민이 결정 못해 아무도 처형되지 않아요`, ts:now });
+                // 재투표 동률 결과는 각자 화면 UI로 표시됨
             }
             // 합산해서 정상 결과로 처리
             const finalCitizenKills = [...new Set([...(pn.partialCitizenKills||[]), ...(extraKill ? [extraKill] : [])])]
@@ -20970,7 +20994,7 @@ window.addCharRow = function() {
         } else if(g.phase === 'resolve'){
             // 발표 끝 → 다시 토론(다음 라운드)
             ref.update({ _processing:null, phase:'discuss', round: round+1, phaseEndAt: now + 60*60*1000, acts:null, discussEnd:null });
-            window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'💬', msg:`💬 ${round+1}일차 자유 토론`, ts:now });
+            // 다음 라운드 알림은 각자 화면 UI로 표시됨
         }
     }
 
@@ -21001,7 +21025,7 @@ window.addCharRow = function() {
             reveals.push({uid, nm: nm||uid, role, by: how});
         });
         if(!msgs.length) msgs.push('아무도 죽지 않았어요 (의사 보호·합의 실패)');
-        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🌅', msg:`🌅 ${round}일차 아침\n${msgs.join('\n')}`, ts:now });
+        // 마피아 아침 결과는 각자 화면 UI로 표시됨
         // 상세 행동 로그
         const ra = (g.acts || {})[round] || {};
         const actionDetail = { mafia:[], doctor:[], police:[], citizen:[] };
@@ -21662,7 +21686,7 @@ window.addCharRow = function() {
         }
         getPlzRef().child('mafia').update(updates);
         const nm = (_plzUserCache[leftUid]||{}).nm || leftUid;
-        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'✈️', msg:`${nm}이(가) 광장을 떠나서 사망 처리됐어요`, ts:Date.now() });
+        // 광장 이탈 사망 처리는 각자 화면 UI로 반영됨
         // 즉시 _mafiaEnd 호출 제거 — 정상 흐름(resolve 단계)에서 win 감지하도록 함 (premature 종료 방지)
     };
 
@@ -22237,7 +22261,7 @@ window.addCharRow = function() {
             .catch(err => console.error('[liar] state 작성 실패', err));
         const modeLabel = c.mode==='spy'?'🕵️ 스파이':c.mode==='fool'?'🤡 바보':'🎭 일반';
         // 주제는 단어 모달에 노출됨. 채팅엔 모드만 표시.
-        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🎭', msg:`🎭 라이어 게임 시작! ${modeLabel}`, ts:now });
+        // 라이어 시작 알림은 각자 화면 모달로 표시됨
     };
 
     window._liarEnd = function(forced){
@@ -22286,7 +22310,7 @@ window.addCharRow = function() {
         if(full.word != null) _upd.word = full.word;
         if(full.foolWord != null) _upd.foolWord = full.foolWord;
         getPlzRef().child('liar').update(_upd);
-        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🏆', msg:`${winMsg} / ${reveal}`, ts:now });
+        // 라이어 승패 결과는 각자 화면 모달로 표시됨
         setTimeout(() => { try { getPlzRef().child('liar').remove(); getPlzRef().child('liarPriv').remove(); getPlzRef().child('liarVotes').remove(); } catch(_){} }, 1000);
     }
 
@@ -22331,7 +22355,7 @@ window.addCharRow = function() {
         if(g.phase === 'reveal'){
             // 자유 토론(무제한). 누군가 '투표 시작' 누르기 전까지 자동 전환 없음.
             ref.update({ _processing:null, phase:'discuss', phaseEndAt: now + 60*60*1000 });
-            window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'💬', msg:`💬 자유 토론 — 모두 설명 후 '투표 시작' 버튼을 눌러주세요`, ts:now });
+            // 라이어 자유 토론 phase는 각자 화면 UI로 표시됨
         } else if(g.phase === 'discuss'){
             // discuss는 자동 전환 안 함. 수동 버튼으로만 vote 진입.
             ref.update({ _processing:null, phaseEndAt: now + 60*60*1000 });
@@ -22344,7 +22368,7 @@ window.addCharRow = function() {
                     // 재투표 진입 시 sibling vote 초기화
                     getPlzRef().child('liarVotes').remove();
                     const names = tally.tied.map(u => (_plzUserCache[u]||{}).nm || u).join(', ');
-                    window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 동률 — 재투표: ${names}`, ts:now });
+                    // 라이어 재투표 알림은 각자 화면 UI로 표시됨
                 } else {
                     _liarFinalize(g, tally.topUid);
                 }
@@ -22389,7 +22413,7 @@ window.addCharRow = function() {
         if(!g || !g.on || g.phase !== 'discuss') return;
         const now = Date.now();
         getPlzRef().child('liar').update({ phase:'vote', phaseEndAt: now + 60*60*1000, votes:null, voted:null, submitted:null, liarGuess:null, discussEnd: null });
-        window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🗳️', msg:`🗳️ 투표 시작 — 의심되는 사람의 이름을 입력하세요`, ts:now });
+        // 라이어 투표 시작 알림은 각자 화면 UI로 표시됨
     };
 
     // 결과 로직 (모드별)
@@ -23251,7 +23275,7 @@ window.addCharRow = function() {
             const aliveList = allStu.filter(u => !out[u]);
             if(allStu.length >= 2 && aliveList.length === 1) {
                 const winnerNm = _plzUserCache[aliveList[0]]?.nm || aliveList[0];
-                window._plzChatPushPrune(getPlzRef().child('chat'), { sys: true, nm: '📝', msg: `🏆 ${winnerNm} 우승! (OX 퀴즈)`, ts: Date.now() });
+                // OX 우승 발표는 oxQuizFinale 노드 (모든 클라이언트가 팝업으로 표시)
                 getPlzRef().child('oxQuizFinale').set({ winners:[winnerNm], ts: Date.now(), kind:'solo' });
                 getPlzRef().child('oxQuiz').remove();
             }
@@ -23588,7 +23612,7 @@ window.addCharRow = function() {
             // 호스트가 광장을 떠나면 두 노드 모두 자동 정리 (stale 방지)
             try { _omokGameRef(gid).onDisconnect().remove(); } catch(_){}
             try { _omokDirRef(gid).onDisconnect().remove(); } catch(_){}
-            try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'⚫', msg:`⚫ ${me.nm||'학생'}님이 오목방을 열었어요. ${me.nm||''}님 캐릭터 위 바둑판 클릭해서 참가/관전!`, ts:now }); } catch(_){}
+            // 오목방 개설 알림은 캐릭터 위 미니 바둑판 배지로 표시됨 (채팅 sys 메시지 제거: 트래픽 절감)
         });
     }
 
@@ -23602,7 +23626,7 @@ window.addCharRow = function() {
             _omokGameRef(gid).update({ white: {uid:me.cd, nm:me.nm||''}, phase:'playing', playStartedAt:now }),
             _omokDirRef(gid).update({ whiteUid:me.cd, whiteNm:me.nm||'', phase:'playing' })
         ]).then(()=>{
-            try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'⚪', msg:`⚪ ${me.nm||'학생'}님 참가! 오목 시작 — 흑 ${g.black.nm} vs 백 ${me.nm||''}`, ts:now }); } catch(_){}
+            // 오목 참가 알림은 양쪽 플레이어 자동 풀스크린 + 캐릭터 배지로 표시됨
         });
     };
 
@@ -23649,14 +23673,13 @@ window.addCharRow = function() {
         update['board/'+idx] = myColor;
         update['turn'] = (myColor === 'b') ? 'w' : 'b';
         update['lastMove'] = idx;
-        update['lastMoveAt'] = now;
+        // ※ lastMoveAt/winLine 제거 — 사용처 없음 또는 클라이언트 재계산 가능 (트래픽 절감)
         const newBoard = Object.assign({}, g.board||{});
         newBoard[idx] = myColor;
         const winLine = _omokCheckWin(newBoard, idx, myColor);
         if(winLine){
             update['winner'] = myColor;
             update['winnerUid'] = me.cd;
-            update['winLine'] = winLine;
             update['phase'] = 'end';
             update['endedAt'] = now;
             const prevScore = (g.score && g.score[me.cd]) || 0;
@@ -23756,7 +23779,7 @@ window.addCharRow = function() {
                 blackScore: sc[newBlack.uid] || 0,
                 whiteScore: sc[newWhite.uid] || 0
             });
-            try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'⚫', msg:`⚫ 다시하기 — 흑백 교체! 흑 ${g.white.nm} vs 백 ${g.black.nm}`, ts:Date.now() }); } catch(_){}
+            // 오목 다시하기 알림은 풀스크린 보드에서 자동 반영됨
         } else {
             _omokGameRef(gid).child('rematch').update(rematch);
             // rematch 의향만 omok 노드에 저장 — dir 갱신 불필요 (배지에 표시 안 함)
@@ -23817,7 +23840,10 @@ window.addCharRow = function() {
                 const isPlayer = me && (d.blackUid === me.cd || d.whiteUid === me.cd);
                 if(isPlayer && !window._omokGameSubs[gid]){
                     _omokSubscribeGame(gid);
-                    // 다른 학생이 참가 (lobby→playing) 시 양쪽 플레이어 자동으로 풀스크린
+                }
+                // 다른 학생이 참가 (lobby→playing) 시 양쪽 플레이어 자동으로 풀스크린
+                // ※ 구독 가드 밖에 둬야 호스트도 트리거됨 (호스트는 방 생성 시 이미 구독되어 있음)
+                if(isPlayer){
                     const p = prev[gid];
                     if(p && p.phase==='lobby' && d.phase==='playing'){
                         window._omokOpenedId = gid;
@@ -24022,7 +24048,9 @@ window.addCharRow = function() {
         }
         const N = _OMOK_N;
         const board = g.board || {};
-        const winSet = new Set(g.winLine || []);
+        // winLine은 더 이상 broadcast하지 않음 — 승리 시 클라이언트에서 재계산 (트래픽 절감)
+        const _winLine = (g.winner && g.lastMove != null) ? (_omokCheckWin(board, g.lastMove, g.winner) || []) : [];
+        const winSet = new Set(g.winLine || _winLine);
         const myColor = (g.black && g.black.uid === me.cd) ? 'b'
                       : (g.white && g.white.uid === me.cd) ? 'w' : null;
         const myTurn = !!myColor && g.turn === myColor && g.phase === 'playing' && !g.winner;
@@ -24177,7 +24205,7 @@ window.addCharRow = function() {
         const winIc = winColor === 'b' ? '⚫' : '⚪';
         const reason = g.resigned ? '(상대 기권)' : '(5목 완성)';
         try { window._sfxVictoryFanfare && window._sfxVictoryFanfare(); } catch(_){}
-        try { window._plzChatPushPrune(getPlzRef().child('chat'), { sys:true, nm:'🏆', msg:`🏆 ${winIc} ${winNm} 오목 승리! ${reason} (vs ${loseNm})`, ts:Date.now() }); } catch(_){}
+        // 오목 승리 알림은 종료 모달로 표시됨 (채팅 sys 메시지 제거: 트래픽 절감)
         _omokRenderEndModal(gid, g);
     }
 
@@ -24478,7 +24506,7 @@ window.addCharRow = function() {
                 // 취소 — 본인 표만 제거
                 voteRef.child(me.cd).remove(() => {
                     document.getElementById('_voteEndModal')?.remove();
-                    try { getPlzRef().child('chat').push({ sys:true, nm:'🗳️', msg:`↩️ ${myNm}님이 투표를 취소했어요`, ts:Date.now() }); } catch(_){}
+                    // 투표 취소 알림은 voteEnd 노드로 자동 동기화됨
                 });
                 return;
             }
@@ -24500,14 +24528,9 @@ window.addCharRow = function() {
                     const need = Math.ceil(total / 2);
                     document.getElementById('_voteEndModal')?.remove();
                     // 채팅 알림 — 시작자는 강조, 이후는 진행
-                    try {
-                        const startMsg = isFirstVote
-                            ? `🗳️ ${myNm}님이 게임 종료 투표를 시작했어요! (1/${need} 필요)`
-                            : `🗳️ 종료 투표 진행중 — ${votes}/${need} 필요`;
-                        getPlzRef().child('chat').push({ sys:true, nm:'🗳️', msg: startMsg, ts:Date.now() });
-                    } catch(_){}
+                    // 종료 투표 진행 알림은 voteEnd 노드 동기화로 표시됨 (채팅 sys 메시지 제거)
                     if(votes >= need) {
-                        try { getPlzRef().child('chat').push({ sys:true, nm:'🗳️', msg:`✅ 과반수 동의로 게임이 종료되었어요! (${votes}/${total})`, ts:Date.now() }); } catch(_){}
+                        // 종료 결정 알림은 아래 toast로 표시됨
                         if(window._plzShowVoteEndToast) window._plzShowVoteEndToast(`✅ 투표로 게임 종료! (${votes}/${total})`);
                         window._endAllPlzGames();
                     }
@@ -24578,13 +24601,13 @@ window.addCharRow = function() {
         if(next === oldHost) return;
         window._plzReassignHost(next);
         const nm = (_plzUserCache[next]||{}).nm || next;
-        try { getPlzRef().child('chat').push({ sys:true, nm:'🎲', msg:`🎲 진행자 이탈 — ${nm}님이 랜덤으로 진행자 권한을 이어받았어요`, ts:Date.now() }); } catch(_){}
+        // 진행자 이탈/인계 알림은 게임 노드 동기화로 표시됨
     };
     // 진행자 권한: 게임 즉시 종료
     window._plzHostEndGame = function() {
         if(!window._plzAmHost()) { alert('진행자만 종료할 수 있어요.'); return; }
         if(!confirm('진행 중인 게임을 즉시 종료할까요?')) return;
-        try { getPlzRef().child('chat').push({ sys:true, nm:'🛑', msg:`🛑 진행자가 게임을 종료했어요`, ts:Date.now() }); } catch(_){}
+        // 진행자 종료 알림은 게임 노드 종료로 자동 표시됨
         if(window._endAllPlzGames) window._endAllPlzGames();
     };
     // 진행자가 다른 사람에게 권한 넘기기 — 다른 살아있는 참가자 중 랜덤 1명 선정 후 확인
@@ -24608,7 +24631,7 @@ window.addCharRow = function() {
         const nm = (_plzUserCache[pick]||{}).nm || pick;
         if(!confirm(`🎲 랜덤 지정: ${nm}님\n권한을 넘길까요?`)) return;
         try { window._plzReassignHost(pick); } catch(_){}
-        try { getPlzRef().child('chat').push({ sys:true, nm:'🎲', msg:`🎲 진행자가 랜덤으로 ${nm}님에게 권한을 넘겼어요`, ts:Date.now() }); } catch(_){}
+        // 진행자 권한 인계 알림은 게임 노드 동기화로 표시됨
     };
 
     // 진행자 권한: 라이어/마피아 토론 즉시 종료 (현재 phase에 맞춰 advance)
@@ -24616,13 +24639,13 @@ window.addCharRow = function() {
         if(!window._plzAmHost()) { alert('진행자만 사용할 수 있어요.'); return; }
         const lg = window._liarState;
         if(lg && lg.on && lg.phase === 'discuss') {
-            try { getPlzRef().child('chat').push({ sys:true, nm:'✋', msg:`✋ 진행자가 토론을 종료했어요 — 투표 시작`, ts:Date.now() }); } catch(_){}
+            // 토론 종료/투표 시작은 phase 동기화로 자동 표시됨
             if(window._liarBeginVote) window._liarBeginVote();
             return;
         }
         const mg = window._mafiaState;
         if(mg && mg.on && mg.phase === 'discuss') {
-            try { getPlzRef().child('chat').push({ sys:true, nm:'✋', msg:`✋ 진행자가 토론을 종료했어요 — 밤 진입`, ts:Date.now() }); } catch(_){}
+            // 토론 종료/밤 진입은 phase 동기화로 자동 표시됨
             // phaseEndAt를 과거로 → tick이 advance
             try { getPlzRef().child('mafia/phaseEndAt').set(Date.now() - 1); } catch(_){}
             return;
@@ -25056,7 +25079,7 @@ window.addCharRow = function() {
         // 인원 부족 (3명 미만 — 시작 조건과 동일) → 자동 종료
         if(liveParts.length < 3) {
             try { getPlzRef().child('game').remove(); } catch(_){}
-            try { getPlzRef().child('chat').push({ sys:true, nm:'⚠️', msg:'⚠️ 인원 부족으로 얼음땡이 자동 종료됐어요', ts:Date.now() }); } catch(_){}
+            // 얼음땡 자동 종료 알림은 각자 화면 UI로 표시됨
             return;
         }
         // 진행자(술래) 이탈 → 게임 즉시 종료
@@ -25066,7 +25089,7 @@ window.addCharRow = function() {
         const liveTaggers = taggerIds.filter(u => live.has(u));
         if(!_justStarted && liveTaggers.length === 0) {
             try { getPlzRef().child('game').remove(); } catch(_){}
-            try { getPlzRef().child('chat').push({ sys:true, nm:'⚠️', msg:'⚠️ 진행자 이탈로 얼음땡이 종료됐어요', ts:Date.now() }); } catch(_){}
+            // 얼음땡 진행자 이탈 종료 알림은 각자 화면 UI로 표시됨
         }
     };
 
