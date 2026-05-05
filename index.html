@@ -19068,7 +19068,10 @@ window.addCharRow = function() {
     window._studentExitPlaza = function() {
         // 게임 진행 중이고 내가 참가자(유령 포함)면 나가기 차단 — 참관자만 가능
         const isSpec = window._isPlzSpectator && window._isPlzSpectator(me?.cd);
-        if(me && me.cd && window._anyPlzGameActive && window._anyPlzGameActive() && !isSpec){
+        // 폭탄게임: 미참가자이거나 탈락자(alive=false)는 관전자 → 방 나가기 허용
+        const _bgRm = window._bombGameState;
+        const isBombSpec = !!(_bgRm && _bgRm.on && me && me.cd && (!(_bgRm.participants && _bgRm.participants[me.cd]) || (_bgRm.alive && _bgRm.alive[me.cd] === false)));
+        if(me && me.cd && window._anyPlzGameActive && window._anyPlzGameActive() && !isSpec && !isBombSpec){
             alert('게임 진행 중에는 나갈 수 없어요. 게임이 끝나면 이동해주세요.');
             return;
         }
@@ -24370,6 +24373,26 @@ window.addCharRow = function() {
     function _catchMindRef() { return getPlzRef().child('catchMind'); }
     function _catchMindStrokesRef() { return getPlzRef().child('catchMindStrokes'); }
     function _catchMindGuessesRef() { return getPlzRef().child('catchMindGuesses'); }
+    // 트래픽 절감: participants를 sibling path로 분리 (메인 state echo에 참가자 명단 미포함)
+    function _catchMindParticipantsRef() { return getPlzRef().child('catchMindParticipants'); }
+    // 호스트 heartbeat — onDisconnect.remove(전체 게임 삭제) 대신 staleness 기반 cleanup으로 네트워크 blip 내구성↑
+    function _catchMindHbRef() { return getPlzRef().child('catchMindHb'); }
+    const _CM_HB_PERIOD = 20000, _CM_HB_STALE = 75000;
+    function _catchMindStartHostHeartbeat() {
+        if(window._cmHostHbInterval) clearInterval(window._cmHostHbInterval);
+        try { _catchMindHbRef().set(Date.now()); } catch(_){}
+        window._cmHostHbInterval = setInterval(() => {
+            const g = window._catchMindState;
+            if(!g || !g.on || g.starter !== me?.cd) {
+                clearInterval(window._cmHostHbInterval); window._cmHostHbInterval = null;
+                return;
+            }
+            try { _catchMindHbRef().set(Date.now()); } catch(_){}
+        }, _CM_HB_PERIOD);
+    }
+    function _catchMindStopHostHeartbeat() {
+        if(window._cmHostHbInterval) { clearInterval(window._cmHostHbInterval); window._cmHostHbInterval = null; }
+    }
     // spectators는 게임 종료(_catchMindRef.remove)에서 살아남도록 sibling path로 분리
     function _catchMindSpectatorsRef() { return getPlzRef().child('catchMindSpectators'); }
     // 트래픽 절감: guessedCycle 별도 path로 분리 (정답 시도마다 메인 state echo 회피)
@@ -24573,14 +24596,14 @@ window.addCharRow = function() {
             round: 1,
             totalRounds: Math.max(1, Math.min(20, totalRounds||5)),
             scores: {},
-            participants: autoParticipants,
             usedWords: [word],
             roundStartedAt: now,
             roundEndsAt: now + ROUND_MS,
             startedAt: now
         };
-        // 기존 잔재 정리 + 새 게임 set
-        window._catchMindState = state;
+        // 기존 잔재 정리 + 새 게임 set (participants는 sibling path)
+        window._catchMindState = Object.assign({}, state, { participants: autoParticipants });
+        window._catchMindParticipantsLocal = Object.assign({}, autoParticipants);
         window._catchMindVotesLocal = {};
         window._catchMindCycleLocal = {};
         window._catchMindScoresLocal = {};
@@ -24589,13 +24612,15 @@ window.addCharRow = function() {
             _catchMindGuessesRef().remove(),
             _catchMindCycleRef().remove(),
             _catchMindScoresRef().remove(),
-            _catchMindVotesRef().remove()
+            _catchMindVotesRef().remove(),
+            _catchMindParticipantsRef().remove()
         ]).then(() => {
-            _catchMindRef().set(state).then(() => {
-                try { _catchMindRef().onDisconnect().remove(); } catch(_){}
-                try { _catchMindStrokesRef().onDisconnect().remove(); } catch(_){}
-                try { _catchMindGuessesRef().onDisconnect().remove(); } catch(_){}
-                // spectators sibling은 안 지움 — 각 사용자가 본인 entry만 자가 정리 (timestamp 비교 위해 필요)
+            Promise.all([
+                _catchMindRef().set(state),
+                _catchMindParticipantsRef().set(autoParticipants)
+            ]).then(() => {
+                // onDisconnect.remove() 폐지 — host 네트워크 blip 시 게임 보존. heartbeat 기반 staleness cleanup 사용.
+                _catchMindStartHostHeartbeat();
             }).catch(err => { console.error('[catchMind] set 실패', err); alert('캐치마인드 시작 실패: ' + (err && err.message || err)); });
         }).catch(err => { console.error('[catchMind] cleanup 실패', err); });
         window._catchMindOpenPanel();
@@ -24645,12 +24670,12 @@ window.addCharRow = function() {
             strokesPerPlayer: sp,
             strokeCounts: {},
             totalStrokesNeeded,
-            participants: partsObj,
             scores: {},
             votes: {},
             startedAt: now
         };
-        window._catchMindState = state;
+        window._catchMindState = Object.assign({}, state, { participants: partsObj });
+        window._catchMindParticipantsLocal = Object.assign({}, partsObj);
         // 로컬 캐시도 즉시 정리 — 이전 게임 잔재 방지
         window._catchMindVotesLocal = {};
         window._catchMindCycleLocal = {};
@@ -24660,16 +24685,14 @@ window.addCharRow = function() {
             _catchMindGuessesRef().remove(),
             _catchMindCycleRef().remove(),
             _catchMindScoresRef().remove(),
-            _catchMindVotesRef().remove()  // ← 이전 투표 잔재 정리 (제출완료/4-4 버그 방지)
+            _catchMindVotesRef().remove(),
+            _catchMindParticipantsRef().remove()
         ]).then(() => {
-            _catchMindRef().set(state).then(() => {
-                try { _catchMindRef().onDisconnect().remove(); } catch(_){}
-                try { _catchMindStrokesRef().onDisconnect().remove(); } catch(_){}
-                try { _catchMindGuessesRef().onDisconnect().remove(); } catch(_){}
-                try { _catchMindVotesRef().onDisconnect().remove(); } catch(_){}
-                try { _catchMindScoresRef().onDisconnect().remove(); } catch(_){}
-                try { _catchMindCycleRef().onDisconnect().remove(); } catch(_){}
-                // spectators sibling은 안 지움 — 각 사용자가 본인 entry만 자가 정리 (timestamp 비교 위해 필요)
+            Promise.all([
+                _catchMindRef().set(state),
+                _catchMindParticipantsRef().set(partsObj)
+            ]).then(() => {
+                _catchMindStartHostHeartbeat();
             }).catch(err => { console.error('[catchMind-relay] set 실패', err); alert('릴레이 시작 실패: ' + (err.message||err)); });
         });
         window._catchMindOpenPanel();
@@ -24820,13 +24843,13 @@ window.addCharRow = function() {
         const g = window._catchMindState;
         if(!g || !g.on || !me) return;
         if(g.participants && g.participants[me.cd]) return;
-        _catchMindRef().child('participants').child(me.cd).set(me.nm || '학생');
+        _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생');
     }
     window._catchMindJoinFromBanner = function() {
         if(!me) return;
         const g = window._catchMindState;
         if(!g || !g.on) return;
-        try { _catchMindRef().child('participants').child(me.cd).set(me.nm || '학생'); } catch(_){}
+        try { _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생'); } catch(_){}
         try { _catchMindSpectatorsRef().child(me.cd).remove(); } catch(_){}
         window._catchMindWasSpecBefore = false;
     };
@@ -25006,15 +25029,17 @@ window.addCharRow = function() {
         document.getElementById('_cmRelayContinue')?.remove();
         const cat = g.category || _catchMindCategories()[0];
         // 기존 게임 정리 후 새 릴레이 시작
+        _catchMindStopHostHeartbeat();
         Promise.all([
             _catchMindRef().remove(),
             _catchMindStrokesRef().remove(),
             _catchMindGuessesRef().remove(),
             _catchMindCycleRef().remove(),
             _catchMindScoresRef().remove(),
-            _catchMindVotesRef().remove()
+            _catchMindVotesRef().remove(),
+            _catchMindParticipantsRef().remove(),
+            _catchMindHbRef().remove()
         ]).then(() => {
-            // 본인이 새 시작자가 되어 릴레이 모드 1획으로 시작
             _catchMindBeginRelay(cat, 1);
         });
     };
@@ -25184,31 +25209,24 @@ window.addCharRow = function() {
         if(!g || !g.on) return;
         if(!g.participants || !g.participants[uid]) return;
         console.log('[catchMind] handleUserLeft for', uid, 'by', me?.cd);
-        // 누구든 정리 시도 (starter 가드 제거 — starter가 offline일 때 정리 못 하던 문제 해결).
-        // Firebase update는 idempotent라 multi-client race 안전.
+        // 누구든 정리 시도 (starter 가드 제거). Firebase update는 idempotent라 multi-client race 안전.
         const newParts = Object.assign({}, g.participants);
         delete newParts[uid];
         const remaining = Object.keys(newParts).length;
-        // 인원 2명 미만이면 게임 종료
-        if(remaining < 2) {
-            _catchMindEndGame();
-            return;
-        }
-        const upd = { participants: newParts };
-        // 떠난 사람이 술래(host)였으면 다른 사람으로 이전
+        if(remaining < 2) { _catchMindEndGame(); return; }
+        // participants는 sibling — child remove
+        _catchMindParticipantsRef().child(uid).remove();
+        const upd = {};
         if(g.hostUid === uid) {
             const nextHostUid = Object.keys(newParts)[0];
             upd.hostUid = nextHostUid;
             upd.hostNm = newParts[nextHostUid] || '학생';
         }
-        // 릴레이 모드면 turnOrder도 정리
         if(g.mode === 'relay' && Array.isArray(g.turnOrder)) {
             upd.turnOrder = g.turnOrder.filter(u => u !== uid);
-            if(typeof g.turnIdx === 'number' && g.turnIdx >= upd.turnOrder.length) {
-                upd.turnIdx = 0;
-            }
+            if(typeof g.turnIdx === 'number' && g.turnIdx >= upd.turnOrder.length) upd.turnIdx = 0;
         }
-        _catchMindRef().update(upd);
+        if(Object.keys(upd).length) _catchMindRef().update(upd);
     };
 
     function _catchMindFinish() {
@@ -25228,13 +25246,16 @@ window.addCharRow = function() {
     }
 
     function _catchMindEndGame() {
+        _catchMindStopHostHeartbeat();
         Promise.all([
             _catchMindRef().remove(),
             _catchMindStrokesRef().remove(),
             _catchMindGuessesRef().remove(),
             _catchMindCycleRef().remove(),
             _catchMindScoresRef().remove(),
-            _catchMindVotesRef().remove()
+            _catchMindVotesRef().remove(),
+            _catchMindParticipantsRef().remove(),
+            _catchMindHbRef().remove()
         ]);
         window._catchMindClosePanel();
     }
@@ -25288,7 +25309,9 @@ window.addCharRow = function() {
         const newCycle = Object.assign({}, cycle);
         newCycle[me.cd] = true;
         const allDone = eligibleUids.length > 0 && eligibleUids.every(uid => newCycle[uid]);
-        _catchMindCycleRef().set(allDone ? null : newCycle);
+        // 트래픽 절감: 전체 set 대신 child set / 완료 시 remove
+        if(allDone) _catchMindCycleRef().remove();
+        else _catchMindCycleRef().child(me.cd).set(true);
         if(isCorrect) {
             // 정답자가 직접 phase 전이 + 점수 갱신 (race 방지: 트랜잭션)
             _catchMindRef().child('correctGuesser').transaction(cur => {
@@ -25434,17 +25457,20 @@ window.addCharRow = function() {
             const stale = (v.startedAt && (now - v.startedAt > 60*60*1000));
             const finishedTooLong = (v.phase === 'finished' && v.finishedAt && (now - v.finishedAt > 30*1000));
             if(stale || finishedTooLong) {
-                try { cmRef.remove(); _catchMindStrokesRef().remove(); _catchMindGuessesRef().remove(); } catch(_){}
+                try { cmRef.remove(); _catchMindStrokesRef().remove(); _catchMindGuessesRef().remove(); _catchMindParticipantsRef().remove(); _catchMindHbRef().remove(); } catch(_){}
             }
         });
         const fn = snap => {
             const v = snap.val();
             const prev = window._catchMindState;
+            // participants는 sibling path → main echo에는 없음. local cache에서 합쳐 state.participants 유지
+            if(v) v.participants = Object.assign({}, window._catchMindParticipantsLocal || {});
             window._catchMindState = v;
             if(!v) {
-                // 게임 종료/없음 — 다음 게임 자동 열기 플래그 리셋
+                // 게임 종료/없음 — 다음 게임 자동 열기 플래그 + participants 캐시 리셋
                 window._catchMindAutoOpenedFor = null;
                 window._catchMindOpenedForStart = null;
+                window._catchMindParticipantsLocal = {};
                 window._catchMindClosePanel();
                 return;
             }
@@ -25455,15 +25481,11 @@ window.addCharRow = function() {
             const alreadyOpened = window._catchMindOpenedForStart === startedKey;
             const panelExists = !!document.getElementById('_catchMindPanel');
             console.log('[catchMind] subscribe fired', JSON.stringify({ hasState:!!v, startedKey, me:!!me, meCd:me?.cd, plzActive:!!window._plzActive, isTeacher, isSpectator, alreadyOpened, panelExists }));
-            // 자동참여 self-heal — 새 startedAt 감지 시 spec이 직접 자기 등록
-            // (host의 begin이 race로 누락한 경우 보완. 같은 게임 안에선 발동 안 함.)
-            if(me && v.on && v.startedAt) {
-                const prevStartedAt = window._catchMindLastSeenStartedAt;
-                const isNewGame = prevStartedAt && prevStartedAt !== v.startedAt;
+            // 자동참여 self-heal — 게임 도중 입장해도 즉시 참여 (관전 단계 없음)
+            if(me && v.on && v.startedAt && !isTeacher && me.cd !== v.hostUid) {
                 window._catchMindLastSeenStartedAt = v.startedAt;
-                if(isNewGame && (!v.participants || !v.participants[me.cd])) {
-                    console.log('[catchMind] self-join: new game detected, me missing → joining');
-                    try { _catchMindRef().child('participants').child(me.cd).set(me.nm || '학생'); } catch(_){}
+                if(!v.participants || !v.participants[me.cd]) {
+                    try { _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생'); } catch(_){}
                     if(v.mode === 'relay' && v.turnOrder && !v.turnOrder.includes(me.cd)) {
                         const newOrder = (v.turnOrder || []).slice();
                         newOrder.push(me.cd);
@@ -25519,7 +25541,7 @@ window.addCharRow = function() {
                     setTimeout(() => {
                         const cur = window._catchMindState;
                         if(cur && cur.phase === 'finished') {
-                            try { _catchMindRef().remove(); _catchMindStrokesRef().remove(); _catchMindGuessesRef().remove(); } catch(_){}
+                            try { _catchMindRef().remove(); _catchMindStrokesRef().remove(); _catchMindGuessesRef().remove(); _catchMindParticipantsRef().remove(); _catchMindHbRef().remove(); } catch(_){}
                         }
                     }, 7000);
                 }
@@ -25529,12 +25551,20 @@ window.addCharRow = function() {
         cmRef.on('value', fn);
         plzListeners.push({ ref: cmRef, type: 'value', fn, who: 'student' });
         window._catchMindSubs.push({ ref: cmRef, type: 'value', fn });
-        // 사이클 별도 ref 구독 (트래픽 절감)
+        // 호스트 heartbeat staleness 검사 — 모든 client에서 30초 주기로 once
+        if(window._cmHbCheckInterval) clearInterval(window._cmHbCheckInterval);
+        window._cmHbCheckInterval = setInterval(_catchMindHbStaleCheck, 30000);
+        // 사이클 별도 ref — child 이벤트만 사용 (value 구독 시 매 child 변경마다 full echo가 와서 의미 없음)
         const cycRef = _catchMindCycleRef();
-        const cycFn = snap => { window._catchMindCycleLocal = snap.val() || {}; };
-        cycRef.on('value', cycFn);
-        plzListeners.push({ ref: cycRef, type: 'value', fn: cycFn, who: 'student' });
-        window._catchMindSubs.push({ ref: cycRef, type: 'value', fn: cycFn });
+        window._catchMindCycleLocal = window._catchMindCycleLocal || {};
+        const cycAddFn = snap => { (window._catchMindCycleLocal=window._catchMindCycleLocal||{})[snap.key] = snap.val(); };
+        const cycRemFn = snap => { if(window._catchMindCycleLocal) delete window._catchMindCycleLocal[snap.key]; };
+        cycRef.on('child_added', cycAddFn);
+        cycRef.on('child_removed', cycRemFn);
+        plzListeners.push({ ref: cycRef, type: 'child_added', fn: cycAddFn, who: 'student' });
+        plzListeners.push({ ref: cycRef, type: 'child_removed', fn: cycRemFn, who: 'student' });
+        window._catchMindSubs.push({ ref: cycRef, type: 'child_added', fn: cycAddFn });
+        window._catchMindSubs.push({ ref: cycRef, type: 'child_removed', fn: cycRemFn });
         // scores·votes 별도 ref 구독 (트래픽 절감)
         const scRef = _catchMindScoresRef();
         const scFn = snap => {
@@ -25562,6 +25592,33 @@ window.addCharRow = function() {
         vRef.on('value', vFn);
         plzListeners.push({ ref: vRef, type: 'value', fn: vFn, who: 'student' });
         window._catchMindSubs.push({ ref: vRef, type: 'value', fn: vFn });
+        // participants sibling 구독 — child 이벤트로 echo 최소화
+        window._catchMindParticipantsLocal = window._catchMindParticipantsLocal || {};
+        const partRef = _catchMindParticipantsRef();
+        const partAddFn = snap => {
+            window._catchMindParticipantsLocal[snap.key] = snap.val();
+            if(window._catchMindState) window._catchMindState.participants = Object.assign({}, window._catchMindParticipantsLocal);
+            window._catchMindRender && window._catchMindRender();
+        };
+        const partChgFn = snap => {
+            window._catchMindParticipantsLocal[snap.key] = snap.val();
+            if(window._catchMindState) window._catchMindState.participants = Object.assign({}, window._catchMindParticipantsLocal);
+        };
+        const partRemFn = snap => {
+            delete window._catchMindParticipantsLocal[snap.key];
+            if(window._catchMindState) window._catchMindState.participants = Object.assign({}, window._catchMindParticipantsLocal);
+            window._catchMindRender && window._catchMindRender();
+        };
+        partRef.on('child_added', partAddFn);
+        partRef.on('child_changed', partChgFn);
+        partRef.on('child_removed', partRemFn);
+        plzListeners.push({ ref: partRef, type: 'child_added', fn: partAddFn, who: 'student' });
+        plzListeners.push({ ref: partRef, type: 'child_changed', fn: partChgFn, who: 'student' });
+        plzListeners.push({ ref: partRef, type: 'child_removed', fn: partRemFn, who: 'student' });
+        window._catchMindSubs.push({ ref: partRef, type: 'child_added', fn: partAddFn });
+        window._catchMindSubs.push({ ref: partRef, type: 'child_changed', fn: partChgFn });
+        window._catchMindSubs.push({ ref: partRef, type: 'child_removed', fn: partRemFn });
+
         // spectators sibling 구독 (게임 종료 시 살아남음)
         const specRef = _catchMindSpectatorsRef();
         const specFn = snap => {
@@ -25577,23 +25634,29 @@ window.addCharRow = function() {
         window._catchMindSubs.push({ ref: specRef, type: 'value', fn: specFn });
         console.log('[catchMind] subscribe listener attached. plzListeners count=', plzListeners.length);
 
-        // strokes — child_added로 효율적 수신
+        // strokes — child_added로 효율적 수신 + redraw rAF 배칭 (대량 삭제·연속 수신 시 클라 비용 절감)
         const sRef = _catchMindStrokesRef();
+        const _cmScheduleRedraw = () => {
+            if(window._cmRedrawScheduled) return;
+            window._cmRedrawScheduled = true;
+            requestAnimationFrame(() => {
+                window._cmRedrawScheduled = false;
+                window._catchMindRedrawCanvas && window._catchMindRedrawCanvas();
+            });
+        };
         const sAddFn = snap => {
             const s = snap.val(); if(!s) return;
-            // 그린 본인이 이미 로컬에 push한 stroke면 echo 무시 (굵기 중복 그리기 방지)
             const key = snap.key;
             if(window._catchMindLocalStrokes.some(ls => ls._key === key)) return;
             if(s.pts) s.pts = _catchMindUnpackPts(s.pts);
             s._key = key;
             window._catchMindLocalStrokes.push(s);
-            window._catchMindRedrawCanvas();
+            _cmScheduleRedraw();
         };
         const sRemFn = snap => {
             const key = snap.key;
-            // 단일 stroke 삭제(undo) + 전체 삭제(parent.remove) 모두 처리
             window._catchMindLocalStrokes = (window._catchMindLocalStrokes||[]).filter(s => s._key !== key);
-            window._catchMindRedrawCanvas();
+            _cmScheduleRedraw();
         };
         sRef.on('child_added', sAddFn);
         sRef.on('child_removed', sRemFn);
@@ -25631,6 +25694,23 @@ window.addCharRow = function() {
         });
         window._catchMindSubs = null;
         if(window._catchMindRoundTimer) { clearTimeout(window._catchMindRoundTimer); window._catchMindRoundTimer = null; }
+        if(window._cmHbCheckInterval) { clearInterval(window._cmHbCheckInterval); window._cmHbCheckInterval = null; }
+        _catchMindStopHostHeartbeat();
+    }
+    // 모든 client가 30초마다 호스트 hb 검사 — stale 시 정리 (idempotent remove)
+    function _catchMindHbStaleCheck() {
+        const g = window._catchMindState;
+        if(!g || !g.on) return;
+        // 시작 직후 grace
+        if(g.startedAt && Date.now() - g.startedAt < 30000) return;
+        _catchMindHbRef().once('value').then(snap => {
+            const hb = snap.val();
+            if(!hb) return; // 미설정 — 무시
+            if(Date.now() - hb > _CM_HB_STALE) {
+                console.log('[catchMind] hostHb stale → cleanup');
+                _catchMindEndGame();
+            }
+        }).catch(()=>{});
     }
 
     // ───── 패널 (캔버스 + 추측 입력 + 점수판) ─────
@@ -25924,9 +26004,8 @@ window.addCharRow = function() {
             sl.innerHTML = entries.map(([uid, sc]) => {
                 const nm = parts[uid] || uid;
                 const isMe2 = uid === me?.cd;
-                const isHostHere = uid === g.hostUid;
                 return `<div style="display:flex;justify-content:space-between;padding:2px 4px;border-radius:4px;${isMe2?'background:#FFF3E0;font-weight:bold;':''}">
-                    <span>${isHostHere?'🎨 ':''}${nm}${isMe2?' <span style="color:#FF9800;">(나)</span>':''}</span>
+                    <span>${nm}${isMe2?' <span style="color:#FF9800;">(나)</span>':''}</span>
                     <span style="color:#E65100;">${sc}점</span>
                 </div>`;
             }).join('') || '<div style="color:#aaa;text-align:center;padding:6px;">참가자 없음</div>';
@@ -26235,6 +26314,37 @@ window.addCharRow = function() {
     // 트래픽 절감: turnIdx + wordchainTurnsPassed를 별도 path로 분리
     // → 매 통과 시 메인 state echo 대신 작은 turn ref만 echo
     function _bombGameTurnRef() { return getPlzRef().child('bombGameTurn'); }
+    // 호스트 heartbeat — onDisconnect.remove 대체 (네트워크 blip 내구성↑)
+    function _bombGameHbRef() { return getPlzRef().child('bombGameHb'); }
+    const _BG_HB_PERIOD = 20000, _BG_HB_STALE = 75000;
+    function _bombGameStartHostHeartbeat() {
+        if(window._bgHostHbInterval) clearInterval(window._bgHostHbInterval);
+        try { _bombGameHbRef().set(Date.now()); } catch(_){}
+        window._bgHostHbInterval = setInterval(() => {
+            const g = window._bombGameState;
+            if(!g || !g.on || g.starter !== me?.cd) {
+                clearInterval(window._bgHostHbInterval); window._bgHostHbInterval = null;
+                return;
+            }
+            try { _bombGameHbRef().set(Date.now()); } catch(_){}
+        }, _BG_HB_PERIOD);
+    }
+    function _bombGameStopHostHeartbeat() {
+        if(window._bgHostHbInterval) { clearInterval(window._bgHostHbInterval); window._bgHostHbInterval = null; }
+    }
+    function _bombGameHbStaleCheck() {
+        const g = window._bombGameState;
+        if(!g || !g.on) return;
+        if(g.startedAt && Date.now() - g.startedAt < 30000) return;
+        _bombGameHbRef().once('value').then(snap => {
+            const hb = snap.val();
+            if(!hb) return;
+            if(Date.now() - hb > _BG_HB_STALE) {
+                console.log('[bombGame] hostHb stale → cleanup');
+                _bombGameEnd();
+            }
+        }).catch(()=>{});
+    }
     // 적극적 path 분리 — broadcast 폭 ↓
     function _bombGameMetaRef()      { return _bombGameRef().child('meta'); }
     function _bombGamePhaseRef()     { return _bombGameRef().child('phase'); }
@@ -26361,15 +26471,17 @@ window.addCharRow = function() {
             _bombGameRoundRef().set({ currentTopic: initialTopic, bombEndsAt }),
             _bombGameTurnRef().set({ idx: 0, wctp: 0, prevNm: null })
         ]).then(() => {
-            try { _bombGameRef().onDisconnect().remove(); } catch(_){}
-            try { _bombGameTurnRef().onDisconnect().remove(); } catch(_){}
+            // onDisconnect.remove() 폐지 — host blip 내구성. heartbeat staleness로 cleanup.
+            _bombGameStartHostHeartbeat();
         }).catch(err => { console.error('[bombGame] set 실패', err); alert('시작 실패: ' + (err.message||err)); });
         window._bombGameOpenPanel();
     }
 
     function _bombGameEnd() {
+        _bombGameStopHostHeartbeat();
         try { _bombGameRef().remove(); } catch(_){}
         try { _bombGameTurnRef().remove(); } catch(_){}
+        try { _bombGameHbRef().remove(); } catch(_){}
         window._bombGameUsedTopicsLocal = null;
         window._bombGameClosePanel();
     }
@@ -26626,9 +26738,12 @@ window.addCharRow = function() {
             if(!m || !m.on) return;
             const now = Date.now();
             if(m.startedAt && (now - m.startedAt > 60*60*1000)) {
-                try { _bombGameRef().remove(); } catch(_){}
+                try { _bombGameRef().remove(); _bombGameHbRef().remove(); } catch(_){}
             }
         });
+        // 호스트 heartbeat staleness 검사 — 모든 client 30초 주기
+        if(window._bgHbCheckInterval) clearInterval(window._bgHbCheckInterval);
+        window._bgHbCheckInterval = setInterval(_bombGameHbStaleCheck, 30000);
 
         // 게임 제거 감지는 meta 핸들러에서 (root listener는 시작 직후 race로 state를 nullify할 수 있어서 제거)
 
@@ -26831,6 +26946,8 @@ window.addCharRow = function() {
         window._bombGameSubs = null;
         if(window._bgBombTimer){ clearTimeout(window._bgBombTimer); window._bgBombTimer = null; }
         if(window._bgUiInterval){ clearInterval(window._bgUiInterval); window._bgUiInterval = null; }
+        if(window._bgHbCheckInterval){ clearInterval(window._bgHbCheckInterval); window._bgHbCheckInterval = null; }
+        _bombGameStopHostHeartbeat();
     }
 
     // 당첨자에게 "이어서 / 종료" 묻는 모달
@@ -27448,8 +27565,8 @@ window.addCharRow = function() {
         try { getPlzRef().child('liar').remove(); getPlzRef().child('liarPriv').remove(); getPlzRef().child('liarVotes').remove(); } catch(_){}
         try { getPlzRef().child('oxQuiz').remove(); } catch(_){}
         try { getPlzRef().child('omok').remove(); } catch(_){}
-        try { getPlzRef().child('catchMind').remove(); getPlzRef().child('catchMindStrokes').remove(); getPlzRef().child('catchMindGuesses').remove(); getPlzRef().child('catchMindCycle').remove(); getPlzRef().child('catchMindScores').remove(); getPlzRef().child('catchMindVotes').remove(); } catch(_){}
-        try { getPlzRef().child('bombGame').remove(); getPlzRef().child('bombGameTurn').remove(); getPlzRef().child('wordGame').remove(); } catch(_){}
+        try { getPlzRef().child('catchMind').remove(); getPlzRef().child('catchMindStrokes').remove(); getPlzRef().child('catchMindGuesses').remove(); getPlzRef().child('catchMindCycle').remove(); getPlzRef().child('catchMindScores').remove(); getPlzRef().child('catchMindVotes').remove(); getPlzRef().child('catchMindParticipants').remove(); getPlzRef().child('catchMindHb').remove(); } catch(_){}
+        try { getPlzRef().child('bombGame').remove(); getPlzRef().child('bombGameTurn').remove(); getPlzRef().child('bombGameHb').remove(); getPlzRef().child('wordGame').remove(); } catch(_){}
         try { getPlzRef().child('endVote').remove(); } catch(_){}
     };
     // 종료 투표 모달 — 진행자 부재(잠수·이탈) 시에만 사용되는 백업 수단
