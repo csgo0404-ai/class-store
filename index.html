@@ -1869,6 +1869,8 @@ let _renderLock = false; // 재진입 방지
     // 다했니 API 동기화 설정
     function saveDahessniKey(val) {
         localStorage.setItem('dahessni_api_key', val);
+        // 학생 기기에서도 동기화 가능하도록 db.cfg에 저장 (학급 내 공유)
+        try { if(db && db.cfg){ db.cfg.dahaeApiKey = val; if(typeof sv === 'function') sv(); } } catch(_){}
         alert("다했니 API Key가 저장되었습니다.");
     }
     
@@ -2101,7 +2103,33 @@ let _renderLock = false; // 재진입 방지
             if (me) updateNameTag();
         }
     }
-    setInterval(syncAllCookiesSilent, 5000);
+    setInterval(syncAllCookiesSilent, 10000);
+
+    // 🚀 학생 측 본인 쿠키 주기 동기화 (10초, 교사 페이지 닫혀있어도 본인 데이터 반영)
+    async function syncMyCookieSilent() {
+        if(!me || me.cd === 'teacher_main') return;
+        const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
+        if(!isStudentView) return;
+        const key = localStorage.getItem('dahessni_api_key') || (db.cfg && db.cfg.dahaeApiKey);
+        if(!key) return;
+        try {
+            const res = await fetch(`https://api.dahandin.com/openapi/v1/get/student/total?code=${me.cd}`, { headers: { "X-API-Key": key } });
+            if(!res.ok) return;
+            const json = await res.json();
+            if(!json.data || json.data.cookie === undefined) return;
+            const newCookie = json.data.cookie;
+            const newUsed = json.data.usedCookie || 0;
+            if(me.cookie === newCookie && me.usedCookie === newUsed) return; // 변동 없음
+            me.cookie = newCookie;
+            me.usedCookie = newUsed;
+            if(typeof upMe === 'function') upMe();
+            if(typeof updateNameTag === 'function') updateNameTag();
+        } catch(e){}
+    }
+    setInterval(syncMyCookieSilent, 10000);
+    // 노출 — 탭 진입 시 즉시 동기화에 사용
+    window._syncAllCookiesSilent = syncAllCookiesSilent;
+    window._syncMyCookieSilent = syncMyCookieSilent;
 
     // 전역 툴팁 (data-tooltip 속성, overflow:hidden 부모도 정상 표시)
     document.addEventListener('mouseover', e => {
@@ -2180,7 +2208,8 @@ let _renderLock = false; // 재진입 방지
     // 라이브 구독: 변경 자주 일어나는 경로 (stu/auc 제외 — 학생은 탭 진입 시에만 fetch)
     const _splitLivePaths = ['cfg','itm','gac'];
     // 1회 fetch (정적/세미정적): 페이지 로드 시 1번만 다운로드 후 캐시
-    const _splitOncePaths = ['stu','avt','bdg','tit','petDef','auc'];
+    // ※ stu(학생) / auc(요청사항)는 제외 — stu는 탭 진입 시 lazy fetch, auc는 로그인 시 라이브 attach
+    const _splitOncePaths = ['avt','bdg','tit','petDef'];
     const _splitPaths = [..._splitLivePaths, ..._splitOncePaths];
     // C(plzRooms 분리) 롤백됨 — 데이터 손실 사고로 비활성. 재시도하려면 더 안전한 마이그레이션 필요.
     let _splitInitialReceived = {};
@@ -2654,6 +2683,45 @@ let _renderLock = false; // 재진입 방지
             if(_splitInitialDone) _splitFire();
         });
     };
+    // 학생 데이터 lazy 로드 — 탭 진입·자동로그인·logS 시점에 필요할 때만 호출
+    let _ensureStuPromise = null;
+    window._ensureStuLoaded = function() {
+        if(window._stuLoaded && Array.isArray(db.stu) && db.stu.length > 0) return Promise.resolve();
+        if(_ensureStuPromise) return _ensureStuPromise;
+        _ensureStuPromise = dbRef.child('stu').once('value').then(snap => {
+            const v = snap.val();
+            if(!db || typeof db !== 'object') db = {};
+            if(v && !Array.isArray(v)) {
+                const arr = [];
+                Object.entries(v).forEach(([k, item]) => {
+                    const i = parseInt(k);
+                    if(!isNaN(i)) arr[i] = item; else arr.push(item);
+                });
+                db.stu = arr.filter(Boolean);
+            } else if(Array.isArray(v)) {
+                db.stu = v;
+            } else {
+                db.stu = [];
+            }
+            window._stuLoaded = true;
+            // 교사: 라이브 child 이벤트로 업그레이드 (이후 변경 자동 반영)
+            const isTeacher = localStorage.getItem('teacherLogged') === '1';
+            if(isTeacher && window._attachSplitStuFullListener) {
+                try { window._attachSplitStuFullListener(); } catch(_){}
+            }
+            // 학생: 본인 stu/{idx}만 라이브 (이미 logS에서 attach되었을 수 있음 — guard 있음)
+            if(!isTeacher && me && me.cd && me.cd !== 'teacher_main' && window._attachSplitStuOwnListener) {
+                try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
+            }
+            if(_splitInitialDone) _splitFire();
+            return db.stu;
+        }).catch(err => {
+            console.error('[ensureStuLoaded] fetch 실패', err);
+            _ensureStuPromise = null;
+            throw err;
+        });
+        return _ensureStuPromise;
+    };
     // 다른 학생 정보 조회 시 (랭킹·도감·기타) 호출 — 한 번에 전체 fetch
     window._refreshAllStu = function() {
         return dbRef.child('stu').once('value').then(snap => {
@@ -2727,10 +2795,10 @@ let _renderLock = false; // 재진입 방지
 
     if(_useSplit) {
         _attachSplitListeners();
-        // 교사 이미 로그인 상태면 log + plzRoomsCfg 라이브 같이 구독
+        // 교사 이미 로그인 상태면 log + 요청사항(auc) 라이브 + plzRoomsCfg
+        // ※ stu는 lazy — t_stu/t_plz 진입 시 _ensureStuLoaded()가 호출됨
         if(localStorage.getItem('teacherLogged') === '1') {
             window._attachSplitLogListener();
-            if(window._attachSplitStuFullListener) window._attachSplitStuFullListener();
             if(window._attachSplitAucFullListener) window._attachSplitAucFullListener();
             window._attachSplitPlzRoomsCfgLive();
         }
@@ -3832,9 +3900,11 @@ let _renderLock = false; // 재진입 방지
             });
             if(_defaultChanged || _invClean) sv();
 
-            db.stu.forEach(s => {
+            // stu lazy — 로드되지 않은 상태에선 skip
+            if(Array.isArray(db.stu)) db.stu.forEach(s => {
+                if(!s) return;
                 if(s.tk === undefined) s.tk = 0;
-                if(s.co === undefined) s.co = 0; 
+                if(s.co === undefined) s.co = 0;
                 if(s.kc === undefined) s.kc = 0;
             });
 
@@ -3852,13 +3922,21 @@ let _renderLock = false; // 재진입 방지
 
             // URL 파라미터 자동 로그인 (?cd=XXXX) — 테스트용 다중 탭에서 학생 분리
             const _urlCd = new URLSearchParams(location.search).get('cd');
+            // stu lazy: 자동로그인 조건 충족 시에만 fetch
+            if(!me && (_urlCd || localStorage.getItem('stuCode')) && (!Array.isArray(db.stu) || db.stu.length === 0)) {
+                if(window._ensureStuLoaded) {
+                    window._ensureStuLoaded(); // 비동기 — 완료 후 _splitFire가 다시 호출됨
+                    return; // 다음 fire에서 자동로그인 재시도
+                }
+            }
             if (!me && _urlCd) {
-                const _urlS = db.stu.find(x => String(x.cd).trim() === _urlCd.trim());
+                const _urlS = (Array.isArray(db.stu) ? db.stu : []).find(x => x && String(x.cd).trim() === _urlCd.trim());
                 if (_urlS) {
                     if(_urlS.shopRestrict){const _td2=new Date().toISOString().slice(0,10);const {from:_f2,to:_t2}=_urlS.shopRestrict;if(_f2&&_t2&&_td2>=_f2&&_td2<=_t2){_showShopRestrictScreen(_urlS.nm,_f2,_t2);return;}}
                     me = _urlS;
                     // URL 자동 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
                     if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
+                    if(window._attachSplitAucFullListener) try { window._attachSplitAucFullListener(); } catch(_){}
                     if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                     if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                     if(!me.col) me.col = [];
@@ -3877,10 +3955,12 @@ let _renderLock = false; // 재진입 방지
             if (!me && !_urlCd) {
                 const _savedCd = localStorage.getItem('stuCode');
                 if (_savedCd) {
-                    const _autoS = db.stu.find(x => String(x.cd).trim() === _savedCd);
+                    const _autoS = (Array.isArray(db.stu) ? db.stu : []).find(x => x && String(x.cd).trim() === _savedCd);
                     if (_autoS) {
                         if(_autoS.shopRestrict){const _td3=new Date().toISOString().slice(0,10);const {from:_f3,to:_t3}=_autoS.shopRestrict;if(_f3&&_t3&&_td3>=_f3&&_td3<=_t3){_showShopRestrictScreen(_autoS.nm,_f3,_t3);return;}}
                         me = _autoS;
+                        if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
+                        if(window._attachSplitAucFullListener) try { window._attachSplitAucFullListener(); } catch(_){}
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                         if(!me.col) me.col = [];
@@ -3899,7 +3979,7 @@ let _renderLock = false; // 재진입 방지
             }
 
             if (me && me.cd) {
-                const updatedMe = db.stu.find(x => String(x.cd).trim() === String(me.cd).trim());
+                const updatedMe = (Array.isArray(db.stu) ? db.stu : []).find(x => x && String(x.cd).trim() === String(me.cd).trim());
                 if (updatedMe) {
                     // 상점 이용 제한 실시간 체크
                     if(updatedMe.shopRestrict) {
@@ -4488,9 +4568,13 @@ let _renderLock = false; // 재진입 방지
     }
 
     async function logS(){
-        const c = document.getElementById('sc').value.trim(); 
+        const c = document.getElementById('sc').value.trim();
         if(!c) return alert("코드를 입력하세요.");
-        const s = db.stu.find(x => String(x.cd).trim() === c); 
+        // stu lazy: 로그인 시 fetch (수동 로그인 입력 경로)
+        if(window._ensureStuLoaded) {
+            try { await window._ensureStuLoaded(); } catch(_){}
+        }
+        const s = (Array.isArray(db.stu) ? db.stu : []).find(x => x && String(x.cd).trim() === c);
         if(s){
             // 상점 이용 제한 체크
             if(s.shopRestrict) {
@@ -4504,6 +4588,8 @@ let _renderLock = false; // 재진입 방지
             me = s;
             // 학생 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
             if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
+            // 요청사항 라이브 — 학생도 모든 화면에서 수신 (배지·실시간 알림)
+            if(window._attachSplitAucFullListener) try { window._attachSplitAucFullListener(); } catch(_){}
 
             // 로그인 시 다했니 쿠키 동기화 (조용하게)
             const data = await fetchDahessni(me.cd);
@@ -4880,7 +4966,22 @@ let _renderLock = false; // 재진입 방지
     function nav(id,e){
         document.querySelectorAll('#appT .cont > div').forEach(d=>d.classList.add('hidden')); document.getElementById(id).classList.remove('hidden');
         if(e){document.querySelectorAll('.side .menu').forEach(m=>m.classList.remove('on')); e.classList.add('on');}
-        if(id==='t_stu') rTb();
+        // stu lazy load — 학생 의존 탭 진입 시 fetch + 완료 후 재렌더
+        const _stuDepTabs = ['t_stu','t_plz','t_mgr','t_set','t_avt'];
+        if(_stuDepTabs.includes(id) && window._ensureStuLoaded) {
+            try {
+                const _p = window._ensureStuLoaded();
+                if(_p && _p.then) _p.then(() => {
+                    if(document.getElementById(id)?.classList.contains('hidden')) return;
+                    if(id==='t_stu') rTb();
+                    else if(id==='t_mgr'){rAs(); renderGivGrids();}
+                    else if(id==='t_set'){rAs(); rSet();}
+                    else if(id==='t_avt') rAvt();
+                    else if(id==='t_plz') rPlzT();
+                });
+            } catch(_){}
+        }
+        if(id==='t_stu') { rTb(); try { window._syncAllCookiesSilent && window._syncAllCookiesSilent(); } catch(_){} }
         if(id==='t_mgr'){rAs(); renderGivGrids();}
         if(id==='t_col') rColT();
         if(id==='t_set'){rAs(); renderGivGrids(); rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList();}
@@ -4921,11 +5022,13 @@ let _renderLock = false; // 재진입 방지
             window.masterPopupShown = false;
             rCol();
         }
-        if(id==='s_char') rChar();
-        if(id==='s_bg') rBg();
+        if(id==='s_char') { rChar(); try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){} }
+        if(id==='s_bg') { rBg(); try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){} }
 
         if(id==='s_sh') rSh();
         if(id==='s_plz') {
+            // 광장 진입 — 다른 학생 이름 lookup용 db.stu lazy load
+            if(window._ensureStuLoaded) try { window._ensureStuLoaded(); } catch(_){}
             // 방 선택은 일반 레이아웃(사이드바 보임). 오버레이는 실제 방 입장 후에만.
             const splz = document.getElementById('s_plz');
             if(splz && splz._origParent && splz.parentNode?.id === '_stuPlzOv') {
@@ -11105,7 +11208,7 @@ window.addCharRow = function() {
                 const rankEl2 = rank<=3 ? `<div class="rank-num medal">${medals2[rank-1]}</div>` : `<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
                 const rowClass2 = `rank-row${isMe2?' me':rank===1?' top1':rank===2?' top2':rank===3?' top3':''}`;
                 const avtSize = rank<=3 ? 110 : 75;
-                return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;">${s.nm}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}쿠키 ${s.cookie||0}개</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
+                return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;">${s.nm}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}경험치 ${s.cookie||0}</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
             }).join('');
             myRank2 = rankStus.findIndex(s=>s.cd===me.cd)+1;
         } else {
@@ -11263,7 +11366,7 @@ window.addCharRow = function() {
                     <div style="font-size:36px;">🏆</div>
                     <div style="flex:1;">
                         <div style="font-size:18px;font-weight:bold;color:#4E342E;">용사 랭킹</div>
-                        <div style="font-size:13px;color:#888;">${window._rankExpanded?`내 순위: <b style="color:#FF9800;">${myRank2}위</b> &nbsp;·&nbsp; `:''}Lv.${lv} &nbsp;·&nbsp; 쿠키 ${totalCookie}개</div>
+                        <div style="font-size:13px;color:#888;">${window._rankExpanded?`내 순위: <b style="color:#FF9800;">${myRank2}위</b> &nbsp;·&nbsp; `:''}Lv.${lv} &nbsp;·&nbsp; 경험치 ${totalCookie}</div>
                     </div>
                     <div style="font-size:22px;color:#FF9800;font-weight:bold;line-height:1;padding:4px 8px;border-radius:10px;background:#FFF3E0;">${window._rankExpanded?'−':'+'}</div>
                 </div>
@@ -16283,7 +16386,7 @@ window.addCharRow = function() {
                 ${avt}
                 <div class="rank-info">
                     <div class="rank-nm">${s.nm}${isMe?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div>
-                    <div class="rank-sub">${stars}${rb>0?` 진화 ${rb}회 · `:''}쿠키 ${s.cookie||0}개</div>
+                    <div class="rank-sub">${stars}${rb>0?` 진화 ${rb}회 · `:''}경험치 ${s.cookie||0}</div>
                 </div>
                 <div class="rank-lv">Lv.${lv}</div>
             </div>`;
@@ -16298,7 +16401,7 @@ window.addCharRow = function() {
                 <div style="font-size:36px;">🏆</div>
                 <div>
                     <div style="font-size:18px;font-weight:bold;color:#4E342E;">학급 순위표</div>
-                    <div style="font-size:13px;color:#888;">내 순위: <b style="color:#FF9800;">${myRank}위</b> &nbsp;·&nbsp; Lv.${myLv} &nbsp;·&nbsp; 쿠키 ${me.cookie||0}개</div>
+                    <div style="font-size:13px;color:#888;">내 순위: <b style="color:#FF9800;">${myRank}위</b> &nbsp;·&nbsp; Lv.${myLv} &nbsp;·&nbsp; 경험치 ${me.cookie||0}</div>
                 </div>
             </div>
             ${rows || '<div style="color:#ccc;text-align:center;padding:30px;">학생 정보가 없습니다.</div>'}
@@ -24627,6 +24730,15 @@ window.addCharRow = function() {
     }
 
     // ===== 릴레이 (스파이) 모드 =====
+    // 스파이 다명 호환 헬퍼 (구버전 spyUid 단일 / 신버전 spyUids 배열 모두 지원)
+    function _cmGetSpyUids(g){
+        if(!g) return [];
+        if(Array.isArray(g.spyUids)) return g.spyUids.filter(Boolean);
+        if(g.spyUid) return [g.spyUid];
+        return [];
+    }
+    function _cmIsSpy(g, uid){ return !!uid && _cmGetSpyUids(g).includes(uid); }
+    function _cmSpyLimit(n){ return n >= 5 ? 2 : 1; }
     function _catchMindBeginRelay(category, strokesPerPlayer) {
         if(!me) return;
         const word = _catchMindPickWord(category);
@@ -24649,8 +24761,10 @@ window.addCharRow = function() {
         window._catchMindRecentGuesses = [];
         // 순서 셔플
         const turnOrder = partsArr.slice().sort(() => Math.random() - 0.5);
-        // 스파이 1명 랜덤 선정
-        const spyUid = turnOrder[Math.floor(Math.random() * turnOrder.length)];
+        // 스파이 선정 — 5명 이상이면 2명, 4명 이하면 1명 (최대 2명)
+        const spyCount = _cmSpyLimit(turnOrder.length);
+        const _shuffledForSpy = turnOrder.slice().sort(() => Math.random() - 0.5);
+        const spyUids = _shuffledForSpy.slice(0, spyCount);
         const sp = Math.max(1, Math.min(3, strokesPerPlayer || 2));
         // 1라운드 = 모든 참가자가 sp획씩 그림
         const totalStrokesNeeded = turnOrder.length * sp;
@@ -24663,7 +24777,8 @@ window.addCharRow = function() {
             starter: me.cd,
             category,
             word,                  // 비스파이용 (보안: priv 분리는 v2)
-            spyUid,                // 공개 (UI에서만 숨김 — 학급 내 사용 가정)
+            spyUids,               // 다명 지원 — UI에서만 숨김
+            spyUid: spyUids[0]||null, // 구버전 호환용 (단일 reference 코드 보호)
             spyMode: 'topicOnly',  // 스파이는 카테고리만 봄
             turnOrder,
             turnIdx: 0,
@@ -24759,7 +24874,7 @@ window.addCharRow = function() {
         if(!g.participants || !g.participants[me.cd]) return;
         const txt = String(input||'').trim();
         if(!txt) return;
-        const isSpy = g.spyUid === me.cd;
+        const isSpy = _cmIsSpy(g, me.cd);
         let voteData;
         if(isSpy) {
             // 스파이: 단어 추측 (정답이면 스파이 승)
@@ -24791,29 +24906,32 @@ window.addCharRow = function() {
             if(!committed) return;
             // 결과 계산: 별도 path에서 votes 읽음
             const votes = _cmVotes();
-            const spyVote = votes[g.spyUid] || null;
-            const spyGuessedWord = !!(spyVote && spyVote.kind === 'word' &&
-                String(spyVote.txt||'').trim() === String(g.word||'').trim());
+            const spyUidsArr = _cmGetSpyUids(g);
+            // 스파이 중 한 명이라도 단어를 맞히면 스파이 승
+            const spyGuessedWord = spyUidsArr.some(sUid => {
+                const sv = votes[sUid];
+                return !!(sv && sv.kind === 'word' && String(sv.txt||'').trim() === String(g.word||'').trim());
+            });
             const tally = {};
             Object.entries(votes).forEach(([voter, v]) => {
-                if(voter === g.spyUid) return;
+                if(spyUidsArr.includes(voter)) return; // 스파이 본인 표는 집계 제외
                 if(v && v.kind === 'name' && v.uid) {
                     tally[v.uid] = (tally[v.uid] || 0) + 1;
                 }
             });
             let topVoted = null, topCount = 0;
             Object.entries(tally).forEach(([uid, c]) => { if(c > topCount) { topCount = c; topVoted = uid; } });
-            const detectivesNamedSpy = (topVoted === g.spyUid);
+            const detectivesNamedSpy = !!topVoted && spyUidsArr.includes(topVoted);
             const spyWonByWord = spyGuessedWord;
             const detectivesWin = !spyWonByWord && detectivesNamedSpy;
             // 점수 갱신 — 별도 path (메인 state echo 회피)
             const newScores = Object.assign({}, _cmScores());
             if(detectivesWin) {
                 Object.keys(g.participants || {}).forEach(uid => {
-                    if(uid !== g.spyUid) newScores[uid] = (newScores[uid] || 0) + 1;
+                    if(!spyUidsArr.includes(uid)) newScores[uid] = (newScores[uid] || 0) + 1;
                 });
             } else {
-                newScores[g.spyUid] = (newScores[g.spyUid] || 0) + 3;
+                spyUidsArr.forEach(sUid => { newScores[sUid] = (newScores[sUid] || 0) + 3; });
             }
             _catchMindScoresRef().set(newScores);
             _catchMindRef().update({
@@ -24839,19 +24957,40 @@ window.addCharRow = function() {
         return '○'.repeat(len) + ` (${len}글자)`;
     }
 
+    // 신규 참가자 확률적 스파이 부여 (릴레이 모드 한정, 상한 인원에 따라 1 또는 2)
+    // 상한 미달이면 50% 확률로 스파이 배정 (랜덤한 느낌 보장)
+    function _catchMindMaybePromoteToSpy(g, newUid){
+        if(!g || g.mode !== 'relay') return;
+        if(!newUid) return;
+        const totalAfterJoin = Object.keys(g.participants || {}).length + 1;
+        const spyLimit = _cmSpyLimit(totalAfterJoin);
+        const currentSpies = _cmGetSpyUids(g);
+        if(currentSpies.includes(newUid)) return; // 이미 스파이
+        if(currentSpies.length >= spyLimit) return; // 상한 도달 — 무조건 시민
+        // 상한 여유분이 있으면 50% 확률로 스파이 부여
+        if(Math.random() < 0.5){
+            const newSpies = currentSpies.concat(newUid);
+            try {
+                _catchMindRef().update({ spyUids: newSpies, spyUid: newSpies[0]||null });
+            } catch(e){ console.warn('[catchMind] spy 승격 실패', e); }
+        }
+    }
     function _catchMindJoin() {
         const g = window._catchMindState;
         if(!g || !g.on || !me) return;
         if(g.participants && g.participants[me.cd]) return;
         _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생');
+        _catchMindMaybePromoteToSpy(g, me.cd);
     }
     window._catchMindJoinFromBanner = function() {
         if(!me) return;
         const g = window._catchMindState;
         if(!g || !g.on) return;
+        const wasParticipant = !!(g.participants && g.participants[me.cd]);
         try { _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생'); } catch(_){}
         try { _catchMindSpectatorsRef().child(me.cd).remove(); } catch(_){}
         window._catchMindWasSpecBefore = false;
+        if(!wasParticipant) _catchMindMaybePromoteToSpy(g, me.cd);
     };
     // 디버그 — 콘솔에서 호출하여 현재 상태 점검
     window._catchMindDebug = function() {
@@ -24886,7 +25025,7 @@ window.addCharRow = function() {
     // 릴레이 투표/결과 풀스크린 모달 — 캔버스 위에 별도로 띄움
     function _catchMindRelayShowFullscreenModal(g) {
         if(!g) return;
-        const isSpy = g.spyUid === me?.cd;
+        const isSpy = _cmIsSpy(g, me?.cd);
         const isHost = g.starter === me?.cd;
         let el = document.getElementById('_cmRelayModal');
         if(!el) {
@@ -24917,7 +25056,8 @@ window.addCharRow = function() {
             </div>`;
             setTimeout(() => document.getElementById('_cmRelayVoteInput')?.focus(), 100);
         } else if(g.phase === 'reveal') {
-            const spyNm = (g.participants && g.participants[g.spyUid]) || '?';
+            const _spyUidsR = _cmGetSpyUids(g);
+            const spyNm = _spyUidsR.map(u => (g.participants && g.participants[u]) || '?').join(', ') || '?';
             const word = g.revealedWord || g.word || '';
             let header, resultBg;
             if(g.spyWonByWord) {
@@ -24937,7 +25077,7 @@ window.addCharRow = function() {
                     <div style="font-size:40px;font-weight:bold;color:#FFD54F;margin-top:4px;">${word}</div>
                 </div>
                 <div style="margin-top:14px;background:rgba(0,0,0,0.4);border-radius:18px;padding:18px 24px;">
-                    <div style="font-size:14px;opacity:0.75;letter-spacing:2px;">스파이</div>
+                    <div style="font-size:14px;opacity:0.75;letter-spacing:2px;">스파이${_spyUidsR.length>1?' ('+_spyUidsR.length+'명)':''}</div>
                     <div style="font-size:32px;font-weight:bold;color:#FFCC80;margin-top:4px;">🕵️ ${spyNm}</div>
                 </div>
                 <button onclick="window._catchMindRelayConfirmReveal()" style="margin-top:24px;padding:16px 64px;border:none;border-radius:14px;background:linear-gradient(135deg,#FFCA28,#FFA000);color:#3E2723;font-family:Jua;font-size:22px;font-weight:bold;cursor:pointer;box-shadow:0 5px 0 #FF8F00;letter-spacing:6px;">✅ 확인</button>
@@ -24960,13 +25100,14 @@ window.addCharRow = function() {
         const g = window._catchMindState;
         if(!g || g.phase !== 'reveal' || !me) return;
         // 승자 목록 결정 (모든 클라이언트가 동일 g 보고 있으므로 같은 결과)
+        const _spyUidsW = _cmGetSpyUids(g);
         let winners = [];
         if(g.spyWonByWord) {
-            winners = [g.spyUid];
+            winners = _spyUidsW.slice();
         } else if(g.detectivesWin) {
-            winners = Object.keys(g.participants||{}).filter(uid => uid !== g.spyUid);
+            winners = Object.keys(g.participants||{}).filter(uid => !_spyUidsW.includes(uid));
         } else {
-            winners = [g.spyUid];
+            winners = _spyUidsW.slice();
         }
         if(!winners.length) {
             // 승자 없음 — 직접 종료 (시작자만)
@@ -25832,7 +25973,7 @@ window.addCharRow = function() {
         const specBanner = document.getElementById('_cmSpectatorBanner');
         if(specBanner) specBanner.style.display = amSpectator ? '' : 'none';
         const isMyTurn = isRelay && g.turnOrder && g.turnOrder[g.turnIdx] === me?.cd;
-        const isSpy = isRelay && g.spyUid === me?.cd;
+        const isSpy = isRelay && _cmIsSpy(g, me?.cd);
         const endBtn = document.getElementById('_cmEndGameBtn');
         // 진행자(시작자)만 종료 버튼 표시 — 술래는 라운드마다 바뀌지만 시작자는 고정
         if(endBtn) endBtn.style.display = isStarter && g.phase !== 'finished' ? '' : 'none';
@@ -25876,7 +26017,10 @@ window.addCharRow = function() {
                     const lenHint = g.hint || _catchMindMakeHint(g.word||'');
                     hintEl.innerHTML = drawerLine + `🕵️ <b>당신은 스파이!</b> 카테고리: <span style="color:#C2185B;font-size:15px;">${g.category||''}</span> · 글자수: <b>${lenHint}</b>`;
                 } else {
-                    hintEl.innerHTML = drawerLine + `📝 단어: <span style="color:#C2185B;font-size:18px;">${g.word||''}</span> <span style="font-size:10px;color:#888;">(스파이 1명은 단어 모름)</span>`;
+                    {
+                        const _spN = _cmGetSpyUids(g).length || 1;
+                        hintEl.innerHTML = drawerLine + `📝 단어: <span style="color:#C2185B;font-size:18px;">${g.word||''}</span> <span style="font-size:10px;color:#888;">(스파이 ${_spN}명은 단어 모름)</span>`;
+                    }
                 }
             } else if(isHost) {
                 hintEl.innerHTML = `🤫 출제어: <span style="color:#C2185B;font-size:18px;">${g.word||''}</span> <span style="font-size:10px;color:#888;">(다른 학생에게는 안 보임)</span>`;
