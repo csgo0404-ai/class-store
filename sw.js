@@ -1,7 +1,7 @@
 // 우리반 매니저 Service Worker — 트래픽 절감 캐시
 // 전략: stale-while-revalidate (캐시 우선 즉시 응답 + 백그라운드 갱신)
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v18';
 const CACHE_NAME = `wclass-${CACHE_VERSION}`;
 
 // 미리 캐시할 자원 (로컬 우선, CDN은 폴백 시 후처리됨)
@@ -61,6 +61,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Firebase Storage 이미지 캐시 (아바타·뱃지·펫 등)
+    if (url.hostname === 'firebasestorage.googleapis.com' || url.hostname.endsWith('.firebasestorage.app')) {
+        event.respondWith(staleWhileRevalidate(req));
+        return;
+    }
+
     // Google Fonts CSS/WOFF 캐시
     if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
         event.respondWith(staleWhileRevalidate(req));
@@ -78,12 +84,35 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 같은 origin (HTML 본체, sw.js 등) — stale-while-revalidate
+    // 같은 origin
     if (url.origin === self.location.origin) {
+        // HTML 본체 / 네비게이션 요청은 네트워크 우선 (옛 버전이 박히는 문제 방지)
+        const isHtml = req.mode === 'navigate'
+            || url.pathname.endsWith('.html')
+            || url.pathname.endsWith('/')
+            || (req.headers.get('accept') || '').includes('text/html');
+        if (isHtml) {
+            event.respondWith(networkFirst(req));
+            return;
+        }
+        // 그 외 (JS/CSS/이미지 등) — stale-while-revalidate
         event.respondWith(staleWhileRevalidate(req));
         return;
     }
 });
+
+// 네트워크 우선 + 캐시 폴백 (HTML 전용)
+async function networkFirst(req) {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+        const res = await fetch(req, { cache: 'no-store' });
+        if (res && res.status === 200) cache.put(req, res.clone()).catch(()=>{});
+        return res;
+    } catch (e) {
+        const cached = await cache.match(req);
+        return cached || Response.error();
+    }
+}
 
 // 캐시 우선 + 백그라운드 갱신
 async function staleWhileRevalidate(req) {
