@@ -1022,6 +1022,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h2 style="margin:0;cursor:pointer;" onclick="showLogModal()">📜 학생 관리</h2>
                 <div style="display:flex; gap:10px; align-items:center;">
+                    <button onclick="window._forceReattachListeners()" title="경매 알림이 안 뜨면 클릭" style="padding:8px 12px;border:1px solid #FFB74D;border-radius:8px;background:#FFF3E0;color:#E65100;font-size:12px;cursor:pointer;font-family:'Jua';">🔄 알림 재연결</button>
                     <button class="btn btn-gray" onclick="showAllPurchaseLog()" style="padding:8px 15px;">📋 구매 내역</button>
                     <button class="btn btn-org" onclick="showShopUsedReport()" style="display:none;">🍪 쿠키 정산</button>
                     <input type="file" id="_restoreInput" accept=".json" style="display:none" onchange="restoreDB(this)">
@@ -1133,6 +1134,11 @@
                 <div id="tit_mgr_list" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;"></div>
             </div>
 
+            <!-- 추가 설정: 골든티켓/달고나, 인쇄 요청 주기 -->
+            <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#FFF8E1,#FFF3E0);">
+                <h3>⚙️ 부가 설정</h3>
+                <div id="t_set_extras" style="display:flex;flex-direction:column;gap:10px;margin-top:8px;"></div>
+            </div>
 
         </div>
 
@@ -1218,7 +1224,8 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
                 <h2 style="margin:0;">🏫 광장 관리</h2>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <button onclick="window.showTrafficStats()" title="Firebase 다운로드 트래픽 일자별 누적" style="padding:5px 10px;border:1px solid #4FC3F7;border-radius:6px;background:#E1F5FE;color:#0277BD;font-size:12px;cursor:pointer;font-family:'Jua';">📊 트래픽 통계</button>
+                    <!-- 📊 트래픽 통계 버튼은 [학생 관리] 탭으로 이동했습니다 -->
+
                     <span style="font-size:12px;color:#666;">편집 중:</span>
                     <div id="plz_room_tabs" style="display:flex;gap:4px;"></div>
                     <input id="plz_room_name_input" type="hidden" onchange="savePlzRoomName()">
@@ -1792,62 +1799,7 @@ const firebaseConfig = {
 
     const dbRef = firebase.database().ref('ClassData/EventShop');
 
-    // 글로벌 추적: Firebase Reference.prototype.once를 monkey-patch해서
-    // 모든 .once('value') 호출을 _trackDownload로 자동 측정 (개별 코드 수정 없이 전수 추적)
-    (function _patchFirebaseTracking(){
-        try {
-            const proto = Object.getPrototypeOf(firebase.database().ref());
-            if(!proto || proto.__rpgTracked) return;
-            const _origOnce = proto.once;
-            proto.once = function(eventType, success, failureCallback, context) {
-                const p = _origOnce.call(this, eventType, success, failureCallback, context);
-                if(eventType === 'value' && p && typeof p.then === 'function') {
-                    p.then(snap => {
-                        try {
-                            if(typeof window._trackDownload === 'function') {
-                                const v = snap && snap.val ? snap.val() : null;
-                                window._trackDownload(v == null ? 4 : JSON.stringify(v).length);
-                            }
-                        } catch(_){}
-                    }).catch(()=>{});
-                }
-                return p;
-            };
-            // .on('value' | 'child_*') 모두 추적
-            const _origOn = proto.on;
-            const _trackEvts = new Set(['value', 'child_added', 'child_changed', 'child_removed']);
-            proto.on = function(eventType, callback, cancelCallbackOrContext, context) {
-                let wrappedCb = callback;
-                if(_trackEvts.has(eventType) && typeof callback === 'function') {
-                    wrappedCb = function(snap) {
-                        try {
-                            if(typeof window._trackDownload === 'function') {
-                                const v = snap && snap.val ? snap.val() : null;
-                                window._trackDownload(v == null ? 4 : JSON.stringify(v).length);
-                            }
-                        } catch(_){}
-                        return callback.apply(this, arguments);
-                    };
-                    // off용 매핑 — 원본 callback과 wrapped 매핑 저장
-                    if(!this.__rpgOnMap) this.__rpgOnMap = new Map();
-                    this.__rpgOnMap.set(callback, wrappedCb);
-                }
-                return _origOn.call(this, eventType, wrappedCb, cancelCallbackOrContext, context);
-            };
-            const _origOff = proto.off;
-            proto.off = function(eventType, callback, context) {
-                if(_trackEvts.has(eventType) && callback && this.__rpgOnMap) {
-                    const wrapped = this.__rpgOnMap.get(callback);
-                    if(wrapped) {
-                        this.__rpgOnMap.delete(callback);
-                        return _origOff.call(this, eventType, wrapped, context);
-                    }
-                }
-                return _origOff.call(this, eventType, callback, context);
-            };
-            proto.__rpgTracked = true;
-        } catch(e) { console.warn('[track] Firebase patch 실패', e); }
-    })();
+    // 트래픽 추적 patch 제거됨 — Firebase Console에서 사용량 확인
 let _prevDbHash = ''; // 변경 감지용 해시
 let _renderLock = false; // 재진입 방지
 
@@ -2068,8 +2020,9 @@ let _renderLock = false; // 재진입 방지
         const isTeacherView = document.getElementById('appT') && !document.getElementById('appT').classList.contains('hidden');
         if(!isTeacherView) return;
         let updated = false;
-        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        let stuList = Array.isArray(db.stu) ? db.stu.filter(Boolean) : Object.values(db.stu || {}).filter(Boolean);
         for(let s of stuList) {
+            if(!s || !s.cd) continue;
             try {
                 const res = await fetch(`https://api.dahandin.com/openapi/v1/get/student/total?code=${s.cd}`, { headers: { "X-API-Key": key } });
                 if(res.ok) {
@@ -2153,60 +2106,25 @@ let _renderLock = false; // 재진입 방지
     let _prevCfgHash = null;
     let _prevItmHash = null;
 
-    // 트래픽 통계 누적 (path별 또는 전체 스냅샷 공통)
-    // .once('value') 결과 자동 추적 헬퍼 — Promise/콜백 양쪽 지원
-    // 사용: _trackedOnce(ref, cb?) → cb 받으면 콜백 실행 + 추적 / 안 받으면 Promise 반환
+    // 트래픽 통계 추적 코드 제거됨 — Firebase Console > 사용량 및 결제에서 확인
+    // 레거시 호출 사이트 호환을 위한 단순 pass-through (추적 안 함)
     function _trackedOnce(ref, cb) {
         const p = ref.once('value');
-        return p.then(snap => {
-            try {
-                const v = snap.val();
-                _trackDownload(v == null ? 4 : JSON.stringify(v).length);
-            } catch(_){}
-            if(typeof cb === 'function') { try { cb(snap); } catch(e) { console.error(e); } }
-            return snap;
-        });
+        if(typeof cb === 'function') return p.then(snap => { try { cb(snap); } catch(e){ console.error(e);} return snap; });
+        return p;
     }
-    // .on('value') 추적 헬퍼 — wrapping handler 반환(off용)
     function _trackedOn(ref, evt, handler) {
-        const wrapped = snap => {
-            try {
-                const v = snap.val();
-                _trackDownload(v == null ? 4 : JSON.stringify(v).length);
-            } catch(_){}
-            try { handler(snap); } catch(e) { console.error(e); }
-        };
-        ref.on(evt, wrapped);
-        return wrapped;
+        ref.on(evt, handler);
+        return handler;
     }
     window._trackedOnce = _trackedOnce;
     window._trackedOn = _trackedOn;
-
-    function _trackDownload(bytes) {
-        try {
-            const today = new Date().toISOString().slice(0,10);
-            let s = null;
-            try { s = JSON.parse(localStorage.getItem('rpg_dbStats')||'null'); } catch(_){}
-            if(!s || s.since && (Date.now() - new Date(s.since).getTime()) > 100*86400000) {
-                s = { since: new Date().toISOString(), count:0, totalBytes:0, byDay:{} };
-            }
-            s.count++; s.totalBytes += bytes;
-            s.lastBytes = bytes; s.lastAt = Date.now();
-            if(!s.byDay) s.byDay = {};
-            if(!s.byDay[today]) s.byDay[today] = { count:0, bytes:0 };
-            s.byDay[today].count++; s.byDay[today].bytes += bytes;
-            const cutoff = Date.now() - 30*86400000;
-            Object.keys(s.byDay).forEach(d => { if(new Date(d).getTime() < cutoff) delete s.byDay[d]; });
-            localStorage.setItem('rpg_dbStats', JSON.stringify(s));
-            window._dbDownloadStats = s;
-        } catch(_){}
-    }
 
     // ===== 부분 구독 (path별 listener) — 학생/교사 모두 적용. log는 교사만. =====
     // 롤백: localStorage.setItem('rpgUseSplitListeners','0') 하고 새로고침
     const _useSplit = localStorage.getItem('rpgUseSplitListeners') !== '0';
     // 라이브 구독: 변경 자주 일어나는 경로 (stu/auc 제외 — 학생은 탭 진입 시에만 fetch)
-    const _splitLivePaths = ['cfg','itm','gac'];
+    const _splitLivePaths = ['cfg','itm','gac','gacQueue'];
     // 1회 fetch (정적/세미정적): 페이지 로드 시 1번만 다운로드 후 캐시
     // ※ stu(학생) / auc(요청사항)는 제외 — stu는 탭 진입 시 lazy fetch, auc는 로그인 시 라이브 attach
     const _splitOncePaths = ['avt','bdg','tit','petDef'];
@@ -2243,6 +2161,8 @@ let _renderLock = false; // 재진입 방지
                     if(!isNaN(i)) arr[i] = item; else arr.push(item);
                 });
                 db[p] = arr.filter(Boolean);
+            } else if(p==='gacQueue') {
+                db[p] = v || {};
             } else {
                 db[p] = v;
             }
@@ -2259,16 +2179,18 @@ let _renderLock = false; // 재진입 방지
                 if(!isNaN(i) && db[p] && db[p][i]) return;
                 if(isNaN(i) && db[p] && db[p][s.key]) return;
 
-                if(!db[p]) db[p] = (p==='cfg' ? {} : []);
+                if(!db[p]) db[p] = ((p==='cfg'||p==='gacQueue') ? {} : []);
                 if(!isNaN(i)) db[p][i] = cv; else db[p][s.key] = cv;
+                if(p==='gacQueue') console.log('[gacQueue child_added]', s.key, cv);
                 if(_splitInitialDone) _splitFire();
             });
             ref.on('child_changed', s => {
                 const cv = s.val(); if(cv === null || cv === undefined) return;
 
                 const i = parseInt(s.key);
-                if(!db[p]) db[p] = (p==='cfg' ? {} : []);
+                if(!db[p]) db[p] = ((p==='cfg'||p==='gacQueue') ? {} : []);
                 if(!isNaN(i)) db[p][i] = cv; else db[p][s.key] = cv;
+                if(p==='gacQueue') console.log('[gacQueue child_changed]', s.key, cv);
                 if(_splitInitialDone) _splitFire();
             });
             ref.on('child_removed', s => {
@@ -2376,7 +2298,6 @@ let _renderLock = false; // 재진입 방지
                     if(fbVer && localData && String(fbVer) === localVer) {
                         try {
                             _applyData(JSON.parse(localData));
-                            try { _trackDownload(20); } catch(_){} // 버전 fetch 분량만 카운트
                             return;
                         } catch(_){}
                     }
@@ -2683,6 +2604,26 @@ let _renderLock = false; // 재진입 방지
             if(_splitInitialDone) _splitFire();
         });
     };
+    // 학생 인증용 — 자기 cd로 단일 record만 fetch (db.stu 전체 다운로드 없이 로그인 가능)
+    // ※ Firebase rules에 "stu": { ".indexOn": ["cd"] } 추가하면 더 빠름. 없어도 동작 (서버 경고)
+    window._fetchStuByCd = function(cd) {
+        const target = String(cd||'').trim();
+        if(!target) return Promise.resolve({ stu: null, idx: -1 });
+        return dbRef.child('stu').orderByChild('cd').equalTo(target).limitToFirst(1).once('value').then(snap => {
+            let stu = null, idx = -1;
+            snap.forEach(c => {
+                stu = c.val();
+                const k = parseInt(c.key);
+                if(!isNaN(k)) idx = k;
+                return true; // 첫 1건만
+            });
+            if(stu && idx >= 0) {
+                if(!Array.isArray(db.stu)) db.stu = [];
+                db.stu[idx] = stu;
+            }
+            return { stu, idx };
+        }).catch(err => { console.error('[fetchStuByCd]', err); return { stu: null, idx: -1 }; });
+    };
     // 학생 데이터 lazy 로드 — 탭 진입·자동로그인·logS 시점에 필요할 때만 호출
     let _ensureStuPromise = null;
     window._ensureStuLoaded = function() {
@@ -2797,11 +2738,21 @@ let _renderLock = false; // 재진입 방지
         _attachSplitListeners();
         // 교사 이미 로그인 상태면 log + 요청사항(auc) 라이브 + plzRoomsCfg
         // ※ stu는 lazy — t_stu/t_plz 진입 시 _ensureStuLoaded()가 호출됨
-        if(localStorage.getItem('teacherLogged') === '1') {
+        const _teacherLogged = localStorage.getItem('teacherLogged') === '1';
+        console.log('[startup] teacherLogged=', _teacherLogged, ', _useSplit=', _useSplit);
+        if(_teacherLogged) {
             window._attachSplitLogListener();
             if(window._attachSplitAucFullListener) window._attachSplitAucFullListener();
             window._attachSplitPlzRoomsCfgLive();
         }
+        // 안전망: 페이지 로드 5초 후 auc listener attach 여부 점검 — 미부착이면 강제 attach
+        setTimeout(() => {
+            const isTeacher = localStorage.getItem('teacherLogged') === '1';
+            if(isTeacher && !window._aucFullAttached) {
+                console.warn('[startup] auc listener 미부착 감지 → 강제 attach');
+                if(window._attachSplitAucFullListener) try { window._attachSplitAucFullListener(); } catch(e){ console.error(e); }
+            }
+        }, 5000);
     } else {
         dbRef.on('value', (snapshot) => {
 
@@ -3156,10 +3107,14 @@ let _renderLock = false; // 재진입 방지
             const d = new Date(customDateStr+'T00:00:00');
             if(!isNaN(d.getTime())) window._notifResendCustomTs = d.getTime();
         }
-        // 두 패널 모두 새로고침
-        if(window._stuPanelTypeFilter === 'notif' && window._renderPanelGrid) {
-            const grid = document.getElementById('_spGrid');
-            if(grid) grid.innerHTML = window._renderPanelGrid();
+        // 알림 탭이 열린 모든 패널 새로고침
+        if(window._stuPanelStates) {
+            window._stuPanelStates.forEach((st, cd) => {
+                if(st.typeFilter !== 'notif' || !st.render) return;
+                const safe = String(cd).replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎ_-]/g, '_');
+                const grid = document.getElementById('_spGrid_' + safe);
+                if(grid) grid.innerHTML = st.render();
+            });
         }
         if(typeof rasTypeFilter !== 'undefined' && rasTypeFilter === 'notif' && window._renderNotifBulkPanel) {
             window._renderNotifBulkPanel();
@@ -3786,17 +3741,20 @@ let _renderLock = false; // 재진입 방지
             if(window._plzBindCurRoom) window._plzBindCurRoom();
 
             // 🌟 파이어베이스 배열 깨짐 원천 차단 (등록/도감 버그 픽스)
-            if(!db.stu) db.stu = []; else if(!Array.isArray(db.stu)) db.stu = Object.values(db.stu);
-            if(!db.itm) db.itm = []; else if(!Array.isArray(db.itm)) db.itm = Object.values(db.itm);
-            if(!db.gac) db.gac = []; else if(!Array.isArray(db.gac)) db.gac = Object.values(db.gac);
-            if(!db.log) db.log = []; else if(!Array.isArray(db.log)) db.log = Object.values(db.log);
-            if(!db.auc) db.auc = []; else if(!Array.isArray(db.auc)) db.auc = Object.values(db.auc);
+            // ⚠️ 모든 배열 path의 null/sparse 슬롯을 filter(Boolean)로 제거 — null entry로 인한 cascade 에러 차단
+            const _normArr = v => Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
+            db.stu = _normArr(db.stu);
+            db.itm = _normArr(db.itm);
+            db.gac = _normArr(db.gac);
+            db.log = _normArr(db.log);
+            db.auc = _normArr(db.auc);
+            db.avt = _normArr(db.avt);
+            db.bdg = _normArr(db.bdg);
+            db.tit = _normArr(db.tit);
             if(!db.cfg) db.cfg = {show_cn: true, show_tk: true, show_co: true};
-            if(!db.avt) db.avt = []; else if(!Array.isArray(db.avt)) db.avt = Object.values(db.avt);
-            if(!db.bdg) db.bdg = []; else if(!Array.isArray(db.bdg)) db.bdg = Object.values(db.bdg);
-            if(!db.tit) db.tit = []; else if(!Array.isArray(db.tit)) db.tit = Object.values(db.tit);
             // 각 학생의 inv/ibx도 배열로 정규화 (Firebase 객체 반환 시 .some/.filter 오류 방지)
             db.stu.forEach((s, i) => {
+                if(!s) return; // 안전장치 (filter(Boolean) 후엔 안 일어나지만 방어)
                 if(s.inv && !Array.isArray(s.inv)) s.inv = Object.values(s.inv).filter(Boolean);
                 else if(!s.inv) s.inv = [];
                 if(s.ibx && !Array.isArray(s.ibx)) s.ibx = Object.values(s.ibx).filter(Boolean);
@@ -3922,11 +3880,13 @@ let _renderLock = false; // 재진입 방지
 
             // URL 파라미터 자동 로그인 (?cd=XXXX) — 테스트용 다중 탭에서 학생 분리
             const _urlCd = new URLSearchParams(location.search).get('cd');
-            // stu lazy: 자동로그인 조건 충족 시에만 fetch
-            if(!me && (_urlCd || localStorage.getItem('stuCode')) && (!Array.isArray(db.stu) || db.stu.length === 0)) {
+            // 자동 로그인 — 전체 db.stu fetch (idx 정합성 보장)
+            const _autoLoginCd = _urlCd || localStorage.getItem('stuCode');
+            if(!me && _autoLoginCd && !window._stuAutoFetchTried && (!Array.isArray(db.stu) || !db.stu.find(x=>x&&String(x.cd).trim()===String(_autoLoginCd).trim()))) {
+                window._stuAutoFetchTried = true;
                 if(window._ensureStuLoaded) {
-                    window._ensureStuLoaded(); // 비동기 — 완료 후 _splitFire가 다시 호출됨
-                    return; // 다음 fire에서 자동로그인 재시도
+                    window._ensureStuLoaded().then(() => { try { _splitFire && _splitFire(); } catch(_){} });
+                    return; // fetch 완료 후 다음 fire에서 자동로그인 재시도
                 }
             }
             if (!me && _urlCd) {
@@ -3935,8 +3895,9 @@ let _renderLock = false; // 재진입 방지
                     if(_urlS.shopRestrict){const _td2=new Date().toISOString().slice(0,10);const {from:_f2,to:_t2}=_urlS.shopRestrict;if(_f2&&_t2&&_td2>=_f2&&_td2<=_t2){_showShopRestrictScreen(_urlS.nm,_f2,_t2);return;}}
                     me = _urlS;
                     // URL 자동 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
+                    // ※ auc(요청사항) 라이브는 학생이 경매 탭 클릭 시 _aucAttachLive에서 attach (트래픽 절감)
                     if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
-                    if(window._attachSplitAucFullListener) try { window._attachSplitAucFullListener(); } catch(_){}
+                    setTimeout(() => window._notifyActiveAucsOnLogin && window._notifyActiveAucsOnLogin(), 800);
                     if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                     if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                     if(!me.col) me.col = [];
@@ -3959,8 +3920,9 @@ let _renderLock = false; // 재진입 방지
                     if (_autoS) {
                         if(_autoS.shopRestrict){const _td3=new Date().toISOString().slice(0,10);const {from:_f3,to:_t3}=_autoS.shopRestrict;if(_f3&&_t3&&_td3>=_f3&&_td3<=_t3){_showShopRestrictScreen(_autoS.nm,_f3,_t3);return;}}
                         me = _autoS;
+                        // ※ auc 라이브는 학생이 경매 탭 클릭 시에만 attach (트래픽 절감)
                         if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
-                        if(window._attachSplitAucFullListener) try { window._attachSplitAucFullListener(); } catch(_){}
+                        setTimeout(() => window._notifyActiveAucsOnLogin && window._notifyActiveAucsOnLogin(), 800);
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                         if(!me.col) me.col = [];
@@ -4241,19 +4203,41 @@ let _renderLock = false; // 재진입 방지
             function _doWrite(){
                 _lastKnownStuCount = curCount;
                 _stuCountInitialized = true;
+                // ⚠️ 치명적 버그 차단: 학생은 sv()로 stu/auc/gacQueue를 통째로 쓰지 않음.
+                // 학생의 db.stu는 sparse(자기 record만), db.auc는 stale 가능 → 통째 set 시 다른 학생/경매 wipe
+                // 학생의 모든 변경은 upMe()(자기 stu/{idx}만) + 직접 child set(submitAucReq, submitOfflineGacReq)으로 처리.
+                // sv()는 학생 클라이언트에서 효과 없음 (no-op).
+                if(isStudentTab) {
+                    console.log('[sv] student — no-op (own stu via upMe, auc/gacQueue via direct child set)');
+                    return;
+                }
                 const payload = {};
                 const TEACHER_KEYS = ['cfg','itm','gac','avt','bdg','tit','petDef','log','rec','ak'];
-                const SHARED_KEYS = ['stu','auc'];
-                const keys = isStudentTab ? SHARED_KEYS : [...TEACHER_KEYS, ...SHARED_KEYS];
+                const SHARED_KEYS = ['stu','auc','gacQueue'];
+                const keys = [...TEACHER_KEYS, ...SHARED_KEYS];
+                // 트래픽 절감: 직전 송신 hash와 비교 — 실제로 바뀐 키만 payload에 포함
+                if(!window._lastSentHash) window._lastSentHash = {};
                 for(const k of keys) {
                     if(!(k in db)) continue;
+                    let toSend;
                     if(k === 'cfg') {
                         const cfgCopy = { ...db.cfg };
                         delete cfgCopy.plz;
-                        payload.cfg = cfgCopy;
+                        toSend = cfgCopy;
                     } else {
-                        payload[k] = db[k];
+                        toSend = db[k];
                     }
+                    let curHash;
+                    try { curHash = JSON.stringify(toSend == null ? null : toSend); } catch(_) { curHash = null; }
+                    // hash 비교 실패하면 안전을 위해 무조건 보냄 (이전 동작 유지)
+                    if(curHash != null && window._lastSentHash[k] === curHash) continue;
+                    payload[k] = toSend;
+                    if(curHash != null) window._lastSentHash[k] = curHash;
+                }
+                // 변경 없으면 write 생략 (lastWriteTs도 송신 안 함)
+                if(Object.keys(payload).length === 0) {
+                    console.log('[sv] no changes — skip write');
+                    return;
                 }
                 // 마지막 쓰기 시각 기록 (다른 탭 디버깅용)
                 payload.lastWriteTs = firebase.database.ServerValue.TIMESTAMP;
@@ -4529,7 +4513,8 @@ let _renderLock = false; // 재진입 방지
     }
 
     function logT(){
-        const pw = document.getElementById('tp').value;
+        console.log('[logT] called');
+        const pw = document.getElementById('tp')?.value;
         if(pw==='csgo10'){
             localStorage.setItem('teacherLogged','1');
             // 교사 로그인 → log + plzRoomsCfg 라이브 구독
@@ -4568,9 +4553,11 @@ let _renderLock = false; // 재진입 방지
     }
 
     async function logS(){
-        const c = document.getElementById('sc').value.trim();
+        console.log('[logS] called');
+        const c = document.getElementById('sc')?.value?.trim() || '';
         if(!c) return alert("코드를 입력하세요.");
-        // stu lazy: 로그인 시 fetch (수동 로그인 입력 경로)
+        // 전체 db.stu fetch — Firebase idx와 로컬 idx 정합성 보장
+        // (이전 _fetchStuByCd 방식은 sparse 압축으로 idx 어긋남 → 다른 학생 데이터 표시 버그)
         if(window._ensureStuLoaded) {
             try { await window._ensureStuLoaded(); } catch(_){}
         }
@@ -4587,9 +4574,9 @@ let _renderLock = false; // 재진입 방지
             }
             me = s;
             // 학생 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
+            // ※ auc 라이브는 학생이 경매 탭 클릭 시 _aucAttachLive에서 attach (트래픽 절감)
             if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
-            // 요청사항 라이브 — 학생도 모든 화면에서 수신 (배지·실시간 알림)
-            if(window._attachSplitAucFullListener) try { window._attachSplitAucFullListener(); } catch(_){}
+            setTimeout(() => window._notifyActiveAucsOnLogin && window._notifyActiveAucsOnLogin(), 800);
 
             // 로그인 시 다했니 쿠키 동기화 (조용하게)
             const data = await fetchDahessni(me.cd);
@@ -4934,13 +4921,43 @@ let _renderLock = false; // 재진입 방지
 
     function upMe(){
         if (!me || !me.cd) return;
-        const i = db.stu.findIndex(x => String(x.cd).trim() === String(me.cd).trim());
+        const i = db.stu.findIndex(x => x && String(x.cd).trim() === String(me.cd).trim());
         if (i !== -1) {
             Object.assign(db.stu[i], me);
-            // Firebase는 undefined 거부 — JSON round-trip으로 안전하게 stringify (undefined 제거)
+            // Firebase는 undefined 거부 — JSON round-trip으로 안전하게 stringify
             let _safe;
             try { _safe = JSON.parse(JSON.stringify(db.stu[i])); } catch(_){ _safe = db.stu[i]; }
-            dbRef.child('stu/' + i).set(_safe);
+            // 트래픽 절감: 직전 송신 hash와 비교해서 변경된 필드만 child set
+            // (이전: 매번 학생 전체 record set ~수 KB → 현재: 변경분만 ~수십 B)
+            try {
+                if(!window._upMeLastHash) window._upMeLastHash = {};
+                const lastHash = window._upMeLastHash[me.cd] || {};
+                const newHash = {};
+                const updates = {};
+                Object.keys(_safe).forEach(k => {
+                    let v;
+                    try { v = JSON.stringify(_safe[k]); } catch(_) { v = null; }
+                    newHash[k] = v;
+                    if(v !== lastHash[k]) updates[k] = _safe[k];
+                });
+                // 삭제된 필드도 반영 (이전엔 있었는데 지금 없는 키)
+                Object.keys(lastHash).forEach(k => {
+                    if(!(k in _safe)) updates[k] = null;
+                });
+                if(Object.keys(updates).length === 0) {
+                    // 변경 없음 — 송신 생략
+                } else if(Object.keys(updates).length >= Object.keys(_safe).length / 2) {
+                    // 절반 이상 변경 시 그냥 전체 set (오버헤드 최소)
+                    dbRef.child('stu/' + i).set(_safe);
+                } else {
+                    dbRef.child('stu/' + i).update(updates);
+                }
+                window._upMeLastHash[me.cd] = newHash;
+            } catch(e) {
+                // 안전 fallback: 전체 set
+                console.warn('[upMe] partial 실패 — 전체 set fallback', e);
+                dbRef.child('stu/' + i).set(_safe);
+            }
             updateNameTag();
         }
     }
@@ -5042,28 +5059,50 @@ let _renderLock = false; // 재진입 방지
         }
     }
 
+    // 신규 학생 inv에 "자동 지급" 마킹된 아이템 채우기
+    function _newStuDefaultInv(){
+        const itmAll = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
+        const matches = itmAll.filter(it => it && (it.defaultGive === true || it.defaultGive === 'true'));
+        const out = [];
+        matches.forEach(it => {
+            const qty = parseInt(it.defaultGiveQty) || 1;
+            for(let k = 0; k < qty; k++) {
+                out.push({
+                    n: it.n,
+                    i: it.i || '🎁',
+                    st: 'active',
+                    g: it.g || it.grade || 'C'
+                });
+            }
+        });
+        console.log('[defaultGive] 신규 학생 자동 지급 후보:', matches.map(it=>it.n), '→ inv 항목', out.length, '개');
+        return out;
+    }
+
     function add1(){
         const n=document.getElementById('an').value, nm=document.getElementById('am').value, c=document.getElementById('ac').value;
         const gdrRaw=document.getElementById('agdr').value.trim();
         const gdr = gdrRaw==='남'||gdrRaw==='m' ? 'm' : gdrRaw==='여'||gdrRaw==='f' ? 'f' : '';
         if(n&&nm&&c){
             if(!db.stu) db.stu = [];
-            const newS={no:n, nm:nm, cd:c, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:[], ibx:[], col:[], rd:{}, rb:0};
+            const defInv = _newStuDefaultInv();
+            const newS={no:n, nm:nm, cd:c, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv, ibx:[], col:[], rd:{}, rb:0};
             if(gdr) newS.gdr=gdr;
             db.stu.push(newS);
             db.stu.sort((a,b)=>a.no-b.no);
-            sv(); rTb(); alert("추가됨");
+            sv(); rTb();
+            alert("추가됨" + (defInv.length ? ` (자동 지급 아이템 ${defInv.length}개 포함)` : ''));
         }
     }
 
     async function bulk(){
         const l=document.getElementById('bk').value.split('\n');
         if(!db.stu) db.stu = [];
+        let added = 0;
         for(let r of l){
             const p=r.trim().split(/[\s,]+/);
             if(p.length>=3){
                 let no=p[0], nm=p[1], gdr=undefined, cd;
-                // p[2]가 남/여/m/f 이면 성별, p[3]이 코드
                 if(p.length>=4 && ['남','여','m','f'].includes(p[2])){
                     gdr = (p[2]==='남'||p[2]==='m') ? 'm' : 'f';
                     cd = p[3];
@@ -5072,16 +5111,20 @@ let _renderLock = false; // 재진입 방지
                 }
                 let s=db.stu.find(x=>x.cd===cd);
                 if(!s){
-                    const newS={no, nm, cd, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:[], ibx:[], col:[], rd:{}, rb:0};
+                    const defInv = _newStuDefaultInv();
+                    const newS={no, nm, cd, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv, ibx:[], col:[], rd:{}, rb:0};
                     if(gdr) newS.gdr=gdr;
                     db.stu.push(newS);
+                    added++;
                 } else {
                     s.no=no; s.nm=nm;
                     if(gdr) s.gdr=gdr;
                 }
             }
         }
-        db.stu.sort((a,b)=>a.no-b.no); sv(); rTb(); alert("등록 완료");
+        db.stu.sort((a,b)=>a.no-b.no); sv(); rTb();
+        const defCnt = _newStuDefaultInv().length;
+        alert(`등록 완료 (신규 ${added}명${defCnt && added ? `, 자동 지급 아이템 ${defCnt}개씩 포함` : ''})`);
     }
     
     window.backupDB = function() {
@@ -5110,17 +5153,45 @@ let _renderLock = false; // 재진입 방지
     window.restoreDB = function(input) {
         const file = input.files[0]; if(!file) return;
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
                 const data = JSON.parse(e.target.result);
                 if(!data.stu) return alert('올바른 백업 파일이 아닙니다.');
+                // 백업 파일의 stu에 null 슬롯 있으면 정규화 (다른 쪽 .cookie 등 cascade 에러 방지)
+                if(Array.isArray(data.stu)) data.stu = data.stu.filter(s => s && s.cd);
                 if(!confirm(`백업 파일을 불러오면 현재 데이터가 덮어씌워집니다.\n학생 수: ${data.stu.length}명\n날짜: ${data.ts||'알 수 없음'}\n\n계속하시겠습니까?`)) return;
-                ['stu','itm','gac','avt','bdg','tit','petDef','spPetDef','log','cfg'].forEach(k => {
-                    if(data[k] !== undefined) db[k] = data[k];
+                const keys = ['stu','itm','gac','avt','bdg','tit','petDef','spPetDef','log','cfg','auc','gacQueue','rec','ak'];
+                // ⚠️ Firebase 직접 set 먼저 (실제 데이터 복구는 여기서 완료) — 이후 렌더 실패해도 데이터는 안전
+                const updates = {};
+                keys.forEach(k => { if(data[k] !== undefined) updates[k] = data[k]; });
+                updates.lastWriteTs = firebase.database.ServerValue.TIMESTAMP;
+                updates.lastWriter = (me && me.cd) || 'restore';
+                let writeOk = false;
+                try {
+                    await dbRef.update(updates);
+                    writeOk = true;
+                } catch(err) {
+                    return alert('Firebase 쓰기 실패: ' + (err && err.message || err));
+                }
+                // 로컬 db 갱신 (writeOk 후)
+                keys.forEach(k => { if(data[k] !== undefined) db[k] = data[k]; });
+                // _lastSentHash 동기화
+                if(!window._lastSentHash) window._lastSentHash = {};
+                keys.forEach(k => {
+                    if(data[k] !== undefined) {
+                        try { window._lastSentHash[k] = JSON.stringify(data[k]); } catch(_){}
+                    }
                 });
-                sv(); rTb();
-                alert('불러오기 완료!');
-            } catch(_) { alert('파일을 읽는 중 오류가 발생했습니다.'); }
+                // 각 렌더 함수를 개별 try/catch로 — 한 곳 실패해도 나머지·복구 안내까지 도달
+                try { if(typeof rTb==='function') rTb(); } catch(e){ console.error('[restore] rTb', e); }
+                try { if(typeof rSet==='function') rSet(); } catch(e){ console.error('[restore] rSet', e); }
+                try { if(typeof updateMenuBadges==='function') updateMenuBadges(); } catch(e){ console.error('[restore] menuBadges', e); }
+                try { if(typeof rAs==='function') rAs(); } catch(_){}
+                alert(`✅ 불러오기 완료!\n학생 ${data.stu.length}명 · 아이템 ${(data.itm||[]).length}개 · 가챠 ${(data.gac||[]).length}대 복구됨\n\n페이지 새로고침을 권장합니다.`);
+            } catch(err) {
+                console.error('[restoreDB]', err);
+                alert('파일을 읽는 중 오류: ' + (err && err.message || err));
+            }
         };
         reader.readAsText(file);
         input.value = '';
@@ -5133,10 +5204,94 @@ let _renderLock = false; // 재진입 방지
         }
     }
 
+    // 🔄 listener 강제 재연결 — auc/stu/log 등 모두 재attach. UI 알림이 안 뜰 때 비상용.
+    window._forceReattachListeners = function() {
+        try {
+            // 기존 listener 해제
+            if(window._aucFullAttached) {
+                try { dbRef.child('auc').off(); } catch(_){}
+                window._aucFullAttached = false;
+            }
+            if(window._stuFullAttached) {
+                try { dbRef.child('stu').off(); } catch(_){}
+                window._stuFullAttached = false;
+            }
+            if(window._splitLogAttached) {
+                try { dbRef.child('log').off('value'); } catch(_){}
+                // _splitLogAttached는 module-private이므로 직접 set 못함
+            }
+            // 재attach
+            if(window._attachSplitAucFullListener) window._attachSplitAucFullListener();
+            if(window._attachSplitStuFullListener) window._attachSplitStuFullListener();
+            if(window._attachSplitLogListener) window._attachSplitLogListener();
+            // 즉시 한 번 강제 fetch — 누락된 변경분 동기화
+            dbRef.child('auc').once('value').then(snap => {
+                const v = snap.val();
+                if(Array.isArray(v)) db.auc = v.filter(Boolean);
+                else if(v) db.auc = Object.values(v).filter(Boolean);
+                else db.auc = [];
+                console.log('[force reattach] auc fetched —', db.auc.length, '건');
+                if(typeof updateMenuBadges === 'function') updateMenuBadges();
+                if(typeof rAucT === 'function' && document.getElementById('t_auc') && !document.getElementById('t_auc').classList.contains('hidden')) rAucT();
+            });
+            alert('🔄 listener 재연결 완료. 콘솔 로그를 확인하세요.');
+        } catch(e) { alert('재연결 실패: ' + e.message); }
+    };
+
+    // 🆘 비상 복구 — 콘솔에서 호출. 백업 JSON 텍스트를 직접 붙여서 Firebase에 강제 set
+    // 사용: window._emergencyRestore('붙여넣은 JSON 문자열')
+    window._emergencyRestore = async function(jsonText) {
+        if(!jsonText) {
+            const ls = localStorage.getItem('rpg_autosnap');
+            if(!ls) return alert('JSON 텍스트를 인자로 넘기거나, localStorage 자동 스냅샷이 있어야 합니다.');
+            jsonText = ls;
+        }
+        let data;
+        try { data = JSON.parse(jsonText); } catch(e) { return alert('JSON 파싱 실패: ' + e.message); }
+        if(!data.stu || !Array.isArray(data.stu)) return alert('학생 데이터가 없거나 잘못된 포맷.');
+        if(!confirm(`긴급 복구: 학생 ${data.stu.length}명을 Firebase에 강제 set합니다. 진행?`)) return;
+        const updates = {};
+        ['stu','itm','gac','avt','bdg','tit','petDef','spPetDef','log','cfg','auc','gacQueue','rec','ak'].forEach(k => {
+            if(data[k] !== undefined) updates[k] = data[k];
+        });
+        updates.lastWriteTs = firebase.database.ServerValue.TIMESTAMP;
+        updates.lastWriter = 'emergency_restore';
+        try {
+            await dbRef.update(updates);
+            Object.keys(updates).forEach(k => {
+                if(k!=='lastWriteTs' && k!=='lastWriter') db[k] = updates[k];
+            });
+            // _lastSentHash 동기화
+            if(!window._lastSentHash) window._lastSentHash = {};
+            Object.keys(updates).forEach(k => {
+                try { window._lastSentHash[k] = JSON.stringify(updates[k]); } catch(_){}
+            });
+            alert(`✅ 긴급 복구 완료. 학생 ${data.stu.length}명 + 기타 데이터 복원.`);
+            location.reload();
+        } catch(e) { alert('Firebase 쓰기 실패: ' + e.message); }
+    };
+
     window.deleteAllStudents = function() {
-        prettyConfirm('학생 전체를 삭제할까요?<br><span style="font-size:12px;color:#888;">이 작업은 되돌릴 수 없습니다.</span>', () => {
+        const cnt = (db.stu||[]).length;
+        if(cnt === 0) return alert('이미 학생이 없습니다.');
+        // 1차 확인
+        prettyConfirm(`⚠️ 학생 <b>${cnt}명</b>을 모두 삭제할까요?<br><span style="font-size:12px;color:#E53935;">되돌릴 수 없습니다.</span>`, () => {
+            // 2차 확인 — 텍스트 입력으로 의도 재확인
+            const txt = prompt(`정말 삭제하려면 "${cnt}" 라고 입력하세요.\n(자동 백업이 다운로드되고 진행됩니다)`);
+            if(String(txt||'').trim() !== String(cnt)) return alert('삭제가 취소되었습니다.');
+            // 자동 백업 다운로드
+            try {
+                const backup = { ts: new Date().toISOString(), stu: db.stu, itm: db.itm, gac: db.gac, avt: db.avt, bdg: db.bdg, tit: db.tit, petDef: db.petDef, spPetDef: db.spPetDef, log: db.log, cfg: db.cfg, auc: db.auc, gacQueue: db.gacQueue };
+                const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = `RPG상점_삭제전백업_${new Date().toISOString().slice(0,16).replace(/[:T]/g,'')}.json`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            } catch(_){}
             db.stu = []; sv(); rTb();
-        }, {icon:'🗑️', okLabel:'전체 삭제', okClass:'btn-red', cancelLabel:'취소'});
+            alert('삭제 완료. 백업 파일이 다운로드되었습니다.');
+        }, {icon:'🗑️', okLabel:'다음 단계로', okClass:'btn-red', cancelLabel:'❌ 취소 (안전)'});
     };
 
     window.deleteSelectedStudents = function() {
@@ -5368,11 +5523,36 @@ let _renderLock = false; // 재진입 방지
     window._stuPanelSi = null;
     window._stuPanelTypeFilter = 'all';
     window._stuPanelAvtCat = 'all';
+    // 다중 학생 패널 지원 — 학생별 상태/closure 저장
+    window._stuPanelStates = window._stuPanelStates || new Map();
 
-    window.showStuPanel = function(si) {
-        si = +si;
-        window._stuPanelSi = si;
-        // 매번 전체 탭으로 초기화
+    window.showStuPanel = function(siOrCd) {
+        // si 또는 cd로 호출 가능. 내부에선 stable한 cd로 통일.
+        const _stuList0 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        let si, stuCd;
+        if(typeof siOrCd === 'string') {
+            stuCd = siOrCd;
+            si = _stuList0.findIndex(x => x && String(x.cd).trim() === String(stuCd).trim());
+        } else {
+            si = +siOrCd;
+            const _s0 = _stuList0[si];
+            if(!_s0) return;
+            stuCd = String(_s0.cd);
+        }
+        if(si < 0 || !stuCd) return;
+        // ID에 cd 사용 (정렬·인덱스 변경에도 안정적)
+        const _safeCd = String(stuCd).replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎ_-]/g, '_');
+        const _bgIdKey = _safeCd; // 이후 ID 생성에 일관 사용
+        // 같은 학생 패널이 이미 열려 있으면 z-index 올려 앞으로
+        if(document.getElementById('_stuPanelBg_' + _bgIdKey)) {
+            const _ex = document.getElementById('_stuPanelBg_' + _bgIdKey);
+            _ex.style.zIndex = 9990 + ((Date.now() / 100) | 0) % 100;
+            return;
+        }
+        window._stuPanelSi = si; // 레거시
+        // 패널별 상태 (cd로 키)
+        const _stPanel = { typeFilter: 'all', avtCat: 'all', sel: new Set(), stuCd };
+        window._stuPanelStates.set(stuCd, _stPanel);
         window._stuPanelTypeFilter = 'all';
         window._stuPanelAvtCat = 'all';
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
@@ -5380,11 +5560,14 @@ let _renderLock = false; // 재진입 방지
         if(!s) return;
         const avt = (typeof renderAvatar === 'function') ? renderAvatar(s.eq||{}, 56) : '👤';
 
-        // 이 학생의 그룹만 필터
-        const stuCd = s.cd; // 안정적 조회용
+        // 이 학생의 그룹만 필터 (stuCd는 함수 상단에서 이미 결정됨)
         const _getStu = () => { const sl=Array.isArray(db.stu)?db.stu:Object.values(db.stu||{}); return sl.find(x=>x.cd===stuCd)||sl[si]; };
         const _renderPanelGrid = () => {
-            const tf = window._stuPanelTypeFilter;
+            // ⚠️ 현재 db.stu에서 cd로 si 재해결 (정렬에도 안정 — closure 캡처 si는 stale)
+            const curSi = (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{}))
+                .findIndex(x => x && String(x.cd).trim() === String(stuCd).trim());
+            if(curSi < 0) return '<div style="text-align:center;color:#999;padding:20px;">학생을 찾을 수 없어요</div>';
+            const tf = _stPanel.typeFilter;
             // 내역 탭
             if(tf === 'log') {
                 const s2 = _getStu();
@@ -5496,7 +5679,7 @@ let _renderLock = false; // 재진입 방지
             }
             const panelGroups = currentGroups
                 .map((g,vi)=>({g,vi}))
-                .filter(({g})=> g.si === si);
+                .filter(({g})=> g.si === curSi);
             let filtered = panelGroups;
             // 종류 필터 먼저
             if(tf && tf !== 'all') {
@@ -5527,11 +5710,15 @@ let _renderLock = false; // 재진입 방지
         };
 
         const PANEL_TYPES = [['all','전체'],['itm','🎁 일반'],['avt','🎨 꾸미기'],['bdg','🐾 펫'],['tit','🏆 칭호'],['done','✅ 완료'],['notif','📬 알림']];
+        // 패널별 chipHtml — 자기 학생의 필터 상태 참조
         const _chipHtml = () => PANEL_TYPES.map(([k,lb])=>
-            `<button class="panel-chip ${window._stuPanelTypeFilter===k?'active':''}" onclick="window._stuPanelTypeFilter='${k}';${k!=='notif'?`{const p=document.getElementById('_stuPanel');if(p)p.style.width='min(700px,96vw)';}`:''}document.getElementById('_spGrid').innerHTML=window._renderPanelGrid();document.getElementById('_spChips').innerHTML=window._chipHtml();">${lb}</button>`
+            `<button class="panel-chip ${_stPanel.typeFilter===k?'active':''}" onclick="window._setStuPanelFilter('${stuCd}','${k}')">${lb}</button>`
         ).join('');
 
-        // 함수 외부에서 접근 가능하도록 등록
+        // 패널별 closure 저장 — chip 클릭 시 해당 si의 closure 호출
+        _stPanel.render = _renderPanelGrid;
+        _stPanel.chip = _chipHtml;
+        // 호환: 글로벌도 가장 마지막 패널의 것으로 유지
         window._renderPanelGrid = _renderPanelGrid;
         window._chipHtml = _chipHtml;
 
@@ -5551,19 +5738,31 @@ let _renderLock = false; // 재진입 방지
         const reqTotal = currentGroups.filter(g=>g.si===si&&g.hasReq).length;
         const hideLabel = hideCompleted ? '👁️ 완료 보이기' : '🙈 완료 숨기기';
 
-        // 기존 패널 제거
-        document.getElementById('_stuPanel')?.remove();
-        document.getElementById('_stuPanelBg')?.remove();
+        // 다중 패널: cd-suffix ID (정렬에도 안정).
+        const _bgId = '_stuPanelBg_' + _bgIdKey;
+        const _panelId = '_stuPanel_' + _bgIdKey;
+        const _gridId = '_spGrid_' + _bgIdKey;
+        const _chipsId = '_spChips_' + _bgIdKey;
+        // 열려 있는 다른 패널 수만큼 stagger (최대 5칸)
+        const _openCnt = document.querySelectorAll('[id^="_stuPanelBg_"]').length;
+        const _staggerN = _openCnt % 5;
+        const _xOff = _staggerN * 28;
+        const _yOff = _staggerN * 28;
 
         const bg = document.createElement('div');
-        bg.id = '_stuPanelBg';
-        bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9980;display:flex;align-items:center;justify-content:center;';
-        bg.onclick = (e) => { if(e.target===bg) closeStuPanel(); };
+        bg.id = _bgId;
+        bg.style.cssText = 'position:fixed;inset:0;background:transparent;z-index:' + (9980 + _openCnt) + ';pointer-events:none;';
+        // 첫 번째 패널만 어두운 배경 (이중 어두움 방지)
+        if(_openCnt === 0) {
+            bg.style.background = 'rgba(0,0,0,0.5)';
+            bg.style.pointerEvents = 'auto';
+            bg.onclick = (e) => { if(e.target===bg) closeStuPanel(si); };
+        }
         document.body.appendChild(bg);
 
         const panel = document.createElement('div');
-        panel.id = '_stuPanel';
-        panel.style.cssText = 'width:min(700px,96vw);height:88dvh;background:#FAFAFA;border-radius:20px;display:flex;flex-direction:column;animation:popUp 0.22s ease-out;box-shadow:0 12px 40px rgba(0,0,0,0.35);overflow:hidden;';
+        panel.id = _panelId;
+        panel.style.cssText = `position:absolute;left:50%;top:50%;transform:translate(calc(-50% + ${_xOff}px), calc(-50% + ${_yOff}px));width:min(700px,96vw);height:88dvh;background:#FAFAFA;border-radius:20px;display:flex;flex-direction:column;animation:popUp 0.22s ease-out;box-shadow:0 12px 40px rgba(0,0,0,0.35);overflow:hidden;pointer-events:auto;`;
         panel.innerHTML = `
             <!-- 헤더 -->
             <div style="background:linear-gradient(135deg,#5D4037,#8D6E63);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
@@ -5579,22 +5778,22 @@ let _renderLock = false; // 재진입 방지
                     ${reqTotal>0?`<div style="color:#FFCDD2;font-size:12px;font-weight:bold;margin-top:2px;">🚨 ${reqTotal}건 승인 대기</div>`:''}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;">
-                    <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.35);" onclick="window._stuPanelTypeFilter='log';document.getElementById('_spGrid').innerHTML=window._renderPanelGrid();document.getElementById('_spChips').innerHTML=window._chipHtml();">📋 내역</button>
+                    <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.35);" onclick="window._setStuPanelFilter('${stuCd}','log')">📋 내역</button>
                     <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(255,100,100,0.3);color:white;border:1px solid rgba(255,255,255,0.35);" onclick="window._showShopRestrictModal('${stuCd}')">🚫 상점 제한</button>
-                    <button class="btn btn-blue" style="font-size:12px;padding:5px 10px;" onclick="appAllInPanel(${si})">✅ 승인</button>
-                    <button class="btn btn-red" style="font-size:12px;padding:5px 10px;" onclick="window._delSelInPanel(${si})">🗑️ 삭제</button>
-                    <button onclick="closeStuPanel()" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:32px;height:32px;font-size:18px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
+                    <button class="btn btn-blue" style="font-size:12px;padding:5px 10px;" onclick="window._appAllInPanelByCd('${stuCd}')">✅ 승인</button>
+                    <button class="btn btn-red" style="font-size:12px;padding:5px 10px;" onclick="window._delSelInPanelByCd('${stuCd}')">🗑️ 삭제</button>
+                    <button onclick="closeStuPanel('${stuCd}')" style="background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:32px;height:32px;font-size:18px;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
                 </div>
             </div>
             <!-- 종류 필터 칩 -->
-            <div id="_spChips" style="padding:8px 12px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #EEE;background:white;flex-shrink:0;">${_chipHtml()}</div>
+            <div id="${_chipsId}" style="padding:8px 12px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #EEE;background:white;flex-shrink:0;">${_chipHtml()}</div>
             <!-- 아이템 그리드 -->
-            <div id="_spGrid" class="grid" style="flex:1;overflow-y:auto;padding:10px;">${_renderPanelGrid()}</div>
+            <div id="${_gridId}" class="grid" style="flex:1;overflow-y:auto;padding:10px;">${_renderPanelGrid()}</div>
         `;
         bg.appendChild(panel);
 
-        // 패널 드래그 rubber-band
-        const _spGrid = panel.querySelector('#_spGrid');
+        // 패널 드래그 rubber-band — 자기 패널의 grid만 대상
+        const _spGrid = panel.querySelector('#' + _gridId);
         const _spMM = function(e) {
             if(!_spDragging || !_spStartC) return;
             const dxMove = Math.abs(e.clientX - _spStartC.x);
@@ -5613,7 +5812,7 @@ let _renderLock = false; // 재진입 방지
             const sx=_spStartC.x-rect.left, sy=_spStartC.y-rect.top;
             const ex=e.clientX-rect.left,   ey=e.clientY-rect.top;
             const x1=Math.min(sx,ex),y1=Math.min(sy,ey),x2=Math.max(sx,ex),y2=Math.max(sy,ey);
-            document.querySelectorAll('#_spGrid .asset').forEach(card=>{
+            _spGrid.querySelectorAll('.asset').forEach(card=>{
                 const cr=card.getBoundingClientRect();
                 const cx1=cr.left-rect.left,cy1=cr.top-rect.top,cx2=cx1+cr.width,cy2=cy1+cr.height;
                 const hits=cx1<x2&&cx2>x1&&cy1<y2&&cy2>y1;
@@ -5631,7 +5830,7 @@ let _renderLock = false; // 재진입 방지
                     else { window._spSel.add(k); document.getElementById('card_'+k)?.classList.add('sel'); }
                 } else {
                     window._spSel.clear();
-                    document.querySelectorAll('#_spGrid .asset').forEach(c=>c.classList.remove('sel'));
+                    _spGrid.querySelectorAll('.asset').forEach(c=>c.classList.remove('sel'));
                     window._spSel.add(k); document.getElementById('card_'+k)?.classList.add('sel');
                 }
             }
@@ -5643,10 +5842,60 @@ let _renderLock = false; // 재진입 방지
         window._spCleanup = function() { document.removeEventListener('mousemove',_spMM); document.removeEventListener('mouseup',_spMU); };
     };
 
-    window.closeStuPanel = function() {
-        window._stuPanelSi = null;
-        window._spCleanup?.();
-        document.getElementById('_stuPanelBg')?.remove();
+    // si(숫자) 또는 stuCd(문자열)을 stuCd로 정규화
+    function _resolveStuCd(siOrCd) {
+        if(typeof siOrCd === 'string') return siOrCd;
+        const sl = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const s = sl[+siOrCd];
+        return s && s.cd ? String(s.cd) : null;
+    }
+    function _safeCdId(cd) { return String(cd).replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎ_-]/g, '_'); }
+
+    window.closeStuPanel = function(siOrCd) {
+        if(siOrCd == null) {
+            // 전체 닫기
+            window._stuPanelSi = null;
+            window._spCleanup?.();
+            document.querySelectorAll('[id^="_stuPanelBg_"]').forEach(el => el.remove());
+            document.getElementById('_stuPanelBg')?.remove();
+            if(window._stuPanelStates) window._stuPanelStates.clear();
+            return;
+        }
+        const cd = _resolveStuCd(siOrCd);
+        if(!cd) return;
+        document.getElementById('_stuPanelBg_' + _safeCdId(cd))?.remove();
+        if(window._stuPanelStates) window._stuPanelStates.delete(cd);
+        if(!document.querySelector('[id^="_stuPanelBg_"]')) {
+            window._stuPanelSi = null;
+            window._spCleanup?.();
+        }
+    };
+    // 패널별 필터 변경 — chip onclick에서 호출 (stuCd로)
+    window._setStuPanelFilter = function(siOrCd, k) {
+        const cd = _resolveStuCd(siOrCd);
+        if(!cd) return;
+        const st = window._stuPanelStates && window._stuPanelStates.get(cd);
+        if(!st) return;
+        st.typeFilter = k;
+        window._stuPanelTypeFilter = k;
+        const safe = _safeCdId(cd);
+        const grid = document.getElementById('_spGrid_' + safe);
+        const chips = document.getElementById('_spChips_' + safe);
+        if(grid && st.render) grid.innerHTML = st.render();
+        if(chips && st.chip) chips.innerHTML = st.chip();
+    };
+    // appAll/delSel 래퍼 — cd로 si 해결 후 기존 si 기반 함수 호출
+    window._appAllInPanelByCd = function(cd) {
+        const sl = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const si = sl.findIndex(x => x && String(x.cd).trim() === String(cd).trim());
+        if(si < 0) return alert('학생을 찾을 수 없어요');
+        if(typeof appAllInPanel === 'function') appAllInPanel(si);
+    };
+    window._delSelInPanelByCd = function(cd) {
+        const sl = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const si = sl.findIndex(x => x && String(x.cd).trim() === String(cd).trim());
+        if(si < 0) return alert('학생을 찾을 수 없어요');
+        if(typeof window._delSelInPanel === 'function') window._delSelInPanel(si);
     };
 
     window.showGiveCoinModal = function(si) {
@@ -5711,7 +5960,11 @@ let _renderLock = false; // 재진입 방지
         const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
         if(inv[invIdx]) inv[invIdx].st = 'active';
         if(Array.isArray(s.inv)) s.inv = inv; db.stu = stuList; sv();
-        document.getElementById('_spGrid').innerHTML = window._renderPanelGrid();
+        // 해당 학생 패널 grid 업데이트 (cd-suffix ID로 찾기)
+        const _safe = String(stuCd).replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎ_-]/g, '_');
+        const _g = document.getElementById('_spGrid_' + _safe);
+        const _st = window._stuPanelStates && window._stuPanelStates.get(stuCd);
+        if(_g && _st && _st.render) _g.innerHTML = _st.render();
     };
 
     window._delDoneItem = function(stuCd, invIdx) {
@@ -5721,7 +5974,10 @@ let _renderLock = false; // 재진입 방지
         if(Array.isArray(s.inv)) s.inv.splice(invIdx, 1);
         else { const arr=Object.values(s.inv||{}); arr.splice(invIdx,1); s.inv=arr; }
         db.stu = stuList; sv();
-        document.getElementById('_spGrid').innerHTML = window._renderPanelGrid();
+        const _safe1 = String(stuCd).replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎ_-]/g, '_');
+        const _g1 = document.getElementById('_spGrid_' + _safe1);
+        const _st1 = window._stuPanelStates && window._stuPanelStates.get(stuCd);
+        if(_g1 && _st1 && _st1.render) _g1.innerHTML = _st1.render();
     };
 
     window._delStuLog = function(cd, ts) {
@@ -5732,13 +5988,17 @@ let _renderLock = false; // 재진입 방지
         if(idx===-1) return;
         logs.splice(idx,1); s.shopLog = logs;
         db.stu = stuList; sv();
-        document.getElementById('_spGrid').innerHTML = window._renderPanelGrid();
+        const _safe2 = String(cd).replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎ_-]/g, '_');
+        const _g2 = document.getElementById('_spGrid_' + _safe2);
+        const _st2 = window._stuPanelStates && window._stuPanelStates.get(cd);
+        if(_g2 && _st2 && _st2.render) _g2.innerHTML = _st2.render();
     };
 
     window.execGiveCoin = function(si) {
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
         const s = stuList[si];
         if(!s) return;
+        const stuCd = s.cd;
         const type = document.getElementById('_giveCoinType')?.value || 'cn';
         const amt = Math.max(1, parseInt(document.getElementById('_giveCoinAmt')?.value)||1);
         if(type==='c') s.cookie = (s.cookie||0) + amt;
@@ -5747,7 +6007,11 @@ let _renderLock = false; // 재진입 방지
         document.getElementById('_giveCoinModal')?.remove();
         const typeLabel = type==='c'?'🍪 쿠키':type==='cn'?'🍯 꿀':'🍭 캔디';
         showToast(`✅ ${s.nm}에게 ${typeLabel} ${amt}개 지급 완료`);
-        if(window._stuPanelSi !== null) showStuPanel(window._stuPanelSi);
+        // 해당 학생 패널이 열려있으면 cd로 재오픈 (정렬 영향 없이)
+        if(window._stuPanelStates && window._stuPanelStates.has(stuCd)) {
+            try { closeStuPanel(stuCd); } catch(_){}
+            setTimeout(() => { try { showStuPanel(stuCd); } catch(_){} }, 0);
+        }
     };
 
     window.appAllInPanel = function(si) {
@@ -6575,15 +6839,20 @@ let _renderLock = false; // 재진입 방지
                 </div>`;
             });
             ag.innerHTML = stuEntries.length ? cards : '<div style="text-align:center;color:#999;padding:30px;">표시할 항목 없음</div>';
-            // 패널이 열려있으면 그리드만 업데이트 (깜빡임 방지)
-            if(window._stuPanelSi !== null && window._stuPanelSi !== undefined) {
-                const _spG = document.getElementById('_spGrid');
-                const _spC = document.getElementById('_spChips');
-                if(_spG && window._renderPanelGrid) {
-                    _spG.innerHTML = window._renderPanelGrid();
-                    if(_spC && window._chipHtml) _spC.innerHTML = window._chipHtml();
+            // 열려있는 모든 패널 그리드 업데이트 (깜빡임 방지) — 안전 try/catch
+            try {
+                if(window._stuPanelStates && window._stuPanelStates.size > 0) {
+                    window._stuPanelStates.forEach((st, cd) => {
+                        try {
+                            const safe = String(cd).replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎ_-]/g, '_');
+                            const _spG = document.getElementById('_spGrid_' + safe);
+                            const _spC = document.getElementById('_spChips_' + safe);
+                            if(_spG && st.render) _spG.innerHTML = st.render();
+                            if(_spC && st.chip) _spC.innerHTML = st.chip();
+                        } catch(e){ console.warn('[rTb panel update]', cd, e); }
+                    });
                 }
-            }
+            } catch(e){ console.warn('[rTb panel loop]', e); }
         } else {
             const ag = document.getElementById('t_ag');
             ag.style.gridTemplateColumns = '';
@@ -6745,12 +7014,14 @@ window.appU = function(y, si, k) {
     // 요청사항 승인/삭제 후 모든 관련 뷰 동기화
     window._syncRequestViews = function() {
         try { rAs(); } catch(e){}
-        // 학생 상세 패널 새로고침 (닫고 다시 열기)
-        if(window._stuPanelSi != null && document.getElementById('_stuPanelBg')) {
-            const openSi = window._stuPanelSi;
-            try { closeStuPanel(); } catch(e){}
-            setTimeout(() => { try { showStuPanel(openSi); } catch(e){} }, 0);
-        }
+        // 학생 상세 패널 새로고침 (열려있는 모든 패널을 cd 기반으로 추적)
+        try {
+            const openCds = Array.from(window._stuPanelStates ? window._stuPanelStates.keys() : []);
+            openCds.forEach(cd => { try { closeStuPanel(cd); } catch(e){} });
+            setTimeout(() => {
+                openCds.forEach(cd => { try { showStuPanel(cd); } catch(e){} });
+            }, 0);
+        } catch(e){}
         // 전체 요청사항 모달 새로고침
         if(document.querySelector('.allReqModal')) {
             document.querySelectorAll('.allReqModal').forEach(m => m.remove());
@@ -7882,6 +8153,37 @@ window.appU = function(y, si, k) {
     };
 
     function rSet(scrollToIdx){
+        // 부가 설정 (골든티켓·달고나 / 인쇄 요청 주기)
+        const _extras = document.getElementById('t_set_extras');
+        if(_extras) {
+            const _printDay = (db.cfg && typeof db.cfg.printResetDay === 'number') ? db.cfg.printResetDay : 1;
+            _extras.innerHTML = `
+                <div style="background:#FFF3E0;border-radius:10px;padding:12px;border:1px solid #FFB74D;">
+                    <div style="font-size:13px;font-weight:bold;color:#E65100;margin-bottom:8px;">🎫 골든티켓 / 달고나 설정</div>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#333;margin-bottom:6px;flex-wrap:wrap;">
+                        <span style="flex-shrink:0;">사용 임계치</span>
+                        <input type="number" min="1" max="20" value="${(db.cfg?.recordCoupons?.ticketThreshold)||5}" id="set_ticketThreshold" style="width:60px;padding:4px;font-family:'Jua';text-align:center;border:2px solid #FFD6E0;border-radius:6px;" onchange="if(!db.cfg.recordCoupons)db.cfg.recordCoupons={};db.cfg.recordCoupons.ticketThreshold=Math.max(1,parseInt(this.value)||5);sv();">
+                        <span style="flex-shrink:0;">개</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#333;flex-wrap:wrap;">
+                        <span style="flex-shrink:0;">전용 뽑기 머신</span>
+                        <select id="set_ticketGachaIdx" style="flex:1;min-width:140px;padding:5px;font-size:13px;font-family:'Jua';" onchange="if(!db.cfg.recordCoupons)db.cfg.recordCoupons={};db.cfg.recordCoupons.ticketGachaIdx=this.value===''?null:parseInt(this.value);sv();">
+                            <option value="">(없음)</option>
+                            ${(Array.isArray(db.gac)?db.gac:Object.values(db.gac||{})).map((g,i)=>`<option value="${i}" ${(db.cfg?.recordCoupons?.ticketGachaIdx)===i?'selected':''}>${(g&&g.n)||('머신 '+(i+1))}</option>`).join('')}
+                        </select>
+                    </label>
+                </div>
+                <div style="background:#E1F5FE;border-radius:10px;padding:12px;border:1px solid #81D4FA;">
+                    <div style="font-size:13px;font-weight:bold;color:#0277BD;margin-bottom:8px;">🖨️ 인쇄 요청 주기</div>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#333;flex-wrap:wrap;">
+                        <span style="flex-shrink:0;">매주</span>
+                        <select id="set_printResetDay" style="flex:1;min-width:120px;padding:5px;font-size:13px;font-family:'Jua';" onchange="if(!db.cfg)db.cfg={};db.cfg.printResetDay=parseInt(this.value);sv();">
+                            ${['일','월','화','수','목','금','토'].map((d,i)=>`<option value="${i}" ${i===_printDay?'selected':''}>${d}요일</option>`).join('')}
+                        </select>
+                        <span style="flex-shrink:0;">마다 다시 신청 가능</span>
+                    </label>
+                </div>`;
+        }
         const il = document.getElementById('il');
         if(il) il.innerHTML=db.itm.map((x,i)=>{
             const isSpecial = !!x.special;
@@ -8067,6 +8369,9 @@ window.appU = function(y, si, k) {
                     <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:10px;">
                         <input type="checkbox" id="m_isSale" style="width:auto;margin:0;" ${it.s!==false?'checked':''}> 판매 목록에 표시
                     </label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:10px;background:#E8F5E9;border:1.5px dashed #66BB6A;border-radius:8px;padding:6px 10px;">
+                        <input type="checkbox" id="m_defaultGive" style="width:auto;margin:0;" ${it.defaultGive?'checked':''}> 🆕 신규 학생 자동 지급
+                    </label>
                     <label>구매 조건</label>
                     <select id="m_reqType" onchange="document.getElementById('m_reqPetRow').style.display=this.value==='hasPet'?'':'none'" style="margin-bottom:6px;">
                         <option value="" ${!(it.reqCond)?'selected':''}>없음</option>
@@ -8142,6 +8447,8 @@ window.appU = function(y, si, k) {
         if(coinType) { item.coinType = coinType; item.coinAmt = coinAmt; }
         const collectCount = parseInt(document.getElementById('m_collectCount')?.value||0)||0;
         if(collectCount > 1) item.collectCount = collectCount;
+        const defaultGive = document.getElementById('m_defaultGive')?.checked || false;
+        if(defaultGive) item.defaultGive = true;
         const swapWith = Array.from(document.querySelectorAll('.m_swapChk:checked')).map(c=>c.value);
         if(swapWith.length) item.swapWith = swapWith;
         // 편집 시 기존 special 등 시스템 필드 보존
@@ -8178,6 +8485,12 @@ window.appU = function(y, si, k) {
             }
         }
         if(editIdx>=0) db.itm[editIdx]=item; else db.itm.push(item);
+        // 즉시 Firebase 저장 — 학생 화면 즉시 반영 + defaultGive 등 메타 즉시 적용
+        try {
+            dbRef.child('itm').set(db.itm);
+            if(window._lastSentHash) window._lastSentHash.itm = JSON.stringify(db.itm);
+            console.log('[saveItm] 직접 저장 →', item.n, '/ defaultGive:', !!item.defaultGive);
+        } catch(e) { console.error('[saveItm] direct write 실패', e); }
         sv(); rSet(); document.getElementById('itmMgrModal').remove();
     };
     window.onItmImgSelectM = async function(inp) {
@@ -8191,15 +8504,26 @@ window.appU = function(y, si, k) {
     };
 
     /* ────── 뽑기기계 관리 모달 ────── */
+    window._onGacRewTypeChange = function(sel){
+        const wrap = sel.closest('div').querySelector('.gn-wrap');
+        if(wrap) wrap.style.display = (sel.value === 'itm') ? 'flex' : 'none';
+    };
     function addGrM(){
         const d=document.createElement('div'); d.style.cssText='margin-bottom:8px;display:flex;gap:6px;align-items:center;';
-        d.innerHTML=`<div style="flex:2;display:flex;gap:4px;min-width:0;">
-            <input class="gn" placeholder="아이템 이름" style="flex:1;min-width:0;margin-bottom:0;padding:8px;border-radius:12px;border:2px solid #FFE0B2;outline:none;font-family:'Jua';font-size:13px;">
-            <button type="button" onclick="openGacItemPicker(this.closest('div').querySelector('.gn'))" style="padding:0 8px;border-radius:10px;border:2px solid #FFE0B2;background:#FFF8E1;cursor:pointer;font-size:16px;white-space:nowrap;">🔍</button>
+        d.innerHTML=`<select class="gtype" onchange="window._onGacRewTypeChange(this)" style="margin-bottom:0;padding:7px 2px;border-radius:10px;border:2px solid #FFE0B2;background:white;font-family:'Jua';font-size:12px;flex:0 0 auto;width:78px;">
+            <option value="itm">🎁 아이템</option>
+            <option value="kc">🍪 쿠키</option>
+            <option value="co">🍯 꿀</option>
+            <option value="cn">🍭 캔디</option>
+            <option value="tk">🧺 바구니</option>
+        </select>
+        <div class="gn-wrap" style="flex:1 1 auto;display:flex;gap:4px;min-width:140px;">
+            <input class="gn" placeholder="아이템 이름" style="flex:1 1 auto;min-width:120px;margin-bottom:0;padding:8px 10px;border-radius:12px;border:2px solid #FFE0B2;outline:none;font-family:'Jua';font-size:13px;">
+            <button type="button" onclick="openGacItemPicker(this.closest('div').querySelector('.gn'))" style="padding:0 10px;border-radius:10px;border:2px solid #FFE0B2;background:#FFF8E1;cursor:pointer;font-size:16px;white-space:nowrap;flex:0 0 auto;">🔍</button>
         </div>
-        <div style="display:flex;align-items:center;background:white;border:2px solid #FFE0B2;border-radius:12px;padding:0 5px;height:38px;"><input class="gq" type="number" value="1" style="width:40px;border:none;margin:0;padding:0;text-align:center;outline:none;font-family:'Jua';font-size:15px;"><span style="font-size:13px;color:#8D6E63;font-weight:bold;white-space:nowrap;">개</span></div>
-        <div style="display:flex;align-items:center;background:white;border:2px solid #FFE0B2;border-radius:12px;padding:0 5px;height:38px;"><input class="gp" type="number" style="width:40px;border:none;margin:0;padding:0;text-align:center;outline:none;font-family:'Jua';font-size:15px;"><span style="font-size:13px;color:#8D6E63;font-weight:bold;white-space:nowrap;">%</span></div>
-        <button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:0;width:38px;height:38px;border-radius:12px;display:flex;justify-content:center;align-items:center;font-size:18px;flex-shrink:0;">×</button>`;
+        <div style="display:flex;align-items:center;background:white;border:2px solid #FFE0B2;border-radius:12px;padding:0 6px;height:38px;flex:0 0 auto;"><input class="gq" type="number" value="1" style="width:48px;border:none;margin:0;padding:0;text-align:center;outline:none;font-family:'Jua';font-size:15px;"><span style="font-size:13px;color:#8D6E63;font-weight:bold;white-space:nowrap;">개</span></div>
+        <div style="display:flex;align-items:center;background:white;border:2px solid #FFE0B2;border-radius:12px;padding:0 6px;height:38px;flex:0 0 auto;"><input class="gp" type="number" style="width:48px;border:none;margin:0;padding:0;text-align:center;outline:none;font-family:'Jua';font-size:15px;"><span style="font-size:13px;color:#8D6E63;font-weight:bold;white-space:nowrap;">%</span></div>
+        <button class="btn btn-red" onclick="this.parentElement.remove()" style="padding:0;width:36px;height:38px;border-radius:12px;display:flex;justify-content:center;align-items:center;font-size:18px;flex:0 0 auto;">×</button>`;
         document.getElementById('m_gr').appendChild(d);
     }
 
@@ -8348,7 +8672,7 @@ window.appU = function(y, si, k) {
         const itmOpts=`<option value="">(없음)</option>`+(Array.isArray(db.itm)?db.itm:Object.values(db.itm||{})).map(it=>`<option value="${(it.n||'').replace(/"/g,'&quot;')}" ${g.altItemName===it.n?'selected':''}>${it.i||''} ${it.n||''}</option>`).join('');
         const typeOpts=[['scratch','스크래치'],['card','카드뒤집기'],['lotto','캡슐로또'],['pet_skill','🐾 펫+스킬'],['skill_reroll','💖 펫 스킬 교환소'],['premium_skill','⭐ 프리미엄 스킬 교환소']].map(([v,l])=>`<option value="${v}"${(g.t||'scratch')===v?' selected':''}>${l}</option>`).join('');
         document.body.insertAdjacentHTML('beforeend', `<div id="gacMgrModal" class="modal-overlay">
-            <div class="modal-window" style="width:450px;max-height:90vh;overflow-y:auto;">
+            <div class="modal-window" style="width:min(960px,96vw) !important;max-height:90vh;overflow-y:auto;">
                 <button class="modal-close-btn" onclick="document.getElementById('gacMgrModal').remove()">X</button>
                 <div class="modal-inner">
                     <h3 style="margin-top:0;">${editIdx>=0?'🔮 뽑기 수정':'🔮 뽑기 추가'}</h3>
@@ -8429,13 +8753,35 @@ window.appU = function(y, si, k) {
             p.innerHTML=this.value&&this.value.includes('http')?`<img src="${this.value}" style="max-height:60px;border-radius:6px;" onerror="this.style.display='none'">`:( this.value||'📁 클릭하여 업로드 또는 아래 직접 입력');
         });
         const rs = g.r||[];
-        if(rs.length>0){ rs.forEach(r=>{ if(r.ns&&r.ns.length>0){addGrMBundle(r.ns);const row=document.getElementById('m_gr').lastElementChild;setTimeout(()=>{row.querySelector('.gq').value=r.q||1;row.querySelector('.gp').value=r.p;},10);}else{addGrM();const row=document.getElementById('m_gr').lastElementChild;setTimeout(()=>{row.querySelector('.gn').value=r.n||'';row.querySelector('.gq').value=r.q||1;row.querySelector('.gp').value=r.p;},10);}}); } else addGrM();
+        if(rs.length>0){ rs.forEach(r=>{
+            if(r.ns&&r.ns.length>0){addGrMBundle(r.ns);const row=document.getElementById('m_gr').lastElementChild;setTimeout(()=>{row.querySelector('.gq').value=r.q||1;row.querySelector('.gp').value=r.p;},10);}
+            else{addGrM();const row=document.getElementById('m_gr').lastElementChild;setTimeout(()=>{
+                if(r.currency){
+                    const sel = row.querySelector('.gtype');
+                    if(sel) { sel.value = r.currency; window._onGacRewTypeChange && window._onGacRewTypeChange(sel); }
+                } else {
+                    row.querySelector('.gn').value = r.n||'';
+                }
+                row.querySelector('.gq').value=r.q||1;
+                row.querySelector('.gp').value=r.p;
+            },10);}
+        }); } else addGrM();
     };
     window.saveGac = function(editIdx) {
         const n=document.getElementById('m_gn').value.trim(); if(!n) return alert('기계명을 입력해주세요.');
+        const _curLb = {kc:'쿠키',co:'꿀',cn:'캔디',tk:'바구니'};
         let rs=[]; document.querySelectorAll('#m_gr > div').forEach(e=>{
-            if(e.dataset.ns){const ns=JSON.parse(e.dataset.ns);rs.push({ns,n:ns.join('+'),q:parseInt(e.querySelector('.gq').value)||1,p:e.querySelector('.gp').value});}
-            else{rs.push({n:e.querySelector('.gn').value,q:parseInt(e.querySelector('.gq').value)||1,p:e.querySelector('.gp').value});}
+            const _type = e.querySelector('.gtype')?.value || 'itm';
+            const q = parseInt(e.querySelector('.gq').value)||1;
+            const p = e.querySelector('.gp').value;
+            if(_type !== 'itm') {
+                rs.push({ currency: _type, n: _curLb[_type] || _type, q, p });
+            } else if(e.dataset.ns){
+                const ns=JSON.parse(e.dataset.ns);
+                rs.push({ns, n: ns.join('+'), q, p});
+            } else {
+                rs.push({ n: e.querySelector('.gn').value, q, p });
+            }
         });
         const openMonthRaw = document.getElementById('m_g_openMonth').value;
         const openMonth = openMonthRaw ? parseInt(openMonthRaw) : null;
@@ -8456,6 +8802,13 @@ window.appU = function(y, si, k) {
         const dualGacId = document.getElementById('m_g_dualGacId')?.value.trim();
         if(dualGacId) item.dualGacId = dualGacId;
         if(editIdx>=0) db.gac[editIdx]=item; else db.gac.push(item);
+        // 즉시 Firebase 저장 — sv() 디바운스 우회 (학생 화면 즉시 반영)
+        try {
+            dbRef.child('gac').set(db.gac);
+            // _lastSentHash 동기화 — 후속 sv()가 불필요하게 재전송 안 하도록
+            if(window._lastSentHash) window._lastSentHash.gac = JSON.stringify(db.gac);
+            console.log('[saveGac] 직접 저장 →', item.n, '/ 총', db.gac.length, '대');
+        } catch(e) { console.error('[saveGac] direct write 실패', e); }
         sv(); rSet(editIdx>=0?editIdx:db.gac.length-1); document.getElementById('gacMgrModal').remove();
     };
     window.onGacImgSelectM = async function(inp) {
@@ -8837,11 +9190,11 @@ window.appU = function(y, si, k) {
             `;
         }
 
-        const typeEmoji = {scratch:'🍯', card:'🗳️', lotto:'🕹️'};
+        const typeEmoji = {scratch:'🍯', card:'🗳️', lotto:'🕹️', skill_reroll:'💖', premium_skill:'⭐'};
         const _gAcadOrd = m => m >= 3 ? m - 2 : m + 10;
         const _gCurM = new Date().getMonth() + 1;
-        // 펫 관련 뽑기는 꾸미기-펫 탭에서 따로 표시하므로 일반 뽑기 탭에선 제외
-        const _isPetGac = x => x && (x.t === 'pet_skill' || x.t === 'skill_reroll' || x.t === 'premium_skill');
+        // 펫+스킬 가챠만 펫 탭 전용. 스킬 교환소(skill_reroll/premium_skill)는 일반 뽑기 탭에 표시
+        const _isPetGac = x => x && x.t === 'pet_skill';
         let gacList = (Array.isArray(db.gac) ? db.gac : Object.values(db.gac || {}))
             .filter(x => !x.hidden && !_isPetGac(x) && !(x.openMonth && _gAcadOrd(_gCurM) < _gAcadOrd(x.openMonth)));
         
@@ -9051,45 +9404,138 @@ window.appU = function(y, si, k) {
         }, 50);
     }
     // 학생 화면에서 개별 종료 경매 삭제
-    window.studentDelAuc = function(id) {
-        let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
-        const a = aucList.find(x => x.id === id);
-        
-        if(a) {
+    window.studentDelAuc = async function(id) {
+        // 학생 sv()는 no-op이므로 Firebase 직접 fetch + set 패턴 사용
+        try {
+            const snap = await dbRef.child('auc').once('value');
+            const v = snap.val();
+            let aucList = Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
+            const a = aucList.find(x => x && x.id === id);
+            if(!a) { console.warn('[studentDelAuc] auc not found', id); rSh(); return; }
             if(a.st === 'req') {
-                // 승인 대기 중인 요청을 '취소'할 경우 완전히 삭제
-                aucList = aucList.filter(x => x.id !== id);
+                // 승인 대기 중인 요청을 취소 → 완전히 삭제
+                aucList = aucList.filter(x => x && x.id !== id);
+                console.log('[studentDelAuc] req 삭제 → 남은', aucList.length, '건');
             } else {
-                // 종료(done), 동점(tie), 거절(denied)된 경매를 '확인 및 삭제'할 경우 학생 화면에서만 숨김
+                // 종료/동점/거절 → 학생 화면에서만 숨김
                 if(!a.hiddenFor) a.hiddenFor = [];
                 if(!a.hiddenFor.includes(me.cd)) a.hiddenFor.push(me.cd);
+                console.log('[studentDelAuc] hiddenFor 추가 →', me.cd);
             }
-        }
-        
-        db.auc = aucList;
-        sv(); 
-        rSh(); // 상점 화면 즉시 새로고침
+            await dbRef.child('auc').set(aucList);
+            db.auc = aucList;
+            if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(aucList);
+            console.log('[studentDelAuc] Firebase 저장 완료');
+        } catch(e) { console.error('[studentDelAuc]', e); return alert('경매 취소 실패: ' + (e && e.message || e)); }
+        rSh();
     };
     // 교사용 경매 라이브 구독 (child 이벤트 — 변경된 항목만 받음)
     window._attachSplitAucFullListener = function() {
-        if(!_useSplit || window._aucFullAttached) return;
+        if(!_useSplit || window._aucFullAttached) {
+            console.log('[auc] attach SKIPPED — useSplit=', _useSplit, 'attached=', window._aucFullAttached);
+            return;
+        }
         window._aucFullAttached = true;
+        console.log('[auc] full listener attached on path:', dbRef.child('auc').toString());
         const ref = dbRef.child('auc');
         if(!Array.isArray(db.auc)) db.auc = [];
-        const _apply = snap => {
+        const _apply = (evt) => snap => {
             const v = snap.val(); if(!v) return;
-
             const i = parseInt(snap.key);
             if(!isNaN(i)) db.auc[i] = v; else db.auc[snap.key] = v;
+            console.log('[auc ' + evt + ']', snap.key, v && v.n, 'st=' + (v && v.st));
             if(_splitInitialDone) _splitFire();
+            // 즉시 메뉴 배지 업데이트 (debounce 우회)
+            try { if(typeof updateMenuBadges === 'function') updateMenuBadges(); } catch(_){}
+            // 요청사항 탭이 열려있으면 즉시 재렌더
+            try {
+                if(typeof rAucT === 'function' && document.getElementById('t_auc') && !document.getElementById('t_auc').classList.contains('hidden')) rAucT();
+            } catch(_){}
         };
-        ref.on('child_added', _apply);
-        ref.on('child_changed', _apply);
+        ref.on('child_added', _apply('added'));
+        ref.on('child_changed', _apply('changed'));
         ref.on('child_removed', snap => {
             const i = parseInt(snap.key);
             if(!isNaN(i) && db.auc[i] !== undefined) db.auc[i] = null;
+            console.log('[auc removed]', snap.key);
             if(_splitInitialDone) _splitFire();
+            try { if(typeof updateMenuBadges === 'function') updateMenuBadges(); } catch(_){}
+            try {
+                if(typeof rAucT === 'function' && document.getElementById('t_auc') && !document.getElementById('t_auc').classList.contains('hidden')) rAucT();
+            } catch(_){}
         });
+    };
+    // 학생 로그인 직후 1회만 경매 알림 — 실제 진행 중(st='active')인 경매가 있을 때만 표시
+    // 이전에는 aucMeta/lastNew 메타만 봤지만 종료된 경매도 잡혀서 잘못 표시됨 → db.auc 직접 확인
+    window._notifyActiveAucsOnLogin = function() {
+        if(!me || !me.cd) return;
+        const _key = 'aucLastSeenId_' + me.cd;
+        try {
+            dbRef.child('auc').once('value').then(snap => {
+                const v = snap.val();
+                const arr = Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
+                // 진행 중(active)이고 종료 시간이 미래인 경매만 — 강제 종료 race 방어
+                const now = Date.now();
+                const activeAucs = arr.filter(a => a && a.st === 'active' && (!a.et || a.et > now));
+                if(activeAucs.length === 0) return; // 진행 중 경매 없음 → 알림 0
+                // 가장 최근(id 큰) 경매를 대표로 표시
+                activeAucs.sort((a,b) => (b.id||0) - (a.id||0));
+                const meta = { id: activeAucs[0].id, n: activeAucs[0].n || '경매', cur: activeAucs[0].cur || 'tk' };
+                const lastSeen = localStorage.getItem(_key);
+                if(lastSeen !== null && String(lastSeen) === String(meta.id)) return;
+                // 화면 정중앙 모달 — 큼직하고 화려한 디자인
+                document.getElementById('_aucLoginNotify')?.remove();
+                const aucName = (meta.n || '경매').replace(/</g,'&lt;');
+                const curLb = ({tk:'🧺 누구나 바구니',cn:'🍭 캔디',co:'🍯 꿀',kc:'🍪 쿠키'})[meta.cur || 'tk'] || '🧺 누구나 바구니';
+                const _safeId = String(meta.id).replace(/['"\\<>]/g,'');
+                const el = document.createElement('div');
+                el.id = '_aucLoginNotify';
+                el.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);font-family:Jua;animation:_aucNotifBgIn 0.3s ease-out;';
+                // 백드롭 클릭으로 닫기 (lastSeenId 저장)
+                el.onclick = function(e) {
+                    if(e.target !== el) return;
+                    try { localStorage.setItem(_key, String(meta.id)); } catch(_){}
+                    el.remove();
+                };
+                el.innerHTML = `
+                    <style>
+                        @keyframes _aucNotifBgIn { from{opacity:0;} to{opacity:1;} }
+                        @keyframes _aucNotifPop { 0%{transform:scale(0.6) rotate(-3deg);opacity:0;} 60%{transform:scale(1.05) rotate(1deg);opacity:1;} 100%{transform:scale(1) rotate(0);opacity:1;} }
+                        @keyframes _aucNotifBell { 0%,100%{transform:rotate(-12deg);} 25%{transform:rotate(8deg);} 50%{transform:rotate(-8deg);} 75%{transform:rotate(12deg);} }
+                        @keyframes _aucNotifPulse { 0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.6);} 50%{box-shadow:0 0 0 16px rgba(231,76,60,0);} }
+                    </style>
+                    <div onclick="event.stopPropagation()" style="background:linear-gradient(160deg,#fff8e1,#fff3e0);border-radius:24px;padding:0;width:min(380px,92vw);box-shadow:0 24px 64px rgba(0,0,0,0.5),0 0 0 4px rgba(255,193,7,0.3);border:4px solid #f1c40f;animation:_aucNotifPop 0.45s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
+                        <div style="background:linear-gradient(135deg,#e74c3c,#c0392b);padding:22px 20px 18px;text-align:center;color:white;position:relative;">
+                            <div style="position:absolute;top:8px;right:12px;background:rgba(255,255,255,0.3);color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;line-height:1;" onclick="try{localStorage.setItem('${_key}','${_safeId}')}catch(_){};document.getElementById('_aucLoginNotify')?.remove();">×</div>
+                            <div style="display:inline-block;font-size:64px;line-height:1;animation:_aucNotifBell 0.8s ease-in-out infinite;text-shadow:0 4px 12px rgba(0,0,0,0.4);">🔨</div>
+                            <div style="font-size:13px;color:#FFE0B2;letter-spacing:5px;margin-top:6px;font-weight:bold;">NEW AUCTION</div>
+                            <div style="font-size:24px;font-weight:bold;margin-top:4px;letter-spacing:1px;text-shadow:0 2px 6px rgba(0,0,0,0.35);">경매 시작!</div>
+                        </div>
+                        <div style="padding:20px 22px 22px;text-align:center;">
+                            <div style="background:white;border:2.5px dashed #f1c40f;border-radius:14px;padding:14px 16px;margin-bottom:14px;">
+                                <div style="font-size:11px;color:#8D6E63;letter-spacing:2px;font-weight:bold;">물품</div>
+                                <div style="font-size:20px;color:#3E2723;font-weight:bold;margin-top:4px;line-height:1.3;word-break:keep-all;">${aucName}</div>
+                                <div style="font-size:12px;color:#A1887F;margin-top:8px;">통화: <b style="color:#E65100;">${curLb}</b></div>
+                            </div>
+                            <button onclick="try{localStorage.setItem('${_key}','${_safeId}')}catch(_){};document.getElementById('_aucLoginNotify')?.remove();window._goToAucTab&&window._goToAucTab();" style="width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#f39c12,#e67e22);color:white;font-family:Jua;font-size:17px;font-weight:bold;cursor:pointer;letter-spacing:2px;box-shadow:0 5px 0 #d35400,0 8px 16px rgba(230,126,34,0.4);animation:_aucNotifPulse 1.5s ease-in-out infinite;transition:transform 0.1s;" onmousedown="this.style.transform='translateY(2px)';this.style.boxShadow='0 3px 0 #d35400,0 4px 8px rgba(230,126,34,0.4)';" onmouseup="this.style.transform='';this.style.boxShadow='0 5px 0 #d35400,0 8px 16px rgba(230,126,34,0.4)';" onmouseout="this.style.transform='';this.style.boxShadow='0 5px 0 #d35400,0 8px 16px rgba(230,126,34,0.4)';">💰 경매 보러가기</button>
+                            <button onclick="try{localStorage.setItem('${_key}','${_safeId}')}catch(_){};document.getElementById('_aucLoginNotify')?.remove();" style="margin-top:8px;width:100%;padding:9px;border:1.5px solid #BCAAA4;border-radius:12px;background:white;color:#8D6E63;font-family:Jua;font-size:13px;cursor:pointer;">다음에 보기</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(el);
+                // 25초 자동 닫힘
+                setTimeout(() => {
+                    if(document.getElementById('_aucLoginNotify')) {
+                        try { localStorage.setItem(_key, String(meta.id)); } catch(_){}
+                        document.getElementById('_aucLoginNotify')?.remove();
+                    }
+                }, 25000);
+            }).catch(()=>{});
+        } catch(_){}
+    };
+    window._goToAucTab = function() {
+        try { navS('s_sh'); } catch(_){}
+        if(window.toggleShopTab) try { window.toggleShopTab('auc'); } catch(_){}
     };
     // 학생용 경매 데이터 on-demand fetch (toggle 시 1회만)
     window._refreshAuc = function() {
@@ -9115,16 +9561,20 @@ window.appU = function(y, si, k) {
         window._aucLiveAttached = true;
         const aRef = dbRef.child('auc');
         const onChange = () => {
-            // 변경 시 db.auc 갱신 + 화면 재렌더 (split listener 패턴)
+            // 변경 시 db.auc 갱신 + 상점 화면 재렌더
             window._refreshAuc().then(() => {
-                if(window._renderAucList) try { window._renderAucList(); } catch(_){}
+                // _renderAucList는 미정의 — 상점 전체 rSh() 호출이 정답 (auc 섹션 포함됨)
+                if(typeof rSh === 'function' && document.getElementById('s_sh') && !document.getElementById('s_sh').classList.contains('hidden')) {
+                    try { rSh(); } catch(_){}
+                }
                 if(window._refreshAucChat) try { window._refreshAucChat(); } catch(_){}
-            });
+            }).catch(()=>{});
         };
         aRef.on('child_added', onChange);
         aRef.on('child_changed', onChange);
         aRef.on('child_removed', onChange);
         window._aucLiveHandlers = { aRef, onChange };
+        console.log('[auc] student live listener attached');
     };
     window._aucDetachLive = function() {
         if(!window._aucLiveAttached) return;
@@ -9378,8 +9828,9 @@ window.appU = function(y, si, k) {
         }
 
         const cType = g.cur || 'cn';
-        // 대체 아이템 결제 옵션 — 화폐와 함께 선택 가능
-        if(g.altItemName && g.altItemQty > 0) {
+        // 대체 아이템 결제 옵션 — 상점 이용권 + 쿠키/캔디 통화는 1:1 섞어쓰기(아래 mixing modal로 fall-through), 그 외는 binary 선택
+        const _isShopPassMixable = (g.altItemName === '상점 이용권') && (cType === 'cn' || cType === 'kc');
+        if(g.altItemName && g.altItemQty > 0 && !_isShopPassMixable) {
             const itName = g.altItemName;
             const need = g.altItemQty;
             // 등록된 아이템 정의에서 special 키 조회 (이름 변경에도 안전)
@@ -9448,14 +9899,19 @@ window.appU = function(y, si, k) {
             return;
         }
         const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[cType]||0);
-        if (myBal < g.c) return alert("화폐가 부족해요!");
-
-        // 이용권 보유 시 확인 모달
         const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        // 상점이용권 1:1 섞어쓰기 가능한 통화(쿠키/캔디)는 합산 잔액으로 부족 판정
+        const _availTotal = (cType==='cn'||cType==='kc') ? (myBal + passCount) : myBal;
+        if (_availTotal < g.c) return alert("화폐가 부족해요!");
+
+        // 이용권 보유 시 또는 altItem='상점 이용권' 설정 시 확인 모달 — 섞어쓰기
         if((cType==='cn'||cType==='kc') && passCount > 0 && g.c > 0) {
             document.getElementById('_gacPassModal')?.remove();
             const safeN = gachaName.replace(/'/g,"\\'");
             const maxPass = Math.min(passCount, g.c);
+            // 화폐가 모자라면 그 부족분만큼 이용권을 기본값으로 자동 채움
+            const _minPass = Math.max(0, g.c - myBal);
+            const _defPass = Math.max(_minPass, 0);
             document.body.insertAdjacentHTML('beforeend', `<div id="_gacPassModal" class="modal-overlay" onclick="if(event.target===this)this.remove()">
                 <div class="modal-window" onclick="event.stopPropagation()">
                     <button class="modal-close-btn" onclick="document.getElementById('_gacPassModal').remove()">X</button>
@@ -9466,12 +9922,13 @@ window.appU = function(y, si, k) {
                             <div style="font-size:18px;color:#5D4037;">가격: <b style="color:#E65100;font-size:22px;">${g.c}</b> ${curEmoji[cType]}</div>
                         </div>
                         <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-                            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)</div>
+                            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span></div>
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <label style="font-size:12px;color:#795548;">사용 개수:</label>
-                                <input id="_gacPassUse" type="number" min="0" max="${maxPass}" value="0" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${maxPass};const _gw=document.getElementById('_gacPassWarn');if(_gv>_gmx){if(_gw)_gw.style.display='';this.value=_gmx;}else{if(_gw)_gw.style.display='none';}document.getElementById('_gacRemain').textContent=(${g.c}-parseInt(this.value));">
-                                <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_gacRemain">${g.c}</b> ${curEmoji[cType]}</span>
+                                <input id="_gacPassUse" type="number" min="${_minPass}" max="${maxPass}" value="${_defPass}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${maxPass},_gmn=${_minPass};const _gw=document.getElementById('_gacPassWarn');let _v=_gv;if(_v>_gmx){if(_gw)_gw.style.display='';_v=_gmx;}else{if(_gw)_gw.style.display='none';}if(_v<_gmn) _v=_gmn;this.value=_v;document.getElementById('_gacRemain').textContent=(${g.c}-_v);">
+                                <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_gacRemain">${g.c - _defPass}</b> ${curEmoji[cType]}</span>
                             </div>
+                            ${_minPass > 0 ? `<div style="font-size:11px;color:#E65100;margin-top:6px;">💡 보유 ${curEmoji[cType]}가 부족해 최소 ${_minPass}개 사용해야 해요</div>` : ''}
                             <div id="_gacPassWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;">⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 ${maxPass}개까지 사용 가능합니다.</div>
                         </div>
                         <button class="btn btn-org" style="width:100%;font-size:18px;padding:12px;" onclick="executeGachaCurrent('${safeN}')">뽑기!</button>
@@ -9551,6 +10008,23 @@ window.appU = function(y, si, k) {
         const curLb = cType==='kc'?'🍪 쿠키':cType==='cn'?'🍭 캔디':cType==='co'?'🍯 꿀':'';
         const isPremium = g.t === 'premium_skill';
         const exclMsg = isPremium && g.excludeOwned ? '<div style="background:#FFF3E0;border:2px dashed #FF9800;border-radius:10px;padding:10px;font-size:12px;color:#E65100;text-align:center;margin-bottom:10px;">⭐ 프리미엄: 보유한 스킬은 제외 — 무조건 신규 스킬 보장!</div>' : '';
+        // 상점이용권 1:1 mixing UI (cn/kc 전용)
+        const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[cType]||0);
+        const _canMixPass = (cType==='cn'||cType==='kc') && passCount > 0 && cost > 0;
+        const _maxPass = Math.min(passCount, cost);
+        const _minPass = Math.max(0, cost - myBal);
+        const _defPass = _canMixPass ? Math.max(_minPass, 0) : 0;
+        const _passUi = _canMixPass ? `
+          <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:10px 12px;margin-bottom:12px;">
+            <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-bottom:6px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${({kc:'🍪',cn:'🍭'})[cType]} 대체</span></div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label style="font-size:12px;color:#795548;">사용 개수:</label>
+              <input id="_gacPassUse" type="number" min="${_minPass}" max="${_maxPass}" value="${_defPass}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${_maxPass},_gmn=${_minPass};let _v=_gv;if(_v>_gmx)_v=_gmx;if(_v<_gmn)_v=_gmn;this.value=_v;document.getElementById('_skillReRemain').textContent=(${cost}-_v);">
+              <span style="font-size:12px;color:#888;">개 → 실제 차감: <b id="_skillReRemain">${cost - _defPass}</b> ${({kc:'🍪',cn:'🍭'})[cType]}</span>
+            </div>
+            ${_minPass > 0 ? `<div style="font-size:11px;color:#E65100;margin-top:6px;">💡 보유 ${({kc:'🍪',cn:'🍭'})[cType]}가 부족해 최소 ${_minPass}개 사용해야 해요</div>` : ''}
+          </div>` : '';
         document.body.insertAdjacentHTML('beforeend', `
         <div id="_skillRerollPicker" class="modal-overlay" onclick="if(event.target===this)this.remove()" style="z-index:99000;">
             <div class="modal-window" onclick="event.stopPropagation()" style="max-width:480px;width:96vw;">
@@ -9560,20 +10034,25 @@ window.appU = function(y, si, k) {
                     <div style="font-size:13px;color:#888;margin-bottom:14px;text-align:center;">교체할 펫 스킬을 선택하세요. 선택한 스킬은 사라지고 새로운 스킬을 받아요.</div>
                     ${exclMsg}
                     <div style="background:#FFF8E1;border-radius:12px;padding:8px 14px;font-size:13px;color:#E65100;text-align:center;margin-bottom:12px;font-weight:bold;font-family:'Jua';">💰 비용: ${cost}${curLb}</div>
+                    ${_passUi}
                     <div style="max-height:50vh;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">${skillsHtml}</div>
                 </div>
             </div>
         </div>`);
     };
     window._selectRerollSkill = function(skillId, gachaName){
+        // 모달 제거 전에 이용권 input 값 미리 캡처 (executeGachaCurrent가 fallback으로 사용)
+        window._skillRerollPassUse = parseInt(document.getElementById('_gacPassUse')?.value||0)||0;
         document.getElementById('_skillRerollPicker')?.remove();
         const g = (db.gac||[]).find(i => i.n === gachaName);
         if(!g || !skillId) return;
-        // 비용 검증 (executeGachaCurrent가 차감하지만 여기서도 미리 체크)
+        // 비용 검증 — 상점이용권 보유분 합산
         const cType = g.cur || 'cn';
         const cost = g.c || 0;
         const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[cType]||0);
-        if(myBal < cost) { alert('화폐가 부족해요!'); return; }
+        const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        const _availTotal = (cType==='cn'||cType==='kc') ? (myBal + passCount) : myBal;
+        if(_availTotal < cost) { alert('화폐가 부족해요!'); window._skillRerollPassUse = 0; return; }
         // 스킬 교체 컨텍스트 저장 — 가챠 완료 후 이 ID 제거
         window._skillRerollOldId = skillId;
         // 비용 차감 + 가챠 실행 (기존 흐름 그대로)
@@ -9581,8 +10060,10 @@ window.appU = function(y, si, k) {
     };
 
     window.executeGachaCurrent = function(gachaName, skipCharge) {
-        // 모달 제거 전에 이용권 값 미리 읽기
-        const _gacPassCache = parseInt(document.getElementById('_gacPassUse')?.value||0)||0;
+        // 모달 제거 전에 이용권 값 미리 읽기 — DOM이 없으면 펫 스킬 교환소가 미리 캡처한 값 fallback
+        const _gacPassCache = (parseInt(document.getElementById('_gacPassUse')?.value||0)||0)
+            || (window._skillRerollPassUse || 0);
+        window._skillRerollPassUse = 0; // 1회 사용 후 리셋
 
         document.getElementById('gachaModal')?.remove();
         document.getElementById('_gacPassModal')?.remove();
@@ -9681,17 +10162,38 @@ window.appU = function(y, si, k) {
     function showOfflineGacReqModal(g) {
         const cType = g.cur || 'cn';
         const myBal = cType === 'kc' ? ((me.cookie||0)-(me.usedCookie||0)-(me.shopUsed||0)) : (me[cType]||0);
+        const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        const _availTotal = (cType==='cn'||cType==='kc') ? (myBal + passCount) : myBal;
         const queue = (db.gacQueue||{})[g.n] || [];
         const waitList = queue.filter(e => e.st === 'wait');
         const myEntry = waitList.find(e => e.cd === me.cd);
         const myPos = myEntry ? waitList.indexOf(myEntry) + 1 : null;
         const maxReached = g.offlineMax > 0 && waitList.length >= g.offlineMax;
+        // 상점이용권 mixing 가능: 쿠키/캔디 통화일 때
+        const _canMixPass = (cType==='cn'||cType==='kc') && passCount > 0 && g.c > 0;
+        const _maxPass = Math.min(passCount, g.c);
+        const _minPass = Math.max(0, g.c - myBal);
+        const _defPass = _canMixPass ? Math.max(_minPass, 0) : 0;
+        // 진단 로그 — 임시. UI 안 뜨는 원인 식별용
+        console.log('[offlineGacModal]', { gacName: g.n, cType, gCost: g.c, myBal, passCount, invLen: (me.inv||[]).length, _canMixPass, _availTotal });
 
         document.getElementById('offlineGacModal')?.remove();
-        const emo = g.em || '🎰';
         const emoHtml = (g.em&&(g.em.startsWith('http')||g.em.startsWith('data:')))
             ? `<img src="${g.em}" style="width:70px;height:70px;object-fit:contain;border-radius:12px;">`
             : `<div style="font-size:60px;">${g.em||'🎰'}</div>`;
+        const _passUi = _canMixPass && !myEntry && !maxReached ? `
+          <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
+            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span></div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label style="font-size:12px;color:#795548;">사용 개수:</label>
+              <input id="_offGacPassUse" type="number" min="${_minPass}" max="${_maxPass}" value="${_defPass}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${_maxPass},_gmn=${_minPass};let _v=_gv;if(_v>_gmx)_v=_gmx;if(_v<_gmn)_v=_gmn;this.value=_v;document.getElementById('_offGacRemain').textContent=(${g.c}-_v);">
+              <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_offGacRemain">${g.c - _defPass}</b> ${curEmoji[cType]}</span>
+            </div>
+            ${_minPass > 0 ? `<div style="font-size:11px;color:#E65100;margin-top:6px;">💡 보유 ${curEmoji[cType]}가 부족해 최소 ${_minPass}개 사용해야 해요</div>` : ''}
+          </div>` : (
+            // 안내: 이용권 mixing 불가 사유 노출 (진단 보조)
+            !myEntry && !maxReached && passCount > 0 && (cType !== 'cn' && cType !== 'kc') ? `<div style="background:#ECEFF1;border:1px dashed #B0BEC5;border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:11px;color:#607D8B;">ℹ️ 상점 이용권은 🍪쿠키 / 🍭캔디 통화 가챠에서만 사용할 수 있어요 (현재 통화: ${curEmoji[cType]||cType})</div>` : ''
+          );
 
         document.body.insertAdjacentHTML('beforeend', `
         <div id="offlineGacModal" class="modal-overlay" onclick="if(event.target===this)this.remove()">
@@ -9705,6 +10207,7 @@ window.appU = function(y, si, k) {
                 <div style="font-size:18px;color:#5D4037;margin-bottom:6px;">비용: <b style="color:#FF6F00;font-size:22px;">${g.c}</b> ${curEmoji[cType]}</div>
                 <div style="font-size:13px;color:#888;">현재 대기: <b style="color:#E65100;">${waitList.length}명</b>${g.offlineMax>0?` / 최대 ${g.offlineMax}명`:''}</div>
               </div>
+              ${_passUi}
               ${myEntry ? `
                 <div style="background:#E3F2FD;border-radius:12px;padding:12px;margin-bottom:14px;border:1.5px solid #90CAF9;">
                   <div style="font-size:15px;color:#1565C0;font-weight:bold;">✅ 신청 완료</div>
@@ -9715,7 +10218,7 @@ window.appU = function(y, si, k) {
               ` : maxReached ? `
                 <div style="background:#FFEBEE;border-radius:12px;padding:12px;margin-bottom:14px;color:#C62828;font-size:14px;">⛔ 대기 인원이 가득 찼습니다</div>
                 <button class="btn btn-gray" style="width:100%;" onclick="document.getElementById('offlineGacModal').remove()">닫기</button>
-              ` : myBal < g.c ? `
+              ` : _availTotal < g.c ? `
                 <div style="background:#FFEBEE;border-radius:12px;padding:12px;margin-bottom:14px;color:#C62828;font-size:14px;">💸 화폐가 부족합니다</div>
                 <button class="btn btn-gray" style="width:100%;" onclick="document.getElementById('offlineGacModal').remove()">닫기</button>
               ` : `
@@ -9730,20 +10233,48 @@ window.appU = function(y, si, k) {
         const g = db.gac.find(i => i.n === gacNm); if(!g) return;
         const cType = g.cur || 'cn';
         const myBal = cType==='kc' ? ((me.cookie||0)-(me.usedCookie||0)-(me.shopUsed||0)) : (me[cType]||0);
-        if(myBal < g.c) return alert('화폐가 부족합니다.');
+        const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
+        const _availTotal = (cType==='cn'||cType==='kc') ? (myBal + passCount) : myBal;
+        if(_availTotal < g.c) return alert('화폐가 부족합니다.');
         if(!db.gacQueue) db.gacQueue = {};
         if(!db.gacQueue[gacNm]) db.gacQueue[gacNm] = [];
         else if(!Array.isArray(db.gacQueue[gacNm])) db.gacQueue[gacNm] = Object.values(db.gacQueue[gacNm]);
         if(db.gacQueue[gacNm].find(e=>e.cd===me.cd&&e.st==='wait')) return alert('이미 대기 중입니다.');
         const maxR = g.offlineMax||0;
         if(maxR > 0 && db.gacQueue[gacNm].filter(e=>e.st==='wait').length >= maxR) return alert('대기 인원이 가득 찼습니다.');
+        // 상점 이용권 차감 (1:1)
+        let passUsed = 0;
+        if(cType==='cn'||cType==='kc') {
+            const _input = parseInt(document.getElementById('_offGacPassUse')?.value||0)||0;
+            passUsed = Math.min(_input, passCount, g.c);
+            const _minNeed = Math.max(0, g.c - myBal);
+            if(passUsed < _minNeed) passUsed = _minNeed;
+            let removed = 0;
+            for(let i=0; i<me.inv.length && removed<passUsed; i++) {
+                if(me.inv[i] && me.inv[i].n==='상점 이용권' && (me.inv[i].st==='active'||me.inv[i].st==='new')) {
+                    me.inv[i].st='used'; removed++;
+                }
+            }
+        }
+        const effCost = g.c - passUsed;
         // 비용 차감
         if(cType==='kc') {
-            me.shopUsed=(me.shopUsed||0)+g.c;
+            me.shopUsed=(me.shopUsed||0)+effCost;
             if(!me.shopLog) me.shopLog=[];
-            me.shopLog.push({type:'뽑기(오프라인)', name:g.n, cost:g.c, ts:Date.now()});
-        } else me[cType]-=g.c;
-        db.gacQueue[gacNm].push({cd:me.cd, nm:me.nm, no:me.no||'', ts:Date.now(), st:'wait', result:null});
+            me.shopLog.push({type:'뽑기(오프라인)', name:g.n, cost:effCost, passUsed, ts:Date.now()});
+        } else if(cType==='cn') {
+            me.cn = (me.cn||0) - effCost;
+            if(!me.shopLog) me.shopLog=[];
+            me.shopLog.push({type:'뽑기(오프라인)', name:g.n, cost:effCost, cur:cType, passUsed, ts:Date.now()});
+        } else {
+            me[cType] -= effCost;
+        }
+        db.gacQueue[gacNm].push({cd:me.cd, nm:me.nm, no:me.no||'', ts:Date.now(), st:'wait', result:null, passUsed});
+        // sv() 디바운스(1500ms) 우회 — gacQueue 즉시 Firebase에 쓰기 (교사 알림 즉시 반영)
+        try {
+            dbRef.child('gacQueue/' + gacNm).set(db.gacQueue[gacNm]);
+            console.log('[offlineGac] direct write → gacQueue/' + gacNm, db.gacQueue[gacNm]);
+        } catch(e) { console.error('[offlineGac] direct write 실패', e); }
         sv(); upMe();
         document.getElementById('offlineGacModal')?.remove();
         showToast('🎰 신청 완료! 선생님이 순서대로 진행해 드립니다.');
@@ -9757,11 +10288,27 @@ window.appU = function(y, si, k) {
         const arr = Array.isArray(db.gacQueue[gacNm]) ? db.gacQueue[gacNm] : Object.values(db.gacQueue[gacNm]);
         const idx = arr.findIndex(e=>e.cd===me.cd&&e.st==='wait');
         if(idx<0) return;
+        const myReq = arr[idx];
+        const passUsed = myReq.passUsed || 0;
         arr.splice(idx,1);
         db.gacQueue[gacNm] = arr;
-        // 환불
+        // 환불 — 이용권 복원 + 화폐 환불
         const cType = g.cur||'cn';
-        if(cType==='kc') me.shopUsed=Math.max(0,(me.shopUsed||0)-g.c); else me[cType]=(me[cType]||0)+g.c;
+        const effCost = g.c - passUsed;
+        if(cType==='kc') me.shopUsed=Math.max(0,(me.shopUsed||0)-effCost);
+        else me[cType]=(me[cType]||0)+effCost;
+        // 이용권 복원 (used → active)
+        let restored = 0;
+        for(let i=me.inv.length-1; i>=0 && restored<passUsed; i--) {
+            if(me.inv[i] && me.inv[i].n==='상점 이용권' && me.inv[i].st==='used') {
+                me.inv[i].st='active'; restored++;
+            }
+        }
+        // 즉시 Firebase 반영 — 취소도 sv 디바운스 없이 바로 (교사 화면 즉시 갱신)
+        try {
+            if(db.gacQueue[gacNm].length > 0) dbRef.child('gacQueue/' + gacNm).set(db.gacQueue[gacNm]);
+            else dbRef.child('gacQueue/' + gacNm).remove();
+        } catch(e) { console.error('[offlineGac] cancel direct write 실패', e); }
         sv(); upMe();
         document.getElementById('offlineGacModal')?.remove();
         showToast('↩️ 신청이 취소되었습니다. 비용이 환불되었어요.');
@@ -9797,38 +10344,35 @@ window.appU = function(y, si, k) {
         document.body.insertAdjacentHTML('beforeend', html);
     };
 
-    window.submitAucReq = function() {
+    window.submitAucReq = async function() {
         const n = document.getElementById('ar_n').value.trim();
         const d = document.getElementById('ar_d').value.trim();
         const p = parseInt(document.getElementById('ar_p').value);
         if(!n || !p || p < 1) return alert("상품명과 시작 가격을 올바르게 입력하세요.");
-        
-        // 🌟 추가: 첫 자동 입찰을 위해 학생의 잔액 확인
-        const myBal = me.tk || 0; 
+        const myBal = me.tk || 0;
         if(myBal < p) return alert(`잔액이 부족합니다! (현재: ${myBal}개)`);
 
-        let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
-        aucList.push({
-            id: Date.now(),
-            n: n,
-            desc: d,
-            sp: p,
-            cp: p,
-            cur: 'tk', 
-            reqBy: me.cd,
-            reqNm: me.nm,
-            st: 'req',
-            et: 0,
-            // 🌟 추가: 요청한 학생을 최초 입찰자로 자동 등록
+        const newEntry = {
+            id: Date.now(), n, desc: d, sp: p, cp: p, cur: 'tk',
+            reqBy: me.cd, reqNm: me.nm, st: 'req', et: 0,
             bids: [{cd: me.cd, nm: me.nm, amt: p, ts: Date.now()}]
-        });
-        
-        db.auc = aucList;
-        sv();
+        };
+        // 트래픽 안전성: sv() 통째 갱신 우회 + Firebase 최신 fetch + child set
+        try {
+            const snap = await dbRef.child('auc').once('value');
+            const v = snap.val();
+            const arr = Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
+            console.log('[submitAucReq] 기존 auc', arr.length, '건 → 추가 후', arr.length+1, '건');
+            arr.push(newEntry);
+            await dbRef.child('auc').set(arr);
+            db.auc = arr;
+            if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(arr);
+            console.log('[submitAucReq] Firebase 저장 완료 — id', newEntry.id);
+        } catch(e) { console.error('[submitAucReq]', e); return alert('경매 요청 저장 실패: ' + (e && e.message || e)); }
+        upMe(); // 본인 잔액 등 변경분 반영
         document.getElementById('aucReqModal').remove();
-        // 🌟 알림창 메시지 변경
-        alert("요청 완료! 시작 가격으로 자동 입찰되었습니다. 🧺");
-        rSh(); 
+        alert('요청 완료! 시작 가격으로 자동 입찰되었습니다. 🧺');
+        rSh();
     };
     window.showAucBidModal = function(aucId) {
         const a = db.auc.find(x => x.id === aucId);
@@ -10054,6 +10598,8 @@ window.appU = function(y, si, k) {
         if(!m || m < 1) return alert("경매 시간을 제대로 입력해주세요.");
         a.st = 'active';
         a.et = Date.now() + (m * 60 * 1000);
+        // 학생 로그인 알림용 경량 메타 — sv() 우회 즉시 write (학생이 전체 auc fetch 없이 알림 가능)
+        try { dbRef.child('aucMeta/lastNew').set({ id: a.id, n: a.n || '경매', cur: a.cur || 'cn', ts: Date.now() }); } catch(_){}
         sv(); rAucT();
     };
 
@@ -10145,12 +10691,12 @@ window.appU = function(y, si, k) {
             // _petAllOwnedConfirm과 동일한 보유 판정 사용 (일관성 보장)
             const ownedFlags = g.r.map(r => window._gachaEntryOwned(r));
             const unownedR = g.r.filter((r, i) => !ownedFlags[i]);
-            // strict: 미보유 후보 우선. 모두 보유 시 전체 풀 fallback
             let candidates = unownedR.length > 0 ? unownedR : g.r;
             let pick = candidates[Math.floor(Math.random() * candidates.length)];
             pkName = pick.n || (pick.ns && pick.ns[0]) || '?';
             qty = pick.q || 1;
             if(pick.ns && pick.ns.length > 1) _pickedBundle = pick.ns;
+            if(pick.currency) window._pickCurrency = pick.currency;
         } else {
             // 일반 확률 뽑기 로직 (확률 합이 100 미만이면 마지막 항목이 나머지를 흡수)
             let rnd=Math.random()*100, acc=0, pk=g.r[g.r.length-1];
@@ -10159,7 +10705,9 @@ window.appU = function(y, si, k) {
             pkName = pk.n || (pk.ns && pk.ns[0]) || '?';
             qty = pk.q || 1;
             if(pk.ns && pk.ns.length > 1) _pickedBundle = pk.ns;
+            if(pk.currency) window._pickCurrency = pk.currency;
         }
+        if(window._pickCurrency === undefined) window._pickCurrency = null;
         // 합성 결과 모달에서 실제 뽑힌 항목을 표시할 수 있도록 저장
         window._lastGachaPick = { name: pkName, bundle: _pickedBundle ? _pickedBundle.slice() : null, qty };
         // 세트 보상: 첫 아이템 외 나머지를 애니메이션 종료 후 지급
@@ -10226,11 +10774,18 @@ window.appU = function(y, si, k) {
             const _r = _resolveItemImg(_fNm);
             const _displayNm = (pkName && pkName !== _fNm) ? pkName : _fNm;
             winItem = {n:_fNm, _nm:_displayNm, i:_r.img, g:_r.grade, _qty:qty};
+        } else if(window._pickCurrency) {
+            // 화폐 보상: 이모지 매핑으로 표시
+            const _curIcon = ({kc:'🍪',co:'🍯',cn:'🍭',tk:'🧺'})[window._pickCurrency] || '💰';
+            const _curName = ({kc:'쿠키',co:'꿀',cn:'캔디',tk:'바구니'})[window._pickCurrency] || pkName;
+            winItem = {n:_curName, i:_curIcon, g:'C', _qty:qty, currency:window._pickCurrency};
         } else {
             // 단일: 4개 컬렉션 전수 조회
             const _r = _resolveItemImg(pkName);
             winItem = {n:pkName, i:_r.img, g:_r.grade, _qty:qty};
         }
+        // 1회 사용 후 리셋 (다음 가챠에 안 새도록)
+        window._pickCurrency = null;
         
         // 더미는 이 뽑기의 g.r 목록에서만 선택 (설정 안 된 아이템 노출 방지)
         // 세트(ns) 항목은 display name(r.n)이 아닌 첫 아이템(ns[0])으로 이미지 조회
@@ -10241,9 +10796,13 @@ window.appU = function(y, si, k) {
                 return firstNm !== _winFirstNm && (r.n||'?') !== _winFirstNm;
             })
             .map(r => {
-                const lookupNm = r.ns ? r.ns[0] : r.n; // 이미지 조회용 실제 아이템명
-                const displayNm = r.n || lookupNm;       // 표시할 이름
-                // 4개 컬렉션 전수 조회로 이미지 필드 정규화 (.i 통일)
+                if(r.currency) {
+                    const _ci = ({kc:'🍪',co:'🍯',cn:'🍭',tk:'🧺'})[r.currency] || '💰';
+                    const _cn = ({kc:'쿠키',co:'꿀',cn:'캔디',tk:'바구니'})[r.currency] || r.n;
+                    return { n: _cn, i: _ci, g: 'C' };
+                }
+                const lookupNm = r.ns ? r.ns[0] : r.n;
+                const displayNm = r.n || lookupNm;
                 const _r = _resolveItemImg(lookupNm);
                 return { n: displayNm, i: _r.img, g: _r.grade };
             });
@@ -10858,6 +11417,19 @@ let isScratchDone = false;
     }
     function giveReward(item, bonus=0) {
         if(me.isTest) return;
+        // 화폐 보상 — 일반 아이템 처리 우회
+        if(item && item.currency) {
+            const cur = item.currency;
+            const qty = item._qty || item.q || 1;
+            if(cur === 'kc') me.cookie = (me.cookie||0) + qty;
+            else me[cur] = (me[cur]||0) + qty;
+            if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
+            window._gachaInProgress = false;
+            upMe();
+            try { rChar(); } catch(_){}
+            try { rSh(); } catch(_){}
+            return;
+        }
 
         const nm = item.n || item.nm || '';
         if(!nm) { /* 이름 없으면 fallthrough */ }
@@ -13006,12 +13578,12 @@ window.addCharRow = function() {
             ${spDefs.map(_renderRecipe).join('')}
         </div>` : '';
 
-        // 🎰 펫 스킬 뽑기 기계 — pet_skill / skill_reroll / premium_skill 만 모아 표시
+        // 🎰 펫+스킬 뽑기 기계만 펫 탭에 표시 (skill_reroll/premium_skill은 일반 뽑기 탭으로 이동)
         const _gOrdPS = m => m >= 3 ? m - 2 : m + 10, _gMpS = new Date().getMonth()+1;
         const petGacs = (Array.isArray(db.gac) ? db.gac : Object.values(db.gac || {}))
-            .filter(g => g && !g.hidden && (g.t === 'pet_skill' || g.t === 'skill_reroll' || g.t === 'premium_skill')
+            .filter(g => g && !g.hidden && g.t === 'pet_skill'
                 && !(g.openMonth && _gOrdPS(_gMpS) < _gOrdPS(g.openMonth)));
-        const _typeIc = {pet_skill:'🐾', skill_reroll:'🔄', premium_skill:'⭐'};
+        const _typeIc = {pet_skill:'🐾'};
         const petGacHtml = petGacs.length ? `<div style="display:flex;flex-wrap:wrap;gap:12px;">
             ${petGacs.map(g => {
                 const safe = (g.n||'').replace(/'/g,"\\'");
@@ -16058,31 +16630,7 @@ window.addCharRow = function() {
                             <span style="flex:1;min-width:0;word-break:keep-all;">긴급복구 기능 사용 (로컬 스냅샷 자동 저장)</span>
                         </label>
                     </div>
-                    <div style="background:#FFF3E0;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid #FFB74D;">
-                        <div style="font-size:14px;font-weight:bold;color:#E65100;margin-bottom:8px;">🎫 골든티켓 / 달고나 설정</div>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#333;margin-bottom:8px;">
-                            <span style="flex-shrink:0;">사용 임계치</span>
-                            <input type="number" min="1" max="20" value="${(db.cfg?.recordCoupons?.ticketThreshold)||5}" id="set_ticketThreshold" style="width:60px;padding:5px;font-family:'Jua';text-align:center;border:2px solid #FFD6E0;border-radius:8px;" onchange="if(!db.cfg.recordCoupons)db.cfg.recordCoupons={};db.cfg.recordCoupons.ticketThreshold=Math.max(1,parseInt(this.value)||5);sv();">
-                            <span style="flex-shrink:0;">개</span>
-                        </label>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#333;">
-                            <span style="flex-shrink:0;">전용 뽑기 머신</span>
-                            <select id="set_ticketGachaIdx" style="flex:1;padding:6px;font-size:13px;font-family:'Jua';" onchange="if(!db.cfg.recordCoupons)db.cfg.recordCoupons={};db.cfg.recordCoupons.ticketGachaIdx=this.value===''?null:parseInt(this.value);sv();">
-                                <option value="">(없음)</option>
-                                ${(Array.isArray(db.gac)?db.gac:Object.values(db.gac||{})).map((g,i)=>`<option value="${i}" ${(db.cfg?.recordCoupons?.ticketGachaIdx)===i?'selected':''}>${(g&&g.n)||('머신 '+(i+1))}</option>`).join('')}
-                            </select>
-                        </label>
-                    </div>
-                    <div style="background:#E1F5FE;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid #81D4FA;">
-                        <div style="font-size:14px;font-weight:bold;color:#0277BD;margin-bottom:8px;">🖨️ 인쇄 요청 주기</div>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#333;">
-                            <span style="flex-shrink:0;">매주</span>
-                            <select id="set_printResetDay" style="flex:1;padding:6px;font-size:13px;font-family:'Jua';" onchange="if(!db.cfg)db.cfg={};db.cfg.printResetDay=parseInt(this.value);sv();">
-                                ${['일','월','화','수','목','금','토'].map((d,i)=>`<option value="${i}" ${i===printResetDay?'selected':''}>${d}요일</option>`).join('')}
-                            </select>
-                            <span style="flex-shrink:0;">마다 다시 신청 가능</span>
-                        </label>
-                    </div>
+                    <!-- 🎫 골든티켓/달고나·🖨️ 인쇄 요청 주기 설정은 [📦 아이템 관리] 탭으로 이동했습니다 -->
                     <div style="background:#FFF3E0;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid #FFE082;">
                         <div style="font-size:14px;font-weight:bold;color:#E65100;margin-bottom:8px;">🍪 쿠키 자동 동기화 (다했니)</div>
                         <label style="font-size:12px;color:#666;">다했니 API Key</label>
@@ -18767,6 +19315,8 @@ window.addCharRow = function() {
 
             // 2) 우편함(ibx) — 사용 완료 OR 7일 이상 지난 항목 삭제
             // 3) 가방(inv) — 사용 완료(st='used') 항목 삭제
+            // 4) shopLog — 7일 이상 지난 항목 삭제
+            removed.shopLog = 0;
             (db.stu||[]).forEach(s => {
                 if(Array.isArray(s.ibx)) {
                     const before = s.ibx.length;
@@ -18784,9 +19334,14 @@ window.addCharRow = function() {
                     s.inv = s.inv.filter(it => it && it.st !== 'used');
                     removed.inv += before - s.inv.length;
                 }
+                if(Array.isArray(s.shopLog)) {
+                    const before = s.shopLog.length;
+                    s.shopLog = s.shopLog.filter(l => l && l.ts && (NOW - l.ts) < WEEK);
+                    removed.shopLog += before - s.shopLog.length;
+                }
             });
 
-            if(removed.auc + removed.ibx + removed.inv > 0) {
+            if(removed.auc + removed.ibx + removed.inv + removed.log + removed.shopLog > 0) {
                 sv();
                 if(window._svImmediate) try { window._svImmediate(); } catch(_){}
                 console.log('[autoCleanup]', removed);
@@ -18795,46 +19350,7 @@ window.addCharRow = function() {
         } catch(e) { console.error('[autoCleanup] error', e); }
     };
 
-    window.showTrafficStats = function() {
-        let s = null;
-        try { s = JSON.parse(localStorage.getItem('rpg_dbStats')||'null'); } catch(_){}
-        if(!s) { alert('통계 없음'); return; }
-        const fmtMB = b => (b/1024/1024).toFixed(2)+'MB';
-        const days = Object.keys(s.byDay||{}).sort().reverse();
-        const rows = days.map(d => {
-            const x = s.byDay[d];
-            return `<tr><td style="padding:4px 8px;">${d}</td><td style="padding:4px 8px;text-align:right;">${x.count}회</td><td style="padding:4px 8px;text-align:right;">${fmtMB(x.bytes)}</td></tr>`;
-        }).join('');
-        const sinceDays = Math.max(1, Math.round((Date.now() - new Date(s.since).getTime())/86400000));
-        const avg = (s.totalBytes/sinceDays/1024/1024).toFixed(2);
-        const html = `
-        <div id="_trafModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)this.remove();">
-            <div style="background:white;border-radius:16px;padding:20px;max-width:520px;width:100%;max-height:80vh;overflow:auto;font-family:'Jua';">
-                <div style="font-size:20px;color:#0277BD;margin-bottom:12px;">📊 Firebase 다운로드 트래픽</div>
-                <div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:12px;">
-                    추적 시작: ${s.since.slice(0,10)} (${sinceDays}일)<br>
-                    누적 다운로드: <b>${fmtMB(s.totalBytes)}</b> / 갱신 ${s.count}회<br>
-                    하루 평균: <b>${avg}MB</b><br>
-                    마지막 갱신 크기: ${(s.lastBytes/1024).toFixed(1)}KB
-                </div>
-                <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #ddd;">
-                    <thead><tr style="background:#E1F5FE;"><th style="padding:6px 8px;text-align:left;">날짜</th><th style="padding:6px 8px;text-align:right;">횟수</th><th style="padding:6px 8px;text-align:right;">다운로드</th></tr></thead>
-                    <tbody>${rows||'<tr><td colspan="3" style="padding:20px;text-align:center;color:#888;">데이터 없음</td></tr>'}</tbody>
-                </table>
-                <div style="font-size:11px;color:#888;margin-top:10px;padding:8px;background:#FAFAFA;border-radius:6px;">
-                    부분 구독: <b style="color:${localStorage.getItem('rpgUseSplitListeners')==='0'?'#C62828':'#2E7D32'};">${localStorage.getItem('rpgUseSplitListeners')==='0'?'OFF (전체 구독)':'ON (path별 구독)'}</b>
-                    <button onclick="if(confirm('부분 구독 모드를 토글하고 새로고침할까요?')){const cur=localStorage.getItem('rpgUseSplitListeners');localStorage.setItem('rpgUseSplitListeners',cur==='0'?'1':'0');location.reload();}" style="margin-left:8px;padding:2px 8px;font-size:10px;border:1px solid #999;border-radius:4px;background:white;cursor:pointer;">토글</button>
-                </div>
-                <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
-                    <button onclick="document.getElementById('_trafModal').remove();window._dbSizeAudit()" style="flex:1;min-width:120px;padding:8px;border:1px solid #4FC3F7;border-radius:6px;background:#E1F5FE;color:#0277BD;cursor:pointer;font-family:'Jua';">📐 DB 크기 진단</button>
-                    <button onclick="window._reloadStaticPaths&&window._reloadStaticPaths();alert('아바타·뱃지·칭호·펫 정의를 다시 불러왔어요')" style="flex:1;min-width:120px;padding:8px;border:1px solid #BA68C8;border-radius:6px;background:#F3E5F5;color:#6A1B9A;cursor:pointer;font-family:'Jua';">🔄 정적 데이터 새로고침</button>
-                    <button onclick="if(confirm('통계 초기화할까요?')){localStorage.removeItem('rpg_dbStats');document.getElementById('_trafModal').remove();}" style="flex:1;min-width:80px;padding:8px;border:1px solid #EF5350;border-radius:6px;background:#FFEBEE;color:#C62828;cursor:pointer;font-family:'Jua';">🗑️ 초기화</button>
-                    <button onclick="document.getElementById('_trafModal').remove()" style="flex:1;min-width:80px;padding:8px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer;font-family:'Jua';">닫기</button>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', html);
-    };
+    // showTrafficStats 함수 제거됨 — Firebase Console 사용
 
     window.forceSyncAllRooms = function() {
         if(!confirm('모든 방의 db 설정을 Firebase로 강제 푸시할까요?\n(설정 불일치 복구용)')) return;
@@ -25631,6 +26147,30 @@ window.addCharRow = function() {
                         const newOrder = (v.turnOrder || []).slice();
                         newOrder.push(me.cd);
                         try { _catchMindRef().child('turnOrder').set(newOrder); } catch(_){}
+                        // 공정성: mid-join이 spyUids 배열에 k/N 확률로 편입 (k=현재 스파이 수, N=총 인원)
+                        // ※ 캐치마인드 스파이는 spyUids(배열)이 실사용. spyUid는 레거시 단일 fallback.
+                        const _newN = newOrder.length;
+                        try {
+                            _catchMindRef().child('spyUids').transaction(curSpies => {
+                                let arr = Array.isArray(curSpies) ? curSpies.slice() : (curSpies ? [curSpies] : []);
+                                if(arr.length === 0) return; // 스파이 미설정이면 abort
+                                if(arr.includes(me.cd)) return; // 이미 스파이 (드물지만)
+                                const k = arr.length;
+                                if(Math.random() < k / _newN) {
+                                    // 무작위 스파이 1명을 본인으로 교체 → 공정 분포 유지
+                                    const replaceIdx = Math.floor(Math.random() * k);
+                                    arr[replaceIdx] = me.cd;
+                                    return arr;
+                                }
+                                return; // 변경 안 함
+                            }, (err, committed, snap) => {
+                                if(committed && snap) {
+                                    // 레거시 spyUid 필드도 동기화 (구버전 코드 호환)
+                                    const newSpies = snap.val();
+                                    try { _catchMindRef().child('spyUid').set((newSpies && newSpies[0]) || null); } catch(_){}
+                                }
+                            });
+                        } catch(_){}
                     }
                 }
             }
@@ -32289,6 +32829,19 @@ window.addCharRow = function() {
     // 서비스워커 등록 (PWA 오프라인 지원)
     if('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(()=>{});
+        let _swRefreshed = false;
+        const _swReload = () => {
+            if(_swRefreshed) return;
+            _swRefreshed = true;
+            console.log('[sw] new version detected → auto reload');
+            location.reload();
+        };
+        // 새 SW가 controller로 들어오면 자동 reload (대부분의 브라우저)
+        navigator.serviceWorker.addEventListener('controllerchange', _swReload);
+        // SW가 직접 보낸 SW_UPDATED 메시지 — 캐시 버전 bump 시 즉시 reload
+        navigator.serviceWorker.addEventListener('message', (e) => {
+            if(e.data && e.data.type === 'SW_UPDATED') _swReload();
+        });
     }
 
 </script>
