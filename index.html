@@ -1164,11 +1164,11 @@
            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px dashed #BDBDBD; padding-bottom:5px; margin-bottom:15px;">
                 <h3 style="color:#757575; margin:0;">✅ 종료됨</h3>
                 <div style="display:flex;gap:8px;">
-                    <button id="btnHideDone" class="btn btn-gray" style="padding:6px 12px; font-size:14px;" onclick="toggleAucDone()">👁️ 보이기</button>
+                    <span style="color:#9E9E9E;font-size:12px;align-self:center;">7일 후 자동 삭제</span>
                     <button class="btn btn-gray" style="padding:6px 12px; font-size:14px;" onclick="delAllDoneAuc()">모두 삭제</button>
                 </div>
             </div>
-            <div id="t_auc_done" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px; display:none;"></div>
+            <div id="t_auc_done" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px;"></div>
             <div style="display:flex;align-items:center;gap:10px;border-bottom:2px dashed #CE93D8;padding-bottom:5px;margin-top:10px;margin-bottom:10px;">
                 <h3 style="color:#7B1FA2;margin:0;flex-shrink:0;">🧸 인형뽑기 대기열</h3>
                 <div id="t_auc_gac_stats" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;"></div>
@@ -2574,10 +2574,17 @@ let _renderLock = false; // 재진입 방지
         const fn = snap => {
             const v = snap.val(); if(!v) return;
 
+            const _prevAucWin = me && me.aucWin;
             db.stu[idx] = v;
             // me 동기화 (참조 유지를 위해 필드만 업데이트)
             if(me && String(me.cd).trim() === String(myCd).trim()) {
                 Object.keys(v).forEach(k => { me[k] = v[k]; });
+                // 서버에 aucWin 필드가 사라졌으면 me에도 반영 (Object.keys로는 삭제 감지 불가)
+                if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
+            }
+            // 신규 낙찰 결과 도착 → 결과 모달 표시
+            if(v.aucWin && (!_prevAucWin || _prevAucWin.id !== v.aucWin.id)) {
+                try { window._showAucWinModal && window._showAucWinModal(v.aucWin); } catch(_){}
             }
             if(_splitInitialDone) _splitFire();
         };
@@ -3897,7 +3904,6 @@ let _renderLock = false; // 재진입 방지
                     // URL 자동 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
                     // ※ auc(요청사항) 라이브는 학생이 경매 탭 클릭 시 _aucAttachLive에서 attach (트래픽 절감)
                     if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
-                    setTimeout(() => window._notifyActiveAucsOnLogin && window._notifyActiveAucsOnLogin(), 800);
                     if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                     if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                     if(!me.col) me.col = [];
@@ -3922,7 +3928,6 @@ let _renderLock = false; // 재진입 방지
                         me = _autoS;
                         // ※ auc 라이브는 학생이 경매 탭 클릭 시에만 attach (트래픽 절감)
                         if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
-                        setTimeout(() => window._notifyActiveAucsOnLogin && window._notifyActiveAucsOnLogin(), 800);
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                         if(!me.col) me.col = [];
@@ -4066,13 +4071,13 @@ let _renderLock = false; // 재진입 방지
     // 🌟 안전한 경매 타이머 루프
     setInterval(() => {
         if(document.hidden) return; // 백그라운드 탭 스킵
-        if(!db.auc || !db.auc.some(a => a.st === 'active')) return; // 활성 경매 없으면 즉시 리턴
+        if(!db.auc || !db.auc.some(a => a && a.st === 'active')) return; // 활성 경매 없으면 즉시 리턴
         let needSave = false;
         const now = Date.now();
 
         if(db.auc) {
             db.auc.forEach(a => {
-                if(a.st === 'active') {
+                if(a && a.st === 'active') {
                     const diff = a.et - now;
                     
                     // 시간 종료 처리
@@ -4099,18 +4104,21 @@ let _renderLock = false; // 재진입 방지
         if(!auc.bids || auc.bids.length === 0) {
             auc.st = 'done';
             auc.winner = null;
+            _archiveAndRemoveAuc(auc); // 입찰 없는 유찰도 즉시 아카이브
             return;
         }
         const maxAmt = Math.max(...auc.bids.map(b => b.amt));
         const topBidders = auc.bids.filter(b => b.amt === maxAmt);
-        
+
         if(topBidders.length === 1) {
             auc.st = 'done';
             auc.winner = topBidders[0];
             processAuctionWin(auc, topBidders[0]);
+            _archiveAndRemoveAuc(auc); // 단독 낙찰 → 즉시 아카이브
         } else {
-            auc.st = 'tie'; 
+            auc.st = 'tie';
             auc.tied = topBidders;
+            // 동점은 교사 resolveTie 시 아카이브 (그 전까지는 동점 후보들이 결과를 봐야 하므로 /auc 유지)
         }
     }
 
@@ -4122,7 +4130,26 @@ let _renderLock = false; // 재진입 방지
             } else {
                 s[auc.cur] -= winnerData.amt;
             }
+            // 낙찰 결과를 학생 본인 노드에 기록 → 학생의 stu own listener로 자동 수신, 결과 모달 표시
+            s.aucWin = { id: auc.id, n: auc.n || '경매', amt: winnerData.amt, cur: auc.cur, ts: Date.now() };
             logCandy(s.nm, -winnerData.amt, `경매 낙찰 (${auc.n})`);
+        }
+    }
+
+    // 종료된 경매를 /aucArc로 이동하고 /auc에서 제거 (학생 listener 트래픽 최소화)
+    function _archiveAndRemoveAuc(auc) {
+        if(!auc || !auc.id) return;
+        const archived = JSON.parse(JSON.stringify(auc));
+        try { dbRef.child('aucArc/' + auc.id).set(archived); } catch(_){}
+        // 교사 화면 즉시 반영을 위한 로컬 미러
+        if(!Array.isArray(db.aucArc)) db.aucArc = [];
+        if(!db.aucArc.some(x => x && x.id === auc.id)) db.aucArc.push(archived);
+        if(Array.isArray(db.auc)) {
+            const idx = db.auc.findIndex(x => x && x.id === auc.id);
+            if(idx >= 0) {
+                db.auc[idx] = null; // 인덱스 정렬 보존을 위해 null만 표시
+                try { dbRef.child('auc/' + idx).remove(); } catch(_){}
+            }
         }
     }
 
@@ -4576,7 +4603,6 @@ let _renderLock = false; // 재진입 방지
             // 학생 로그인 → 본인 stu/{idx}만 라이브 구독 (트래픽 절감)
             // ※ auc 라이브는 학생이 경매 탭 클릭 시 _aucAttachLive에서 attach (트래픽 절감)
             if(window._attachSplitStuOwnListener) try { window._attachSplitStuOwnListener(me.cd); } catch(_){}
-            setTimeout(() => window._notifyActiveAucsOnLogin && window._notifyActiveAucsOnLogin(), 800);
 
             // 로그인 시 다했니 쿠키 동기화 (조용하게)
             const data = await fetchDahessni(me.cd);
@@ -9220,10 +9246,12 @@ window.appU = function(y, si, k) {
             </div>
         `;
 
-        let aucList = Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {});
+        let aucList = (Array.isArray(db.auc) ? db.auc : Object.values(db.auc || {})).filter(Boolean);
         const activeAucs = aucList.filter(a => a.st === 'active');
         const myPendingAucs = aucList.filter(a => a.reqBy === me.cd && (a.st === 'req' || a.st === 'denied') && !(a.hiddenFor && a.hiddenFor.includes(me.cd)));
-        const doneAucs = aucList.filter(a => (a.st === 'done' || a.st === 'tie') && !(a.hiddenFor && a.hiddenFor.includes(me.cd))); 
+        // 종료(done) 경매는 /auc에서 즉시 archive로 이동되므로 학생 화면에서 자동 사라짐.
+        // 동점(tie)인 경우는 본인이 동점 후보일 때만 표시 (선생님 결정 대기).
+        const tieAucs = aucList.filter(a => a.st === 'tie' && Array.isArray(a.tied) && a.tied.some(t => t && t.cd === me.cd));
         
         let aucHtml = `<div id="shop-auc-sec" class="shop-section" style="display:none;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; margin-top:20px;"><h2 style="color:#FFF; text-shadow:2px 2px 0 #3E2723; margin:0;">🔨 실시간 경매장</h2><button class="btn btn-wood" onclick="showAucReqModal()" style="box-shadow:0 4px 10px rgba(0,0,0,0.5);">경매 요청</button></div>`;
         
@@ -9247,15 +9275,14 @@ window.appU = function(y, si, k) {
             }).join('') + `</div>`;
         }
             
-        if(doneAucs.length > 0) {
-            aucHtml += `<h3 style="color:#FFF; border-bottom:2px dashed #BCAAA4; padding-bottom:5px; margin-top:30px;">✅ 종료된 경매 <span style="font-size:14px; font-weight:normal; color:#ddd;">(확인 후 삭제해주세요)</span></h3><div class="auc-grid">` + doneAucs.map(a => {
-                let resHtml = a.st === 'tie' ? `<div style="color:#FFC107; font-weight:bold; font-size:16px;">선생님께서 동점자 확인 중입니다!</div>` : `<div style="font-size:14px; color:#bdc3c7;">낙찰자: <b style="color:#2ecc71;">${a.winner ? a.winner.nm : '유찰'}</b></div><div style="font-size:14px; color:#bdc3c7;">낙찰가: <b style="color:#e67e22;">${a.cp} ${curEmoji[a.cur]}</b></div>`;
-                return `<div style="background: rgba(0,0,0,0.4); border: 2px solid #7f8c8d; border-radius: 15px; padding: 15px; color: white; margin-bottom: 15px; display:flex; justify-content:space-between; align-items:center;"><div><h3 style="margin: 0 0 5px 0; color: #bdc3c7; text-decoration: line-through;">${a.n}</h3>${resHtml}</div><button class="btn btn-gray" onclick="studentDelAuc(${a.id})">확인 및 삭제</button></div>`;
+        if(tieAucs.length > 0) {
+            aucHtml += `<h3 style="color:#FFF; border-bottom:2px dashed #BCAAA4; padding-bottom:5px; margin-top:30px;">⚖️ 동점 결과 대기</h3><div class="auc-grid">` + tieAucs.map(a => {
+                return `<div style="background: rgba(0,0,0,0.4); border: 2px solid #FFC107; border-radius: 15px; padding: 15px; color: white; margin-bottom: 15px;"><h3 style="margin: 0 0 5px 0; color: #FFE082;">${a.n}</h3><div style="color:#FFC107; font-weight:bold; font-size:16px;">선생님께서 동점자 확인 중입니다!</div></div>`;
             }).join('') + `</div>`;
         }
-        
-        if (myPendingAucs.length === 0 && activeAucs.length === 0 && doneAucs.length === 0) {
-            aucHtml += `<div style="color:#FFF; opacity:0.7; text-align:center; padding:20px; background: rgba(0,0,0,0.2); border-radius: 15px; border: 2px dashed #8D6E63; margin-top:20px; min-height:246px; display:flex; align-items:center; justify-content:center; font-size:18px;">현재 진행 중이거나 종료된 경매 내역이 없습니다.</div>`;
+
+        if (myPendingAucs.length === 0 && activeAucs.length === 0 && tieAucs.length === 0) {
+            aucHtml += `<div style="color:#FFF; opacity:0.7; text-align:center; padding:20px; background: rgba(0,0,0,0.2); border-radius: 15px; border: 2px dashed #8D6E63; margin-top:20px; min-height:246px; display:flex; align-items:center; justify-content:center; font-size:18px;">현재 진행 중인 경매 내역이 없습니다.</div>`;
         }
         aucHtml += `</div>`;
 
@@ -9403,29 +9430,20 @@ window.appU = function(y, si, k) {
             if(_wantCat) { window._currentAvtCat = _wantCat; filterAvtCat(_wantCat); }
         }, 50);
     }
-    // 학생 화면에서 개별 종료 경매 삭제
+    // 학생 화면에서 본인 요청 경매 취소/거절 확인
+    // (종료/낙찰 경매는 자동으로 /aucArc로 이동되므로 학생이 수동 삭제할 필요 없음)
     window.studentDelAuc = async function(id) {
-        // 학생 sv()는 no-op이므로 Firebase 직접 fetch + set 패턴 사용
         try {
             const snap = await dbRef.child('auc').once('value');
             const v = snap.val();
             let aucList = Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
             const a = aucList.find(x => x && x.id === id);
             if(!a) { console.warn('[studentDelAuc] auc not found', id); rSh(); return; }
-            if(a.st === 'req') {
-                // 승인 대기 중인 요청을 취소 → 완전히 삭제
-                aucList = aucList.filter(x => x && x.id !== id);
-                console.log('[studentDelAuc] req 삭제 → 남은', aucList.length, '건');
-            } else {
-                // 종료/동점/거절 → 학생 화면에서만 숨김
-                if(!a.hiddenFor) a.hiddenFor = [];
-                if(!a.hiddenFor.includes(me.cd)) a.hiddenFor.push(me.cd);
-                console.log('[studentDelAuc] hiddenFor 추가 →', me.cd);
-            }
+            // req(승인 대기)와 denied(거절됨) 모두 본인 요청이므로 완전 삭제
+            aucList = aucList.filter(x => x && x.id !== id);
             await dbRef.child('auc').set(aucList);
             db.auc = aucList;
             if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(aucList);
-            console.log('[studentDelAuc] Firebase 저장 완료');
         } catch(e) { console.error('[studentDelAuc]', e); return alert('경매 취소 실패: ' + (e && e.message || e)); }
         rSh();
     };
@@ -9465,77 +9483,57 @@ window.appU = function(y, si, k) {
             } catch(_){}
         });
     };
-    // 학생 로그인 직후 1회만 경매 알림 — 실제 진행 중(st='active')인 경매가 있을 때만 표시
-    // 이전에는 aucMeta/lastNew 메타만 봤지만 종료된 경매도 잡혀서 잘못 표시됨 → db.auc 직접 확인
-    window._notifyActiveAucsOnLogin = function() {
-        if(!me || !me.cd) return;
-        const _key = 'aucLastSeenId_' + me.cd;
-        try {
-            dbRef.child('auc').once('value').then(snap => {
-                const v = snap.val();
-                const arr = Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
-                // 진행 중(active)이고 종료 시간이 미래인 경매만 — 강제 종료 race 방어
-                const now = Date.now();
-                const activeAucs = arr.filter(a => a && a.st === 'active' && (!a.et || a.et > now));
-                if(activeAucs.length === 0) return; // 진행 중 경매 없음 → 알림 0
-                // 가장 최근(id 큰) 경매를 대표로 표시
-                activeAucs.sort((a,b) => (b.id||0) - (a.id||0));
-                const meta = { id: activeAucs[0].id, n: activeAucs[0].n || '경매', cur: activeAucs[0].cur || 'tk' };
-                const lastSeen = localStorage.getItem(_key);
-                if(lastSeen !== null && String(lastSeen) === String(meta.id)) return;
-                // 화면 정중앙 모달 — 큼직하고 화려한 디자인
-                document.getElementById('_aucLoginNotify')?.remove();
-                const aucName = (meta.n || '경매').replace(/</g,'&lt;');
-                const curLb = ({tk:'🧺 누구나 바구니',cn:'🍭 캔디',co:'🍯 꿀',kc:'🍪 쿠키'})[meta.cur || 'tk'] || '🧺 누구나 바구니';
-                const _safeId = String(meta.id).replace(/['"\\<>]/g,'');
-                const el = document.createElement('div');
-                el.id = '_aucLoginNotify';
-                el.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);font-family:Jua;animation:_aucNotifBgIn 0.3s ease-out;';
-                // 백드롭 클릭으로 닫기 (lastSeenId 저장)
-                el.onclick = function(e) {
-                    if(e.target !== el) return;
-                    try { localStorage.setItem(_key, String(meta.id)); } catch(_){}
-                    el.remove();
-                };
-                el.innerHTML = `
-                    <style>
-                        @keyframes _aucNotifBgIn { from{opacity:0;} to{opacity:1;} }
-                        @keyframes _aucNotifPop { 0%{transform:scale(0.6) rotate(-3deg);opacity:0;} 60%{transform:scale(1.05) rotate(1deg);opacity:1;} 100%{transform:scale(1) rotate(0);opacity:1;} }
-                        @keyframes _aucNotifBell { 0%,100%{transform:rotate(-12deg);} 25%{transform:rotate(8deg);} 50%{transform:rotate(-8deg);} 75%{transform:rotate(12deg);} }
-                        @keyframes _aucNotifPulse { 0%,100%{box-shadow:0 0 0 0 rgba(231,76,60,0.6);} 50%{box-shadow:0 0 0 16px rgba(231,76,60,0);} }
-                    </style>
-                    <div onclick="event.stopPropagation()" style="background:linear-gradient(160deg,#fff8e1,#fff3e0);border-radius:24px;padding:0;width:min(380px,92vw);box-shadow:0 24px 64px rgba(0,0,0,0.5),0 0 0 4px rgba(255,193,7,0.3);border:4px solid #f1c40f;animation:_aucNotifPop 0.45s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
-                        <div style="background:linear-gradient(135deg,#e74c3c,#c0392b);padding:22px 20px 18px;text-align:center;color:white;position:relative;">
-                            <div style="position:absolute;top:8px;right:12px;background:rgba(255,255,255,0.3);color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;line-height:1;" onclick="try{localStorage.setItem('${_key}','${_safeId}')}catch(_){};document.getElementById('_aucLoginNotify')?.remove();">×</div>
-                            <div style="display:inline-block;font-size:64px;line-height:1;animation:_aucNotifBell 0.8s ease-in-out infinite;text-shadow:0 4px 12px rgba(0,0,0,0.4);">🔨</div>
-                            <div style="font-size:13px;color:#FFE0B2;letter-spacing:5px;margin-top:6px;font-weight:bold;">NEW AUCTION</div>
-                            <div style="font-size:24px;font-weight:bold;margin-top:4px;letter-spacing:1px;text-shadow:0 2px 6px rgba(0,0,0,0.35);">경매 시작!</div>
-                        </div>
-                        <div style="padding:20px 22px 22px;text-align:center;">
-                            <div style="background:white;border:2.5px dashed #f1c40f;border-radius:14px;padding:14px 16px;margin-bottom:14px;">
-                                <div style="font-size:11px;color:#8D6E63;letter-spacing:2px;font-weight:bold;">물품</div>
-                                <div style="font-size:20px;color:#3E2723;font-weight:bold;margin-top:4px;line-height:1.3;word-break:keep-all;">${aucName}</div>
-                                <div style="font-size:12px;color:#A1887F;margin-top:8px;">통화: <b style="color:#E65100;">${curLb}</b></div>
-                            </div>
-                            <button onclick="try{localStorage.setItem('${_key}','${_safeId}')}catch(_){};document.getElementById('_aucLoginNotify')?.remove();window._goToAucTab&&window._goToAucTab();" style="width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#f39c12,#e67e22);color:white;font-family:Jua;font-size:17px;font-weight:bold;cursor:pointer;letter-spacing:2px;box-shadow:0 5px 0 #d35400,0 8px 16px rgba(230,126,34,0.4);animation:_aucNotifPulse 1.5s ease-in-out infinite;transition:transform 0.1s;" onmousedown="this.style.transform='translateY(2px)';this.style.boxShadow='0 3px 0 #d35400,0 4px 8px rgba(230,126,34,0.4)';" onmouseup="this.style.transform='';this.style.boxShadow='0 5px 0 #d35400,0 8px 16px rgba(230,126,34,0.4)';" onmouseout="this.style.transform='';this.style.boxShadow='0 5px 0 #d35400,0 8px 16px rgba(230,126,34,0.4)';">💰 경매 보러가기</button>
-                            <button onclick="try{localStorage.setItem('${_key}','${_safeId}')}catch(_){};document.getElementById('_aucLoginNotify')?.remove();" style="margin-top:8px;width:100%;padding:9px;border:1.5px solid #BCAAA4;border-radius:12px;background:white;color:#8D6E63;font-family:Jua;font-size:13px;cursor:pointer;">다음에 보기</button>
+    // 학생 낙찰 결과 모달 — /stu/{idx}/aucWin 필드 도착 시 1회 표시. 확인 시 필드 제거.
+    window._showAucWinModal = function(win) {
+        if(!win || !me || !me.cd) return;
+        document.getElementById('_aucWinModal')?.remove();
+        const aucName = String(win.n || '경매').replace(/</g,'&lt;');
+        const curLb = ({tk:'🧺 누구나 바구니',cn:'🍭 캔디',co:'🍯 꿀',kc:'🍪 쿠키'})[win.cur || 'tk'] || '🧺 누구나 바구니';
+        const amt = Number(win.amt) || 0;
+        const _close = () => {
+            document.getElementById('_aucWinModal')?.remove();
+            try {
+                const idx = (db.stu||[]).findIndex(x => x && String(x.cd).trim() === String(me.cd).trim());
+                if(idx >= 0) dbRef.child('stu/' + idx + '/aucWin').remove();
+            } catch(_){}
+            if(me) me.aucWin = undefined;
+        };
+        const el = document.createElement('div');
+        el.id = '_aucWinModal';
+        el.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(3px);font-family:Jua;animation:_aucWinBgIn 0.3s ease-out;';
+        el.onclick = function(e) { if(e.target === el) _close(); };
+        el.innerHTML = `
+            <style>
+                @keyframes _aucWinBgIn { from{opacity:0;} to{opacity:1;} }
+                @keyframes _aucWinPop { 0%{transform:scale(0.5) rotate(-8deg);opacity:0;} 60%{transform:scale(1.08) rotate(2deg);opacity:1;} 100%{transform:scale(1) rotate(0);opacity:1;} }
+                @keyframes _aucWinTrophy { 0%,100%{transform:translateY(0) rotate(-5deg);} 50%{transform:translateY(-8px) rotate(5deg);} }
+                @keyframes _aucWinShine { 0%{background-position:-200% 0;} 100%{background-position:200% 0;} }
+                @keyframes _aucWinPulse { 0%,100%{box-shadow:0 0 0 0 rgba(46,204,113,0.65);} 50%{box-shadow:0 0 0 18px rgba(46,204,113,0);} }
+            </style>
+            <div onclick="event.stopPropagation()" style="background:linear-gradient(160deg,#fffde7,#fff9c4);border-radius:26px;padding:0;width:min(400px,92vw);box-shadow:0 28px 70px rgba(0,0,0,0.55),0 0 0 4px rgba(241,196,15,0.4);border:4px solid #f1c40f;animation:_aucWinPop 0.5s cubic-bezier(.34,1.56,.64,1);overflow:hidden;">
+                <div style="background:linear-gradient(135deg,#27ae60,#16a085);padding:24px 20px 20px;text-align:center;color:white;position:relative;background-size:200% 100%;animation:_aucWinShine 3s linear infinite;">
+                    <div style="position:absolute;top:8px;right:12px;background:rgba(255,255,255,0.3);color:white;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;line-height:1;" id="_aucWinX">×</div>
+                    <div style="display:inline-block;font-size:72px;line-height:1;animation:_aucWinTrophy 1.2s ease-in-out infinite;text-shadow:0 4px 14px rgba(0,0,0,0.45);">🏆</div>
+                    <div style="font-size:13px;color:#E8F8F0;letter-spacing:5px;margin-top:8px;font-weight:bold;">CONGRATULATIONS</div>
+                    <div style="font-size:26px;font-weight:bold;margin-top:4px;letter-spacing:2px;text-shadow:0 2px 6px rgba(0,0,0,0.4);">🎉 낙찰 성공! 🎉</div>
+                </div>
+                <div style="padding:22px 24px 24px;text-align:center;">
+                    <div style="background:white;border:2.5px dashed #27ae60;border-radius:14px;padding:16px;margin-bottom:14px;">
+                        <div style="font-size:11px;color:#5D4037;letter-spacing:2px;font-weight:bold;">낙찰 상품</div>
+                        <div style="font-size:22px;color:#1B5E20;font-weight:bold;margin-top:6px;line-height:1.3;word-break:keep-all;">${aucName}</div>
+                        <div style="margin-top:10px;display:flex;justify-content:center;gap:14px;font-size:14px;color:#37474F;">
+                            <span>낙찰가: <b style="color:#E65100;">${amt}</b></span>
+                            <span style="color:#A1887F;">|</span>
+                            <span>${curLb}</span>
                         </div>
                     </div>
-                `;
-                document.body.appendChild(el);
-                // 25초 자동 닫힘
-                setTimeout(() => {
-                    if(document.getElementById('_aucLoginNotify')) {
-                        try { localStorage.setItem(_key, String(meta.id)); } catch(_){}
-                        document.getElementById('_aucLoginNotify')?.remove();
-                    }
-                }, 25000);
-            }).catch(()=>{});
-        } catch(_){}
-    };
-    window._goToAucTab = function() {
-        try { navS('s_sh'); } catch(_){}
-        if(window.toggleShopTab) try { window.toggleShopTab('auc'); } catch(_){}
+                    <button id="_aucWinOk" style="width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(135deg,#2ecc71,#27ae60);color:white;font-family:Jua;font-size:18px;font-weight:bold;cursor:pointer;letter-spacing:2px;box-shadow:0 5px 0 #1e8449,0 8px 16px rgba(39,174,96,0.45);animation:_aucWinPulse 1.6s ease-in-out infinite;transition:transform 0.1s;" onmousedown="this.style.transform='translateY(2px)';" onmouseup="this.style.transform='';" onmouseout="this.style.transform='';">✨ 확인 ✨</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(el);
+        document.getElementById('_aucWinX').onclick = _close;
+        document.getElementById('_aucWinOk').onclick = _close;
     };
     // 학생용 경매 데이터 on-demand fetch (toggle 시 1회만)
     window._refreshAuc = function() {
@@ -9555,42 +9553,58 @@ window.appU = function(y, si, k) {
             if(_splitInitialDone) _splitFire();
         });
     };
-    // 경매 탭 활성 시 라이브 listener 부착 (delta 업데이트만 받음 — 폴링 제거)
+    // 경매 탭 활성 시 라이브 listener 부착 — 변경된 child만 수신 (델타 적용, 전체 재fetch 없음)
     window._aucAttachLive = function() {
         if(window._aucLiveAttached) return;
         window._aucLiveAttached = true;
+        if(!Array.isArray(db.auc)) db.auc = [];
         const aRef = dbRef.child('auc');
-        const onChange = () => {
-            // 변경 시 db.auc 갱신 + 상점 화면 재렌더
-            window._refreshAuc().then(() => {
-                // _renderAucList는 미정의 — 상점 전체 rSh() 호출이 정답 (auc 섹션 포함됨)
+        let _rerenderScheduled = false;
+        const _scheduleRerender = () => {
+            if(_rerenderScheduled) return;
+            _rerenderScheduled = true;
+            requestAnimationFrame(() => {
+                _rerenderScheduled = false;
                 if(typeof rSh === 'function' && document.getElementById('s_sh') && !document.getElementById('s_sh').classList.contains('hidden')) {
                     try { rSh(); } catch(_){}
                 }
                 if(window._refreshAucChat) try { window._refreshAucChat(); } catch(_){}
-            }).catch(()=>{});
+            });
         };
-        aRef.on('child_added', onChange);
-        aRef.on('child_changed', onChange);
-        aRef.on('child_removed', onChange);
-        window._aucLiveHandlers = { aRef, onChange };
-        console.log('[auc] student live listener attached');
+        const _apply = (evt) => snap => {
+            const v = snap.val();
+            const i = parseInt(snap.key);
+            if(!isNaN(i)) db.auc[i] = v; else db.auc[snap.key] = v;
+            _scheduleRerender();
+        };
+        const onAdd = _apply('added');
+        const onChg = _apply('changed');
+        const onRm  = snap => {
+            const i = parseInt(snap.key);
+            if(!isNaN(i) && db.auc[i] !== undefined) db.auc[i] = null;
+            else if(db.auc[snap.key] !== undefined) delete db.auc[snap.key];
+            _scheduleRerender();
+        };
+        aRef.on('child_added', onAdd);
+        aRef.on('child_changed', onChg);
+        aRef.on('child_removed', onRm);
+        window._aucLiveHandlers = { aRef, onAdd, onChg, onRm };
+        console.log('[auc] student live listener attached (delta)');
     };
     window._aucDetachLive = function() {
         if(!window._aucLiveAttached) return;
         const h = window._aucLiveHandlers;
         if(h && h.aRef) {
-            try { h.aRef.off('child_added', h.onChange); } catch(_){}
-            try { h.aRef.off('child_changed', h.onChange); } catch(_){}
-            try { h.aRef.off('child_removed', h.onChange); } catch(_){}
+            try { h.aRef.off('child_added', h.onAdd); } catch(_){}
+            try { h.aRef.off('child_changed', h.onChg); } catch(_){}
+            try { h.aRef.off('child_removed', h.onRm); } catch(_){}
         }
         window._aucLiveAttached = false;
         window._aucLiveHandlers = null;
     };
     window.toggleShopTab = function(tabType) {
-        // 경매 탭 진입 시 1회 fetch + 라이브 listener (다른 탭으로 이동 시 detach)
-        if(tabType === 'auc' && window._refreshAuc) {
-            try { window._refreshAuc(); } catch(_){}
+        // 경매 탭 진입 시 라이브 listener attach (child_added 초기 발화로 전체 데이터 자동 수신)
+        if(tabType === 'auc') {
             try { window._aucAttachLive && window._aucAttachLive(); } catch(_){}
         } else {
             try { window._aucDetachLive && window._aucDetachLive(); } catch(_){}
@@ -10375,7 +10389,7 @@ window.appU = function(y, si, k) {
         rSh();
     };
     window.showAucBidModal = function(aucId) {
-        const a = db.auc.find(x => x.id === aucId);
+        const a = db.auc.find(x => x && x.id === aucId);
         if(!a) return;
         const old = document.getElementById('aucBidModal'); if(old) old.remove();
         
@@ -10408,7 +10422,7 @@ window.appU = function(y, si, k) {
     };
 
     window.submitAucBid = function(aucId) {
-        const a = db.auc.find(x => x.id === aucId);
+        const a = db.auc.find(x => x && x.id === aucId);
         if(!a) return;
         
         const bid = parseInt(document.getElementById('ab_p').value);
@@ -10431,9 +10445,23 @@ window.appU = function(y, si, k) {
         setTimeout(updateNotifBell, 0);
         _renderReqDate();
 
-        const reqList = db.auc.filter(a => a.st === 'req');
-        const actList = db.auc.filter(a => a.st === 'active');
-        const doneList = db.auc.filter(a => a.st === 'done' || a.st === 'tie');
+        // /aucArc 1회 fetch (이력은 종료 시점에만 갱신되므로 라이브 구독 불필요)
+        if(db.aucArc === undefined) {
+            db.aucArc = []; // 재진입 방지
+            try {
+                dbRef.child('aucArc').once('value').then(snap => {
+                    const v = snap.val();
+                    db.aucArc = v ? Object.values(v).filter(Boolean) : [];
+                    rAucT();
+                }).catch(()=>{});
+            } catch(_){}
+        }
+        const reqList = db.auc.filter(a => a && a.st === 'req');
+        const actList = db.auc.filter(a => a && a.st === 'active');
+        // 동점(tie)은 /auc에 남아있고, 종료(done)는 /aucArc에 있음
+        const tieList = db.auc.filter(a => a && a.st === 'tie');
+        const archivedList = (db.aucArc || []).slice().sort((a,b)=>(b.id||0)-(a.id||0));
+        const doneList = [...tieList, ...archivedList];
         
         document.getElementById('t_auc_req').style.gridTemplateColumns = "repeat(auto-fill, minmax(320px, 1fr))";
         
@@ -10507,32 +10535,24 @@ window.appU = function(y, si, k) {
                         <span style="font-size:14px; color:#555;">낙찰자: <b style="color:#2E7D32;">${winNm}</b></span>
                         <span style="font-size:14px; color:#555;">낙찰가: <b style="color:#D84315;">${a.cp} ${curEmoji[a.cur]}</b></span>
                     </div>
-                    
-                    <button class="btn btn-gray" style="padding:8px 0; width:100%; font-size:14px;" onclick="delAuc(${a.id})">목록에서 삭제</button>
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                        <span style="font-size:11px; color:#9E9E9E;">7일 후 자동 삭제</span>
+                        <button class="btn btn-gray" style="padding:6px 12px; font-size:13px;" onclick="delAuc(${a.id})">삭제</button>
+                    </div>
                 </div>`;
             }
         }).join('') || '<div style="color:#888; grid-column: 1/-1;">종료된 경매가 없습니다.</div>';
         
         updateAucTimersUI();
-        // 종료됨 섹션 표시 상태 유지
-        const donEl = document.getElementById('t_auc_done');
-        const btnHD = document.getElementById('btnHideDone');
-        if(donEl) donEl.style.display = window._aucDoneHidden!==false ? 'none' : 'grid';
-        if(btnHD) btnHD.textContent = window._aucDoneHidden!==false ? '👁️ 보이기' : '🙈 숨기기';
     }
-
-    window._aucDoneHidden = true; // 기본: 숨김
-    window.toggleAucDone = function() {
-        window._aucDoneHidden = !window._aucDoneHidden;
-        const donEl = document.getElementById('t_auc_done');
-        const btnHD = document.getElementById('btnHideDone');
-        if(donEl) donEl.style.display = window._aucDoneHidden ? 'none' : 'grid';
-        if(btnHD) btnHD.textContent = window._aucDoneHidden ? '👁️ 보이기' : '🙈 숨기기';
-    };
 
     window.delAllDoneAuc = function() {
         if(!confirm("종료된 경매 기록을 모두 삭제하시겠습니까?")) return;
-        db.auc = db.auc.filter(a => a.st !== 'done');
+        // 종료(done)는 /aucArc에 보관되므로 거기서 일괄 삭제
+        try { dbRef.child('aucArc').remove(); } catch(_){}
+        db.aucArc = [];
+        // /auc에 잔존하는 null 또는 비-active/req 항목도 정리
+        if(Array.isArray(db.auc)) db.auc = db.auc.filter(a => a && (a.st === 'active' || a.st === 'req' || a.st === 'tie'));
         sv(); rAucT();
     }
 
@@ -10592,20 +10612,18 @@ window.appU = function(y, si, k) {
     };
 
     window.approveAuc = function(id) {
-        const a = db.auc.find(x => x.id === id);
+        const a = db.auc.find(x => x && x.id === id);
         if(!a) return;
         const m = parseInt(document.getElementById(`ar_m_${id}`).value);
         if(!m || m < 1) return alert("경매 시간을 제대로 입력해주세요.");
         a.st = 'active';
         a.et = Date.now() + (m * 60 * 1000);
-        // 학생 로그인 알림용 경량 메타 — sv() 우회 즉시 write (학생이 전체 auc fetch 없이 알림 가능)
-        try { dbRef.child('aucMeta/lastNew').set({ id: a.id, n: a.n || '경매', cur: a.cur || 'cn', ts: Date.now() }); } catch(_){}
         sv(); rAucT();
     };
 
     window.forceEndAuc = function(id) {
         if(!confirm("경매를 강제 종료하시겠습니까?")) return;
-        const a = db.auc.find(x => x.id === id);
+        const a = db.auc.find(x => x && x.id === id);
         if(a && a.st === 'active') {
             resolveAuctionTimer(a);
             sv(); rAucT();
@@ -10613,28 +10631,34 @@ window.appU = function(y, si, k) {
     }
 
     window.delAuc = function(id) {
-    const a = db.auc.find(x => x.id === id);
+    const a = db.auc.find(x => x && x.id === id);
     if (a && a.st === 'req') {
         // 승인 대기 중 거절 시 상태만 변경하여 학생에게 알림
         a.st = 'denied';
         sv();
         rAucT();
-    } else {
-        // 이미 종료된 경매를 목록에서 지울 때는 데이터 영구 삭제
-        db.auc = db.auc.filter(x => x.id !== id);
+    } else if (a) {
+        // /auc에 남아있는 경우(예: tie) — 영구 삭제
+        db.auc = db.auc.filter(x => x && x.id !== id);
         sv();
+        rAucT();
+    } else {
+        // /aucArc에 있는 경우 — Firebase + 로컬 미러에서 제거
+        try { dbRef.child('aucArc/' + id).remove(); } catch(_){}
+        if(Array.isArray(db.aucArc)) db.aucArc = db.aucArc.filter(x => x && x.id !== id);
         rAucT();
     }
 };
 
     window.resolveTie = function(aucId, winnerCd) {
-        const a = db.auc.find(x => x.id === aucId);
+        const a = db.auc.find(x => x && x.id === aucId);
         if(!a || a.st !== 'tie') return;
-        
+
         const winnerData = a.tied.find(t => t.cd === winnerCd);
         a.winner = winnerData;
         a.st = 'done';
         processAuctionWin(a, winnerData);
+        _archiveAndRemoveAuc(a);
         sv(); rAucT();
     }
 
@@ -19301,7 +19325,7 @@ window.addCharRow = function() {
                 removed.log = before - db.log.length;
             }
 
-            // 1) 종료된 경매(done/tie/denied) 7일 이상 지난 것 삭제
+            // 1) /auc는 active/req만 보관됨. denied 7일 이상 지난 것만 정리 (done/tie는 즉시 /aucArc로 이동됨)
             if(Array.isArray(db.auc)) {
                 const before = db.auc.length;
                 db.auc = db.auc.filter(a => {
@@ -19312,6 +19336,20 @@ window.addCharRow = function() {
                 });
                 removed.auc = before - db.auc.length;
             }
+
+            // 1-b) /aucArc(종료 경매 보관소) — 7일 이상 지난 항목 영구 삭제
+            try {
+                dbRef.child('aucArc').once('value').then(snap => {
+                    const v = snap.val(); if(!v) return;
+                    const updates = {};
+                    Object.keys(v).forEach(k => {
+                        const a = v[k]; if(!a) return;
+                        const t = a.et || a.id || NOW;
+                        if((NOW - t) >= WEEK) updates[k] = null;
+                    });
+                    if(Object.keys(updates).length) dbRef.child('aucArc').update(updates);
+                }).catch(()=>{});
+            } catch(_){}
 
             // 2) 우편함(ibx) — 사용 완료 OR 7일 이상 지난 항목 삭제
             // 3) 가방(inv) — 사용 완료(st='used') 항목 삭제
