@@ -1784,7 +1784,7 @@ const firebaseConfig = {
 let _prevDbHash = ''; // 변경 감지용 해시
 let _renderLock = false; // 재진입 방지
 
-    let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], avt:[], bdg:[], tit:[], ak:'', cfg: {hideCandy: false, baseChar:'', gh:{token:'',owner:'',repo:''}}};
+    let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], avt:[], bdg:[], tit:[], ak:'', cfg: {baseChar:'', gh:{token:'',owner:'',repo:''}}};
     window._pageLoadTime = Date.now();
 
     let me=null, rid=null, asort='stu', sdir=1, sel=new Set(), hideCompleted = true, currentGroups=[], rasTypeFilter='all', rasAvtCatFilter='all';
@@ -2152,7 +2152,8 @@ let _renderLock = false; // 재진입 방지
                 _splitInitialDone = true;
                 _splitFire();
             }
-            // 학생 + cfg: 라이브 키(maintenance, reloadAt)만 구독 — 나머지 cfg 변경은 다음 새로고침까지 반영 안 됨 (RTDB 트래픽 절감)
+            // 학생 + cfg: 상시 라이브 키(maintenance, reloadAt)만 구독.
+            // 광장 관련 키는 enterPlaza에서 _attachPlzCfgLive(), exitPlaza에서 _detachPlzCfgLive()로 동적 부착.
             const _isStudentSession = !window._isTeacherSession;
             if(p === 'cfg' && _isStudentSession) {
                 ['maintenance', 'reloadAt'].forEach(k => {
@@ -2200,6 +2201,35 @@ let _renderLock = false; // 재진입 방지
             });
         });
     }
+    // 학생 광장 입장 시점에만 광장 cfg 키를 라이브 부착 (퇴장 시 detach) — 광장 밖 학생 트래픽 0
+    window._plzCfgLiveKeys = ['plzHours', 'plzMaxUser', 'plzMaxTime', 'plzIdle', 'plzSwitchCd',
+        'notice', 'noticeBroadcastOn'];
+    window._plzCfgLiveHandlers = null;
+    window._attachPlzCfgLive = function() {
+        if(window._isTeacherSession) return; // 교사는 cfg 전체 라이브 — 별도 attach 불필요
+        if(window._plzCfgLiveHandlers) return; // 중복 방지
+        const handlers = {};
+        window._plzCfgLiveKeys.forEach(k => {
+            const ref = dbRef.child('cfg/'+k);
+            const fn = s => {
+                const v = s.val();
+                if(!db.cfg) db.cfg = {};
+                if(v === null || v === undefined) delete db.cfg[k];
+                else db.cfg[k] = v;
+                if(_splitInitialDone) _splitFire();
+            };
+            ref.on('value', fn);
+            handlers[k] = { ref, fn };
+        });
+        window._plzCfgLiveHandlers = handlers;
+    };
+    window._detachPlzCfgLive = function() {
+        const h = window._plzCfgLiveHandlers;
+        if(!h) return;
+        Object.values(h).forEach(({ref, fn}) => { try { ref.off('value', fn); } catch(_){} });
+        window._plzCfgLiveHandlers = null;
+    };
+
     function _attachSplitListeners() {
         // 모든 라이브 path를 child 이벤트로 — 변경 시 해당 항목만 다운로드
         _splitLivePaths.forEach(p => _attachChildLiveListener(p));
@@ -3758,7 +3788,7 @@ let _renderLock = false; // 재진입 방지
             db.avt = _normArr(db.avt);
             db.bdg = _normArr(db.bdg);
             db.tit = _normArr(db.tit);
-            if(!db.cfg) db.cfg = {show_cn: true, show_tk: true, show_co: true};
+            if(!db.cfg) db.cfg = {};
             // 각 학생의 inv/ibx도 배열로 정규화 (Firebase 객체 반환 시 .some/.filter 오류 방지)
             db.stu.forEach((s, i) => {
                 if(!s) return; // 안전장치 (filter(Boolean) 후엔 안 일어나지만 방어)
@@ -4487,12 +4517,6 @@ let _renderLock = false; // 재진입 방지
     window.hideTip = function() {
         document.getElementById('itemTooltip').style.display = 'none';
     };
-
-    window.toggleHideCandy = function(val) {
-        if(!db.cfg) db.cfg = {};
-        db.cfg.hideCandy = val;
-        sv();
-    }
 
     function logCandy(targets, change, method) {
         const now = new Date();
@@ -5414,10 +5438,6 @@ let _renderLock = false; // 재진입 방지
         if(!window._stuSelSet) window._stuSelSet = new Set();
         const checked = [...window._stuSelSet].map(String);
 
-        const s_cn = db.cfg && db.cfg.show_cn !== false;
-        const s_tk = db.cfg && db.cfg.show_tk !== false;
-        const s_co = db.cfg && db.cfg.show_co !== false;
-
         // 🌟 수정: 체크/번호 최소화 + 나머지 6개 영역 정확히 균등 배분 (약 15%씩)
         document.getElementById('t_stu').querySelector('table thead').innerHTML = `
             <tr>
@@ -5425,27 +5445,27 @@ let _renderLock = false; // 재진입 방지
                 <th style="width:45px;">번호</th>
                 <th style="width:18%;">이름</th>
                 <th style="background:#4E342E; color:white; width:15%;">🍪쿠키</th>
-                <th style="background:${s_co ? '#4E342E' : '#BDBDBD'}; color:${s_co ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap; width:15%;">
+                <th style="background:#4E342E; color:white; white-space:nowrap; width:15%;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('co')" oncontextmenu="toggleVis('co'); return false;" style="cursor:pointer; font-weight:bold;">🍯꿀</span>
+                        <span onclick="bulkReset('co')" style="cursor:pointer; font-weight:bold;">🍯꿀</span>
                         <div style="display:flex; flex-direction:column; gap:1px;">
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',1)">▲</button>
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('co',-1)">▼</button>
                         </div>
                     </div>
                 </th>
-                <th style="background:${s_cn ? '#4E342E' : '#BDBDBD'}; color:${s_cn ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap; width:15%;">
+                <th style="background:#4E342E; color:white; white-space:nowrap; width:15%;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('cn')" oncontextmenu="toggleVis('cn'); return false;" style="cursor:pointer; font-weight:bold;">🍭캔디</span>
+                        <span onclick="bulkReset('cn')" style="cursor:pointer; font-weight:bold;">🍭캔디</span>
                         <div style="display:flex; flex-direction:column; gap:1px;">
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('cn',1)">▲</button>
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('cn',-1)">▼</button>
                         </div>
                     </div>
                 </th>
-                <th style="background:${s_tk ? '#4E342E' : '#BDBDBD'}; color:${s_tk ? 'white' : '#757575'}; transition:0.2s; white-space:nowrap; width:15%;">
+                <th style="background:#4E342E; color:white; white-space:nowrap; width:15%;">
                     <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
-                        <span onclick="bulkReset('tk')" oncontextmenu="toggleVis('tk'); return false;" style="cursor:pointer; font-weight:bold;">🧺바구니</span>
+                        <span onclick="bulkReset('tk')" style="cursor:pointer; font-weight:bold;">🧺바구니</span>
                         <div style="display:flex; flex-direction:column; gap:1px;">
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('tk',1)">▲</button>
                             <button style="border:1px solid #A1887F; background:white; color:#5D4037; font-size:8px; padding:0 3px; cursor:pointer; border-radius:2px; line-height:1;" onclick="bulkCur('tk',-1)">▼</button>
@@ -9057,9 +9077,9 @@ window.appU = function(y, si, k) {
             // 화폐 순서: 쿠키 → 꿀 → 캔디 → 누구나 바구니
             const curCookie = Math.max(0, (me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0));
             if (curCookie > 0) pseudoItems.push({ n: '쿠키', i: '🍪', count: curCookie, pseudo: true, g: 'S' });
-            if ((!db.cfg || db.cfg.show_co !== false) && Number(me.co||0) > 0) pseudoItems.push({ n: '꿀', i: '🍯', count: Number(me.co||0), pseudo: true, g: 'S' });
-            if ((!db.cfg || db.cfg.show_cn !== false) && Number(me.cn||0) > 0) pseudoItems.push({ n: '캔디', i: '🍭', count: Number(me.cn||0), pseudo: true, g: 'S' });
-            if ((!db.cfg || db.cfg.show_tk !== false) && Number(me.tk||0) > 0) pseudoItems.push({ n: '누구나 바구니', i: '🧺', count: Number(me.tk||0), pseudo: true, g: 'S' });
+            if (Number(me.co||0) > 0) pseudoItems.push({ n: '꿀', i: '🍯', count: Number(me.co||0), pseudo: true, g: 'S' });
+            if (Number(me.cn||0) > 0) pseudoItems.push({ n: '캔디', i: '🍭', count: Number(me.cn||0), pseudo: true, g: 'S' });
+            if (Number(me.tk||0) > 0) pseudoItems.push({ n: '누구나 바구니', i: '🧺', count: Number(me.tk||0), pseudo: true, g: 'S' });
             // 일반 아이템: 이름 순 정렬
             itemList.sort((a,b)=>String(a.n||'').localeCompare(String(b.n||''),'ko'));
             // 특수 아이템: 골든티켓 → 달고나 순
@@ -29415,6 +29435,8 @@ window.addCharRow = function() {
         }
 
         window._plzActive = true;
+        // 광장 cfg 키 라이브 부착 (학생만 — 광장 안에 있을 때만 변경 즉시 수신)
+        if(window._attachPlzCfgLive) try { window._attachPlzCfgLive(); } catch(_){}
 
         const container = document.getElementById('s_plz');
         container.style.flexDirection = 'column';
@@ -30259,10 +30281,11 @@ window.addCharRow = function() {
             {ref, type:'child_changed', fn:fnChg, who:'student'}
         );
 
-        // 최대 접속자 제한 — OX 퀴즈 방은 무시
+        // 최대 접속자 제한 — OX 퀴즈 방·교사는 무시
         const maxCfg = (db.cfg && db.cfg.plzMaxUser) || {};
         const _curIsOx = !!(db.cfg && db.cfg.plz && db.cfg.plz.oxQuizOn);
-        if(maxCfg.enabled && maxCfg.count && !_curIsOx) {
+        const _isTeacherInPlz = me && me.cd === 'teacher_main';
+        if(maxCfg.enabled && maxCfg.count && !_curIsOx && !_isTeacherInPlz) {
             ref.once('value', snap => {
                 const count = snap.numChildren();
                 if(count > maxCfg.count) {
@@ -32388,6 +32411,8 @@ window.addCharRow = function() {
 
     function exitPlaza() {
         window._plzActive = false;
+        // 광장 cfg 키 라이브 해제
+        if(window._detachPlzCfgLive) try { window._detachPlzCfgLive(); } catch(_){}
         window._plzObsViewOn = false;
         // 장애물 편집·OX 잔재 강제 정리 (드래그 stuck 방지)
         if(typeof _plzDetachObsEditHandlers === 'function') try { _plzDetachObsEditHandlers(); } catch(_) {}
