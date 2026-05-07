@@ -11,7 +11,7 @@
     <meta name="application-name" content="RPG 상점">
     <meta name="theme-color" content="#FFB366">
     <title>RPG 상점</title>
-    <link id="manifestLink" rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"RPG 상점","short_name":"RPG 상점","start_url":".","scope":".","display":"standalone","orientation":"any","background_color":"%23FFFDF2","theme_color":"%23FFB366"}'>
+    <link id="manifestLink" rel="manifest">
 <link id="iconLink" rel="icon" type="image/png" sizes="192x192">
 <link id="appleIconLink" rel="apple-touch-icon" sizes="192x192">
 <script>
@@ -43,11 +43,12 @@
       // <link> 아이콘 갱신
       document.getElementById('iconLink').href = icon192;
       document.getElementById('appleIconLink').href = icon192;
-      // 동적 manifest 생성
+      // 동적 manifest 생성 — blob: URL로 로드되므로 start_url/scope는 절대 URL이어야 함
+      const baseUrl = new URL('.', location.href).href;
       const manifest = {
         name: 'RPG 상점', short_name: 'RPG 상점',
         description: '우리반 RPG 이벤트 상점',
-        start_url: '.', scope: '.',
+        start_url: baseUrl, scope: baseUrl,
         display: 'standalone', orientation: 'any',
         background_color: '#FFFDF2', theme_color: '#FFB366',
         lang: 'ko',

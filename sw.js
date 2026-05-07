@@ -1,7 +1,7 @@
 // 우리반 매니저 Service Worker — 트래픽 절감 캐시
 // 전략: stale-while-revalidate (캐시 우선 즉시 응답 + 백그라운드 갱신)
 
-const CACHE_VERSION = 'v27';
+const CACHE_VERSION = 'v28';
 const CACHE_NAME = `wclass-${CACHE_VERSION}`;
 
 // 미리 캐시할 자원 (로컬 우선, CDN은 폴백 시 후처리됨)
@@ -17,8 +17,11 @@ self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) =>
-            // 일부 CORS 실패해도 무시
-            Promise.all(PRECACHE.map(u => cache.add(u).catch(() => {})))
+            // CDN(cross-origin) 자원은 no-cors로 요청해야 opaque response를 받아 캐시 가능
+            Promise.all(PRECACHE.map(u => {
+                const req = /^https?:\/\//.test(u) ? new Request(u, { mode: 'no-cors' }) : u;
+                return cache.add(req).catch(() => {});
+            }))
         )
     );
 });
