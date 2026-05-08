@@ -2633,11 +2633,34 @@ let _renderLock = false; // 재진입 방지
         if(idx < 0) return;
         window._myFbIdx = idx;
         const ref = dbRef.child('stu/' + idx);
+        // 인덱스 시프트 자동 복구 — null 또는 cd mismatch 발생 시 Firebase 전체에서 cd로 재탐색 후 재부착
+        const _reattach = () => {
+            console.warn('[stuOwn] idx 재탐색 중...', { oldIdx: idx, target });
+            dbRef.child('stu').once('value', s => {
+                let newIdx = -1;
+                s.forEach(c => {
+                    const cv = c.val();
+                    if(cv && String(cv.cd||'').trim() === target){ newIdx = parseInt(c.key); return true; }
+                });
+                if(newIdx >= 0 && newIdx !== idx){
+                    console.warn('[stuOwn] 새 idx로 재부착:', newIdx);
+                    window._attachSplitStuOwnListener(target, newIdx);
+                } else if(newIdx < 0){
+                    console.error('[stuOwn] Firebase에서 본인 cd 못 찾음 — 데이터 손실 의심');
+                }
+            });
+        };
         const fn = snap => {
-            const v = snap.val(); if(!v) return;
-            // 안전망: 받은 record 의 cd 가 자신과 다르면 무시 (idx mis-attach 방어)
+            const v = snap.val();
+            if(!v){
+                // 값이 null → 인덱스 시프트로 빈 슬롯 듣고 있음 가능성. 재탐색.
+                _reattach();
+                return;
+            }
+            // 안전망: 받은 record 의 cd 가 자신과 다르면 idx mis-attach — 재탐색
             if(v.cd && String(v.cd).trim() !== target) {
-                console.warn('[stuOwn] cd mismatch ignored', { expected: target, got: v.cd, idx });
+                console.warn('[stuOwn] cd mismatch — idx 시프트 감지', { expected: target, got: v.cd, idx });
+                _reattach();
                 return;
             }
             const _prevAucWin = me && me.aucWin;
@@ -2656,7 +2679,19 @@ let _renderLock = false; // 재진입 방지
             if(_splitInitialDone) _splitFire();
         };
         ref.on('value', fn);
-        window._stuOwnUnsub = () => ref.off('value', fn);
+        // 60초마다 idx 검증 (이벤트 발화 안 되는 케이스 대비)
+        if(window._stuOwnIdxCheckTimer) clearInterval(window._stuOwnIdxCheckTimer);
+        window._stuOwnIdxCheckTimer = setInterval(() => {
+            if(!window._stuOwnUnsub || !target) return;
+            dbRef.child('stu/' + idx).once('value', s => {
+                const v = s.val();
+                if(!v || (v.cd && String(v.cd).trim() !== target)) _reattach();
+            });
+        }, 60000);
+        window._stuOwnUnsub = () => {
+            ref.off('value', fn);
+            if(window._stuOwnIdxCheckTimer) { clearInterval(window._stuOwnIdxCheckTimer); window._stuOwnIdxCheckTimer = null; }
+        };
     };
     window._attachSplitStuFullListener = function() {
         if(!_useSplit || window._stuFullAttached) return;
@@ -2674,7 +2709,16 @@ let _renderLock = false; // 재진입 방지
         ref.on('child_changed', _applyChild);
         ref.on('child_removed', snap => {
             const i = parseInt(snap.key);
-            if(!isNaN(i) && db.stu[i] !== undefined) db.stu[i] = null;
+            if(isNaN(i)){ if(_splitInitialDone) _splitFire(); return; }
+            const cur = db.stu[i];
+            const removed = snap.val();
+            // race 방어: 같은 학생이 아닌 경우 (다른 탭이 splice해서 인덱스 시프트 후 fire) — 무시
+            if(cur && removed && cur.cd && removed.cd && cur.cd !== removed.cd){
+                console.warn('[child_removed] cd 불일치 — race 가능성, 무시:', i, 'cur=', cur.cd, 'removed=', removed.cd);
+                if(_splitInitialDone) _splitFire();
+                return;
+            }
+            if(db.stu[i] !== undefined) db.stu[i] = null;
             if(_splitInitialDone) _splitFire();
         });
     };
@@ -3824,6 +3868,27 @@ let _renderLock = false; // 재진입 방지
             // ⚠️ 모든 배열 path의 null/sparse 슬롯을 filter(Boolean)로 제거 — null entry로 인한 cascade 에러 차단
             const _normArr = v => Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
             db.stu = _normArr(db.stu);
+            // 🛡️ 로드 시점 중복 cd 자동 정리 — 같은 cd가 여러 슬롯에 있으면 첫 번째만 유지
+            (function _dedupStuByCd(){
+                if(!Array.isArray(db.stu)) return;
+                const _seenCds = new Set();
+                const _dups = [];
+                const _kept = [];
+                db.stu.forEach((s, i) => {
+                    if(!s || !s.cd) { if(s) _kept.push(s); return; }
+                    if(_seenCds.has(s.cd)){
+                        _dups.push({ idx: i, cd: s.cd, nm: s.nm });
+                    } else {
+                        _seenCds.add(s.cd);
+                        _kept.push(s);
+                    }
+                });
+                if(_dups.length){
+                    console.error('[load] 중복 cd 자동 정리:', _dups);
+                    db.stu = _kept;
+                    try { localStorage.setItem('_dedupStu_'+Date.now(), JSON.stringify(_dups)); } catch(_){}
+                }
+            })();
             db.itm = _normArr(db.itm);
             db.gac = _normArr(db.gac);
             db.log = _normArr(db.log);
@@ -4279,6 +4344,66 @@ let _renderLock = false; // 재진입 방지
     let _svDebounceTimer = null;
     let _lastKnownStuCount = 0; // 안전장치용 — 직전 sv() 시점 학생 수
     let _stuCountInitialized = false;
+    // ════════ 다중 교사 탭 자동 감지 (BroadcastChannel) ════════
+    // 같은 컴퓨터의 같은 브라우저 안에서 교사 계정으로 여러 탭이 열려 있으면
+    // sv()로 인한 last-writer-wins 데이터 손실 위험 — 자동 감지 + 경고 + 저장 전 confirm
+    window._tchOtherTabs = window._tchOtherTabs || new Map();
+    window._tchTabId = window._tchTabId || (Math.random().toString(36).slice(2) + Date.now().toString(36));
+    window._tchMultiTabInit = function(){
+        if(window._tchTabChannel) return; // 이미 초기화됨
+        if(typeof BroadcastChannel === 'undefined'){ console.warn('[multitab] BroadcastChannel 미지원'); return; }
+        try {
+            window._tchTabChannel = new BroadcastChannel('rpgshop_teacher_tabs');
+        } catch(e){ console.warn('[multitab] channel 생성 실패', e); return; }
+        window._tchTabChannel.onmessage = (e) => {
+            const m = e.data;
+            if(!m || m.tabId === window._tchTabId) return;
+            if(m.type === 'hb'){
+                window._tchOtherTabs.set(m.tabId, m.ts);
+                _updateMultiTabBanner();
+            } else if(m.type === 'bye'){
+                window._tchOtherTabs.delete(m.tabId);
+                _updateMultiTabBanner();
+            }
+        };
+        // 2초마다 heartbeat 발신 + 만료된 탭 정리
+        if(window._tchTabHbTimer) clearInterval(window._tchTabHbTimer);
+        window._tchTabHbTimer = setInterval(() => {
+            if(localStorage.getItem('teacherLogged') !== '1') return;
+            try { window._tchTabChannel.postMessage({ type:'hb', tabId: window._tchTabId, ts: Date.now() }); } catch(_){}
+            const now = Date.now();
+            for(const [tid, ts] of window._tchOtherTabs){
+                if(now - ts > 6000) window._tchOtherTabs.delete(tid);
+            }
+            _updateMultiTabBanner();
+        }, 2000);
+        // 탭 닫기 시 다른 탭에 알림
+        window.addEventListener('beforeunload', () => {
+            try { window._tchTabChannel.postMessage({ type:'bye', tabId: window._tchTabId }); } catch(_){}
+        });
+    };
+    function _updateMultiTabBanner(){
+        const has = window._tchOtherTabs && window._tchOtherTabs.size > 0;
+        let el = document.getElementById('_multiTabBanner');
+        if(has && !el){
+            el = document.createElement('div');
+            el.id = '_multiTabBanner';
+            el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#FF5252,#D32F2F);color:white;padding:10px 16px;font-family:Jua;font-size:13px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);';
+            el.innerHTML = '⚠️ 다른 교사 탭이 열려 있어요. 동시 편집 시 데이터 손실 가능 — 한 탭만 사용하세요. <button onclick="document.getElementById(\'_multiTabBanner\').remove();document.body.style.paddingTop=\'\';" style="margin-left:12px;padding:3px 10px;background:white;color:#D32F2F;border:none;border-radius:5px;cursor:pointer;font-family:Jua;font-size:12px;">알겠어요</button>';
+            document.body.appendChild(el);
+            document.body.style.paddingTop = '40px';
+        } else if(!has && el){
+            el.remove();
+            document.body.style.paddingTop = '';
+        }
+    }
+    // 페이지 로드 시 이미 교사 로그인 상태면 자동 시작
+    if(typeof window !== 'undefined'){
+        setTimeout(() => {
+            if(localStorage.getItem('teacherLogged') === '1') window._tchMultiTabInit();
+        }, 500);
+    }
+
     function _svWriteSafe() {
         try {
             // 로그인 전 (me 없음 + 교사 로그인 플래그도 없음) → 어떤 자동 호출이 있어도 조용히 무시
@@ -4308,6 +4433,35 @@ let _renderLock = false; // 재진입 방지
                     alert(`⚠️ 학생 수가 급격히 줄어들어 저장이 취소되었습니다.\n(${_lastKnownStuCount}명 → ${curCount}명)\n\n다른 탭이 열려 있거나 데이터가 꼬였을 수 있어요.\n페이지를 새로고침해서 데이터를 다시 받아오세요.`);
                     return;
                 }
+                // 한 명이라도 줄면 경고 로그 + 누가 사라졌는지 기록 (복구 단서)
+                if(curCount < _lastKnownStuCount){
+                    const _prevList = window._lastKnownStuList || [];
+                    const _curCds = new Set((db.stu||[]).filter(_isRealStu).map(s => s.cd));
+                    const _gone = _prevList.filter(s => s && s.cd && !_curCds.has(s.cd));
+                    if(_gone.length){
+                        console.warn('[sv] 학생 사라짐:', _gone.map(s => s.no+'번 '+s.nm+' ('+s.cd+')').join(', '));
+                        try { localStorage.setItem('_lastDeletedStu_'+Date.now(), JSON.stringify({ ts: Date.now(), gone: _gone })); } catch(_){}
+                    }
+                }
+            }
+            // 다중 교사 탭 감지: 배너로만 경고, sv() 차단은 안 함 (오작동 시 데이터 변경 못 하는 게 더 위험)
+            if(!isStudentTab && window._tchOtherTabs && window._tchOtherTabs.size > 0){
+                console.warn('[sv] 다중 탭 활성:', window._tchOtherTabs.size, '개 — 저장 진행 (배너만 경고)');
+            }
+            // 중복 cd 감지 — 차단 대신 자동 정리 (저장 차단으로 인한 데이터 변경 누락 방지)
+            if(!isStudentTab && Array.isArray(db.stu)){
+                const _cdSeen = new Set();
+                const _dups = [];
+                const _kept = [];
+                db.stu.forEach((s, i) => {
+                    if(!s || !s.cd) { if(s) _kept.push(s); return; }
+                    if(_cdSeen.has(s.cd)){ _dups.push({ idx:i, cd:s.cd, nm:s.nm }); }
+                    else { _cdSeen.add(s.cd); _kept.push(s); }
+                });
+                if(_dups.length){
+                    console.warn('[sv] 중복 cd 자동 정리 (차단 X):', _dups);
+                    db.stu = _kept;
+                }
             }
 
             // ════════ 안전장치 2: Firebase 현재 stu 개수와 비교 (다중 탭 + 빈배열 보호) ════════
@@ -4329,6 +4483,28 @@ let _renderLock = false; // 재진입 방지
                         alert(`⚠️ 다른 탭에서 더 많은 학생 데이터가 감지되어 저장이 취소되었습니다.\n(이 탭: ${curCount}명, Firebase: ${fbCount}명)\n\n페이지를 새로고침하면 최신 데이터를 받아옵니다.`);
                         return;
                     }
+                    // 🛡️ 자동 merge — Firebase에 있지만 메모리에 없는 학생을 sv() 직전 자동 복원
+                    // 단, 명시적 삭제(delS — localStorage _deletedStu_{cd})한 학생은 제외
+                    try {
+                        const _intentionallyDeleted = new Set();
+                        for(let i=0; i<localStorage.length; i++){
+                            const k = localStorage.key(i);
+                            if(k && k.startsWith('_deletedStu_')) _intentionallyDeleted.add(k.substring('_deletedStu_'.length));
+                        }
+                        const _memCds = new Set((db.stu||[]).filter(_isRealStu).map(s => s.cd));
+                        const _missing = [];
+                        snap.forEach(c => {
+                            const v = c.val();
+                            if(!_isRealStu(v)) return;
+                            if(_memCds.has(v.cd)) return;
+                            if(_intentionallyDeleted.has(v.cd)) return;
+                            _missing.push(v);
+                        });
+                        if(_missing.length){
+                            console.warn('[sv] 메모리 누락 학생 자동 복원:', _missing.map(s => s.no+'번 '+s.nm+' ('+s.cd+')').join(', '));
+                            db.stu = [...(db.stu||[]), ..._missing].filter(_isRealStu).sort((a,b) => (parseInt(a.no)||999) - (parseInt(b.no)||999));
+                        }
+                    } catch(e){ console.warn('[sv] auto-merge 실패', e); }
                     _doWrite();
                 }, err => {
                     console.warn('[sv] Firebase 검증 실패 — 빈 배열은 안전을 위해 거부', err);
@@ -4343,6 +4519,8 @@ let _renderLock = false; // 재진입 방지
             function _doWrite(){
                 _lastKnownStuCount = curCount;
                 _stuCountInitialized = true;
+                // 직전 학생 명단 보관 (다음 sv() 때 누가 사라졌는지 감지용)
+                try { window._lastKnownStuList = (db.stu||[]).filter(_isRealStu).map(s => ({ no:s.no, nm:s.nm, cd:s.cd })); } catch(_){}
                 // ⚠️ 치명적 버그 차단: 학생은 sv()로 stu/auc/gacQueue를 통째로 쓰지 않음.
                 // 학생의 db.stu는 sparse(자기 record만), db.auc는 stale 가능 → 통째 set 시 다른 학생/경매 wipe
                 // 학생의 모든 변경은 upMe()(자기 stu/{idx}만) + 직접 child set(submitAucReq, submitOfflineGacReq)으로 처리.
@@ -4660,6 +4838,8 @@ let _renderLock = false; // 재진입 방지
         const pw = document.getElementById('tp')?.value;
         if(pw==='csgo10'){
             localStorage.setItem('teacherLogged','1');
+            // 다중 교사 탭 감지 시작 (BroadcastChannel)
+            if(window._tchMultiTabInit) try { window._tchMultiTabInit(); } catch(_){}
             // 교사 로그인 → log + plzRoomsCfg 라이브 구독
             if(window._attachSplitLogListener) try { window._attachSplitLogListener(); } catch(_){}
             if(window._attachSplitStuFullListener) try { window._attachSplitStuFullListener(); } catch(_){}
@@ -5623,10 +5803,32 @@ let _renderLock = false; // 재진입 방지
 
     function delS(i){
         const s=db.stu[i]; if(!s) return;
-        if(!confirm(`[${s.no}번 ${s.nm}] 학생을 삭제하시겠습니까?`)) return;
+        if(!confirm(`[${s.no}번 ${s.nm}] 학생을 삭제하시겠습니까?\n학생 코드: ${s.cd}`)) return;
         if(!confirm(`정말로 삭제합니다.\n이 작업은 되돌릴 수 없습니다.`)) return;
+        // 삭제 전 학생 데이터를 localStorage에 보관 (24시간 자동 만료) — 실수 복구용
+        try {
+            const key = '_deletedStu_' + s.cd;
+            localStorage.setItem(key, JSON.stringify({ ts: Date.now(), stu: s }));
+            console.log('[delS] 삭제된 학생 백업 → localStorage["'+key+'"]');
+        } catch(_){}
         db.stu.splice(i,1); sv(); rTb();
     }
+    // 콘솔에서 호출: window._restoreDeletedStu('학생코드') — localStorage 백업에서 복구
+    window._restoreDeletedStu = function(cd){
+        try {
+            const raw = localStorage.getItem('_deletedStu_' + cd);
+            if(!raw) { alert('해당 cd의 삭제 백업이 없어요. (24시간 경과 또는 미백업)'); return; }
+            const data = JSON.parse(raw);
+            if(!confirm(`복구할 학생: ${data.stu.no}번 ${data.stu.nm} (${cd})\n\n복구하시겠습니까?`)) return;
+            if(!Array.isArray(db.stu)) db.stu = [];
+            // 중복 cd 체크
+            if(db.stu.find(x => x && x.cd === cd)) { alert('이미 존재하는 cd예요.'); return; }
+            db.stu.push(data.stu);
+            db.stu.sort((a,b) => (a.no||999) - (b.no||999));
+            sv(); rTb();
+            alert('✅ 복구 완료: ' + data.stu.nm);
+        } catch(e){ alert('복구 실패: '+e.message); }
+    };
     
     function upCk(i,k,v){ 
         let newVal = parseInt(v);
@@ -10550,21 +10752,35 @@ window.appU = function(y, si, k) {
     };
 
     window.submitAucBid = function(aucId) {
-        const a = db.auc.find(x => x && x.id === aucId);
+        const aucIdx = db.auc.findIndex(x => x && x.id === aucId);
+        const a = aucIdx >= 0 ? db.auc[aucIdx] : null;
         if(!a) return;
-        
         const bid = parseInt(document.getElementById('ab_p').value);
         if(!bid || bid < a.cp) return alert(`현재 최고가(${a.cp})와 같거나 높은 금액이어야 합니다!`);
-        
         const myBal = a.cur === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[a.cur]||0);
         if(myBal < bid) return alert("화폐가 부족합니다!");
-        
-        a.cp = bid;
-        if(!a.bids) a.bids = [];
-        a.bids.push({cd: me.cd, nm: me.nm, amt: bid, ts: Date.now()});
-        
-        sv();
-        document.getElementById('aucBidModal').remove();
+        // Firebase transaction으로 동시 입찰 race 방어 (atomic check-and-set)
+        // 같은 경매에 여러 학생 동시 입찰 시 한 명만 성공 → 나머지는 fresh 데이터로 재시도 안내
+        const aRef = dbRef.child('auc/' + aucIdx);
+        aRef.transaction(cur => {
+            if(!cur || cur.id !== aucId) return;        // 다른 경매로 변경됨 — abort
+            if((cur.cp||0) >= bid) return;              // 이미 더 높은 입찰 — abort
+            cur.cp = bid;
+            if(!cur.bids) cur.bids = [];
+            cur.bids.push({ cd: me.cd, nm: me.nm, amt: bid, ts: Date.now() });
+            return cur;
+        }, (err, committed, snap) => {
+            if(err){ alert('입찰 중 오류: ' + err.message); return; }
+            if(!committed){
+                const fresh = snap && snap.val();
+                const curCp = fresh ? fresh.cp : '?';
+                alert(`다른 학생이 먼저 입찰했어요 (현재 최고가 ${curCp}). 다시 시도해주세요.`);
+                // 로컬 캐시 갱신
+                if(fresh && db.auc[aucIdx]) db.auc[aucIdx] = fresh;
+                return;
+            }
+            document.getElementById('aucBidModal')?.remove();
+        });
     };
 
     /* === 선생님 경매 관리 UI === */
@@ -17495,18 +17711,22 @@ window.addCharRow = function() {
         const old = document.getElementById('avtConfirmModal'); if(old) old.remove();
         const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
         const maxPass = Math.min(passCount, price);
+        // 잔액 부족분만큼 이용권 자동 적용
+        const _avtShortage = Math.max(0, price - myKc);
+        const _avtPassDefault = Math.min(_avtShortage, maxPass);
         const passSection = price > 0 && passCount > 0 ? `
             <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)</div>
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)${_avtShortage>0?` <span style="color:#E53935;font-size:11px;">— 쿠키 ${myKc}, 부족분 ${_avtShortage}개 자동 적용</span>`:''}</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <label style="font-size:12px;color:#795548;">사용할 개수:</label>
-                    <input id="_avtPassUse" type="number" min="0" max="${maxPass}" value="0" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _av=parseInt(this.value)||0,_amx=${maxPass};const _aw=document.getElementById('_avtPassWarn');if(_av>_amx){if(_aw)_aw.style.display='';this.value=_amx;}else{if(_aw)_aw.style.display='none';}document.getElementById('_avtPassRemain').textContent=(${price}-parseInt(this.value));">
-                    <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_avtPassRemain">${price}</b> 🍪</span>
+                    <input id="_avtPassUse" type="number" min="${_avtShortage}" max="${maxPass}" value="${_avtPassDefault}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _av=parseInt(this.value)||0,_amx=${maxPass},_amn=${_avtShortage};const _aw=document.getElementById('_avtPassWarn');if(_av>_amx){if(_aw){_aw.style.display='';_aw.textContent='⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 '+_amx+'개까지 사용 가능합니다.';}this.value=_amx;}else if(_av<_amn){if(_aw){_aw.style.display='';_aw.textContent='⚠️ 쿠키가 부족하여 최소 '+_amn+'개의 이용권이 필요합니다.';}this.value=_amn;}else{if(_aw)_aw.style.display='none';}document.getElementById('_avtPassRemain').textContent=(${price}-parseInt(this.value));">
+                    <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_avtPassRemain">${price - _avtPassDefault}</b> 🍪</span>
                 </div>
-                <div id="_avtPassWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;">⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 ${maxPass}개까지 사용 가능합니다.</div>
+                <div id="_avtPassWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;"></div>
             </div>` : '';
         const priceStr = price===0 ? '<span style="color:#66BB6A;font-size:22px;font-weight:bold;">무료!</span>' : `<span style="font-size:22px;font-weight:bold;color:#FF6F00;">🍪 ${price}</span>`;
-        const canAfford = myKc >= price;
+        // 쿠키 + 사용가능 이용권 합산이 가격 이상이면 구매 가능
+        const canAfford = (myKc + maxPass) >= price;
         const imgHtml = item.img ? `<img src="${item.img}" style="width:90px;height:90px;object-fit:contain;image-rendering:pixelated;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">` : `<div style="font-size:70px;">🎨</div>`;
 
         document.body.insertAdjacentHTML('beforeend', `<div id="avtConfirmModal" class="modal-overlay" onclick="this.remove()">
@@ -17539,23 +17759,29 @@ window.addCharRow = function() {
         if(!item) return;
         const price = item.price || 0;
         const myKc = Math.max(0, (me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0));
-        if(myKc < price) return alert('쿠키가 부족해요! 🍪');
         if(!me.avtOwned) me.avtOwned = [];
         if(me.avtOwned.includes(itemId)) return;
 
-        // 이용권 차감
+        // 이용권 차감 — 쿠키 부족분 자동 충당, 사용자 입력값과 부족분 중 큰 값
         let avtPassUsed = 0;
+        const _avtPassChangedIdx = [];
         if(price > 0) {
             const maxPass = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
-            avtPassUsed = Math.min(_avtPassCache, maxPass, price);
+            const shortage = Math.max(0, price - myKc);
+            avtPassUsed = Math.min(Math.max(_avtPassCache, shortage), maxPass, price);
             let removed = 0;
             for(let i=0; i<me.inv.length && removed<avtPassUsed; i++) {
                 if(me.inv[i].n==='상점 이용권'&&(me.inv[i].st==='active'||me.inv[i].st==='new')) {
-                    me.inv[i].st='used'; removed++;
+                    me.inv[i].st='used'; _avtPassChangedIdx.push(i); removed++;
                 }
             }
         }
         const effectiveCost = price - avtPassUsed;
+        // 이용권 차감 후에도 쿠키 부족 → 롤백
+        if(myKc < effectiveCost) {
+            _avtPassChangedIdx.forEach(i => { if(me.inv[i]) me.inv[i].st = 'active'; });
+            return alert('쿠키가 부족해요! 🍪');
+        }
 
         if(effectiveCost > 0) {
             me.shopUsed = (me.shopUsed||0) + effectiveCost;
