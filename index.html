@@ -4281,6 +4281,13 @@ let _renderLock = false; // 재진입 방지
     let _stuCountInitialized = false;
     function _svWriteSafe() {
         try {
+            // 로그인 전 (me 없음 + 교사 로그인 플래그도 없음) → 어떤 자동 호출이 있어도 조용히 무시
+            // (새 기기에서 사이트 첫 진입 시 Firebase 로드 전 타이머 등이 sv() 호출하여 잘못된 경고가 뜨는 문제 방지)
+            const _teacherLogged = localStorage.getItem('teacherLogged') === '1';
+            if(!me && !_teacherLogged) {
+                console.log('[sv] 로그인 전 호출 — 무시');
+                return;
+            }
             const isStudentTab = !!(me && me.cd && me.cd !== 'teacher_main');
             // 안전장치 카운트는 테스트 학생(T로 시작) 제외 — 진짜 학생 변동만 검증
             const _isRealStu = s => s && s.cd && !/^T0\d$/.test(String(s.cd));
