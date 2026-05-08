@@ -9793,9 +9793,15 @@ window.appU = function(y, si, k) {
     window.showAskModal = function(itemName) {
         const item = db.itm.find(i => i.n === itemName);
         if (!item) return;
-        
-        const myBal = item.c === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[item.c||'cn']||0);
-        if (myBal < item.p) return alert("화폐가 부족해요!");
+
+        const _cType0 = item.c || 'cn';
+        const myBal = _cType0 === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[_cType0]||0);
+        // cn/kc 결제 시 상점 이용권으로 부족분 충당 가능 → 잔액 + 사용가능 이용권 ≥ 가격이면 통과
+        const _passCntChk = (_cType0==='cn'||_cType0==='kc')
+            ? (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length
+            : 0;
+        const _maxPassUsable = Math.min(_passCntChk, item.p);
+        if ((myBal + _maxPassUsable) < item.p) return alert("화폐가 부족해요!");
         const _cond = checkReqCond(item);
         if(!_cond.ok) {
             const _lm = document.createElement('div');
@@ -9817,15 +9823,18 @@ window.appU = function(y, si, k) {
         // 이용권 보유 수량
         const passCount = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
         const cType = item.c || 'cn';
+        // 잔액 부족 시 부족분만큼 이용권을 기본 사용으로 자동 설정
+        const _shortage = Math.max(0, item.p - myBal);
+        const _passDefault = Math.min(_shortage, passCount, item.p);
         const passSection = (cType==='cn' || cType==='kc') && passCount > 0 && item.p > 0 ? `
             <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)</div>
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)${_shortage>0?` <span style="color:#E53935;font-size:11px;">— 잔액 ${myBal}, 부족분 ${_shortage}개 자동 적용</span>`:''}</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <label style="font-size:12px;color:#795548;">사용할 개수:</label>
-                    <input id="_passUse" type="number" min="0" max="${Math.min(passCount, item.p)}" value="0" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _v=parseInt(this.value)||0,_mx=${Math.min(passCount,item.p)};const _w=document.getElementById('_passWarn');if(_v>_mx){if(_w)_w.style.display='';this.value=_mx;}else{if(_w)_w.style.display='none';}document.getElementById('_passRemain').textContent=(${item.p}-parseInt(this.value));">
-                    <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_passRemain">${item.p}</b> ${curEmoji[cType]}</span>
+                    <input id="_passUse" type="number" min="${_shortage}" max="${Math.min(passCount, item.p)}" value="${_passDefault}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _v=parseInt(this.value)||0,_mx=${Math.min(passCount,item.p)},_mn=${_shortage};const _w=document.getElementById('_passWarn');if(_v>_mx){if(_w){_w.style.display='';_w.textContent='⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 '+_mx+'개까지 사용 가능합니다.';}this.value=_mx;}else if(_v<_mn){if(_w){_w.style.display='';_w.textContent='⚠️ 잔액이 부족하여 최소 '+_mn+'개의 이용권이 필요합니다.';}this.value=_mn;}else{if(_w)_w.style.display='none';}document.getElementById('_passRemain').textContent=(${item.p}-parseInt(this.value));">
+                    <span style="font-size:13px;color:#888;">개 → 실제 차감: <b id="_passRemain">${item.p - _passDefault}</b> ${curEmoji[cType]}</span>
                 </div>
-                <div id="_passWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;">⚠️ 보유한 이용권은 ${passCount}개입니다. 최대 ${Math.min(passCount,item.p)}개까지 사용 가능합니다.</div>
+                <div id="_passWarn" style="display:none;color:#E53935;font-size:11px;margin-top:4px;"></div>
             </div>` : '';
 
         const modalHtml = `
@@ -9863,22 +9872,28 @@ window.appU = function(y, si, k) {
 
         const cType = item.c || 'cn';
         const myBal = cType === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[cType]||0);
-        if (myBal < item.p) return;
 
-        // 이용권 차감 (cn/kc 구매 시)
+        // 이용권 차감 (cn/kc 구매 시) — 잔액 부족분은 자동으로 이용권으로 충당
         let passUsed = 0;
+        const _passChangedIdx = [];
         if(cType==='cn'||cType==='kc') {
-            const passEl = {value: _passValCache}; // 이미 읽어둔 캐시 값 사용
             const maxPass = (me.inv||[]).filter(it=>it.n==='상점 이용권'&&(it.st==='active'||it.st==='new')).length;
-            passUsed = Math.min(parseInt(passEl?.value||0)||0, maxPass, item.p);
+            const shortage = Math.max(0, item.p - myBal);
+            // 사용자 입력 값과 부족분 중 큰 값을 채택 (부족분은 반드시 이용권으로 메워야 함)
+            passUsed = Math.min(Math.max(parseInt(_passValCache)||0, shortage), maxPass, item.p);
             let removed = 0;
             for(let i=0; i<me.inv.length && removed<passUsed; i++) {
                 if(me.inv[i].n==='상점 이용권'&&(me.inv[i].st==='active'||me.inv[i].st==='new')) {
-                    me.inv[i].st='used'; removed++;
+                    me.inv[i].st='used'; _passChangedIdx.push(i); removed++;
                 }
             }
         }
         const effectiveCost = item.p - passUsed;
+        // 이용권 차감 후에도 잔액이 부족하면 — 방금 변경한 이용권만 정확히 롤백
+        if(myBal < effectiveCost) {
+            _passChangedIdx.forEach(i => { if(me.inv[i]) me.inv[i].st = 'active'; });
+            return alert("화폐가 부족해요!");
+        }
 
         // 화폐 차감
         if (cType === 'kc') {
