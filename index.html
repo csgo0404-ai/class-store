@@ -2120,6 +2120,26 @@ let _renderLock = false; // 재진입 방지
         _dbDebounceTimer = setTimeout(() => {
             const synth = { val: () => db };
             _handleDbUpdate(synth);
+            // 초기 데이터 로드 후 _lastSavedHash 초기화 — sv() 첫 호출 시 false-positive bump 방지
+            // (이전: hash 미초기화 → 모든 cachePaths 변경된 것처럼 보여 cacheVer 매번 bump → 학생 재 fetch 폭증)
+            if(!window._lastSavedHashInit){
+                try {
+                    if(!window._lastSavedHash) window._lastSavedHash = {};
+                    if(!window._lastSentHash) window._lastSentHash = {};
+                    const _allPaths = ['avt','bdg','tit','petDef','itm','gac','cfg','log','rec','ak','stu','auc','gacQueue'];
+                    _allPaths.forEach(p => {
+                        if(!(p in db)) return;
+                        try {
+                            let toHash = db[p];
+                            if(p === 'cfg' && db.cfg){ const c = {...db.cfg}; delete c.plz; toHash = c; }
+                            const h = JSON.stringify(toHash == null ? null : toHash);
+                            window._lastSavedHash[p] = h;
+                            window._lastSentHash[p] = h;
+                        } catch(_){}
+                    });
+                    window._lastSavedHashInit = true;
+                } catch(_){}
+            }
         }, 350);
     }
 
@@ -2679,18 +2699,22 @@ let _renderLock = false; // 재진입 방지
             if(_splitInitialDone) _splitFire();
         };
         ref.on('value', fn);
-        // 60초마다 idx 검증 (이벤트 발화 안 되는 케이스 대비)
-        if(window._stuOwnIdxCheckTimer) clearInterval(window._stuOwnIdxCheckTimer);
-        window._stuOwnIdxCheckTimer = setInterval(() => {
+        // 탭 활성화 시 즉시 idx 검증 (백그라운드에서 인덱스 시프트 발생 대비) — 트래픽 거의 0
+        const _checkIdxValidity = () => {
             if(!window._stuOwnUnsub || !target) return;
             dbRef.child('stu/' + idx).once('value', s => {
                 const v = s.val();
                 if(!v || (v.cd && String(v.cd).trim() !== target)) _reattach();
             });
-        }, 60000);
+        };
+        if(window._stuOwnVisHandler) document.removeEventListener('visibilitychange', window._stuOwnVisHandler);
+        window._stuOwnVisHandler = () => {
+            if(document.visibilityState === 'visible') _checkIdxValidity();
+        };
+        document.addEventListener('visibilitychange', window._stuOwnVisHandler);
         window._stuOwnUnsub = () => {
             ref.off('value', fn);
-            if(window._stuOwnIdxCheckTimer) { clearInterval(window._stuOwnIdxCheckTimer); window._stuOwnIdxCheckTimer = null; }
+            if(window._stuOwnVisHandler) { document.removeEventListener('visibilitychange', window._stuOwnVisHandler); window._stuOwnVisHandler = null; }
         };
     };
     window._attachSplitStuFullListener = function() {
@@ -5243,44 +5267,73 @@ let _renderLock = false; // 재진입 방지
 
     function upMe(){
         if (!me || !me.cd) return;
-        const i = db.stu.findIndex(x => x && String(x.cd).trim() === String(me.cd).trim());
-        if (i !== -1) {
-            Object.assign(db.stu[i], me);
-            // Firebase는 undefined 거부 — JSON round-trip으로 안전하게 stringify
-            let _safe;
-            try { _safe = JSON.parse(JSON.stringify(db.stu[i])); } catch(_){ _safe = db.stu[i]; }
-            // 트래픽 절감: 직전 송신 hash와 비교해서 변경된 필드만 child set
-            // (이전: 매번 학생 전체 record set ~수 KB → 현재: 변경분만 ~수십 B)
-            try {
-                if(!window._upMeLastHash) window._upMeLastHash = {};
-                const lastHash = window._upMeLastHash[me.cd] || {};
-                const newHash = {};
-                const updates = {};
-                Object.keys(_safe).forEach(k => {
-                    let v;
-                    try { v = JSON.stringify(_safe[k]); } catch(_) { v = null; }
-                    newHash[k] = v;
-                    if(v !== lastHash[k]) updates[k] = _safe[k];
-                });
-                // 삭제된 필드도 반영 (이전엔 있었는데 지금 없는 키)
-                Object.keys(lastHash).forEach(k => {
-                    if(!(k in _safe)) updates[k] = null;
-                });
-                if(Object.keys(updates).length === 0) {
-                    // 변경 없음 — 송신 생략
-                } else if(Object.keys(updates).length >= Object.keys(_safe).length / 2) {
-                    // 절반 이상 변경 시 그냥 전체 set (오버헤드 최소)
-                    dbRef.child('stu/' + i).set(_safe);
+        // 캐시된 Firebase idx 우선 사용 (로그인 시 _fetchStuByCd가 설정, listener cd mismatch 시 자동 갱신)
+        // 캐시 없으면 로컬 findIndex로 fallback
+        const _localI = db.stu.findIndex(x => x && String(x.cd).trim() === String(me.cd).trim());
+        const fbIdx = (typeof window._myFbIdx === 'number' && window._myFbIdx >= 0) ? window._myFbIdx : _localI;
+        if (fbIdx < 0) {
+            console.warn('[upMe] fbIdx 없음 — 저장 보류, 재로그인 권장');
+            return;
+        }
+        // 로컬 메모리 sync (cd 매칭되는 위치에)
+        if (_localI >= 0) Object.assign(db.stu[_localI], me);
+        // Firebase write 안전 데이터 준비
+        let _safe;
+        try { _safe = JSON.parse(JSON.stringify(me)); } catch(_){ _safe = me; }
+        _upMeWrite(fbIdx, _safe);
+        updateNameTag();
+    }
+    // 실제 write 로직 분리 (cd 검증 후 호출)
+    function _upMeWrite(i, _safe){
+        if (!me || !me.cd) return;
+        // 🛡️ 안전 검증: 로컬 db.stu[i]의 cd가 본인과 다르면 wrong slot 의심 — Firebase 조회로 재확인 후 진행
+        if(_safe.cd && db.stu[i] && db.stu[i].cd && String(db.stu[i].cd).trim() !== String(_safe.cd).trim()){
+            console.error('[upMe] 로컬 슬롯 cd 불일치 — Firebase 재검증:', i, db.stu[i].cd, 'vs', _safe.cd);
+            // 캐시 무효화 + Firebase에서 재검색
+            window._myFbIdx = -1;
+            const _myCd = String(_safe.cd).trim();
+            dbRef.child('stu').orderByChild('cd').equalTo(_myCd).limitToFirst(1).once('value').then(_snap => {
+                let _newIdx = -1;
+                _snap.forEach(_c => { _newIdx = parseInt(_c.key); return true; });
+                if(_newIdx >= 0){
+                    console.warn('[upMe] 새 idx 발견:', _newIdx, '— 재시도');
+                    window._myFbIdx = _newIdx;
+                    _upMeWrite(_newIdx, _safe);
                 } else {
-                    dbRef.child('stu/' + i).update(updates);
+                    console.error('[upMe] Firebase에서 본인 cd 못 찾음 — 저장 거부:', _myCd);
                 }
-                window._upMeLastHash[me.cd] = newHash;
-            } catch(e) {
-                // 안전 fallback: 전체 set
-                console.warn('[upMe] partial 실패 — 전체 set fallback', e);
+            }).catch(_e => console.error('[upMe] 재검색 실패', _e));
+            return;
+        }
+        try {
+            // 트래픽 절감: 직전 송신 hash와 비교해서 변경된 필드만 child set
+            if(!window._upMeLastHash) window._upMeLastHash = {};
+            const lastHash = window._upMeLastHash[me.cd] || {};
+            const newHash = {};
+            const updates = {};
+            Object.keys(_safe).forEach(k => {
+                let v;
+                try { v = JSON.stringify(_safe[k]); } catch(_) { v = null; }
+                newHash[k] = v;
+                if(v !== lastHash[k]) updates[k] = _safe[k];
+            });
+            // 삭제된 필드도 반영 (이전엔 있었는데 지금 없는 키)
+            Object.keys(lastHash).forEach(k => {
+                if(!(k in _safe)) updates[k] = null;
+            });
+            if(Object.keys(updates).length === 0) {
+                // 변경 없음 — 송신 생략
+            } else if(Object.keys(updates).length >= Object.keys(_safe).length / 2) {
+                // 절반 이상 변경 시 그냥 전체 set (오버헤드 최소)
                 dbRef.child('stu/' + i).set(_safe);
+            } else {
+                dbRef.child('stu/' + i).update(updates);
             }
-            updateNameTag();
+            window._upMeLastHash[me.cd] = newHash;
+        } catch(e) {
+            // 안전 fallback: 전체 set
+            console.warn('[upMe] partial 실패 — 전체 set fallback', e);
+            dbRef.child('stu/' + i).set(_safe);
         }
     }
 
