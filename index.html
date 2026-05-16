@@ -1033,20 +1033,27 @@
         </div>
         <div id="t_mgr" class="hidden"></div>
         <div id="t_set" class="hidden">
-            <h2 id="t_mgr_h2" style="cursor:pointer;user-select:none;margin-bottom:8px;" onclick="toggleTypFilter()" title="클릭하여 종류별 보기">👥 승인 및 지급 <span style="font-size:14px;color:#A1887F;">▼</span></h2>
-            <div id="ras-type-filter-row" style="display:none;overflow:hidden;margin-bottom:8px;background:#FFF8E1;border-radius:12px;padding:10px 12px;border:1px solid #FFE082;">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1;" id="ras-type-chips"></div>
-                    <div style="display:flex;gap:5px;flex-shrink:0;">
-                        <button class="btn btn-blue" onclick="appSel()" style="font-size:12px;padding:5px 10px;">✅ 승인</button>
-                        <button class="btn btn-red" onclick="delSel()" style="font-size:12px;padding:5px 10px;">🗑️ 삭제</button>
+            <h2 id="t_mgr_h2" style="cursor:pointer;user-select:none;margin-bottom:8px;display:flex;align-items:center;gap:8px;" onclick="window._toggleMgrSection()">
+                <span>👥 승인 및 지급</span>
+                <span id="mgrSectionArrow" style="font-size:13px;color:#A1887F;transition:transform 0.2s;">▶</span>
+                <span id="mgrLoadingSpinner" style="display:none;font-size:12px;color:#aaa;margin-left:4px;">⏳</span>
+            </h2>
+            <div id="mgrSectionBody" style="max-height:0;overflow:hidden;transition:max-height 0.32s cubic-bezier(0.4,0,0.2,1);">
+
+                <div id="ras-type-filter-row" style="display:none;overflow:hidden;margin-bottom:8px;background:#FFF8E1;border-radius:12px;padding:10px 12px;border:1px solid #FFE082;">
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1;" id="ras-type-chips"></div>
+                        <div style="display:flex;gap:5px;flex-shrink:0;">
+                            <button class="btn btn-blue" onclick="appSel()" style="font-size:12px;padding:5px 10px;">✅ 승인</button>
+                            <button class="btn btn-red" onclick="delSel()" style="font-size:12px;padding:5px 10px;">🗑️ 삭제</button>
+                        </div>
                     </div>
+                    <div id="avt_sub_filter" style="display:none;flex-wrap:wrap;gap:6px;padding-top:8px;margin-top:6px;border-top:1px dashed #FFB74D;"></div>
                 </div>
-                <div id="avt_sub_filter" style="display:none;flex-wrap:wrap;gap:6px;padding-top:8px;margin-top:6px;border-top:1px dashed #FFB74D;"></div>
-            </div>
-            <div id="t_ag" class="grid"></div>
-            <div id="t_gac_queue_wrap" style="display:none;">
-                <div id="t_gac_queue"></div>
+                <div id="t_ag" class="grid"></div>
+                <div id="t_gac_queue_wrap" style="display:none;">
+                    <div id="t_gac_queue"></div>
+                </div>
             </div>
             <div class="card" style="margin-top:20px; background:#E3F2FD;">
                 <h3>🎁 지급하기</h3>
@@ -1101,6 +1108,18 @@
                 <h3>🎫 교환권 쿠폰 풀</h3>
                 <div style="font-size:13px;color:#888;margin-bottom:10px;">학생이 '쿠폰 교환권'을 사용할 때 고를 수 있는 쿠폰 목록입니다.</div>
                 <div id="voucher_pool_list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+                <div style="margin-top:14px;padding-top:12px;border-top:1px solid #EEE;">
+                    <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:8px;">🧺 누구나 바구니 교환 옵션</div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-start;gap:8px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;white-space:nowrap;">
+                            <input type="checkbox" id="voucherBasketEnabled" onchange="window._saveVoucherBasket()"> 교환소에 누구나 바구니 옵션 표시
+                        </label>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;">
+                            교환 개수:
+                            <input type="number" id="voucherBasketAmt" min="1" max="99" value="2" style="width:60px;padding:3px 6px;border:1px solid #DDD;border-radius:6px;font-family:'Jua';" onchange="window._saveVoucherBasket()">
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <!-- 뽑기 기계 -->
@@ -1252,7 +1271,7 @@
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 단어 관리" oncontextmenu="event.preventDefault();window._liarWordEditor&&window._liarWordEditor();return false;"><input type="checkbox" id="plz_room_liar_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🎭 라이어 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_mafia_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🕵️ 마피아</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="체크 시 OX 퀴즈 방 — 인원 제한·전체 열기/닫기 무시"><input type="checkbox" id="plz_room_oxquiz_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">📝 OX 퀴즈</label>
-                                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_omok_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">⚫ 오목</label>
+                                <label oncontextmenu="event.preventDefault();window._omokResetRank&&window._omokResetRank();return false;" title="우클릭: 이달 랭킹 초기화" style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_omok_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">⚫ 오목 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 단어 관리" oncontextmenu="event.preventDefault();window._catchMindWordEditor&&window._catchMindWordEditor();return false;"><input type="checkbox" id="plz_room_catchmind_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🎨 캐치마인드 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 토픽 추가" oncontextmenu="event.preventDefault();window._bombTopicsEditor&&window._bombTopicsEditor();return false;"><input type="checkbox" id="plz_room_bombgame_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">💣 폭탄게임 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                             </div>
@@ -2125,8 +2144,10 @@ let _renderLock = false; // 재진입 방지
 
     // 🚀 5초마다 조용히 API에서 쿠키 정보 최신화
     async function syncAllCookiesSilent() {
-        const key = localStorage.getItem('dahessni_api_key');
+        const key = localStorage.getItem('dahessni_api_key') || (db && db.cfg && db.cfg.dahaeApiKey);
         if(!key || !db.stu) return;
+        // 최초 1회: localStorage에도 저장해 이후 즉시 사용 가능하게
+        if(key && !localStorage.getItem('dahessni_api_key')) localStorage.setItem('dahessni_api_key', key);
         // 교사 탭에서만 실행 — 학생 탭(다중 테스트 포함)은 본인 쿠키만 별도 동기화
         const isTeacherView = document.getElementById('appT') && !document.getElementById('appT').classList.contains('hidden');
         if(!isTeacherView) return;
@@ -2166,8 +2187,84 @@ let _renderLock = false; // 재진입 방지
             }
             if (me) updateNameTag();
         }
+        // _xpBoostAutoCheck 제거됨 (정산 안내 메시지 사용 안 함)
     }
     setInterval(syncAllCookiesSilent, 10000);
+
+    // 🔥 성장의 불꽃 자동 정산 알림 — 매일 1회, 미정산 부스트가 있으면 무조건 띄움 (delta=0이어도)
+    window._xpBoostAutoCheck = function(){
+        const isTeacherView = document.getElementById('appT') && !document.getElementById('appT').classList.contains('hidden');
+        if(!isTeacherView) return;
+        if(document.getElementById('_pconfirm') || document.getElementById('_xpBoostAutoModal') || document.getElementById('_reqMiniPopup')) return;
+        const todayISO = new Date().toLocaleDateString('sv-SE');
+        const _lsKey = '_xpBoostAutoShown_' + todayISO;
+        if(localStorage.getItem(_lsKey)) return;
+        const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+        const _need = [];
+        let _autoStateDirty = false;
+        stuList.forEach(s => {
+            if(!s || !s.xpBoost || !s.xpBoost.active) return;
+            const xb = s.xpBoost;
+            // 구 스키마 백필
+            if(!xb.startDate || !xb.endDate) {
+                const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+                const _it = inv.find(i => i && i.n==='성장의 불꽃' && !i.reqDone) || {};
+                const tsDate = xb.startTs ? new Date(xb.startTs).toLocaleDateString('sv-SE') : todayISO;
+                if(!xb.startDate) xb.startDate = _it.useDate || tsDate;
+                if(!xb.endDate) {
+                    if(_it.useEndDate) {
+                        xb.endDate = _it.useEndDate;
+                    } else if(_it.usageDurationDays > 1) {
+                        const _ed = new Date(new Date(xb.startDate+'T12:00:00').getTime() + (_it.usageDurationDays-1)*86400000);
+                        xb.endDate = _ed.toLocaleDateString('sv-SE');
+                    } else {
+                        xb.endDate = xb.startDate;
+                    }
+                }
+                _autoStateDirty = true;
+            }
+            if(xb.lastSettledCookie == null) { xb.lastSettledCookie = xb.baseCookie||0; _autoStateDirty = true; }
+            if(!Array.isArray(xb.history))   { xb.history = []; _autoStateDirty = true; }
+            const sd = xb.startDate;
+            const ed = xb.endDate;
+            if(todayISO < sd) return; // 시작 전
+            if(xb.lastSettledDate === todayISO) return; // 오늘 이미 정산
+            const expired = todayISO > ed;
+            const ceil = (xb.frozenCookie != null) ? xb.frozenCookie : (s.cookie||0);
+            const delta = Math.max(0, ceil - (xb.lastSettledCookie||0));
+            // delta=0이어도 오늘 미정산이면 목록에 포함 (오늘 중 적립될 예정)
+            _need.push({s, delta, sd, ed, expired});
+        });
+        if(_autoStateDirty) { try { db.stu = stuList; if(typeof sv==='function') sv(); } catch(_){} }
+        if(!_need.length) return;
+        localStorage.setItem(_lsKey, '1');
+        const hasExpired = _need.some(n=>n.expired);
+        const list = _need.map(n => `<div style="background:white;border:2px solid ${n.expired?'#C62828':'#FFB74D'};border-radius:10px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div style="text-align:left;flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:bold;color:#3E2723;">${n.s.nm} ${n.expired?'<span style="background:#C62828;color:white;font-size:9px;padding:1px 5px;border-radius:6px;">🚨만료</span>':''}</div>
+                <div style="font-size:11px;color:#888;">${n.sd} ~ ${n.ed}</div>
+            </div>
+            <div style="font-size:16px;font-weight:bold;color:${n.expired?'#C62828':n.delta>0?'#E65100':'#BDBDBD'};flex-shrink:0;">${n.delta>0?'+'+n.delta+'🍪':'아직 0🍪'}</div>
+        </div>`).join('');
+        const el = document.createElement('div');
+        el.id = '_xpBoostAutoModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99998;display:flex;align-items:center;justify-content:center;';
+        el.innerHTML = `<div style="background:#FFF8E1;border-radius:20px;padding:24px 24px 18px;width:min(380px,92vw);text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.35);border:3px solid ${hasExpired?'#C62828':'#FFB74D'};max-height:80dvh;overflow-y:auto;">
+            <div style="font-size:42px;margin-bottom:6px;">${hasExpired?'🚨':'🔥'}</div>
+            <div style="font-size:16px;color:#4E342E;font-family:'Jua',sans-serif;font-weight:bold;margin-bottom:4px;">🔥 성장의 불꽃 정산 알림</div>
+            <div style="font-size:12px;color:#7B5E57;margin-bottom:14px;">${hasExpired?'만료된 부스트 포함 — 즉시 정산 필요':todayISO+' · 오늘 정산 전'}</div>
+            ${list}
+            <div style="font-size:11px;color:#A1887F;margin:8px 0 12px;line-height:1.5;">정산 후 그만큼은 다음 정산의 기준이 됩니다.<br>오늘 적립분은 직접 다했어요에서 지급해주세요.</div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+                <button id="_xpAutoGo" class="btn btn-blue" style="flex:1;padding:10px;font-size:14px;">정산하러 가기</button>
+                <button id="_xpAutoLater" class="btn btn-gray" style="padding:10px 16px;font-size:14px;">나중에</button>
+            </div>
+        </div>`;
+        document.body.appendChild(el);
+        document.getElementById('_xpAutoGo').onclick = () => { el.remove(); if(typeof window._showReqMiniPopup==='function') window._showReqMiniPopup(); };
+        document.getElementById('_xpAutoLater').onclick = () => el.remove();
+    };
+    // _xpBoostAutoCheck 자동 실행 제거됨 (정산 안내 메시지 사용 안 함)
 
     // 🚀 학생 측 본인 쿠키 주기 동기화 (10초, 교사 페이지 닫혀있어도 본인 데이터 반영)
     async function syncMyCookieSilent() {
@@ -2197,7 +2294,7 @@ let _renderLock = false; // 재진입 방지
         } catch(e){}
     }
 
-    // 캐릭터/가방 탭에 머무를 때만 10초 폴링. 다른 탭이면 자동 중단.
+    // 캐릭터/가방 탭에 머무를 때만 60초 폴링. 다른 탭이면 자동 중단.
     let _myCookieTimer = null;
     function _startMyCookiePoll() {
         if(_myCookieTimer) return;
@@ -2207,7 +2304,7 @@ let _renderLock = false; // 재진입 방지
             const active = (_sc && !_sc.classList.contains('hidden')) || (_sb && !_sb.classList.contains('hidden'));
             if(!active) { clearInterval(_myCookieTimer); _myCookieTimer = null; return; }
             syncMyCookieSilent();
-        }, 3000);
+        }, 60000); // 1분 — 외부 API 부하 절감
     }
     window._startMyCookiePoll = _startMyCookiePoll;
     // 노출 — 탭 진입 시 즉시 동기화에 사용
@@ -2255,9 +2352,9 @@ let _renderLock = false; // 재진입 방지
     const _useSplit = localStorage.getItem('rpgUseSplitListeners') !== '0';
     // 라이브 구독: 변경 자주 일어나는 경로 (stu/auc 제외 — 학생은 탭 진입 시에만 fetch)
     const _splitLivePaths = ['cfg','itm','gac','gacQueue'];
-    // 1회 fetch (정적/세미정적): 페이지 로드 시 1번만 다운로드 후 캐시
-    // ※ stu(학생) / auc(요청사항)는 제외 — stu는 탭 진입 시 lazy fetch, auc는 로그인 시 라이브 attach
-    const _splitOncePaths = ['avt','bdg','tit','petDef'];
+    // 탭 진입 시 lazy fetch — avt/bdg/tit/petDef는 필요한 탭에 진입할 때만 1회 다운로드
+    // (페이지 로드 시 다운로드 안 함 → 트래픽 절감)
+    const _splitOncePaths = ['tit']; // 페이지 로드 시 즉시 fetch → 가방 칭호 탭 지연 없음
     const _splitPaths = [..._splitLivePaths, ..._splitOncePaths];
     // C(plzRooms 분리) 롤백됨 — 데이터 손실 사고로 비활성. 재시도하려면 더 안전한 마이그레이션 필요.
     let _splitInitialReceived = {};
@@ -2290,10 +2387,102 @@ let _renderLock = false; // 재진입 방지
                         } catch(_){}
                     });
                     window._lastSavedHashInit = true;
+                    // tit 백그라운드 프리패치 — 가방 탭 첫 진입 시 지연 없애기
+                    try { if(window._ensureLazyPaths && !window._lazyLoaded.has('tit')) window._ensureLazyPaths(['tit']); } catch(_){}
+                    // 새로고침 후 lazy 경로 필요한 탭에 있으면 nav() 재호출로 데이터 로드
+                    // 교사/학생 세션에 맞는 앱만 검사 — 반대쪽 앱의 기본 탭이 visible해도 불필요한 fetch 방지
+                    try {
+                        const _tlp = window._tabLazyPaths || {};
+                        if(window._isTeacherSession) {
+                            const _atT = document.querySelector('#appT .cont > div:not(.hidden)');
+                            if(_atT && _tlp[_atT.id] && _tlp[_atT.id].length && typeof nav==='function') nav(_atT.id);
+                        } else {
+                            const _atS = document.querySelector('#appS .cont > div:not(.hidden):not([style*="display: none"])');
+                            if(_atS && _tlp[_atS.id] && _tlp[_atS.id].length && typeof navS==='function') navS(_atS.id);
+                        }
+                    } catch(_){}
                 } catch(_){}
             }
         }, 350);
     }
+
+    // ===== Lazy path 로더 — 탭 진입 시 필요한 정적 경로만 1회 fetch =====
+    window._lazyLoaded = new Set();
+    window._lazyLoading = {}; // 진행 중인 fetch Promise 캐시 (중복 fetch 방지)
+    window._ensureLazyPaths = function(paths) {
+        const needed = paths.filter(p => !window._lazyLoaded.has(p));
+        if(!needed.length) return Promise.resolve();
+        return Promise.all(needed.map(p => {
+            if(window._lazyLoading[p]) return window._lazyLoading[p];
+            window._lazyLoading[p] = dbRef.child(p).once('value').then(snap => {
+                const v = snap.val();
+                db[p] = Array.isArray(v) ? v.filter(Boolean)
+                       : (v && typeof v === 'object') ? Object.values(v).filter(Boolean)
+                       : [];
+                window._lazyLoaded.add(p);
+                delete window._lazyLoading[p];
+                // 저장 hash 초기화 — 불필요한 cacheVer bump 방지
+                try { if(window._lastSavedHash) window._lastSavedHash[p] = JSON.stringify(db[p]); } catch(_){}
+                try { if(window._lastSentHash)  window._lastSentHash[p]  = JSON.stringify(db[p]); } catch(_){}
+            }).catch(e => { delete window._lazyLoading[p]; console.warn('[lazy] fetch 실패:', p, e); });
+            return window._lazyLoading[p];
+        }));
+    };
+    // 탭별 필요 lazy 경로 매핑
+    window._tabLazyPaths = {
+        't_mgr': ['avt','bdg','tit'],
+        't_set': ['avt','bdg','tit','petDef'],
+        't_avt': ['avt'],
+        't_col': ['avt','bdg','tit'],
+        't_plz': ['avt'],
+        's_char': ['avt'],
+        's_bg':  ['tit'],
+        's_col': ['avt','bdg','tit'],
+        's_sh':  [],
+    };
+
+    // ===== t_mgr 전용: 요청 있는 학생만 개별 fetch (updatedAt 캐시 비교로 변경분만 다운) =====
+    window._fetchedStuTs = window._fetchedStuTs || {}; // {fbIdx: updatedAt} 캐시
+    window._fetchReqStudents = async function() {
+        const today = new Date().toLocaleDateString('sv-SE');
+        const needIdxs = Object.entries(window._reqCntMap || {})
+            .filter(([idx, c]) => {
+                if(!((c.invReq||0) > 0 || (c.avtReq||0) > 0 || (c.bug||0) > 0 || (c.print||0) > 0 || (c.invAppr && c.invAppr[today]))) return false;
+                // updatedAt이 캐시와 같으면 skip (변경 없음)
+                const remoteTs = c.updatedAt || 0;
+                const localTs = window._fetchedStuTs[idx] || 0;
+                return remoteTs === 0 || remoteTs > localTs;
+            })
+            .map(([idx]) => parseInt(idx))
+            .filter(i => !isNaN(i));
+        if(!needIdxs.length) return;
+        await Promise.all(needIdxs.map(i =>
+            dbRef.child('stu/'+i).once('value').then(s => {
+                const v = s.val();
+                if(v) {
+                    if(!Array.isArray(db.stu)) db.stu = [];
+                    db.stu[i] = v;
+                    window._fetchedStuTs[i] = v.updatedAt || Date.now(); // 캐시 갱신
+                }
+            }).catch(()=>{})
+        ));
+    };
+
+    // 교사 처리 후 reqCnt/i 즉시 갱신 — 요청 없으면 null 제거 (리스너 child 수 절감)
+    window._teacherSyncReqCnt = function(stuList, cd) {
+        if(!window._computeReqCnt || !Array.isArray(stuList)) return;
+        const i = stuList.findIndex(x => x && x.cd === cd);
+        if(i < 0) return;
+        const cnt = window._computeReqCnt(stuList[i] || {});
+        const hasAny = (cnt.invReq||0)>0||(cnt.avtReq||0)>0||(cnt.bug||0)>0||(cnt.print||0)>0||Object.keys(cnt.invAppr||{}).length>0;
+        if(hasAny) dbRef.child('reqCnt/'+i).set(cnt);
+        else dbRef.child('reqCnt/'+i).remove();
+        // 로컬 reqCntMap 동기화 (뱃지 즉시 반영)
+        if(window._reqCntMap) {
+            if(hasAny) window._reqCntMap[i] = cnt;
+            else delete window._reqCntMap[i];
+        }
+    };
 
     // C(plzRooms 분리) 비활성 — 데이터 손실 사고로 강제 OFF
     const _useSplitPlzRooms = false;
@@ -2845,6 +3034,8 @@ let _renderLock = false; // 재진입 방지
                 Object.keys(v).forEach(k => { me[k] = v[k]; });
                 if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
             }
+            // 본인 record 캐시 저장 — 다음 세션 즉시 복원용 (트래픽 절감: 초기 fetch 생략 가능)
+            try { localStorage.setItem('rpgMyStu_' + target, JSON.stringify({ ts: Date.now(), idx, stu: v })); } catch(_){}
             if(v.aucWin && (!_prevAucWin || _prevAucWin.id !== v.aucWin.id)) {
                 try { window._showAucWinModal && window._showAucWinModal(v.aucWin); } catch(_){}
             }
@@ -3047,7 +3238,8 @@ let _renderLock = false; // 재진입 방지
                     window._setStuLastSyncTs(maxTs);
                     window._stuLoaded = true;
                     window._saveStuCache && window._saveStuCache();
-                    if(window._attachSplitStuFullListener) {
+                    // 학생별 이름 모드(stu)에서는 live 리스너 불필요 — 종류별/학생관리 탭에서만 attach
+                    if(window._attachSplitStuFullListener && window._mgrOpen !== 'stu') {
                         try { window._attachSplitStuFullListener(); } catch(_){}
                     }
                     if(_splitInitialDone) _splitFire();
@@ -3163,12 +3355,17 @@ let _renderLock = false; // 재진입 방지
     // payload 예: { bug:int, print:int, invReq:int, invAppr:{YYYY-MM-DD:int} }
     window._reqCntMap = window._reqCntMap || {};
     window._computeReqCnt = function(s){
-        const out = { bug:0, print:0, invReq:0 };
+        const out = { bug:0, print:0, invReq:0, avtReq:0 };
         if(!s) return out;
+        if(s.nm) out.nm = s.nm;
+        if(s.no != null) out.no = s.no;
         const bg = Array.isArray(s.bugReqs) ? s.bugReqs : Object.values(s.bugReqs||{});
         const pr = Array.isArray(s.printReqs) ? s.printReqs : Object.values(s.printReqs||{});
+        const av = Array.isArray(s.avtReqs) ? s.avtReqs : Object.values(s.avtReqs||{});
         out.bug = bg.length;
         out.print = pr.length;
+        // 미승인(승인 안 된 + 거절 안 된) avtReq 만 카운트
+        out.avtReq = av.filter(r => r && !r.approved && !r.rejected).length;
         const inv = Array.isArray(s.inv) ? s.inv : Object.values(s.inv||{});
         const _gk = it => `${it.n||''}|${it.st}|${it.useDate||''}|${it.note||''}`;
         const newKeys = new Set();
@@ -3183,23 +3380,54 @@ let _renderLock = false; // 재진입 방지
         });
         out.invReq = newKeys.size;
         const invAppr = {};
-        Object.keys(apprByDate).forEach(d => { invAppr[d] = apprByDate[d].size; });
+        const _todayStr = new Date().toLocaleDateString('sv-SE');
+        Object.keys(apprByDate).forEach(d => { if(d >= _todayStr) invAppr[d] = apprByDate[d].size; }); // 만료일 자동 정리
         if(Object.keys(invAppr).length) out.invAppr = invAppr;
+        if(s.updatedAt) out.updatedAt = s.updatedAt; // 교사 fetch 캐시 비교용
+        return out;
+    };
+    // 랭킹 경량 mirror — /rank/{i} 에 표시용 최소 필드만 (학생이 랭킹 탭 진입 시 once fetch)
+    window._rankMap = window._rankMap || {};
+    window._computeRank = function(s){
+        if(!s) return null;
+        const out = { nm:s.nm||'', cd:s.cd||'', no:s.no||0, cookie:s.cookie||0, rb:s.rb||0 };
+        if(s.eq) out.eq = s.eq; // 아바타 표시 — 작은 id 객체
+        if(s.equippedTit) out.equippedTit = s.equippedTit;
         return out;
     };
     window._attachReqCntListener = function(){
         if(!_useSplit || window._reqCntAttached) return;
         window._reqCntAttached = true;
         const ref = dbRef.child('reqCnt');
+        const _onReqCntChange = () => {
+            if(typeof updateMenuBadges === 'function') updateMenuBadges();
+            // t_set 학생별 모드: 이름 그리드 갱신 (reqCntMap 기반 — 추가 fetch 없음)
+            if(window._mgrOpen === 'stu' && !document.getElementById('t_set')?.classList.contains('hidden')) {
+                window._renderMgrStuNames && window._renderMgrStuNames();
+            }
+            // reqCnt 변경 시 fetch 없음 — 탭 클릭 시에만 fetch (트래픽 절감)
+        };
         const apply = snap => {
             window._reqCntMap[snap.key] = snap.val() || {};
-            if(typeof updateMenuBadges === 'function') updateMenuBadges();
+            _onReqCntChange();
         };
         ref.on('child_added', apply);
         ref.on('child_changed', apply);
         ref.on('child_removed', snap => {
             delete window._reqCntMap[snap.key];
-            if(typeof updateMenuBadges === 'function') updateMenuBadges();
+            _onReqCntChange();
+        });
+    };
+    // 1회용 마이그레이션: 콘솔에서 window._rebuildRank() 호출 — /rank 전체 재계산
+    window._rebuildRank = function(){
+        return dbRef.child('stu').once('value').then(snap => {
+            const updates = {};
+            snap.forEach(c => {
+                const i = c.key;
+                const v = c.val();
+                if(v) updates['rank/' + i] = window._computeRank(v);
+            });
+            return dbRef.update(updates).then(() => console.log('[rebuildRank] 완료:', Object.keys(updates).length, '건'));
         });
     };
     // 1회용 마이그레이션: 콘솔에서 window._rebuildReqCnt() 호출 — 모든 학생의 /reqCnt 재계산
@@ -3422,11 +3650,14 @@ let _renderLock = false; // 재진입 방지
     window._anyArrivalPopupOpen = function(){
         return !!(document.getElementById('_couponArrivalPopup')
             || document.getElementById('_titGrantPopup')
-            || document.getElementById('_teacherSnackPopup'));
+            || document.getElementById('_teacherSnackPopup')
+            || document.getElementById('_teacherMsgPopup'));
     };
     window._showNextArrivalPopup = function(){
         if(window._anyArrivalPopupOpen()) return;
-        // 우선순위: 칭호 → 간식 → 쿠폰
+        // 우선순위: 교사 메시지 → 칭호 → 간식 → 쿠폰
+        if(window._showTeacherMsgPopup) window._showTeacherMsgPopup();
+        if(window._anyArrivalPopupOpen()) return;
         if(window._showTitGrantPopup) window._showTitGrantPopup();
         if(window._anyArrivalPopupOpen()) return;
         if(window._showTeacherSnackPopup) window._showTeacherSnackPopup();
@@ -3434,14 +3665,74 @@ let _renderLock = false; // 재진입 방지
         if(window._showCouponArrivalPopup) window._showCouponArrivalPopup();
     };
 
+    // ===== 교사 메시지 팝업 =====
+    window._tchrMsgSeen = new Set();
+    window._showTeacherMsgPopup = function() {
+        if(!me || me.cd === 'teacher_main') return;
+        if(window._anyArrivalPopupOpen()) return;
+        const pending = Array.isArray(me.tchrMsg) ? me.tchrMsg.filter(n => n && n.msg && !window._tchrMsgSeen.has(n.ts)) : [];
+        if(!pending.length) {
+            if(me.tchrMsg && me.tchrMsg.length) { me.tchrMsg = []; if(typeof upMe==='function') upMe(); }
+            return;
+        }
+        const n = pending[0];
+        const _renderMsgItem = it => {
+            // it는 {name, img?, emoji?} 객체 또는 구버전 string
+            if(typeof it === 'string') return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><span style="font-size:28px;">🎁</span><span style="font-size:11px;color:#3E2723;font-weight:bold;max-width:64px;text-align:center;word-break:keep-all;line-height:1.3;">${it}</span></div>`;
+            const imgEl = it.img && (it.img.startsWith('http')||it.img.startsWith('data:'))
+                ? `<img src="${it.img}" style="width:52px;height:52px;object-fit:contain;image-rendering:pixelated;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'">`
+                : '';
+            const fallbackEl = `<span style="${imgEl?'display:none;':''}font-size:${imgEl?'28':'36'}px;">${it.emoji||'🎁'}</span>`;
+            return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;background:rgba(255,255,255,0.6);border-radius:10px;padding:7px 8px;min-width:64px;">${imgEl}${fallbackEl}<span style="font-size:11px;color:#3E2723;font-weight:bold;max-width:72px;text-align:center;word-break:keep-all;line-height:1.3;">${it.name||''}</span></div>`;
+        };
+        const itemsHtml = n.items && n.items.length
+            ? `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">${n.items.map(_renderMsgItem).join('')}</div>`
+            : '';
+        const more = pending.length > 1 ? `<div style="font-size:11px;color:#aaa;margin-top:6px;">미확인 메시지 ${pending.length - 1}건 더 있음</div>` : '';
+        document.body.insertAdjacentHTML('beforeend', `<div id="_teacherMsgPopup" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99200;display:flex;align-items:center;justify-content:center;padding:20px;animation:_caFadeIn 0.3s;">
+            <div style="background:linear-gradient(160deg,#E3F2FD,#BBDEFB);border-radius:24px;width:min(380px,94vw);font-family:'Jua';box-shadow:0 20px 50px rgba(33,150,243,0.35);overflow:hidden;animation:_caBounce 0.5s ease;border:4px solid #64B5F6;" onclick="event.stopPropagation()">
+                <div style="background:linear-gradient(135deg,#1976D2,#1565C0);padding:20px 24px;text-align:center;color:white;">
+                    <div style="font-size:50px;line-height:1;">✉️</div>
+                    <div style="font-size:20px;font-weight:bold;margin-top:6px;">선생님 메시지</div>
+                </div>
+                <div style="padding:20px 22px;text-align:center;">
+                    ${itemsHtml}
+                    <div style="margin-top:12px;font-size:15px;color:#1A237E;line-height:1.7;background:rgba(255,255,255,0.7);border-radius:12px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;">${n.msg.replace(/</g,'&lt;')}</div>
+                    ${more}
+                </div>
+                <div style="padding:12px 22px 20px;">
+                    <button onclick="window._closeTeacherMsgPopup()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1976D2,#1565C0);color:white;border:none;border-radius:12px;font-family:'Jua';font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 4px 0 #0D47A1;">확인 ✓</button>
+                </div>
+            </div>
+        </div>`);
+    };
+    window._closeTeacherMsgPopup = function() {
+        const el = document.getElementById('_teacherMsgPopup');
+        if(!el) return;
+        el.remove();
+        if(me && Array.isArray(me.tchrMsg)) {
+            me.tchrMsg.forEach(n => { if(n && n.ts) window._tchrMsgSeen.add(n.ts); });
+        }
+        if(me) { me.tchrMsg = []; if(typeof upMe==='function') upMe(); }
+        setTimeout(() => { if(window._showNextArrivalPopup) window._showNextArrivalPopup(); }, 300);
+    };
+
     // ===== 칭호 획득 팝업 =====
     window._showTitGrantPopup = function() {
         if(!me || me.cd === 'teacher_main') return;
+        if(window._titPopupClosing) return; // 방금 닫은 팝업이 Firebase echo로 다시 뜨는 것 방지
         if(window._anyArrivalPopupOpen && window._anyArrivalPopupOpen()) return;
         const pending = Array.isArray(me.titNotify) ? me.titNotify.filter(n=>n&&n.titId) : [];
-        if(!pending.length) return;
+        // 이미 본 titId 는 제외 (이번 세션에서 확인 완료)
+        if(!window._titSeen) window._titSeen = new Set();
+        const fresh = pending.filter(n => !window._titSeen.has(String(n.titId)));
+        if(!fresh.length) {
+            // Firebase 가 stale 데이터를 echo 한 경우 — titNotify 정리
+            if(pending.length && me) { me.titNotify = []; if(typeof upMe==='function') upMe(); }
+            return;
+        }
         const _titList = Array.isArray(db.tit)?db.tit:Object.values(db.tit||{});
-        const items = pending.map(n=>_titList.find(t=>t&&t.id===n.titId)).filter(Boolean);
+        const items = fresh.map(n=>_titList.find(t=>t&&t.id===n.titId)).filter(Boolean);
         if(!items.length){ me.titNotify=[]; if(typeof upMe==='function') upMe(); return; }
         const t = items[0];
         const rewardLabel = (ct,amt)=>{
@@ -3473,11 +3764,20 @@ let _renderLock = false; // 재진입 방지
     };
     window._closeTitGrantPopup = function() {
         document.getElementById('_titGrantPopup')?.remove();
+        // 확인한 titId 를 세션 동안 기억 → Firebase echo 가 stale 데이터를 돌려줘도 다시 안 뜸
+        if(!window._titSeen) window._titSeen = new Set();
+        if(me && Array.isArray(me.titNotify)) {
+            me.titNotify.forEach(n => { if(n && n.titId) window._titSeen.add(String(n.titId)); });
+        }
+        window._titPopupClosing = true;
         if(me) {
             me.titNotify = [];
             if(typeof upMe === 'function') upMe();
         }
-        setTimeout(()=>window._showNextArrivalPopup&&window._showNextArrivalPopup(), 50);
+        setTimeout(()=>{
+            window._titPopupClosing = false;
+            window._showNextArrivalPopup&&window._showNextArrivalPopup();
+        }, 800);
     };
 
     // ===== 선생님께 한마디 → 간식 쿠폰 도착 팝업 =====
@@ -3898,7 +4198,7 @@ let _renderLock = false; // 재진입 방지
             '쿠키':       { i:'🍪', d:'기본 화폐예요. 뽑기·꾸미기 아이템 결제에 사용해요.' },
             '꿀':         { i:'🍯', d:'특별 화폐예요. 행운 복권 뽑기에 사용해요.' },
             '캔디':       { i:'🍭', d:'이벤트 화폐예요. 특별 이벤트에 사용해요.' },
-            '누구나 바구니': { i:'🧺', d:'누구나 바구니 교환권이에요. 경매에 사용해요.' }
+            '누구나 바구니': { i:'🧺', d:'누구나 바구니의 물건을 구입할 수 있다.' }
         };
         const c = info[name]; if(!c) return;
         document.getElementById('_curDescModal')?.remove();
@@ -4399,6 +4699,16 @@ let _renderLock = false; // 재진입 방지
 
             db.itm.forEach(i => { if(!i.c) i.c = 'cn'; });
             db.gac.forEach(g => { if(!g.cur) g.cur = 'cn'; });
+            // coinType 오매핑 마이그레이션: 이전 에디터의 잘못된 value 값 수정
+            // 'cn'(꿀로 표시됐으나 실제 캔디 필드) → 'co'(꿀), 'cd'(캔디로 표시됐으나 없는 필드) → 'cn'(캔디), 'c'(쿠키로 표시됐으나 없는 필드) → 'kc'
+            let _coinTypeDirty = false;
+            db.itm.forEach(i => {
+                if(!i.coinType) return;
+                if(i.coinType==='cn') { i.coinType='co'; _coinTypeDirty=true; }
+                else if(i.coinType==='cd') { i.coinType='cn'; _coinTypeDirty=true; }
+                else if(i.coinType==='c') { i.coinType='kc'; _coinTypeDirty=true; }
+            });
+            if(_coinTypeDirty && typeof sv==='function') sv();
             // acc 카테고리 → face_deco 마이그레이션
             (db.avt||[]).forEach(a => { if(a.cat==='acc') a.cat='face_deco'; });
 
@@ -4457,7 +4767,26 @@ let _renderLock = false; // 재진입 방지
                     window._ensureStuLoaded().then(() => { try { _splitFire && _splitFire(); } catch(_){} });
                     return;
                 }
-                // 학생: 자기 record만
+                // 학생: 캐시 우선 시도 (트래픽 절감) — 캐시 hit 시 own listener 가 자동으로 delta 만 받음
+                try {
+                    const _cKey = 'rpgMyStu_' + String(_autoLoginCd).trim();
+                    const _cRaw = localStorage.getItem(_cKey);
+                    if(_cRaw) {
+                        const _cObj = JSON.parse(_cRaw);
+                        // 24시간 이내 캐시만 사용 — 그 외엔 Firebase fetch
+                        if(_cObj && _cObj.stu && _cObj.ts && Date.now() - _cObj.ts < 24*3600*1000) {
+                            if(!Array.isArray(db.stu)) db.stu = [];
+                            const _ci = typeof _cObj.idx === 'number' ? _cObj.idx : db.stu.length;
+                            db.stu[_ci] = _cObj.stu;
+                            window._myFbIdx = _ci;
+                            console.log('[autoLogin] 캐시 복원 — Firebase fetch 생략');
+                            // own listener 부착 후 _splitFire → 이후 delta 자동 수신
+                            try { _splitFire && _splitFire(); } catch(_){}
+                            return;
+                        }
+                    }
+                } catch(_){}
+                // 학생: 자기 record만 (캐시 miss 시)
                 if(window._fetchStuByCd) {
                     window._fetchStuByCd(_autoLoginCd).then(() => { try { _splitFire && _splitFire(); } catch(_){} });
                     return;
@@ -4542,10 +4871,33 @@ let _renderLock = false; // 재진입 방지
 
                     // 자신의 데이터 또는 설정/아이템(도감 등록 변경)이 변경된 경우에만 학생 화면 재렌더
                     if(meChanged || cfgChanged || itmChanged) {
+                        // ⚠️ race 가드: 방금 로컬에서 push 한 inv/col/shopLog 가 stale echo 로 손실되는 것 방지
+                        const _localInv = Array.isArray(me.inv) ? me.inv.slice() : null;
+                        const _localCol = Array.isArray(me.col) ? me.col.slice() : null;
+                        const _localShopLog = Array.isArray(me.shopLog) ? me.shopLog.slice() : null;
+                        const _localInvLen = _localInv ? _localInv.length : 0;
+                        const _localColLen = _localCol ? _localCol.length : 0;
+                        const _localShopLogLen = _localShopLog ? _localShopLog.length : 0;
                         me = updatedMe;
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                         if(!me.col) me.col = [];
+                        // 로컬이 더 큰 경우 = 로컬에서 방금 추가했는데 Firebase echo 가 아직 반영 못 한 상태 → 복원 + 재저장
+                        let _raceLoss = false;
+                        if(me.inv.length < _localInvLen) { me.inv = _localInv; _raceLoss = true; }
+                        if((me.col?.length||0) < _localColLen) { me.col = _localCol; _raceLoss = true; }
+                        const _curShopLogLen = Array.isArray(me.shopLog) ? me.shopLog.length : 0;
+                        if(_curShopLogLen < _localShopLogLen) { me.shopLog = _localShopLog; _raceLoss = true; }
+                        if(_raceLoss) {
+                            console.warn('[race-guard] 로컬 변경 손실 감지 — 복원 후 재저장', {invLen: me.inv.length, colLen: me.col?.length});
+                            try {
+                                if(window._upMeLastHash && me.cd) {
+                                    const _h = window._upMeLastHash[me.cd];
+                                    if(_h) ['inv','col','shopLog'].forEach(k => { delete _h[k]; });
+                                }
+                                if(typeof upMe === 'function') upMe();
+                            } catch(_){}
+                        }
                         // 펫 합성 중단 복구 — _pendingSynth가 실제로 있을 때만 (race 안전망)
                         if(me._pendingSynth && !window._synthRecoveryChecked) {
                             const _recStart = Date.now();
@@ -4576,10 +4928,8 @@ let _renderLock = false; // 재진입 방지
                         updateNameTag();
                         window._applyColTabVisibility();
                         if(!document.getElementById('s_char').classList.contains('hidden')) rChar();
-                        // 어느 탭이든 새 골든티켓·달고나·그림 도착 시 즉시 알림 (재발송 시 재노출)
-                        window._showCouponArrivalPopup && window._showCouponArrivalPopup();
-                        window._showTeacherSnackPopup && window._showTeacherSnackPopup();
-                        window._showTitGrantPopup && window._showTitGrantPopup();
+                        // 어느 탭이든 새 알림 도착 시 즉시 표시 — 직렬화된 순서로 처리
+                        window._showNextArrivalPopup && window._showNextArrivalPopup();
                         if(!document.getElementById('s_bg').classList.contains('hidden')) rBg();
                         if(!document.getElementById('s_sh').classList.contains('hidden')) rSh();
                         if(!document.getElementById('s_col').classList.contains('hidden')) rCol();
@@ -4603,7 +4953,7 @@ let _renderLock = false; // 재진입 방지
                 }
                 if(!document.getElementById('t_mgr').classList.contains('hidden')) { rAs(); renderGivGrids(); }
                 if(!document.getElementById('t_col').classList.contains('hidden')) rColT();
-                if(!document.getElementById('t_set').classList.contains('hidden') && !_localSaving) { rAs(); renderGivGrids(); rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); }
+                if(!document.getElementById('t_set').classList.contains('hidden') && !_localSaving) { if(window._mgrOpen==='stu') window._renderMgrStuNames&&window._renderMgrStuNames(); else if(window._mgrOpen) rAs(); renderGivGrids(); rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); }
                 if(!document.getElementById('t_auc').classList.contains('hidden')) { rAs(); rAucT(); rGacQueue(); }
                 if(!document.getElementById('t_avt').classList.contains('hidden')) rAvt();
                 setTimeout(updateNotifBell, 0);
@@ -4861,50 +5211,65 @@ let _renderLock = false; // 재진입 방지
             }
 
             // ════════ 안전장치 2: Firebase 현재 stu 개수와 비교 (다중 탭 + 빈배열 보호) ════════
-            // curCount === 0 인 경우에도 항상 검증 (이전 버전은 0이면 스킵 — 치명적 버그였음)
+            // 🚀 트래픽 최적화: 1차로 /reqCnt(경량 mirror) 의 키 수만 fetch(~수 KB).
+            //    카운트 일치 시 풀 fetch 생략(가장 흔한 경로). 불일치/auto-merge 필요시에만 풀 fetch.
             if(!isStudentTab){
-                dbRef.child('stu').once('value', snap => {
-                    // Firebase에서도 T- 학생 제외하고 카운트
-                    let fbCount = 0;
-                    snap.forEach(c => { const v = c.val(); if(_isRealStu(v)) fbCount++; });
-                    // 1) 메모리는 0인데 Firebase에 학생이 있음 → 무조건 거부
-                    if(fbCount > 0 && curCount === 0){
-                        console.error('[sv] 메모리 0명 vs Firebase', fbCount, '명 — 저장 거부');
-                        alert(`⚠️ 메모리에 학생이 없는데 Firebase에는 ${fbCount}명이 있어요.\n저장이 취소되었습니다.\n\n페이지 새로고침 후 다시 시도하세요.`);
+                dbRef.child('reqCnt').once('value', cntSnap => {
+                    const fbCountApprox = cntSnap ? cntSnap.numChildren() : 0;
+                    // 1) 메모리 0명 + Firebase 에 키 존재 → 거부 (즉시)
+                    if(fbCountApprox > 0 && curCount === 0){
+                        console.error('[sv] 메모리 0명 vs Firebase(reqCnt)', fbCountApprox, '키 — 저장 거부');
+                        alert(`⚠️ 메모리에 학생이 없는데 Firebase에는 ${fbCountApprox}건 데이터가 있어요.\n저장이 취소되었습니다.\n\n페이지 새로고침 후 다시 시도하세요.`);
                         return;
                     }
-                    // 2) Firebase에 메모리보다 50%+ 많은 학생 → 다른 탭이 새로 추가했을 가능성. 거부.
-                    if(fbCount > 0 && curCount < fbCount * 0.5){
-                        console.error('[sv] Firebase 학생 수 불일치 — 저장 거부:', '메모리', curCount, 'vs Firebase', fbCount);
-                        alert(`⚠️ 다른 탭에서 더 많은 학생 데이터가 감지되어 저장이 취소되었습니다.\n(이 탭: ${curCount}명, Firebase: ${fbCount}명)\n\n페이지를 새로고침하면 최신 데이터를 받아옵니다.`);
+                    // 2) reqCnt 키 수가 메모리보다 50%+ 많음 → 풀 fetch 로 정확 검증
+                    //    (T- 학생 포함되므로 reqCnt 가 약간 더 많을 수 있어 60% 마진)
+                    const _suspicious = fbCountApprox > 0 && curCount < fbCountApprox * 0.6;
+                    if(!_suspicious){
+                        // 일치 경로 — 풀 fetch 생략, 바로 쓰기 (대부분의 케이스)
+                        _doWrite();
                         return;
                     }
-                    // 🛡️ 자동 merge — Firebase에 있지만 메모리에 없는 학생을 sv() 직전 자동 복원
-                    // 단, 명시적 삭제(delS — localStorage _deletedStu_{cd})한 학생은 제외
-                    try {
-                        const _intentionallyDeleted = new Set();
-                        for(let i=0; i<localStorage.length; i++){
-                            const k = localStorage.key(i);
-                            if(k && k.startsWith('_deletedStu_')) _intentionallyDeleted.add(k.substring('_deletedStu_'.length));
+                    // 의심 경로 — 풀 stu fetch 로 정확 카운트 + auto-merge
+                    console.warn('[sv] reqCnt 불일치 의심 — 풀 stu 검증', { mem: curCount, reqCntKeys: fbCountApprox });
+                    dbRef.child('stu').once('value', snap => {
+                        let fbCount = 0;
+                        snap.forEach(c => { const v = c.val(); if(_isRealStu(v)) fbCount++; });
+                        if(fbCount > 0 && curCount < fbCount * 0.5){
+                            console.error('[sv] Firebase 학생 수 불일치 — 저장 거부:', '메모리', curCount, 'vs Firebase', fbCount);
+                            alert(`⚠️ 다른 탭에서 더 많은 학생 데이터가 감지되어 저장이 취소되었습니다.\n(이 탭: ${curCount}명, Firebase: ${fbCount}명)\n\n페이지를 새로고침하면 최신 데이터를 받아옵니다.`);
+                            return;
                         }
-                        const _memCds = new Set((db.stu||[]).filter(_isRealStu).map(s => s.cd));
-                        const _missing = [];
-                        snap.forEach(c => {
-                            const v = c.val();
-                            if(!_isRealStu(v)) return;
-                            if(_memCds.has(v.cd)) return;
-                            if(_intentionallyDeleted.has(v.cd)) return;
-                            _missing.push(v);
-                        });
-                        if(_missing.length){
-                            console.warn('[sv] 메모리 누락 학생 자동 복원:', _missing.map(s => s.no+'번 '+s.nm+' ('+s.cd+')').join(', '));
-                            db.stu = [...(db.stu||[]), ..._missing].filter(_isRealStu).sort((a,b) => (parseInt(a.no)||999) - (parseInt(b.no)||999));
-                        }
-                    } catch(e){ console.warn('[sv] auto-merge 실패', e); }
-                    _doWrite();
+                        // 🛡️ auto-merge
+                        try {
+                            const _intentionallyDeleted = new Set();
+                            for(let i=0; i<localStorage.length; i++){
+                                const k = localStorage.key(i);
+                                if(k && k.startsWith('_deletedStu_')) _intentionallyDeleted.add(k.substring('_deletedStu_'.length));
+                            }
+                            const _memCds = new Set((db.stu||[]).filter(_isRealStu).map(s => s.cd));
+                            const _missing = [];
+                            snap.forEach(c => {
+                                const v = c.val();
+                                if(!_isRealStu(v)) return;
+                                if(_memCds.has(v.cd)) return;
+                                if(_intentionallyDeleted.has(v.cd)) return;
+                                _missing.push(v);
+                            });
+                            if(_missing.length){
+                                console.warn('[sv] 메모리 누락 학생 자동 복원:', _missing.map(s => s.no+'번 '+s.nm+' ('+s.cd+')').join(', '));
+                                db.stu = [...(db.stu||[]), ..._missing].filter(_isRealStu).sort((a,b) => (parseInt(a.no)||999) - (parseInt(b.no)||999));
+                            }
+                        } catch(e){ console.warn('[sv] auto-merge 실패', e); }
+                        _doWrite();
+                    }, err => {
+                        console.warn('[sv] Firebase 풀 검증 실패', err);
+                        if(curCount === 0 && _hasSeenData) return;
+                        _doWrite();
+                    });
                 }, err => {
-                    console.warn('[sv] Firebase 검증 실패 — 빈 배열은 안전을 위해 거부', err);
-                    if(curCount === 0 && _hasSeenData) return; // 검증 실패 + 0명이면 거부
+                    console.warn('[sv] reqCnt 검증 실패 — 풀 fetch 로 fallback', err);
+                    if(curCount === 0 && _hasSeenData) return;
                     _doWrite();
                 });
                 return;
@@ -5022,6 +5387,27 @@ let _renderLock = false; // 재진입 방지
             }
         } catch(e) { console.error('[sv] write error', e); }
     }
+
+    window._migrateInvBasketToTk = function() {
+        const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        let totalMoved = 0;
+        stuArr.forEach(s => {
+            if(!s || !Array.isArray(s.inv)) return;
+            let moved = 0;
+            s.inv = s.inv.filter(item => {
+                if(item && (item.n === '누구나 바구니' || item.n === '바구니') && item.st !== 'used') {
+                    moved++;
+                    return false;
+                }
+                return true;
+            });
+            if(moved > 0) s.tk = (s.tk || 0) + moved;
+            totalMoved += moved;
+        });
+        db.stu = stuArr;
+        sv();
+        alert('마이그레이션 완료: ' + totalMoved + '개의 inv 바구니 → tk 화폐로 전환');
+    };
 
     function sv(){
         _localSaving = true;
@@ -5401,20 +5787,28 @@ let _renderLock = false; // 재진입 방지
         const _calcEnd = (startStr, n) => { const d=new Date(startStr+'T12:00:00'); d.setDate(d.getDate()+(n-1)); return d.toLocaleDateString('sv-SE'); };
         const _initEnd = _usageDur > 0 ? _calcEnd(_todayISO, _usageDur) : '';
         const swapList = (itDef && Array.isArray(itDef.swapWith)) ? itDef.swapWith.filter(n=>_itmList.find(o=>(o?.n||'').trim()===n.trim())) : [];
-        const swapHtml = swapList.length ? `
+        const _swbAmt = itDef?.swapWithBasket || 0;
+        const _swbEnabled = _swbAmt > 0 && !!(db.cfg?.voucherBasket?.enabled !== false);
+        const _basketBtn = _swbEnabled ? `<button onclick="swapItemToBasket('${safeN}',${_swbAmt})" style="flex:0 0 150px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 10px;border:2px solid #90CAF9;border-radius:12px;background:white;cursor:pointer;font-family:'Jua';text-align:center;min-height:160px;">
+                        <span style="font-size:36px;line-height:1;">🧺</span>
+                        <span style="color:#1565C0;font-size:14px;font-weight:bold;line-height:1.2;word-break:keep-all;">누구나 바구니 ×${_swbAmt}</span>
+                        <span style="margin-top:8px;font-size:11px;color:white;background:#1976D2;border-radius:8px;padding:3px 10px;font-weight:bold;">교환 ▶</span>
+                    </button>` : '';
+        const swapHtml = (swapList.length || _basketBtn) ? `
             <div style="background:#FFF3E0;border:2px dashed #FFB74D;border-radius:14px;padding:14px;margin-bottom:12px;">
                 <div style="display:flex;flex-direction:row;gap:8px;overflow-x:auto;overflow-y:hidden;padding:4px 2px 10px;scroll-snap-type:x mandatory;">
                 ${swapList.map(n=>{
                     const t=_itmList.find(o=>(o?.n||'').trim()===n.trim());
                     const safe=n.replace(/'/g,"\\'");
                     const desc=(t?.d||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                    return `<button onclick="swapItem('${safeN}','${safe}')" style="flex:0 0 150px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 10px;border:2px solid #FFB74D;border-radius:12px;background:white;cursor:pointer;font-family:'Jua';text-align:center;">
+                    return `<button onclick="swapItem('${safeN}','${safe}')" style="flex:0 0 150px;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px 10px;border:2px solid #FFB74D;border-radius:12px;background:white;cursor:pointer;font-family:'Jua';text-align:center;min-height:160px;">
                         <span style="font-size:36px;line-height:1;">${(t?.i||'').includes('http')?`<img src="${t.i}" style="width:42px;height:42px;object-fit:contain;">`:(t?.i||'🎁')}</span>
                         <span style="color:#5D4037;font-size:14px;font-weight:bold;line-height:1.2;word-break:keep-all;">${n}</span>
                         ${desc?`<span style="font-size:11px;color:#888;line-height:1.4;white-space:pre-wrap;word-break:keep-all;max-height:60px;overflow:hidden;">${desc}</span>`:''}
                         <span style="margin-top:auto;font-size:11px;color:white;background:#FF9800;border-radius:8px;padding:3px 10px;font-weight:bold;">교환 ▶</span>
                     </button>`;
                 }).join('')}
+                ${_basketBtn}
                 </div>
                 <div style="font-size:11px;color:#999;margin-top:8px;text-align:center;">선택 시 즉시 교환되며 되돌릴 수 없어요</div>
             </div>` : '';
@@ -5514,6 +5908,53 @@ let _renderLock = false; // 재진입 방지
         document.getElementById('itemModal')?.remove();
         if(typeof rBg === 'function') rBg();
     };
+    window.swapItemToBasket = function(fromName, amt){
+        const _itmList = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
+        const fromDef = _itmList.find(it => (it?.n||'').trim() === fromName.trim());
+        if(!fromDef?.swapWithBasket) { alert('교환할 수 없어요'); return; }
+        const safeFrom = fromName.replace(/'/g,"\\'");
+        document.getElementById('_swapConfirmModal')?.remove();
+        const fromIco = (fromDef?.i||'').includes('http') ? `<img src="${fromDef.i}" style="width:44px;height:44px;object-fit:contain;">` : `<span style="font-size:44px;line-height:1;">${fromDef?.i||'🎁'}</span>`;
+        const html = `<div id="_swapConfirmModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99500;display:flex;align-items:center;justify-content:center;padding:20px;animation:_caFadeIn 0.25s;" onclick="if(event.target===this)this.remove()">
+            <div style="background:linear-gradient(160deg,#E3F2FD,#BBDEFB);border-radius:26px;width:min(420px,96vw);font-family:'Jua';box-shadow:0 24px 60px rgba(25,118,210,0.35);overflow:hidden;animation:_caBounce 0.45s ease;border:5px solid #90CAF9;" onclick="event.stopPropagation()">
+                <div style="background:linear-gradient(135deg,#1976D2,#0D47A1);padding:22px 24px;text-align:center;color:white;">
+                    <div style="font-size:48px;line-height:1;">🧺</div>
+                    <div style="font-size:22px;font-weight:bold;margin-top:6px;">바구니로 교환할까요?</div>
+                </div>
+                <div style="padding:24px 22px;">
+                    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px;">
+                        <div style="flex:1;text-align:center;background:white;border:2px solid #90CAF9;border-radius:14px;padding:14px 8px;">
+                            ${fromIco}
+                            <div style="font-size:14px;color:#5D4037;font-weight:bold;margin-top:6px;word-break:keep-all;">${fromName}</div>
+                            <div style="font-size:11px;color:#999;margin-top:2px;">1개 사용</div>
+                        </div>
+                        <div style="font-size:32px;color:#1976D2;">▶</div>
+                        <div style="flex:1;text-align:center;background:#E3F2FD;border:2px solid #1976D2;border-radius:14px;padding:14px 8px;box-shadow:0 4px 12px rgba(25,118,210,0.2);">
+                            <span style="font-size:44px;line-height:1;">🧺</span>
+                            <div style="font-size:14px;color:#0D47A1;font-weight:bold;margin-top:6px;word-break:keep-all;">누구나 바구니 ×${amt}</div>
+                            <div style="font-size:11px;color:#1976D2;margin-top:2px;">획득</div>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.7);border-radius:12px;padding:10px 12px;font-size:12px;color:#8D6E63;text-align:center;line-height:1.5;">⚠️ 교환 후에는 되돌릴 수 없어요</div>
+                </div>
+                <div style="padding:0 22px 22px;display:flex;gap:10px;">
+                    <button onclick="document.getElementById('_swapConfirmModal').remove()" style="flex:1;padding:13px;border:2.5px solid #e0e0e0;border-radius:14px;background:white;font-family:'Jua';font-size:15px;cursor:pointer;color:#888;">취소</button>
+                    <button onclick="window._doSwapBasket('${safeFrom}',${amt})" style="flex:2;padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,#1976D2,#0D47A1);color:white;font-family:'Jua';font-size:16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 0 #0D47A1;">교환하기 🧺</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+    window._doSwapBasket = function(fromName, amt){
+        const idx = me.inv.findIndex(i => i && i.n.trim() === fromName.trim() && i.st === 'active' && !i.pseudo);
+        if(idx < 0) { document.getElementById('_swapConfirmModal')?.remove(); alert('보유한 아이템이 없어요'); return; }
+        me.inv.splice(idx, 1);
+        me.tk = (me.tk || 0) + amt;
+        upMe();
+        document.getElementById('_swapConfirmModal')?.remove();
+        document.getElementById('itemModal')?.remove();
+        if(typeof rBg === 'function') rBg();
+    };
 
     function useQ(itemName){
         const qtyEl = document.getElementById('itemUseQty');
@@ -5557,6 +5998,20 @@ let _renderLock = false; // 재진입 방지
             if(me.inv[i].n.trim() === itemName.trim() && me.inv[i].st === 'active' && !me.inv[i].pseudo){
                 const _usageDur = me.inv[i].usageDurationDays || 0;
                 const _hasUsageDur = _usageDur > 0;
+                // 성장의 불꽃 N일권: 단일 항목 + currentDay 진행 추적 (분할 없음)
+                if(me.inv[i].n === '성장의 불꽃' && _usageDur > 1) {
+                    me.inv[i].st = 'req';
+                    me.inv[i].useDate = useDate;
+                    me.inv[i].currentDay = 1;
+                    me.inv[i].totalDays = _usageDur;
+                    me.inv[i].baseCookie = me.cookie || 0;
+                    delete me.inv[i].reqApproved; delete me.inv[i].reqDone;
+                    delete me.inv[i].useEndDate;
+                    if(useNote) me.inv[i].note = useNote;
+                    // usageDurationDays 변경 없음 — N일권 그대로 유지 (반려 시 복원 불필요)
+                    used++;
+                    continue;
+                }
                 // 사용기간 아이템도 자동으로 req 처리 (needApprove 무시)
                 me.inv[i].st = (needsApprove || _hasUsageDur) ? 'req' : 'used';
                 if(needsApprove || _hasUsageDur) {
@@ -5573,7 +6028,25 @@ let _renderLock = false; // 재진입 방지
                 used++;
             }
         }
-        upMe(); rBg();
+        // 교사 반려 후 재신청 시 _upMeLastHash가 구 req 상태를 기억해 write를 건너뛰는 문제 방지
+        if(window._upMeLastHash && me.cd) delete window._upMeLastHash[me.cd];
+        if(window._reqCntOwnLastHash) {
+            const _fbI0 = (typeof window._myFbIdx==='number' && window._myFbIdx>=0)
+                ? window._myFbIdx
+                : (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).findIndex(s=>s&&s.cd===me.cd);
+            if(_fbI0>=0) delete window._reqCntOwnLastHash[_fbI0];
+        }
+        upMe();
+        // 학생 요청 시 교사 배지 즉시 갱신 — reqCnt Firebase 경로 직접 기록
+        try {
+            const _fbI = (typeof window._myFbIdx==='number' && window._myFbIdx>=0)
+                ? window._myFbIdx
+                : (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).findIndex(s=>s&&s.cd===me.cd);
+            if(_fbI>=0 && typeof window._computeReqCnt==='function' && typeof dbRef!=='undefined') {
+                dbRef.child('reqCnt/'+_fbI).set(window._computeReqCnt(me));
+            }
+        } catch(_){}
+        rBg();
         const modal = document.getElementById('itemModal');
         if(modal) modal.remove();
         // 사용기간 아이템 처리 후 정보 표시용
@@ -5604,15 +6077,14 @@ let _renderLock = false; // 재진입 방지
 
     window.cancelReq = function(itemName) {
         if(!confirm(`[${itemName}] 사용 요청을 취소하시겠습니까?`)) return;
-        let cancelled = 0;
         (me.inv||[]).forEach(it => {
-            if(it.n.trim() === itemName.trim() && it.st === 'req') {
-                it.st = 'active';
-                delete it.reqApproved; delete it.reqDone;
-                cancelled++;
-            }
+            if(!it || it.n?.trim() !== itemName.trim() || it.st !== 'req') return;
+            it.st = 'active';
+            delete it.reqApproved; delete it.reqDone;
+            delete it.useDate; delete it.useEndDate;
+            delete it.currentDay; delete it.totalDays; delete it.baseCookie;
         });
-        if(cancelled > 0) { upMe(); rBg(); }
+        upMe(); rBg();
     };
 
     window.cancelReqByIdx = function(idx) {
@@ -5796,6 +6268,18 @@ let _renderLock = false; // 재진입 방지
                     }
                 }
             } catch(_){}
+            // /rank/{i} 미러링 — 학생 랭킹 탭 진입 시 once fetch 용. hash 비교로 변경 없으면 skip
+            try {
+                if(typeof window._computeRank === 'function') {
+                    const r = window._computeRank(_safe);
+                    let h; try { h = JSON.stringify(r); } catch(_) { h = null; }
+                    if(!window._rankOwnLastHash) window._rankOwnLastHash = {};
+                    if(r && (h == null || window._rankOwnLastHash[i] !== h)) {
+                        dbRef.child('rank/' + i).set(r);
+                        if(h != null) window._rankOwnLastHash[i] = h;
+                    }
+                }
+            } catch(_){}
             window._upMeLastHash[me.cd] = newHash;
         } catch(e) {
             // 안전 fallback: 전체 set
@@ -5852,10 +6336,43 @@ let _renderLock = false; // 재진입 방지
                 });
             } catch(_){}
         }
+        // ===== lazy path 로드 + 재렌더 (탭 진입 시 필요한 정적 데이터만) =====
+        const _lp = (window._tabLazyPaths||{})[id];
+        if(_lp && _lp.length && window._ensureLazyPaths) {
+            window._ensureLazyPaths(_lp).then(() => {
+                if(document.getElementById(id)?.classList.contains('hidden')) return;
+                if(id==='t_mgr') return; // t_mgr는 아래 _fetchReqStudents 후 렌더
+                if(id==='t_set'){ try { rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); } catch(_){} }
+                else if(id==='t_avt') { try { rAvt(); } catch(_){} }
+                else if(id==='t_col') { try { rColT(); } catch(_){} }
+                else if(id==='t_plz') { try { rPlzT(); } catch(_){} }
+            }).catch(()=>{});
+        }
         if(id==='t_stu') { rTb(); try { window._syncAllCookiesSilent && window._syncAllCookiesSilent(); } catch(_){} }
-        if(id==='t_mgr'){rAs(); renderGivGrids();}
+        if(id==='t_mgr'){
+            // t_mgr: lazy(avt/bdg/tit) + 요청 있는 학생만 fetch 후 렌더
+            const _renderMgr = () => { try { rAs(); renderGivGrids(); } catch(_){} };
+            if(window._ensureLazyPaths && window._fetchReqStudents) {
+                window._ensureLazyPaths(['avt','bdg','tit']).then(() => window._fetchReqStudents()).then(_renderMgr).catch(_renderMgr);
+            } else {
+                _renderMgr();
+            }
+        }
         if(id==='t_col') rColT();
-        if(id==='t_set'){ renderGivGrids(); rSet(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); }
+        if(id==='t_set'){
+            // 승인 및 지급 섹션 접힌 상태로 초기화
+            window._mgrOpen = false;
+            window._mgrStuReady = false;
+            const _body = document.getElementById('mgrSectionBody');
+            const _arrow = document.getElementById('mgrSectionArrow');
+            if(_body) { _body.style.maxHeight = '0'; }
+            if(_arrow) { _arrow.textContent = '▶'; }
+            rSet();
+            const _doSetRender = () => { try { renderGivGrids(); rAvtMgrList(); rBdgMgrList(); rTitMgrList(); rPetDefMgrList(); } catch(_){} };
+            if(typeof window._ensureLazyPaths === 'function') {
+                window._ensureLazyPaths(['avt','bdg','tit','petDef']).then(_doSetRender).catch(_doSetRender);
+            } else { _doSetRender(); }
+        }
         if(id==='t_auc') {
             // 리스너 attach 보장 (이미 attached면 내부에서 skip)
             try { window._attachSplitAucFullListener && window._attachSplitAucFullListener(); } catch(_){}
@@ -5901,15 +6418,35 @@ let _renderLock = false; // 재진입 방지
                 return;
             }
             window.masterPopupShown = false;
-            rCol();
+            if(window._ensureLazyPaths) {
+                window._ensureLazyPaths(['avt','bdg','tit']).then(() => {
+                    if(!document.getElementById('s_col')?.classList.contains('hidden')) rCol();
+                }).catch(()=>{ rCol(); });
+            } else { rCol(); }
         }
         if(id==='s_char') {
-            rChar();
+            if(window._ensureLazyPaths) {
+                window._ensureLazyPaths(['avt']).then(() => {
+                    if(!document.getElementById('s_char')?.classList.contains('hidden')) rChar();
+                }).catch(()=>{ rChar(); });
+            } else { rChar(); }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
             try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
         }
         if(id==='s_bg') {
-            rBg();
+            // avt는 즉시 로드 후 렌더, tit는 백그라운드 로드 후 칭호 탭만 재렌더
+            if(window._ensureLazyPaths) {
+                window._ensureLazyPaths(['avt']).then(() => {
+                    if(!document.getElementById('s_bg')?.classList.contains('hidden')) rBg();
+                }).catch(()=>{ rBg(); });
+                // tit 백그라운드 로드 — 칭호 탭 진입 시 탭이 바로 보이도록
+                if(!window._lazyLoaded?.has('tit')) {
+                    window._ensureLazyPaths(['tit']).then(() => {
+                        const _sb = document.getElementById('s_bg');
+                        if(_sb && !_sb.classList.contains('hidden')) rBg();
+                    }).catch(()=>{});
+                }
+            } else { rBg(); }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
             try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
         }
@@ -6589,9 +7126,13 @@ let _renderLock = false; // 재진입 방지
         document.getElementById('addStuTab2').style.color = n===2 ? 'white' : '#555';
     };
     
-  function rTb(){ 
+  function rTb(){
         if(!db.stu) return;
-        let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        const stuRaw = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        // 원본 db.stu 인덱스를 보존하면서 번호순으로 정렬 (delS/upCk 등이 인덱스 기반이라 필수)
+        let stuList = stuRaw.map((s,origIdx) => ({ s, origIdx }))
+            .filter(x => x.s)
+            .sort((a,b) => (parseInt(a.s?.no)||9999) - (parseInt(b.s?.no)||9999));
         if(!window._stuSelSet) window._stuSelSet = new Set();
         const checked = [...window._stuSelSet].map(String);
 
@@ -6633,7 +7174,8 @@ let _renderLock = false; // 재진입 방지
             </tr>
         `;
 
-        document.getElementById('ttb').innerHTML = stuList.map((s,i)=>{
+        document.getElementById('ttb').innerHTML = stuList.map(({s, origIdx})=>{
+            const i = origIdx;
             const curCookie = Math.max(0, (s.cookie || 0) - (s.usedCookie || 0) - (s.shopUsed || 0));
             // 🌟 공통 스타일: 둥근 테두리 + 중앙 정렬 + 축소된 너비(65px)
             const inputStyle = `width:65px; height:30px; border:2px solid #FFE0B2; border-radius:20px; text-align:center; font-family:'Jua'; outline:none;`;
@@ -6825,7 +7367,6 @@ let _renderLock = false; // 재진입 방지
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         const s = stuList[si];
         if(!s) return;
-        const avt = (typeof renderAvatar === 'function') ? renderAvatar(s.eq||{}, 56) : '👤';
 
         // 이 학생의 그룹만 필터 (stuCd는 함수 상단에서 이미 결정됨)
         const _getStu = () => { const sl=Array.isArray(db.stu)?db.stu:Object.values(db.stu||{}); return sl.find(x=>x.cd===stuCd)||sl[si]; };
@@ -7033,7 +7574,6 @@ let _renderLock = false; // 재진입 방지
         panel.innerHTML = `
             <!-- 헤더 -->
             <div style="background:linear-gradient(135deg,#5D4037,#8D6E63);padding:14px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
-                <div style="flex-shrink:0;">${avt}</div>
                 <div style="flex:1;min-width:0;">
                     <div style="color:white;font-family:'Jua',sans-serif;font-size:20px;line-height:1.2;">${s.nm}</div>
                     <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
@@ -7382,6 +7922,128 @@ let _renderLock = false; // 재진입 방지
     const AVT_SUB =[{k:'all',lb:'전체'},{k:'face',lb:'얼굴'},{k:'hair',lb:'머리'},{k:'outfit',lb:'의상'},{k:'shoes',lb:'신발'},{k:'hat',lb:'모자'},{k:'hair_deco',lb:'머리 장식'},{k:'face_deco',lb:'얼굴 장식'},{k:'back',lb:'등 장식'},{k:'prop',lb:'소품'},{k:'pet',lb:'펫'}];
     const RAS_TYPE_FILTERS = [['all','전체'],['itm','🎁 일반 아이템'],['avt','🎨 꾸미기 아이템'],['bdg','🐾 펫'],['tit','🏆️ 칭호'],['done','✅ 완료'],['notif','📬 알림']];
 
+    // ===== 승인 및 지급 섹션 접힘/펼침 =====
+    window._mgrOpen = false; // false=접힘, 'stu'=학생별 열림, 'typ'=종류별 열림
+    window._mgrStuReady = false; // stu 데이터 로드 완료 여부
+
+    // _mgrOpen: false=닫힘, 'stu'=학생별, 'typ'=종류별
+    window._toggleMgrSection = function() {
+        const body = document.getElementById('mgrSectionBody');
+        const arrow = document.getElementById('mgrSectionArrow');
+        if(!window._mgrOpen) {
+            // 닫힘 → 학생별
+            window._openMgrView('stu');
+            if(arrow) arrow.textContent = '▼';
+        } else if(window._mgrOpen === 'stu') {
+            // 학생별 → 종류별
+            window._openMgrView('typ');
+        } else {
+            // 종류별 → 닫힘
+            window._mgrOpen = false;
+            if(body) body.style.maxHeight = '0';
+            if(arrow) arrow.textContent = '▶';
+        }
+    };
+
+    window._openMgrView = function(type) {
+        asort = (type === 'typ') ? 'typ' : 'stu';
+        window._mgrOpen = type;
+        const body = document.getElementById('mgrSectionBody');
+        const arrow = document.getElementById('mgrSectionArrow');
+        if(body) body.style.maxHeight = '9999px';
+        if(arrow) arrow.textContent = '▼';
+        // 종류별 필터 행 처리
+        const filterRow = document.getElementById('ras-type-filter-row');
+        if(type === 'typ') {
+            rasTypeFilter = 'all';
+            const chips = document.getElementById('ras-type-chips');
+            if(chips) chips.innerHTML = RAS_TYPE_FILTERS.map(([k,lb]) =>
+                `<button data-tf="${k}" onclick="window._setRasTypeFilter('${k}',this)" style="padding:5px 13px;border-radius:20px;border:2px solid #DDD;font-size:13px;cursor:pointer;background:${rasTypeFilter===k?'#5D4037':'white'};color:${rasTypeFilter===k?'white':'#333'};">${lb}</button>`
+            ).join('');
+            const sub = document.getElementById('avt_sub_filter');
+            if(sub) { sub.style.display='none'; sub.innerHTML = AVT_SUB.map(c=>`<button data-avc="${c.k}" onclick="window._setRasAvtCat('${c.k}',this)" style="padding:4px 10px;border-radius:14px;border:1px solid #DDD;font-size:12px;cursor:pointer;background:${rasAvtCatFilter===c.k?'#5D4037':'white'};color:${rasAvtCatFilter===c.k?'white':'#333'};">${c.lb}</button>`).join(''); }
+            if(filterRow) filterRow.style.display = 'block';
+            // 종류별: 전체 stu fetch
+            const _spinner = document.getElementById('mgrLoadingSpinner');
+            if(_spinner) _spinner.style.display = '';
+            const _doRender = () => { if(_spinner) _spinner.style.display = 'none'; try { rAs(); } catch(_){} };
+            window._attachSplitStuFullListener && window._attachSplitStuFullListener();
+            Promise.all([
+                window._ensureLazyPaths ? window._ensureLazyPaths(['avt','bdg','tit']) : Promise.resolve(),
+                window._ensureStuLoaded ? window._ensureStuLoaded() : Promise.resolve()
+            ]).then(_doRender).catch(_doRender);
+        } else {
+            // 학생별: reqCntMap의 nm/no만 사용 — stu fetch 없음
+            if(filterRow) filterRow.style.display = 'none';
+            rasTypeFilter = 'all';
+            window._renderMgrStuNames();
+        }
+    };
+
+    // 학생별 이름 그리드 렌더 — reqCntMap → db.stu 캐시 순으로 이름 조회
+    window._renderMgrStuNames = function() {
+        const ag = document.getElementById('t_ag');
+        if(!ag) return;
+        ag.style.gridTemplateColumns = 'repeat(14,1fr)';
+        ag.style.gap = '5px';
+        ag.style.padding = '4px 0';
+
+        // 이름 수집: reqCntMap 우선, 없으면 db.stu에서 보완
+        const map = window._reqCntMap || {};
+        const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        const entries = Object.entries(map)
+            .map(([key, c]) => {
+                const idx = parseInt(key);
+                if(isNaN(idx)) return null;
+                // reqCntMap에 nm 없으면 db.stu 캐시에서 보완
+                const nm = c.nm || stuArr[idx]?.nm || '';
+                const no = c.no ?? stuArr[idx]?.no ?? '';
+                return { idx, nm, no };
+            })
+            .filter(e => e && e.nm)
+            .sort((a,b) => (a.no??999)-(b.no??999));
+
+        if(!entries.length) {
+            ag.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#999;padding:30px;">⏳ 학생 정보 로딩 중...</div>';
+            // 이름 없으면 최소 fetch (nm/no만 필요) — _ensureStuLoaded는 캐시+증분이라 가볍
+            if(window._ensureStuLoaded) {
+                window._ensureStuLoaded().then(() => window._renderMgrStuNames()).catch(()=>{});
+            }
+            return;
+        }
+        ag.innerHTML = entries.map(({idx, nm}) => {
+            const border = 'border:1.5px solid #E0D5C5;';
+            const bg = 'background:#FFFDE7;';
+            return `<div onclick="window._fetchAndShowStuPanel(${idx})" style="aspect-ratio:1/1;${bg}${border}border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:2px;box-sizing:border-box;overflow:hidden;">
+                <span style="font-family:'Jua',sans-serif;font-size:11px;color:#3E2723;font-weight:bold;text-align:center;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${nm}</span>
+            </div>`;
+        }).join('');
+    };
+
+    // 학생별 모드: 이름 클릭 시 해당 학생만 fetch → currentGroups 재구성 → 패널 열기
+    window._fetchAndShowStuPanel = function(si) {
+        dbRef.child('stu/' + si).once('value').then(snap => {
+            const v = snap.val();
+            if(v) { if(!Array.isArray(db.stu)) db.stu = []; db.stu[si] = v; }
+            // currentGroups 재구성 (showStuPanel의 _renderPanelGrid가 의존)
+            try { rAs(); } catch(_){}
+            showStuPanel(si);
+            // rAs()가 t_ag를 덮어썼으므로 이름 그리드 즉시 복원
+            try { window._renderMgrStuNames(); } catch(_){}
+        }).catch(() => {
+            try { rAs(); } catch(_){}
+            showStuPanel(si);
+            try { window._renderMgrStuNames(); } catch(_){}
+        });
+    };
+
+    function _updateMgrViewBtns() {} // 레이블 제거 — 빈 함수 유지 (다른 곳 호출 대비)
+
+    function _mgrExpandBody() {
+        const body = document.getElementById('mgrSectionBody');
+        if(body && window._mgrOpen) body.style.maxHeight = body.scrollHeight + 9999 + 'px';
+    }
+
     window.toggleTypFilter = function() {
         const row = document.getElementById('ras-type-filter-row');
         if(!row) return;
@@ -7676,58 +8338,82 @@ let _renderLock = false; // 재진입 방지
         const s = stuList.find(x=>x.cd===cd); if(!s) return;
         const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
         const sorted = action === 'del' ? ks.slice().sort((a,b)=>b-a) : ks.slice();
-        // 🔥 성장의 불꽃 후크 — 승인 시 baseCookie 스냅샷, 완료/즉시완료 시 델타 안내
+        // 🔥 성장의 불꽃 후크 (currentDay 단일 항목 방식)
         const _isXpBoost = ks.some(k => inv[k] && inv[k].n === '성장의 불꽃');
         if(_isXpBoost) {
             const _todayISO = new Date().toLocaleDateString('sv-SE');
             if(action === 'app') {
-                if(s.xpBoost && s.xpBoost.active) { alert('이미 활성 중인 성장의 불꽃이 있습니다.\n먼저 완료 처리 후 새로 승인해주세요.'); return; }
-                const _firstKey = ks.find(k => inv[k] && inv[k].n === '성장의 불꽃');
-                const _it = inv[_firstKey] || {};
-                const sd = _it.useDate || _todayISO;
-                const ed = _it.useEndDate || sd;
-                const _days = Math.max(1, Math.round((new Date(ed+'T12:00:00') - new Date(sd+'T12:00:00'))/86400000) + 1);
-                s.xpBoost = {
-                    active:true, baseCookie: s.cookie||0, startTs: Date.now(),
-                    startDate: sd, endDate: ed,
-                    lastSettledCookie: s.cookie||0, lastSettledDate: '',
-                    frozenCookie: null, history: []
-                };
+                sorted.forEach(k => { if(inv[k]) inv[k].reqApproved = true; });
+                s.inv = inv; db.stu = stuList; sv();
+                window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
+                _renderReqDate(); rAs(); updateMenuBadges();
+                if(typeof _syncRequestViews==='function') _syncRequestViews();
+                if(typeof rBg==='function') rBg();
+                const _it0 = inv[ks[0]] || {};
                 window.prettyConfirm(
-                    `<b style="color:#E65100;">🔥 ${s.nm}</b> 성장의 불꽃 활성화!<br><br>기준 쿠키: <b style="font-size:18px;color:#5D4037;">${s.cookie||0}🍪</b><br>기간: <b>${sd} ~ ${ed}</b> (${_days}일)<br><br><span style="font-size:13px;color:#7B5E57;">매일 다했어요 적립분을 추적합니다.<br>요청 팝업에서 일일 정산하세요.</span>`,
-                    null,
-                    {icon:'🔥', okLabel:'확인', okClass:'btn-blue', cancelLabel:''}
+                    `<b style="color:#E65100;">🔥 ${s.nm}</b> 성장의 불꽃 활성화!<br><br>시작: <b>${_it0.useDate||_todayISO}</b> · <b>${_it0.totalDays||_it0.usageDurationDays||1}일간</b><br><br><span style="font-size:13px;color:#7B5E57;">매일 요청사항에서 완료 처리하세요.</span>`,
+                    null, {icon:'🔥', okLabel:'확인', okClass:'btn-blue', cancelLabel:''}
                 );
+                return;
             } else if((action === 'done' || action === 'instant') && !window._xpBoostConfirmed) {
-                const xb = s.xpBoost || {};
-                const base = xb.lastSettledCookie != null ? xb.lastSettledCookie : (xb.baseCookie != null ? xb.baseCookie : (s.cookie||0));
-                const ceil = (xb.frozenCookie != null) ? xb.frozenCookie : (s.cookie||0);
-                const remaining = Math.max(0, ceil - base);
-                const settledSum = (xb.history||[]).reduce((a,h)=>a+(h.delta||0), 0);
-                const histRows = (xb.history||[]).length
-                    ? `<div style="font-size:11px;color:#777;margin-top:8px;text-align:left;max-height:90px;overflow-y:auto;">${(xb.history||[]).map(h=>`<div>• ${h.date} : +${h.delta}🍪</div>`).join('')}</div>`
-                    : '';
+                // 정산 확인 팝업
+                const xbBase = inv[ks[0]]?.baseCookie ?? (s.cookie || 0);
+                const xbDelta = Math.max(0, (s.cookie || 0) - xbBase);
+                const xbDayOf = inv[ks[0]]?.currentDay || '';
+                const xbTotal = inv[ks[0]]?.totalDays || '';
+                const dayLabel = xbDayOf ? `${xbDayOf}/${xbTotal}일차 · ` : '';
                 window.prettyConfirm(
-                    `<div style="font-size:13px;color:#7B5E57;margin-bottom:6px;">🔥 성장의 불꽃 최종 완료</div>
-                     <div style="font-size:17px;color:#3E2723;font-weight:bold;margin-bottom:14px;">${s.nm} 학생</div>
-                     <div style="background:white;border:2px dashed #FFB74D;border-radius:14px;padding:14px 10px;margin-bottom:14px;">
-                        <div style="font-size:12px;color:#888;margin-bottom:4px;">정산 이력 합계 / 미정산 잔여</div>
-                        <div style="font-size:16px;color:#5D4037;line-height:1.4;">이력: <b>${settledSum}🍪</b></div>
-                        <div style="font-size:28px;font-weight:bold;color:#E65100;line-height:1.2;margin-top:4px;">미정산 +${remaining}🍪</div>
-                        ${histRows}
-                     </div>
-                     <div style="font-size:14px;color:#4E342E;line-height:1.5;">다했어요에서 미정산 <b style="color:#E65100;">${remaining}🍪</b>를<br>추가 지급 후 종료할게요.</div>`,
-                    () => {
-                        window._xpBoostConfirmed = true;
-                        try { window._reqGroupAction(cd, ks, action); } finally { window._xpBoostConfirmed = false; }
-                    },
-                    {icon:'🎉', okLabel:'네, 지급할게요', okClass:'btn-blue', cancelLabel:'아직이요'}
+                    `<div style="font-size:13px;color:#7B5E57;margin-bottom:6px;">🔥 성장의 불꽃 정산</div>
+                     <div style="font-size:17px;color:#3E2723;font-weight:bold;margin-bottom:12px;">${s.nm} 학생</div>
+                     <div style="background:white;border:2px dashed #FFB74D;border-radius:14px;padding:12px 10px;">
+                        <div style="font-size:12px;color:#888;margin-bottom:4px;">${dayLabel}${_todayISO}</div>
+                        <div style="font-size:28px;font-weight:bold;color:${xbDelta>0?'#E65100':'#BDBDBD'};line-height:1.2;">${xbDelta>0?'+'+xbDelta+'🍪':'아직 0🍪'}</div>
+                     </div>`,
+                    () => { window._xpBoostConfirmed=true; try{window._reqGroupAction(cd,ks,action);}finally{window._xpBoostConfirmed=false;} },
+                    {icon:'🔥', okLabel:'정산 완료', okClass:'btn-blue', cancelLabel:'취소'}
                 );
                 return;
             } else if(action === 'done' || action === 'instant') {
+                // 정산 실행 — currentDay 증가, 마지막 날이면 완료
+                sorted.forEach(k => {
+                    const it = inv[k]; if(!it) return;
+                    const nextDay = (it.currentDay || 1) + 1;
+                    if(nextDay > (it.totalDays || 1)) {
+                        // 마지막 일차 완료
+                        it.reqDone = true; it.st = it.st === 'shop_req' ? 'active' : 'used';
+                        delete it.currentDay; delete it.totalDays; delete it.baseCookie; delete it.useDate;
+                    } else {
+                        // 다음 일차 준비
+                        const _dn = new Date((it.useDate || _todayISO) + 'T12:00:00');
+                        _dn.setDate(_dn.getDate() + 1);
+                        it.useDate = _dn.toLocaleDateString('sv-SE');
+                        it.currentDay = nextDay;
+                        it.baseCookie = s.cookie || 0;
+                    }
+                });
                 delete s.xpBoost;
+                s.inv = inv; db.stu = stuList; sv();
+                window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
+                _renderReqDate(); rAs(); updateMenuBadges();
+                if(typeof _syncRequestViews==='function') _syncRequestViews();
+                if(typeof rBg==='function') rBg();
+                return;
             } else if(action === 'rej') {
+                // 반려: req 필드 + currentDay 관련 삭제 — usageDurationDays는 그대로 (N일권 자동 복원)
+                sorted.forEach(k => {
+                    const it = inv[k]; if(!it) return;
+                    it.st = 'active';
+                    delete it.reqApproved; delete it.reqDone;
+                    delete it.useDate; delete it.useEndDate;
+                    delete it.currentDay; delete it.totalDays; delete it.baseCookie;
+                });
                 delete s.xpBoost;
+                s.inv = inv; db.stu = stuList; sv();
+                window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
+                _renderReqDate(); rAs(); updateMenuBadges();
+                if(typeof _syncRequestViews==='function') _syncRequestViews();
+                if(typeof rBg==='function') rBg();
+                return;
             }
         }
         sorted.forEach(k => {
@@ -7739,6 +8425,7 @@ let _renderLock = false; // 재진입 방지
             else if(action === 'del') { inv.splice(k,1); }
         });
         s.inv = inv; db.stu = stuList; sv();
+        window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
         _renderReqDate(); rAs(); updateMenuBadges();
         if(typeof _syncRequestViews==='function') _syncRequestViews();
         if(typeof rBg==='function') rBg();
@@ -7812,6 +8499,10 @@ let _renderLock = false; // 재진입 방지
 
     window._showReqMiniPopup = function() {
         document.getElementById('_reqMiniPopup')?.remove();
+        window._showReqMiniPopupInternal();
+    };
+    window._showReqMiniPopupInternal = function() {
+        document.getElementById('_reqMiniPopup')?.remove();
         const popup = document.createElement('div');
         popup.id = '_reqMiniPopup';
         popup.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9990;display:flex;align-items:center;justify-content:center;';
@@ -7829,7 +8520,9 @@ let _renderLock = false; // 재진입 방지
                 const isPending = it.st==='req' || it.st==='shop_req';
                 if(!isPending) return;
                 const gk = s.cd+'|'+_groupKey(it);
-                const target = it.reqApproved ? (it.useDate===_today ? apprMap : null) : reqMap;
+                // 성장의 불꽃 N일권: 오늘 이전 미정산도 표시 (과거 날짜 미정산 허용)
+                const _xpbCurrent = it.currentDay && it.reqApproved && it.useDate && it.useDate <= _today;
+                const target = it.reqApproved ? (it.useDate===_today || _xpbCurrent ? apprMap : null) : reqMap;
                 if(!target) return;
                 if(!target.has(gk)) target.set(gk, {s, it:{...it}, ks:[], cd:s.cd});
                 target.get(gk).ks.push(k);
@@ -7854,6 +8547,7 @@ let _renderLock = false; // 재진입 방지
             const imgHtml = imgSrc&&(imgSrc.startsWith('http')||imgSrc.startsWith('data:')) ? `<img src="${imgSrc}" style="width:32px;height:32px;object-fit:contain;flex-shrink:0;">` : `<div style="font-size:24px;flex-shrink:0;">${imgSrc||'🎁'}</div>`;
             const ksJ = JSON.stringify(ks);
             const cntBadge = count>1 ? `<span style="background:#E65100;color:white;border-radius:8px;padding:1px 6px;font-size:10px;margin-left:4px;">×${count}</span>` : '';
+            const dayBadge = it.currentDay && it.totalDays ? `<span style="background:#FF7043;color:white;border-radius:8px;padding:1px 5px;font-size:10px;margin-left:4px;">🔥 ${it.currentDay}/${it.totalDays}일차</span>` : '';
             const btns = isApproved
                 ? `<button onclick='window._reqGroupAction("${cd}",${ksJ},"done");window._showReqMiniPopup();' style="font-size:10px;padding:2px 8px;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:5px;cursor:pointer;color:#2E7D32;font-weight:bold;">✔ 완료</button>
                    <button onclick='window._reqGroupAction("${cd}",${ksJ},"rej");window._showReqMiniPopup();' style="font-size:10px;padding:2px 8px;background:#FFF3E0;border:1px solid #FFCC80;border-radius:5px;cursor:pointer;color:#E65100;font-weight:bold;">🔙 반려</button>`
@@ -7865,7 +8559,7 @@ let _renderLock = false; // 재진입 방지
                 <div class="mpx" onclick='window._reqGroupDel("${cd}",${ksJ})' style="display:none;position:absolute;top:4px;right:4px;width:16px;height:16px;border-radius:50%;background:rgba(229,57,53,0.85);color:white;font-size:10px;align-items:center;justify-content:center;cursor:pointer;">✕</div>
                 ${imgHtml}
                 <div style="flex:1;min-width:0;">
-                    <div style="font-size:12px;font-weight:bold;color:#3E2723;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.n}${cntBadge}</div>
+                    <div style="font-size:12px;font-weight:bold;color:#3E2723;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.n}${dayBadge}${cntBadge}</div>
                     <div style="font-size:11px;color:#777;">${s.nm} ${it.useDate?'· '+it.useDate:''}</div>
                 </div>
                 <div style="display:flex;gap:3px;flex-shrink:0;">${btns}</div>
@@ -7904,8 +8598,30 @@ let _renderLock = false; // 재진입 방지
         let _xpStateDirty = false;
         const _activeBoosts = stuList.filter(s => s && s.xpBoost && s.xpBoost.active).map(s => {
             const xb = s.xpBoost;
-            const sd = xb.startDate || _today;
-            const ed = xb.endDate || sd;
+            // 백필 — 이전 스키마(필드 없음)는 inv 아이템이나 startTs에서 복구
+            if(!xb.startDate || !xb.endDate) {
+                const inv = Array.isArray(s.inv)?s.inv:Object.values(s.inv||{});
+                const _it = inv.find(i => i && i.n==='성장의 불꽃' && !i.reqDone) || {};
+                const tsDate = xb.startTs ? new Date(xb.startTs).toLocaleDateString('sv-SE') : _today;
+                if(!xb.startDate) xb.startDate = _it.useDate || tsDate;
+                if(!xb.endDate) {
+                    if(_it.useEndDate) {
+                        xb.endDate = _it.useEndDate;
+                    } else if(_it.usageDurationDays > 1) {
+                        // usageDurationDays로 endDate 복구
+                        const _ed = new Date(new Date(xb.startDate+'T12:00:00').getTime() + (_it.usageDurationDays-1)*86400000);
+                        xb.endDate = _ed.toLocaleDateString('sv-SE');
+                    } else {
+                        xb.endDate = xb.startDate;
+                    }
+                }
+                _xpStateDirty = true;
+            }
+            if(xb.lastSettledCookie == null) { xb.lastSettledCookie = xb.baseCookie||0; _xpStateDirty = true; }
+            if(xb.lastSettledDate == null)   { xb.lastSettledDate   = ''; _xpStateDirty = true; }
+            if(!Array.isArray(xb.history))   { xb.history = []; _xpStateDirty = true; }
+            const sd = xb.startDate;
+            const ed = xb.endDate;
             const expired = _today > ed;
             // 만료 후 첫 렌더 시 cookie 동결 (이후 추적 중단)
             if(expired && xb.frozenCookie == null) {
@@ -8282,18 +8998,19 @@ let _renderLock = false; // 재진입 방지
                 return rb-ra;
             });
             const ag = document.getElementById('t_ag');
-            ag.style.gridTemplateColumns = 'repeat(10,1fr)';
-            ag.style.gap = '6px';
-            ag.style.padding = '6px 4px';
+            ag.style.gridTemplateColumns = 'repeat(14,1fr)';
+            ag.style.gap = '5px';
+            ag.style.padding = '4px 0';
             let cards = '';
             stuEntries.forEach(({s, si, groups: gs}) => {
-                const avt = (typeof renderAvatar === 'function') ? renderAvatar(s.eq||{}, 90) : `<div style="font-size:54px;">👤</div>`;
-                cards += `<div class="stu-card" onclick="showStuPanel(${si})" style="aspect-ratio:unset;padding:6px 4px 5px;border-radius:12px;flex-direction:column;align-items:center;gap:3px;overflow:visible;min-width:0;">
-                    <div style="flex-shrink:0;width:100%;display:flex;justify-content:center;overflow:hidden;">${avt}</div>
-                    <div style="font-family:'Jua',sans-serif;font-size:11px;color:#3E2723;font-weight:bold;text-align:center;line-height:1.2;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.nm}</div>
+                const hasReq = gs.some(({g}) => g.hasReq);
+                const border = hasReq ? 'border:2px solid #E53935;' : 'border:1.5px solid #E0D5C5;';
+                const bg = hasReq ? 'background:#FFF3F3;' : 'background:#FFFDE7;';
+                cards += `<div onclick="window._fetchAndShowStuPanel(${si})" style="aspect-ratio:1/1;${bg}${border}border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:2px;box-sizing:border-box;overflow:hidden;">
+                    <span style="font-family:'Jua',sans-serif;font-size:11px;color:#3E2723;font-weight:bold;text-align:center;line-height:1.2;word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${s.nm}</span>
                 </div>`;
             });
-            ag.innerHTML = stuEntries.length ? cards : '<div style="text-align:center;color:#999;padding:30px;">표시할 항목 없음</div>';
+            ag.innerHTML = stuEntries.length ? cards : '<div style="grid-column:1/-1;text-align:center;color:#999;padding:30px;">표시할 항목 없음</div>';
             // 열려있는 모든 패널 그리드 업데이트 (깜빡임 방지) — 안전 try/catch
             try {
                 if(window._stuPanelStates && window._stuPanelStates.size > 0) {
@@ -8523,6 +9240,8 @@ window.appU = function(y, si, k) {
             }
         });
         db.stu = stuList; sv();
+        // 처리된 학생들 reqCnt 즉시 갱신
+        allTargets.slice(0, qty).forEach(x => window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, stuList[x.si]?.cd));
         hideCompleted = false;
         const btnH = document.getElementById('btnHide');
         if(btnH) btnH.innerText = '🙈 숨기기';
@@ -8567,7 +9286,11 @@ window.appU = function(y, si, k) {
             const s = stuList[d.si];
             if(s && s.inv) s.inv.splice(d.k, 1);
         });
-        db.stu = stuList; sv(); _syncRequestViews();
+        db.stu = stuList; sv();
+        // 처리된 학생들 reqCnt 즉시 갱신
+        const _affectedCds = [...new Set(targets.map(x => stuList[x.si]?.cd).filter(Boolean))];
+        _affectedCds.forEach(c => window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, c));
+        _syncRequestViews();
     };
 
     window.resGrp = function(idx) {
@@ -8854,6 +9577,8 @@ window.appU = function(y, si, k) {
         const coins = items.filter(x=>x.type==='coin');
         const multiQtyRow = hasItm ? `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="font-size:13px;color:#5D4037;white-space:nowrap;">아이템 개수:</span><input id="givStuQty" type="number" min="1" value="1" style="width:70px;text-align:center;font-size:15px;font-weight:bold;border:1.5px solid #FFB300;border-radius:8px;padding:3px 6px;font-family:'Jua';"></div>` : '';
         const coinQtyRows = coins.map(c => `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;"><span style="font-size:13px;color:#5D4037;white-space:nowrap;min-width:74px;">${coinNames[c.idx]||c.idx}:</span><input data-coin-qty="${c.idx}" type="number" min="1" value="1" style="width:70px;text-align:center;font-size:15px;font-weight:bold;border:1.5px solid #FFB300;border-radius:8px;padding:3px 6px;font-family:'Jua';"></div>`).join('');
+        const hasTit = items.some(x=>x.type==='tit');
+        const forceRegrantRow = hasTit ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5D4037;margin-top:8px;padding:6px 8px;background:#FFF3E0;border-radius:6px;border:1px dashed #FFB74D;"><input type="checkbox" id="forceRegrantTit" style="width:15px;height:15px;flex-shrink:0;"><span>이미 보유한 학생에게도 재지급 (보상 중복 가산)</span></label>` : '';
         document.body.insertAdjacentHTML('beforeend', `<div id="givStuPop" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border:2px solid #FFB300;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.25);z-index:9999;width:320px;max-height:490px;display:flex;flex-direction:column;overflow:hidden;">
             <div style="padding:12px 14px;background:#FFFDE7;border-bottom:1px solid #EEE;border-radius:14px 14px 0 0;">
                 <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:4px;">🎁 ${items.length}개 아이템 지급</div>
@@ -8865,6 +9590,14 @@ window.appU = function(y, si, k) {
                 </div>
                 ${multiQtyRow}
                 ${coinQtyRows}
+                ${forceRegrantRow}
+                <div style="margin-top:10px;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5D4037;margin-bottom:4px;cursor:pointer;">
+                        <input type="checkbox" id="givStuMsgOn" style="width:15px;height:15px;flex-shrink:0;" onchange="document.getElementById('givStuMsgBox').style.display=this.checked?'block':'none';">
+                        <span>✉️ 교사 메시지 함께 보내기 <span style="color:#aaa;font-weight:normal;">(선택)</span></span>
+                    </label>
+                    <textarea id="givStuMsgBox" rows="2" maxlength="200" placeholder="학생에게 전달할 메시지를 입력하세요..." style="display:none;width:100%;box-sizing:border-box;font-family:'Jua';font-size:13px;resize:none;border:1.5px solid #FFB300;border-radius:8px;padding:6px 8px;margin-top:2px;"></textarea>
+                </div>
                 <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     <div style="padding:8px 10px;background:#E1F5FE;border-radius:8px;border:1px dashed #4FC3F7;">
                         <div style="font-size:12px;color:#01579B;font-weight:bold;margin-bottom:6px;">📆 N일권</div>
@@ -8916,6 +9649,29 @@ window.appU = function(y, si, k) {
         const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         const items = [..._givSel.values()];
         const multiQty = Math.max(1, parseInt(document.getElementById('givStuQty')?.value||'1')||1);
+        // 칭호 재지급 차단 — 기본은 보유자 스킵, 체크 시에만 중복 가산 허용
+        const _forceRegrantTit = !!document.getElementById('forceRegrantTit')?.checked;
+        const titItems = items.filter(x => x.type==='tit');
+        if(titItems.length && !_forceRegrantTit) {
+            const dupStus = [];
+            checked.forEach(si => {
+                const s = stuArr[si]; if(!s) return;
+                const earned = Array.isArray(s.earnedTit) ? s.earnedTit : Object.values(s.earnedTit||{});
+                titItems.forEach(({idx}) => {
+                    const t = (db.tit||[])[idx]; if(!t) return;
+                    if(earned.includes(t.id)) {
+                        const _d=document.createElement('div'); _d.innerHTML=t.name||'';
+                        const _nm = (_d.textContent||_d.innerText||'').trim()||t.name||'';
+                        dupStus.push(`${s.nm}(${_nm})`);
+                    }
+                });
+            });
+            if(dupStus.length) {
+                const preview = dupStus.slice(0,5).join(', ') + (dupStus.length>5?` 외 ${dupStus.length-5}건`:'');
+                const ok = confirm(`⚠️ 이미 같은 칭호를 보유한 ${dupStus.length}건이 있습니다.\n${preview}\n\n그대로 진행하면 해당 학생은 보유 칭호를 스킵하고, 신규 학생만 지급됩니다.\n계속할까요?\n\n(취소하고 '재지급 허용' 체크 시 중복 가산됩니다)`);
+                if(!ok) return;
+            }
+        }
         // 화폐 개별 수량
         const coinQty = {};
         pop.querySelectorAll('input[data-coin-qty]').forEach(el => {
@@ -8958,9 +9714,11 @@ window.appU = function(y, si, k) {
         let expireAt = null;
         const expSel = document.getElementById('givStuExpiry')?.value || '';
         if(expSel) {
+            // 캘린더 일수 기준 만료: 오늘 포함 N일 → (N-1)일 후 23:59:59
+            const _endOfDay = d => { const t = new Date(); t.setDate(t.getDate() + d - 1); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 23, 59, 59, 999).getTime(); };
             if(expSel === 'days') {
                 const d = Math.max(1, parseInt(document.getElementById('givStuExpiryDays')?.value||'7')||7);
-                expireAt = Date.now() + d * 86400000;
+                expireAt = _endOfDay(d);
             } else if(expSel === 'date') {
                 const ds = document.getElementById('givStuExpiryDate')?.value;
                 if(ds) {
@@ -8969,7 +9727,7 @@ window.appU = function(y, si, k) {
                 }
             } else {
                 const d = parseInt(expSel)||0;
-                if(d > 0) expireAt = Date.now() + d * 86400000;
+                if(d > 0) expireAt = _endOfDay(d);
             }
             if(expireAt && expireAt <= Date.now()) expireAt = null;
         }
@@ -9041,9 +9799,11 @@ window.appU = function(y, si, k) {
                 } else if(type==='tit'){
                     const t=(db.tit||[])[idx]; if(!t) return;
                     if(!s.earnedTit) s.earnedTit=[];
-                    if(!s.earnedTit.includes(t.id)) s.earnedTit.push(t.id);
+                    const _alreadyOwn = s.earnedTit.includes(t.id);
+                    if(_alreadyOwn && !_forceRegrantTit) return; // 🛑 보유자 스킵 (보상·titNotify·earnedTit 모두 변경 없음)
+                    if(!_alreadyOwn) s.earnedTit.push(t.id);
                     if(expireAt) { if(!s.titExpire) s.titExpire={}; s.titExpire[t.id] = expireAt; }
-                    // 칭호 지급 시 화폐 보상 — 재발급에도 매번 지급
+                    // 칭호 지급 시 화폐 보상 — 재발급(force) 시에만 중복 가산
                     if(t.rewardCoinType && t.rewardCoinAmt) {
                         const ct = t.rewardCoinType, amt = t.rewardCoinAmt;
                         s[ct] = (s[ct]||0) + amt;
@@ -9065,6 +9825,26 @@ window.appU = function(y, si, k) {
                 }
             });
         });
+        // 교사 메시지 — 체크된 경우 각 학생에게 push
+        const _msgOn = !!document.getElementById('givStuMsgOn')?.checked;
+        const _msgTxt = (document.getElementById('givStuMsgBox')?.value || '').trim();
+        if(_msgOn && _msgTxt) {
+            const _coinEmoji = { cookie:'🍪', co:'🍯', cn:'🍭', tk:'🧺' };
+            const _coinNames2 = { cookie:'쿠키', co:'꿀', cn:'캔디', tk:'바구니' };
+            const _msgItems = items.map(({type,idx}) => {
+                if(type==='coin') return { name: _coinNames2[idx]||'화폐', emoji: _coinEmoji[idx]||'💰' };
+                if(type==='itm'){ const _l=Array.isArray(db.itm)?db.itm:Object.values(db.itm||{}); const _it=_l[idx]; return { name:_it?.n||'', img:_it?.i||'', emoji:_it?.i||'🎁' }; }
+                if(type==='avt'){ const _a=(db.avt||[])[idx]; return { name:_a?.nm||'', img:_a?.img||'' }; }
+                if(type==='bdg'){ const _b=(db.bdg||[])[idx]; return { name:_b?.name||'', img:_b?.img||'', emoji:_b?.icon||'📛' }; }
+                if(type==='tit'){ const _t=(db.tit||[])[idx]; const _d=document.createElement('div'); _d.innerHTML=_t?.name||''; return { name:(_d.textContent||_d.innerText||'').trim(), img:_t?.img||'', emoji:'🏆' }; }
+                return null;
+            }).filter(Boolean).filter(x=>x.name);
+            checked.forEach(si => {
+                const s = stuArr[si]; if(!s) return;
+                if(!Array.isArray(s.tchrMsg)) s.tchrMsg = [];
+                s.tchrMsg.push({ msg: _msgTxt, items: _msgItems, ts: Date.now() });
+            });
+        }
         sv(); rAs(); rColT();
         // 지급 기록 (각 아이템별로)
         try {
@@ -9174,7 +9954,7 @@ window.appU = function(y, si, k) {
             return `giv-item-card" data-gtype="${type}" data-gidx="${idx}" style="background:${sel?'#FFF8E1':'white'};border:2px solid ${sel?'#FF9F43':'#E0E0E0'};border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:0.15s;outline:${sel?'2px solid #FF9F43':'none'};`;
         };
 
-        itmGrid.innerHTML = (db.itm||[]).map((it,i)=>`
+        itmGrid.innerHTML = (db.itm||[]).filter(it=>it&&it.n!=='바구니'&&it.n!=='누구나 바구니').map((it,i)=>`
             <div class="${_givCardStyle('itm',i)}">
                 <div style="font-size:28px;line-height:1.2;">${(it.i&&(it.i.startsWith('http')||it.i.startsWith('data:')))?`<img src="${it.i}" style="width:40px;height:40px;object-fit:contain;" onerror="this.style.display='none'">`:(it.i||'🎁')}</div>
                 <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-top:4px;word-break:keep-all;line-height:1.3;">${it.n}</div>
@@ -9256,6 +10036,7 @@ window.appU = function(y, si, k) {
             </label>`).join('') || '<div style="color:#aaa;padding:10px;font-size:13px;">학생 없음</div>';
 
         const qtyRow = type==='itm' ? `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="font-size:13px;color:#5D4037;white-space:nowrap;">개수:</span><input id="givStuQty" type="number" min="1" value="1" style="width:70px;text-align:center;font-size:15px;font-weight:bold;border:1.5px solid #FFB300;border-radius:8px;padding:3px 6px;font-family:'Jua';"></div>` : '';
+        const forceRegrantRow = type==='tit' ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5D4037;margin-top:8px;padding:6px 8px;background:#FFF3E0;border-radius:6px;border:1px dashed #FFB74D;"><input type="checkbox" id="forceRegrantTit" style="width:15px;height:15px;flex-shrink:0;"><span>이미 보유한 학생에게도 재지급 (보상 중복 가산)</span></label>` : '';
         document.body.insertAdjacentHTML('beforeend', `<div id="givStuPop" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border:2px solid #FFB300;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.25);z-index:9999;width:300px;max-height:480px;display:flex;flex-direction:column;overflow:hidden;">
             <div style="padding:12px 14px;background:#FFFDE7;border-bottom:1px solid #EEE;border-radius:14px 14px 0 0;">
                 <div style="font-size:15px;font-weight:bold;color:#5D4037;margin-bottom:8px;">${itemLabel} 지급</div>
@@ -9265,6 +10046,7 @@ window.appU = function(y, si, k) {
                     <button style="background:none;border:none;font-size:22px;cursor:pointer;color:#aaa;padding:0 4px;line-height:1;" onclick="document.getElementById('givStuPop')?.remove();document.getElementById('givStuPopBg')?.remove();">✕</button>
                 </div>
                 ${qtyRow}
+                ${forceRegrantRow}
             </div>
             <div style="overflow-y:auto;flex:1;padding:4px 0;">${stuHtml}</div>
             <div style="padding:10px 14px;border-top:1px solid #EEE;">
@@ -9285,6 +10067,22 @@ window.appU = function(y, si, k) {
         if(checked.length===0) return alert('학생을 선택해주세요.');
 
         const givQty = Math.max(1, parseInt(document.getElementById('givStuQty')?.value||'1')||1);
+        const _forceRegrantTit = !!document.getElementById('forceRegrantTit')?.checked;
+        // 칭호 지급 시 보유자 사전 경고
+        if(type==='tit' && !_forceRegrantTit) {
+            const t = (db.tit||[])[idx];
+            const dupStus = [];
+            if(t) checked.forEach(si => {
+                const s = db.stu[si]; if(!s) return;
+                const earned = Array.isArray(s.earnedTit) ? s.earnedTit : Object.values(s.earnedTit||{});
+                if(earned.includes(t.id)) dupStus.push(s.nm);
+            });
+            if(dupStus.length) {
+                const preview = dupStus.slice(0,5).join(', ') + (dupStus.length>5?` 외 ${dupStus.length-5}건`:'');
+                const ok = confirm(`⚠️ 이미 같은 칭호를 보유한 학생 ${dupStus.length}명이 있습니다.\n${preview}\n\n그대로 진행하면 보유 학생은 스킵되고 신규 학생만 지급됩니다.\n계속할까요?\n\n(취소하고 '재지급 허용' 체크 시 중복 가산됩니다)`);
+                if(!ok) return;
+            }
+        }
         checked.forEach(si=>{
             const s = db.stu[si]; if(!s) return;
             if(type==='itm'){
@@ -9325,7 +10123,9 @@ window.appU = function(y, si, k) {
             } else if(type==='tit'){
                 const t = (db.tit||[])[idx]; if(!t) return;
                 if(!s.earnedTit) s.earnedTit=[];
-                if(!s.earnedTit.includes(t.id)) s.earnedTit.push(t.id);
+                const _alreadyOwn = s.earnedTit.includes(t.id);
+                if(_alreadyOwn && !_forceRegrantTit) return; // 🛑 보유자 스킵
+                if(!_alreadyOwn) s.earnedTit.push(t.id);
                 if(t.rewardCoinType && t.rewardCoinAmt) {
                     const ct = t.rewardCoinType, amt = t.rewardCoinAmt;
                     s[ct] = (s[ct]||0) + amt;
@@ -9798,11 +10598,24 @@ window.appU = function(y, si, k) {
         _renderColOpenUI();
     }
 
+    window._saveVoucherBasket = function() {
+        if(!db.cfg) db.cfg = {};
+        const en = document.getElementById('voucherBasketEnabled')?.checked || false;
+        const amt = Math.max(1, parseInt(document.getElementById('voucherBasketAmt')?.value)||2);
+        db.cfg.voucherBasket = { enabled: en, amount: amt };
+        sv();
+    };
+
     function rVoucherPoolList() {
         const el = document.getElementById('voucher_pool_list');
         if(!el) return;
         if(!db.cfg) db.cfg = {};
         const pool = Array.isArray(db.cfg.voucherCoupons) ? db.cfg.voucherCoupons : (db.cfg.voucherCoupons = []);
+        const vb = db.cfg.voucherBasket || {};
+        const enEl = document.getElementById('voucherBasketEnabled');
+        const amtEl = document.getElementById('voucherBasketAmt');
+        if(enEl) enEl.checked = !!vb.enabled;
+        if(amtEl) amtEl.value = vb.amount || 2;
         const itmList = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
         const chips = pool.map(nm => {
             const it = itmList.find(x => x && x.n === nm);
@@ -10045,19 +10858,28 @@ window.appU = function(y, si, k) {
                     <label>🔒 봉인 해제 조건 <span style="font-weight:normal;color:#aaa;font-size:12px;">(N개를 모아야 사용 요청 가능)</span></label>
                     <input id="m_collectCount" type="number" min="0" placeholder="0 = 일반 아이템" value="${it.collectCount||0}" style="margin-bottom:10px;">
                     <label>🔄 교환 가능 아이템 <span style="font-weight:normal;color:#aaa;font-size:12px;">(체크한 아이템 중 학생이 선택해 즉시 교환)</span></label>
-                    <div id="m_swapWithBox" style="max-height:140px;overflow-y:auto;border:2px dashed #FFCC80;border-radius:10px;padding:8px;margin-bottom:10px;background:#FFFDE7;">
+                    <div id="m_swapWithBox" style="max-height:140px;overflow-y:auto;border:2px dashed #FFCC80;border-radius:10px;padding:8px;margin-bottom:6px;background:#FFFDE7;">
                       ${(Array.isArray(db.itm)?db.itm:Object.values(db.itm||{})).filter(o=>o&&o.n&&o.n!==it.n&&!o.special).map(o=>{
                         const checked=Array.isArray(it.swapWith)&&it.swapWith.includes(o.n)?'checked':'';
                         const safe=o.n.replace(/"/g,'&quot;');
                         return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:3px 4px;cursor:pointer;"><input type="checkbox" class="m_swapChk" value="${safe}" ${checked} style="width:auto;margin:0;">${o.i||''} ${o.n}</label>`;
                       }).join('')||'<div style="color:#aaa;font-size:12px;padding:6px;">등록된 다른 아이템이 없어요</div>'}
                     </div>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 2px;margin-bottom:10px;cursor:pointer;">
+                        <input type="checkbox" id="m_swapBasketEnabled" ${it.swapWithBasket?'checked':''} style="width:auto;margin:0;" onchange="document.getElementById('m_swapBasketAmtRow').style.display=this.checked?'flex':'none'">
+                        🧺 누구나 바구니로 교환 가능
+                        <span id="m_swapBasketAmtRow" style="display:${it.swapWithBasket?'flex':'none'};align-items:center;gap:4px;">
+                            <input type="number" id="m_swapBasketAmt" min="1" max="99" value="${it.swapWithBasket||2}" style="width:50px;padding:2px 6px;font-size:13px;border:1.5px solid #FFCC80;border-radius:6px;text-align:center;">
+                            개
+                        </span>
+                    </label>
                     <label>💰 화폐 지급 아이템 <span style="font-weight:normal;color:#aaa;font-size:12px;">(승인 시 학생에게 화폐 직접 지급)</span></label>
                     <select id="m_coinType" style="margin-bottom:6px;" onchange="document.getElementById('m_coinAmtRow').style.display=this.value?'':'none'">
                         <option value="" ${!it.coinType?'selected':''}>일반 아이템</option>
-                        <option value="c" ${it.coinType==='c'?'selected':''}>🍪 쿠키</option>
-                        <option value="cn" ${it.coinType==='cn'?'selected':''}>🍯 꿀</option>
-                        <option value="cd" ${it.coinType==='cd'?'selected':''}>🍭 캔디</option>
+                        <option value="kc" ${it.coinType==='kc'?'selected':''}>🍪 쿠키</option>
+                        <option value="co" ${it.coinType==='co'?'selected':''}>🍯 꿀</option>
+                        <option value="cn" ${it.coinType==='cn'?'selected':''}>🍭 캔디</option>
+                        <option value="tk" ${it.coinType==='tk'?'selected':''}>🧺 바구니</option>
                     </select>
                     <div id="m_coinAmtRow" style="display:${it.coinType?'':'none'};margin-bottom:10px;">
                         <label style="font-size:12px;">지급 수량</label>
@@ -10104,6 +10926,9 @@ window.appU = function(y, si, k) {
         if(defaultGive) item.defaultGive = true;
         const swapWith = Array.from(document.querySelectorAll('.m_swapChk:checked')).map(c=>c.value);
         if(swapWith.length) item.swapWith = swapWith;
+        const swapBasketEnabled = document.getElementById('m_swapBasketEnabled')?.checked || false;
+        const swapBasketAmt = Math.max(1, parseInt(document.getElementById('m_swapBasketAmt')?.value||2)||2);
+        if(swapBasketEnabled) item.swapWithBasket = swapBasketAmt;
         // 편집 시 기존 special 등 시스템 필드 보존
         if(editIdx>=0 && db.itm[editIdx]) {
             const old = db.itm[editIdx];
@@ -10523,7 +11348,20 @@ window.appU = function(y, si, k) {
         const state = { giveName: null, getName: null };
         document.getElementById('voucherExchangeModal')?.remove();
 
+        const _vbCfg = db.cfg?.voucherBasket || {};
+        const _vbEnabled = !!_vbCfg.enabled;
+        const _vbAmt = Math.max(1, parseInt(_vbCfg.amount)||2);
+
         const _render = () => {
+            const _myTk = Number(me.tk)||0;
+            const _giveBasketChosen = state.giveName === '__basket2__';
+            const _giveBasketDim = _myTk < _vbAmt;
+            const giveBasketCard = _vbEnabled ? `<div data-vex-give="__basket2__" style="border:2px solid ${_giveBasketChosen?'#FF6F00':_giveBasketDim?'#EEE':'#FFB74D'};border-radius:12px;padding:8px 6px;text-align:center;cursor:${_giveBasketDim?'not-allowed':'pointer'};background:${_giveBasketChosen?'#FFF3E0':'white'};opacity:${_giveBasketDim?0.35:1};transition:0.12s;position:relative;">
+                <div style="font-size:28px;pointer-events:none;">🧺</div>
+                <div style="font-size:11px;color:#5D4037;margin-top:3px;word-break:keep-all;line-height:1.2;pointer-events:none;">누구나 바구니 ×${_vbAmt}</div>
+                <div style="font-size:10px;color:${_myTk>=_vbAmt?'#FF8F00':'#aaa'};font-weight:bold;margin-top:2px;pointer-events:none;">보유 ${_myTk}</div>
+                ${_giveBasketChosen?'<div style="position:absolute;top:2px;right:5px;font-size:11px;color:#FF6F00;font-weight:bold;pointer-events:none;">✓</div>':''}
+            </div>` : '';
             const giveCards = poolItems.map(it => {
                 const own = (myOwnedCounts[it.n]||[]).length;
                 const dim = own === 0;
@@ -10537,7 +11375,16 @@ window.appU = function(y, si, k) {
                     <div style="font-size:10px;color:${own>0?'#FF8F00':'#aaa'};font-weight:bold;margin-top:2px;pointer-events:none;">보유 ${own}</div>
                     ${chosen?'<div style="position:absolute;top:2px;right:5px;font-size:11px;color:#FF6F00;font-weight:bold;pointer-events:none;">✓</div>':''}
                 </div>`;
-            }).join('') || '<div style="color:#aaa;font-size:12px;padding:14px;text-align:center;grid-column:1/-1;">교환권 쿠폰 풀이 비어 있어요.</div>';
+            }).join('');
+            const giveCardsHtml = giveBasketCard + giveCards || '<div style="color:#aaa;font-size:12px;padding:14px;text-align:center;grid-column:1/-1;">교환권 쿠폰 풀이 비어 있어요.</div>';
+            const _basketChosen = state.getName === '__basket2__';
+            const _getBasketIsSelf = state.giveName === '__basket2__';
+            const basketCard = _vbEnabled ? `<div data-vex-get="__basket2__" style="border:2px solid ${_basketChosen?'#1976D2':_getBasketIsSelf?'#FFCDD2':'#90CAF9'};border-radius:12px;padding:8px 6px;text-align:center;cursor:${_getBasketIsSelf?'not-allowed':'pointer'};background:${_basketChosen?'#E3F2FD':_getBasketIsSelf?'#FFEBEE':'white'};opacity:${_getBasketIsSelf?0.4:1};transition:0.12s;position:relative;">
+                <div style="font-size:28px;pointer-events:none;">🧺</div>
+                <div style="font-size:11px;color:#5D4037;margin-top:3px;word-break:keep-all;line-height:1.2;pointer-events:none;">누구나 바구니 ×${_vbAmt}</div>
+                ${_getBasketIsSelf?'<div style="font-size:9px;color:#E64A19;margin-top:2px;pointer-events:none;">같은 항목</div>':''}
+                ${_basketChosen?'<div style="position:absolute;top:2px;right:5px;font-size:11px;color:#1976D2;font-weight:bold;pointer-events:none;">✓</div>':''}
+            </div>` : '';
             const getCards = poolItems.map(it => {
                 const isSelf = state.giveName === it.n;
                 const chosen = state.getName === it.n;
@@ -10550,7 +11397,8 @@ window.appU = function(y, si, k) {
                     ${isSelf?'<div style="font-size:9px;color:#E64A19;margin-top:2px;pointer-events:none;">같은 쿠폰</div>':''}
                     ${chosen?'<div style="position:absolute;top:2px;right:5px;font-size:11px;color:#1976D2;font-weight:bold;pointer-events:none;">✓</div>':''}
                 </div>`;
-            }).join('') || '<div style="color:#aaa;font-size:12px;padding:14px;text-align:center;grid-column:1/-1;">교환권 쿠폰 풀이 비어 있어요.</div>';
+            }).join('');
+            const getCardsHtml = basketCard + getCards || '<div style="color:#aaa;font-size:12px;padding:14px;text-align:center;grid-column:1/-1;">교환권 쿠폰 풀이 비어 있어요.</div>';
             const ready = !!state.giveName && !!state.getName && state.giveName !== state.getName;
             const summary = state.giveName && state.getName
                 ? `<span style="color:#5D4037;">[${state.giveName}] + 🎟️ → <b style="color:#1976D2;">[${state.getName}]</b></span>`
@@ -10560,12 +11408,12 @@ window.appU = function(y, si, k) {
                 <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:14px;align-items:stretch;">
                     <div style="background:#FFF8E1;border:2px solid #FFCC80;border-radius:14px;padding:12px;">
                         <div style="font-size:13px;font-weight:bold;color:#E65100;margin-bottom:8px;text-align:center;">① 내가 넣을 쿠폰</div>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;">${giveCards}</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;">${giveCardsHtml}</div>
                     </div>
                     <div style="display:flex;align-items:center;justify-content:center;color:#FF8F00;font-size:32px;font-weight:900;">▶</div>
                     <div style="background:#E3F2FD;border:2px solid #90CAF9;border-radius:14px;padding:12px;">
                         <div style="font-size:13px;font-weight:bold;color:#1565C0;margin-bottom:8px;text-align:center;">② 받을 쿠폰</div>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;">${getCards}</div>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;">${getCardsHtml}</div>
                     </div>
                 </div>
                 <div style="margin-top:14px;display:flex;gap:10px;">
@@ -10589,6 +11437,13 @@ window.appU = function(y, si, k) {
             const btn = e.target.closest('#_vexDoBtn');
             if(give) {
                 const nm = give.dataset.vexGive;
+                if(nm === '__basket2__') {
+                    if((Number(me.tk)||0) < _vbAmt) return;
+                    state.giveName = state.giveName === '__basket2__' ? null : '__basket2__';
+                    if(state.getName === '__basket2__') state.getName = null;
+                    _refresh();
+                    return;
+                }
                 const own = (myOwnedCounts[nm]||[]).length;
                 if(own === 0) return;
                 state.giveName = state.giveName === nm ? null : nm;
@@ -10605,16 +11460,93 @@ window.appU = function(y, si, k) {
             }
             if(btn && !btn.disabled) {
                 if(!state.giveName || !state.getName || state.giveName === state.getName) return;
-                const giveIdxs = myOwnedCounts[state.giveName] || [];
-                if(!giveIdxs.length) { alert('넣을 쿠폰이 없어요.'); return; }
-                const getDef = poolItems.find(x => x.n === state.getName);
-                const giveDef = poolItems.find(x => x.n === state.giveName);
-                if(!getDef || !giveDef) return;
                 const _icHtml = (it) => {
                     const ic = it.i || '🎁';
                     const isImg = ic && (String(ic).startsWith('http') || String(ic).startsWith('data:'));
                     return isImg ? `<img src="${ic}" style="width:44px;height:44px;object-fit:contain;border-radius:8px;">` : `<div style="font-size:36px;line-height:1;">${ic}</div>`;
                 };
+                // 내가 넣을 것이 바구니인 경우
+                if(state.giveName === '__basket2__') {
+                    if((Number(me.tk)||0) < _vbAmt) { alert(`누구나 바구니가 ${_vbAmt}개 이상 있어야 해요.`); return; }
+                    const getDef = poolItems.find(x => x.n === state.getName);
+                    if(!getDef) return;
+                    const msg = `<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0 6px;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;background:#FFF8E1;border:2px solid #FFCC80;border-radius:12px;padding:10px 12px;min-width:84px;">
+                            <div style="font-size:36px;line-height:1;">🧺</div>
+                            <div style="font-size:12px;color:#5D4037;font-weight:bold;">누구나 바구니 ×${_vbAmt}</div>
+                        </div>
+                        <div style="font-size:24px;color:#FF8F00;font-weight:900;">▶</div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;background:#E3F2FD;border:2px solid #90CAF9;border-radius:12px;padding:10px 12px;min-width:84px;">
+                            ${_icHtml(getDef)}
+                            <div style="font-size:12px;color:#1565C0;font-weight:bold;">${getDef.n}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:13px;color:#5D4037;margin-top:8px;">누구나 바구니 ${_vbAmt}개와 교환권 1장을 사용해 쿠폰과 교환할까요?</div>`;
+                    const _doGiveBasketExchange = () => {
+                        me.tk = (me.tk || 0) - _vbAmt;
+                        const _vCur = me.inv.find(x => x && x.special === 'voucher');
+                        if(_vCur && Array.isArray(_vCur.events) && _vCur.events.length > 0) {
+                            _vCur.events.pop();
+                            if(_vCur.events.length === 0) { const _vIdx = me.inv.indexOf(_vCur); if(_vIdx >= 0) me.inv.splice(_vIdx, 1); }
+                        }
+                        me.inv.push({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
+                        if(!me.col) me.col = [];
+                        if(!me.col.includes(getDef.n)) me.col.push(getDef.n);
+                        try { upMe(); } catch(_){}
+                        try { if(typeof rBg === 'function') rBg(); } catch(_){}
+                        document.getElementById('voucherExchangeModal')?.remove();
+                        if(typeof showToast === 'function') showToast(`✅ ${getDef.n} 1개 획득!`);
+                        else alert(`✅ ${getDef.n} 1개 획득!`);
+                    };
+                    if(typeof window.prettyConfirm === 'function') {
+                        window.prettyConfirm(msg, _doGiveBasketExchange, {icon:'⚖️', okLabel:'교환하기 ✨', okClass:'btn-org', cancelLabel:'취소'});
+                    } else if(confirm(`누구나 바구니 ${_vbAmt}개 + 교환권 → [${state.getName}] 교환할까요?`)) {
+                        _doGiveBasketExchange();
+                    }
+                    return;
+                }
+                // 내가 넣을 것이 일반 쿠폰인 경우
+                const giveIdxs = myOwnedCounts[state.giveName] || [];
+                if(!giveIdxs.length) { alert('넣을 쿠폰이 없어요.'); return; }
+                const giveDef = poolItems.find(x => x.n === state.giveName);
+                if(!giveDef) return;
+                if(state.getName === '__basket2__') {
+                    const msg = `<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0 6px;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;background:#FFF8E1;border:2px solid #FFCC80;border-radius:12px;padding:10px 12px;min-width:84px;">
+                            ${_icHtml(giveDef)}
+                            <div style="font-size:12px;color:#5D4037;font-weight:bold;">${giveDef.n}</div>
+                        </div>
+                        <div style="font-size:24px;color:#FF8F00;font-weight:900;">▶</div>
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;background:#E3F2FD;border:2px solid #90CAF9;border-radius:12px;padding:10px 12px;min-width:84px;">
+                            <div style="font-size:36px;line-height:1;">🧺</div>
+                            <div style="font-size:12px;color:#1565C0;font-weight:bold;">누구나 바구니 ×${_vbAmt}</div>
+                        </div>
+                    </div>
+                    <div style="font-size:13px;color:#5D4037;margin-top:8px;">교환권 1장과 위 쿠폰 1개를 사용해 누구나 바구니 ${_vbAmt}개와 교환할까요?</div>`;
+                    const _doBasketExchange = () => {
+                        const removeIdx = giveIdxs[giveIdxs.length - 1];
+                        me.inv.splice(removeIdx, 1);
+                        const _vCur = me.inv.find(x => x && x.special === 'voucher');
+                        if(_vCur && Array.isArray(_vCur.events) && _vCur.events.length > 0) {
+                            _vCur.events.pop();
+                            if(_vCur.events.length === 0) { const _vIdx = me.inv.indexOf(_vCur); if(_vIdx >= 0) me.inv.splice(_vIdx, 1); }
+                        }
+                        me.tk = (me.tk || 0) + _vbAmt;
+                        try { upMe(); } catch(_){}
+                        try { if(typeof rBg === 'function') rBg(); } catch(_){}
+                        document.getElementById('voucherExchangeModal')?.remove();
+                        if(typeof showToast === 'function') showToast(`✅ 누구나 바구니 ${_vbAmt}개 획득!`);
+                        else alert(`✅ 누구나 바구니 ${_vbAmt}개 획득!`);
+                    };
+                    if(typeof window.prettyConfirm === 'function') {
+                        window.prettyConfirm(msg, _doBasketExchange, {icon:'⚖️', okLabel:'교환하기 ✨', okClass:'btn-org', cancelLabel:'취소'});
+                    } else if(confirm(`[${state.giveName}] + 교환권 → 누구나 바구니 ${_vbAmt}개 교환할까요?`)) {
+                        _doBasketExchange();
+                    }
+                    return;
+                }
+                const getDef = poolItems.find(x => x.n === state.getName);
+                if(!getDef) return;
                 const msg = `<div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0 6px;">
                     <div style="display:flex;flex-direction:column;align-items:center;gap:4px;background:#FFF8E1;border:2px solid #FFCC80;border-radius:12px;padding:10px 12px;min-width:84px;">
                         ${_icHtml(giveDef)}
@@ -10672,10 +11604,13 @@ window.appU = function(y, si, k) {
         }
     };
 
-    // 만료 임박(≤1일) 항목 모아 학생에게 1회 안내
+    // 만료 임박(≤1일) 항목 모아 학생에게 1회 안내 (오늘 날짜 기준 localStorage로 중복 방지)
     window._alertExpiringIfNeeded = function() {
         if(!me || me.cd === 'teacher_main') return;
         if(window._expiringAlertShown) return;
+        const _today = new Date().toLocaleDateString('sv-SE');
+        const _lsKey = `_expiringAlertSeen_${me.cd}_${_today}`;
+        if(localStorage.getItem(_lsKey)) return;
         const list = [];
         // 1) inv 일반 아이템
         (me.inv||[]).forEach(it => {
@@ -10713,6 +11648,7 @@ window.appU = function(y, si, k) {
         });
         if(!list.length) return;
         window._expiringAlertShown = true;
+        localStorage.setItem(_lsKey, '1');
         const rows = list.slice(0,8).map(x => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(229,57,53,0.08);border-left:3px solid #E53935;border-radius:6px;padding:6px 10px;margin-bottom:5px;font-size:13px;text-align:left;">
             <span>${x.kind} ${x.name}</span>
             <b style="color:#E53935;font-size:12px;white-space:nowrap;">${x.days<=0?'오늘 만료':`${x.days}일 남음`}</b>
@@ -10768,15 +11704,14 @@ window.appU = function(y, si, k) {
         const _hasOwnedPets = Array.isArray(me.ownedPets) ? me.ownedPets.length > 0 : Object.keys(me.ownedPets||{}).length > 0;
         const _hasPetTab = _hasPetDefOpen || _hasOwnedPetAvt || _hasOwnedBdg || _hasOwnedPets;
         if(!_hasPetTab && bgTab === 'pet') bgTab = 'coupon';
-        const _hasTitTab = (db.tit||[]).length > 0;
         // 받은 달고나 events에 그림이 있는지 (쿠폰 탭에 함께 표시되도록 그림 선물 별도 탭은 제거)
         const _dalInv = (me.inv||[]).find(i => i && i.special === 'dalgona');
         const tabsHtml = `
             <div class="stardew-tabs">
-                <div class="sd-tab ${bgTab==='coupon'?'active':''}" onclick="setBgTab('coupon')">🎒 쿠폰</div>
+                <div class="sd-tab ${bgTab==='coupon'?'active':''}" onclick="setBgTab('coupon')">🎒 아이템</div>
                 <div class="sd-tab ${bgTab==='avt'?'active':''}" onclick="setBgTab('avt')">🎨 꾸미기</div>
+                <div class="sd-tab ${bgTab==='title'?'active':''}" onclick="setBgTab('title')">🏆 칭호</div>
                 ${_hasPetTab ? `<div class="sd-tab ${bgTab==='pet'?'active':''}" onclick="setBgTab('pet')">🐾 펫</div>` : ''}
-                ${_hasTitTab ? `<div class="sd-tab ${bgTab==='title'?'active':''}" onclick="setBgTab('title')">🏆 칭호</div>` : ''}
             </div>`;
 
         // 꾸미기 탭 — 정사각형 슬롯, 빈칸 포함
@@ -10799,7 +11734,7 @@ window.appU = function(y, si, k) {
                     ${_rb}
                 </div>`;
             }).join('');
-            const avtEmpty = Math.max(0, 18 - ownedItems.length);
+            const avtEmpty = Math.max(0, 21 - ownedItems.length);
             for(let i=0;i<avtEmpty;i++) avtHtml += `<div class="inventory-slot"></div>`;
             document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv">${avtHtml}</div>`;
             return;
@@ -10873,7 +11808,7 @@ window.appU = function(y, si, k) {
                 }).join('');
             }
             const petItemCount = ownedPets.length + ownedBadges.length;
-            const petEmptyCount = Math.max(0, 18 - petItemCount);
+            const petEmptyCount = Math.max(0, 21 - petItemCount);
             let petEmptyHtml = '';
             for(let i = 0; i < petEmptyCount; i++) {
                 petEmptyHtml += `<div class="inventory-slot"></div>`;
@@ -10900,9 +11835,12 @@ window.appU = function(y, si, k) {
                     ${_rb}
                 </div>`;
             }).join('');
-            const titEmptyCount = Math.max(0, 18 - ownedTitles.length);
-            for(let i = 0; i < titEmptyCount; i++) {
-                titHtml += `<div class="inventory-slot"></div>`;
+            if(ownedTitles.length === 0) {
+                titHtml = `<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#BCAAA4;font-size:14px;">🏆 아직 획득한 칭호가 없어요</div>`;
+                for(let i = 0; i < 21; i++) titHtml += `<div class="inventory-slot"></div>`;
+            } else {
+                const titEmptyCount = Math.max(0, 21 - ownedTitles.length);
+                for(let i = 0; i < titEmptyCount; i++) titHtml += `<div class="inventory-slot"></div>`;
             }
             document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv">${titHtml}</div>`;
             return;
@@ -10911,9 +11849,38 @@ window.appU = function(y, si, k) {
         let html = tabsHtml + `<div id="s_iv">`;
 
         if(!me.inv) me.inv = [];
+        const _NOW_BG = Date.now();
+
+        // 만료 아이템 감지 → 예쁜 안내창 후 삭제
+        const _newlyExpired = me.inv.filter(i => i && !i.special && i.expireAt && i.expireAt < _NOW_BG);
+        if(_newlyExpired.length > 0 && !window._expiredModalShownTs) {
+            window._expiredModalShownTs = _NOW_BG;
+            me.inv = me.inv.filter(i => !(i && !i.special && i.expireAt && i.expireAt < _NOW_BG));
+            if(typeof upMe === 'function') upMe();
+            const _expNames = [...new Set(_newlyExpired.map(i => i.n))];
+            const _expListHtml = _expNames.map(n => {
+                const _it = _newlyExpired.find(x => x.n === n);
+                const _ic = _it?.i ? (String(_it.i).startsWith('http')||String(_it.i).startsWith('data:') ? `<img src="${_it.i}" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;margin-right:4px;">` : `<span style="font-size:22px;vertical-align:middle;margin-right:4px;">${_it.i}</span>`) : '';
+                return `<div style="display:flex;align-items:center;background:white;border-radius:10px;padding:8px 12px;margin-bottom:6px;border:1px solid #FFCCBC;">${_ic}<span style="font-size:14px;color:#4E342E;font-weight:bold;">${n}</span></div>`;
+            }).join('');
+            const _expEl = document.createElement('div');
+            _expEl.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+            _expEl.innerHTML = `<div style="background:#FFF8E1;border-radius:20px;padding:26px 24px 20px;width:min(340px,90vw);text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.3);border:3px solid #FFCC80;">
+                <div style="font-size:44px;margin-bottom:6px;">⏰</div>
+                <div style="font-size:17px;font-weight:bold;color:#4E342E;margin-bottom:4px;">유효기간이 끝났어요</div>
+                <div style="font-size:13px;color:#8D6E63;margin-bottom:16px;">아래 아이템이 가방에서 사라졌어요.</div>
+                <div style="max-height:200px;overflow-y:auto;margin-bottom:18px;">${_expListHtml}</div>
+                <button style="background:#FF8A65;color:white;border:none;border-radius:12px;padding:10px 32px;font-size:15px;font-family:'Jua',sans-serif;cursor:pointer;" onclick="this.closest('[style*=fixed]').remove()">확인</button>
+            </div>`;
+            document.body.appendChild(_expEl);
+        }
+
         const counts = {};
         const specialItems = []; // 골든티켓·달고나 등 단일 항목 + events 로그
         me.inv.forEach((i, idx) => {
+            if(!i) return;
+            // 만료된 아이템 렌더 제외 (위에서 이미 삭제됐지만 혹시 남은 것 대비)
+            if(i.expireAt && i.expireAt < _NOW_BG) return;
             const isUsed = (i.st === 'used' || i.st === 'usd');
             if (showTrash && !isUsed) return;
             if (!showTrash && isUsed) return;
@@ -10925,9 +11892,7 @@ window.appU = function(y, si, k) {
             const isPending = (i.st === 'req' || i.st === 'shop_req');
             // 사용 요청도 같은 이름+날짜+노트끼리 묶어서 1슬롯에 N개로 표시
             // 만료일이 다르면 같은 이름이라도 별도 슬롯으로 분리 (기간제 아이템)
-            // 같은 날 만료되는 항목은 묶어 1슬롯으로 표시
             const _expK = i.expireAt ? new Date(i.expireAt).toDateString() : '';
-            // 사용기간(useEndDate)이 다르면 별도 슬롯
             const _useEndK = i.useEndDate || '';
             const key = isPending
                 ? `__req_${i.n}_${i.st}_${i.useDate||''}_${i.note||''}_${_useEndK}`
@@ -11011,24 +11976,33 @@ window.appU = function(y, si, k) {
             const _invIdx = item._invIdx;
             const _invIdxs = JSON.stringify(item._invIdxs || [_invIdx]);
             const _isApprovedAlready = !!item.reqApproved;
-            const cancelBtn = (isReq && !_isApprovedAlready) ? `<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:3px;"><button onclick="event.stopPropagation();editReq(${_invIdx})" style="background:#42A5F5;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">수정</button><button onclick='event.stopPropagation();cancelReqGroup(${_invIdxs})' style="background:#FF7043;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">취소</button></div>` : (isShopReq && !_isApprovedAlready) ? `<button onclick='event.stopPropagation();cancelShopReqGroup(${_invIdxs})' style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:#FF7043;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">취소</button>` : '';
+            const _isXpb = !!(item.currentDay && item.totalDays); // 성장의 불꽃 N일권 진행중
+            const cancelBtn = (_isXpb && !_isApprovedAlready)
+                ? `<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:3px;"><button onclick="event.stopPropagation();cancelReq('${item.n.replace(/'/g,"\\'")}')" style="background:#FF7043;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">취소</button></div>`
+                : (isReq && !_isApprovedAlready) ? `<div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:3px;"><button onclick="event.stopPropagation();editReq(${_invIdx})" style="background:#42A5F5;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">수정</button><button onclick='event.stopPropagation();cancelReqGroup(${_invIdxs})' style="background:#FF7043;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">취소</button></div>` : (isShopReq && !_isApprovedAlready) ? `<button onclick='event.stopPropagation();cancelShopReqGroup(${_invIdxs})' style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:#FF7043;color:white;border:none;border-radius:8px;padding:2px 8px;font-size:10px;font-family:'Jua';cursor:pointer;white-space:nowrap;">취소</button>` : '';
             const _ud = item.useDate ? new Date(item.useDate+'T00:00') : null;
             const isApprovedReq = (isReq || isShopReq) && !!item.reqApproved;
-            const _usageSt = window._usageState && window._usageState(item);
-            const reqTopLabel = _usageSt
-                ? `<div style="position:absolute;top:0;background:${_usageSt.color};color:white;font-size:11px;font-weight:bold;width:100%;text-align:center;border-radius:7px 7px 0 0;padding:3px 0;line-height:1.3;">${_usageSt.label}</div>`
-                : isApprovedReq
-                    ? `<div style="position:absolute;top:0;background:#388E3C;color:white;font-size:12px;font-weight:bold;width:100%;text-align:center;border-radius:7px 7px 0 0;padding:3px 0;line-height:1.3;">✅ 승인됨${_ud ? ' · '+(_ud.getMonth()+1)+'/'+_ud.getDate() : ''}</div>`
-                    : isShopReq ? '<div style="position:absolute;top:0;background:#1976D2;color:white;font-size:10px;width:100%;text-align:center;border-radius:7px 7px 0 0;">승인 대기</div>'
-                    : isReq ? '<div style="position:absolute;top:0;background:orange;color:white;font-size:10px;width:100%;text-align:center;border-radius:7px 7px 0 0;">사용요청중</div>' : '';
+            const _usageSt = (!_isXpb && window._usageState) ? window._usageState(item) : null;
+            const reqTopLabel = _isXpb
+                ? (isApprovedReq
+                    ? `<div style="position:absolute;top:0;background:#388E3C;color:white;font-size:10px;font-weight:bold;width:100%;text-align:center;border-radius:7px 7px 0 0;padding:3px 0;line-height:1.3;">✅ 승인됨 · ${item.currentDay}/${item.totalDays}일차</div>`
+                    : `<div style="position:absolute;top:0;background:#FF7043;color:white;font-size:10px;width:100%;text-align:center;border-radius:7px 7px 0 0;padding:3px 0;">🔥 신청중 · ${item.totalDays}일권</div>`)
+                : _usageSt
+                    ? `<div style="position:absolute;top:0;background:${_usageSt.color};color:white;font-size:11px;font-weight:bold;width:100%;text-align:center;border-radius:7px 7px 0 0;padding:3px 0;line-height:1.3;">${_usageSt.label}</div>`
+                    : isApprovedReq
+                        ? `<div style="position:absolute;top:0;background:#388E3C;color:white;font-size:12px;font-weight:bold;width:100%;text-align:center;border-radius:7px 7px 0 0;padding:3px 0;line-height:1.3;">✅ 승인됨${_ud ? ' · '+(_ud.getMonth()+1)+'/'+_ud.getDate() : ''}</div>`
+                        : isShopReq ? '<div style="position:absolute;top:0;background:#1976D2;color:white;font-size:10px;width:100%;text-align:center;border-radius:7px 7px 0 0;">승인 대기</div>'
+                        : isReq ? '<div style="position:absolute;top:0;background:orange;color:white;font-size:10px;width:100%;text-align:center;border-radius:7px 7px 0 0;">사용요청중</div>' : '';
 
-            // 기간제 만료 잔여 시간 badge
-            const _expRem = (typeof item.expireAt === 'number' && item.expireAt > 0)
-                ? (window._expireBadgeHtml ? window._expireBadgeHtml(item.expireAt) : '')
-                : '';
-            const _durChip = (item.usageDurationDays > 0)
-                ? `<div style="font-size:13px;color:#01579B;background:#E1F5FE;border:1.5px solid #4FC3F7;border-radius:8px;padding:2px 9px;margin-top:5px;display:inline-block;font-weight:bold;">${item.usageDurationDays}일권</div>`
-                : '';
+            // 기간제 만료 잔여 시간 badge (성장의 불꽃 N일권은 표시 안 함)
+            const _expTs = (!_isXpb && typeof item.expireAt === 'number' && item.expireAt > 0) ? item.expireAt
+                : (!_isXpb && item.useEndDate) ? new Date(item.useEndDate + 'T23:59:59').getTime() : 0;
+            const _expRem = _expTs > 0 ? (window._expireBadgeHtml ? window._expireBadgeHtml(_expTs) : '') : '';
+            const _durChip = _isXpb
+                ? `<div style="font-size:13px;color:#E65100;background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:8px;padding:2px 9px;margin-top:5px;display:inline-block;font-weight:bold;">🔥 ${item.totalDays}일권</div>`
+                : (item.usageDurationDays > 0 && !_expTs)
+                    ? `<div style="font-size:13px;color:#01579B;background:#E1F5FE;border:1.5px solid #4FC3F7;border-radius:8px;padding:2px 9px;margin-top:5px;display:inline-block;font-weight:bold;">${item.usageDurationDays}일권</div>`
+                    : '';
             html += `<div class="inventory-slot has-item ${tierCls} ${showTrash ? 'is-used' : ''}" ${tipAttr} onclick="${clickEvent}">
                 ${item.i.includes('http') ? `<img src="${item.i}">` : `<div class="slot-emoji">${item.i}</div>`}
                 <div style="font-size: 18px; font-weight: bold; margin-top: 10px; color: #5D4037; text-align: center; word-break: keep-all; line-height: 1.2;">${item.n}</div>
@@ -11040,7 +12014,7 @@ window.appU = function(y, si, k) {
             </div>`;
         });
         
-        const emptySlots = Math.max(0, 18 - itemList.length);
+        const emptySlots = Math.max(0, 21 - itemList.length - pseudoItems.length - specialItems.length);
         for(let i=0; i<emptySlots; i++) {
             html += `<div class="inventory-slot"></div>`;
         }
@@ -11745,6 +12719,18 @@ window.appU = function(y, si, k) {
             me.shopUsed = (me.shopUsed || 0) + effectiveCost;
             if(!me.shopLog) me.shopLog = [];
             me.shopLog.push({type:'아이템 구입', name:item.n, cost:effectiveCost, passUsed, ts:Date.now()});
+            // 키오스크에도 즉시 반영: kiosk_users/spent 증가 + kiosk_history 기록
+            if (effectiveCost > 0) {
+                const _logId = Date.now().toString();
+                const _rootRef = firebase.database().ref();
+                _rootRef.child(`kiosk_users/${me.cd}/spent`).transaction(val => (val||0) + effectiveCost);
+                _rootRef.child(`kiosk_users/${me.cd}/highlight`).transaction(val => (val||0) + effectiveCost);
+                _rootRef.child(`kiosk_history/${_logId}`).set({
+                    id: _logId, code: me.cd, studentName: me.nm,
+                    itemName: item.n, price: effectiveCost, timestamp: Date.now(),
+                    fromEventShop: true
+                });
+            }
         } else {
             me[cType] -= effectiveCost;
             if(!me.shopLog) me.shopLog = [];
@@ -11755,7 +12741,14 @@ window.appU = function(y, si, k) {
         if (!me.col) me.col = [];
         if (!me.col.includes(item.n)) me.col.push(item.n);
 
-        upMe(); rBg(); rSh(); rCol();
+        // 구입 관련 필드만 선택적 hash 무효화 (전체 학생 .set() / db 전체 sv() 회피)
+        try {
+            const _h = window._upMeLastHash && window._upMeLastHash[me.cd];
+            if(_h) ['inv','col','shopLog','co','cn','tk','cookie','shopUsed','avtOwned','earnedBdg'].forEach(k => { delete _h[k]; });
+        } catch(_){}
+        upMe();
+        console.log('[buy] saved', {item: item.n, invLen: me.inv.length, cd: me.cd});
+        rBg(); rSh(); rCol();
         // 구입 알림
         try {
             const _buyMsg = `${me.nm}이(가) [${item.n}]을(를) 구입했어요!`;
@@ -13854,11 +14847,9 @@ window.addCharRow = function() {
         try { if(window._alertExpiringIfNeeded) setTimeout(()=>window._alertExpiringIfNeeded(), 600); } catch(_){}
         if(!me) return;
         if(!me.eq) me.eq = {};
-        // 새 그림 도착 알림 + 골든티켓·달고나 도착 알림
+        // 새 그림 도착 알림 + 알림 팝업 직렬화 처리
         window._renderNewDrawingBanner && window._renderNewDrawingBanner();
-        window._showCouponArrivalPopup && window._showCouponArrivalPopup();
-        window._showTeacherSnackPopup && window._showTeacherSnackPopup();
-        window._showTitGrantPopup && window._showTitGrantPopup();
+        window._showNextArrivalPopup && window._showNextArrivalPopup();
         const avt = db.avt || [];
 
         // 내가 보유한 아바타 아이템 (inv에서 cat이 있는 것)
@@ -16825,11 +17816,11 @@ window.addCharRow = function() {
                 _mAuc.appendChild(b);
             }
         }
-        // 아바타 관리 뱃지
+        // 아바타 관리 뱃지 (bug/print + 아바타 구매요청)
         const _mAvt = document.getElementById('menu_avt');
         if(_mAvt) {
             _mAvt.querySelector('.menu-badge')?.remove();
-            const _rc = Object.values(window._reqCntMap||{}).reduce((s,c)=> s + (c.bug||0) + (c.print||0), 0);
+            const _rc = Object.values(window._reqCntMap||{}).reduce((s,c)=> s + (c.bug||0) + (c.print||0) + (c.avtReq||0), 0);
             if(_rc > 0) {
                 const b = document.createElement('div');
                 b.className = 'menu-badge';
@@ -18599,18 +19590,21 @@ window.addCharRow = function() {
 
         // 선택된 학생 → earnedTit 추가 + 화폐 보상 + 알림 마커
         const childDef = db.tit.find(t=>t.id===childTitId);
+        let _skippedOwned = 0;
         selectedUids.forEach(uid=>{
             const stu = (db.stu||[]).find(s=>String(s.cd)===String(uid));
             if(!stu) return;
             if(!Array.isArray(stu.earnedTit)) stu.earnedTit = Object.values(stu.earnedTit||{});
-            if(!stu.earnedTit.includes(childTitId)) stu.earnedTit.push(childTitId);
-            // 재발급에도 보상 중복 지급
+            // 🛑 월간 분배: 이미 같은 자식 칭호 보유 시 스킵 (월별 1회 분배가 본질이므로 force 옵션 없음)
+            if(stu.earnedTit.includes(childTitId)) { _skippedOwned++; return; }
+            stu.earnedTit.push(childTitId);
             if(childDef?.rewardCoinType && childDef?.rewardCoinAmt){
                 stu[childDef.rewardCoinType] = (stu[childDef.rewardCoinType]||0) + childDef.rewardCoinAmt;
             }
             if(!Array.isArray(stu.titNotify)) stu.titNotify = [];
             stu.titNotify.push({titId:childTitId, ts:Date.now()});
         });
+        if(_skippedOwned) console.log('[monthlyTit] 이미 보유한 ' + _skippedOwned + '명 스킵');
 
         rec.uids = [...selectedUids];
         sv(); rTitMgrList();
@@ -19370,7 +20364,25 @@ window.addCharRow = function() {
     /* ---------- 순위표 ---------- */
     function rRank() {
         if(!me) return;
-        // 다른 학생 데이터 강제 refresh — throttle 무시
+        // 학생: /rank 경량 mirror 만 fetch (트래픽 절감 — 풀 학생 record 다운로드 안 함)
+        // 교사 또는 풀모드 학생은 기존 풀 refresh 사용 (다른 정보도 필요할 수 있어서)
+        const _isLightMode = !window._isTeacherSession && !window._rpgStudentStuFull;
+        if(_isLightMode && !window._rankRefreshing) {
+            window._rankRefreshing = true;
+            dbRef.child('rank').once('value').then(snap => {
+                const v = snap.val() || {};
+                const arr = [];
+                Object.entries(v).forEach(([k, item]) => {
+                    const idx = parseInt(k);
+                    if(!isNaN(idx) && item) arr[idx] = item;
+                });
+                window._rankCache = arr.filter(Boolean);
+            }).catch(e => console.warn('[rank] fetch 실패', e)).finally(() => {
+                window._rankRefreshing = false;
+                _rRankCore();
+            });
+            return;
+        }
         if(window._refreshAllStu && !window._rankRefreshing) {
             window._rankRefreshing = true;
             window._refreshAllStu().finally(() => {
@@ -19384,7 +20396,12 @@ window.addCharRow = function() {
     }
     function _rRankCore() {
         if(!me) return;
-        const stus = (db.stu || []).slice().sort((a,b) => {
+        // 학생 경량 모드면 /rank cache 사용, 아니면 db.stu
+        const _isLightMode = !window._isTeacherSession && !window._rpgStudentStuFull;
+        const _source = _isLightMode && Array.isArray(window._rankCache) && window._rankCache.length
+            ? window._rankCache
+            : (db.stu || []);
+        const stus = _source.slice().sort((a,b) => {
             const lvA = (b.cookie||0) - (a.cookie||0);
             if(lvA !== 0) return lvA;
             return (b.rb||0) - (a.rb||0);
@@ -22627,6 +23644,16 @@ window.addCharRow = function() {
         let any = false;
         db.stu.forEach(s => { if(window._expireExpiredItems(s, NOW)) any = true; });
         if(any) { try { sv(); } catch(_){} }
+        // 만료된 성장의 불꽃가 있으면 즉시 정산 알림 (오늘 이미 표시된 경우 제외)
+        const todayISO = new Date().toLocaleDateString('sv-SE');
+        const _lsKeyExp = '_xpBoostExpiredShown_' + todayISO;
+        if(!localStorage.getItem(_lsKeyExp) && Array.isArray(db.stu)) {
+            const hasExpiredBoost = db.stu.some(s => s && s.xpBoost && s.xpBoost.active && s.xpBoost.endDate && todayISO > s.xpBoost.endDate && s.xpBoost.lastSettledDate !== todayISO);
+            if(hasExpiredBoost) {
+                localStorage.setItem(_lsKeyExp, '1');
+                // _xpBoostAutoCheck 제거됨 (정산 안내 메시지 사용 안 함)
+            }
+        }
         return any;
     };
 
@@ -27589,6 +28616,127 @@ window.addCharRow = function() {
         _omokRenderAllBadges();
     };
 
+    // 내 랭킹 카드 렌더 (기본 표시)
+    // dense rank 계산 헬퍼 (같은 승수 = 같은 순위)
+    // moves 배열(또는 구형 board 객체)에서 board 맵 복원
+    function _omokBuildBoard(g){
+        if(g.moves){
+            const mvArr = Array.isArray(g.moves) ? g.moves : Object.values(g.moves);
+            const b = {};
+            mvArr.forEach((idx, n) => { if(idx != null) b[idx] = n%2===0?'b':'w'; });
+            return b;
+        }
+        return g.board || {};
+    }
+
+    function _omokBuildSorted(){
+        const entries = [...(window._omokRankCache||new Map()).entries()]
+            .map(([uid, v]) => ({uid, ...v}))
+            .sort((a,b) => (b.w||0) - (a.w||0));
+        let rank = 1;
+        entries.forEach((e, i) => {
+            if(i > 0 && (e.w||0) < (entries[i-1].w||0)) rank = i + 1;
+            e.rank = rank;
+        });
+        return entries;
+    }
+
+    window._omokRenderPlzRanking = function(showAll){
+        const listEl = document.getElementById('plzOmokRankList');
+        if(!listEl) return;
+        if(showAll){
+            // 전체 랭킹 표시
+            const _sorted = window._omokRankSorted || [];
+            const medals = ['🥇','🥈','🥉'];
+            let html = _sorted.length === 0
+                ? `<div style="color:rgba(255,255,255,0.35);text-align:center;font-size:16px;padding:4px 0;">기록 없음</div>`
+                : _sorted.map((e,i) => {
+                    const _st = (e.streak||0) > 1 ? ` 🔥${e.streak}` : '';
+                    const _isMe = me && e.uid === me.cd;
+                    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;line-height:1.4;${_isMe?'background:rgba(255,224,130,0.12);border-radius:8px;padding:4px 6px;':''}">
+                        <span style="width:24px;text-align:center;font-size:16px;">${medals[i]||(i+1)}</span>
+                        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${_isMe?'#FFE082':'#EFEBE9'};font-size:16px;font-weight:${_isMe?'bold':'normal'};">${e.nm||''}</span>
+                        <span style="color:#FFD54F;white-space:nowrap;font-size:16px;">${e.w||0}승${_st}</span>
+                    </div>`;
+                }).join('');
+            html += `<div onclick="window._omokRenderPlzRanking(false)" style="text-align:center;margin-top:8px;color:#90A4AE;font-size:14px;cursor:pointer;padding:2px;">▲ 접기</div>`;
+            listEl.innerHTML = html;
+            return;
+        }
+        // 기본: 내 랭킹 카드 + top 3
+        const _myUid = me && me.cd;
+        const _myStats = _myUid && window._omokRankCache ? window._omokRankCache.get(_myUid) : null;
+        const _myEntry = window._omokRankSorted ? window._omokRankSorted.find(e=>e.uid===_myUid) : null;
+        const _myRank = _myEntry?.rank || null;
+        const _myW = _myStats?.w || 0;
+        const _mySt = (_myStats?.streak||0) > 1 ? ` 🔥${_myStats.streak}` : '';
+        const _myRankTxt = _myRank ? `${_myRank}위` : (_myW > 0 ? '순위권 밖' : '기록 없음');
+        const _myRankColor = _myRank === 1 ? '#FFD700' : _myRank === 2 ? '#C0C0C0' : _myRank === 3 ? '#CD7F32' : '#FFE082';
+
+        // top 3 (dense rank 기준)
+        const _top3 = (window._omokRankSorted||[]).filter(e => e.rank <= 3);
+        const _medals = {1:'👑',2:'🥈',3:'🥉'};
+        const _top3Html = _top3.length ? _top3.map(e => {
+            const _isMe = e.uid === _myUid;
+            const _st = (e.streak||0) > 1 ? ` 🔥${e.streak}` : '';
+            return `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;line-height:1.4;${_isMe?'background:rgba(255,224,130,0.1);border-radius:6px;padding:4px 6px;':''}">
+                <span style="width:24px;text-align:center;font-size:18px;">${_medals[e.rank]||e.rank}</span>
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${_isMe?'#FFE082':'#EFEBE9'};font-size:16px;font-weight:${_isMe?'bold':'normal'};">${e.nm||''}</span>
+                <span style="color:#FFD54F;white-space:nowrap;font-size:16px;">${e.w||0}승${_st}</span>
+            </div>`;
+        }).join('') : `<div style="color:rgba(255,255,255,0.35);font-size:14px;text-align:center;padding:4px 0;">기록 없음</div>`;
+
+        listEl.innerHTML = `
+            <div style="background:rgba(255,224,130,0.1);border:1px solid rgba(255,224,130,0.2);border-radius:12px;padding:8px 10px;margin-bottom:10px;text-align:center;">
+                <div style="font-size:22px;font-weight:bold;color:${_myRankColor};">${_myRankTxt}</div>
+                <div style="font-size:16px;color:#EFEBE9;margin-top:2px;">${_myW}승${_mySt}</div>
+                <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-top:2px;">${me?.nm||''}</div>
+            </div>
+            <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;margin-bottom:6px;">${_top3Html}</div>
+            <div onclick="window._omokLoadFullRank()" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:6px 0;color:#A5D6A7;font-size:16px;cursor:pointer;border-radius:8px;background:rgba(255,255,255,0.06);">
+                <span style="font-size:18px;font-weight:bold;">＋</span> 전체 랭킹 보기
+            </div>`;
+    };
+    window._omokLoadFullRank = function(){
+        if(window._omokRankFullLoaded){ window._omokRenderPlzRanking(true); return; }
+        const listEl = document.getElementById('plzOmokRankList');
+        if(listEl) listEl.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;font-size:10px;padding:8px;">로딩 중...</div>';
+        const _ym = new Date().toISOString().slice(0,7).replace('-','');
+        getPlzRef().child('omokRank/'+_ym).once('value', snap => {
+            const all = snap.val() || {};
+            window._omokRankCache = new Map();
+            Object.entries(all).forEach(([uid, v]) => { if(v) window._omokRankCache.set(uid, v); });
+            window._omokRankSorted = _omokBuildSorted();
+            window._omokRankFullLoaded = true;
+            window._omokRenderPlzRanking(true);
+            _omokRenderAllBadges();
+        });
+    };
+
+    window._omokResetRank = function(){
+        const _ym = new Date().toISOString().slice(0,7).replace('-','');
+        prettyConfirm
+            ? prettyConfirm(`⚫ <b>${_ym} 오목 랭킹 초기화</b><br><span style="font-size:13px;color:#888;">이달의 모든 승수·연승 기록이 삭제됩니다.</span>`,
+                () => {
+                    getPlzRef().child('omokRank/'+_ym).remove();
+                    window._omokRankCache = new Map();
+                    window._omokRankSorted = [];
+                    window._omokRankFullLoaded = false;
+                    if(typeof window._omokRenderPlzRanking === 'function') window._omokRenderPlzRanking();
+                    if(typeof _omokRenderAllBadges === 'function') _omokRenderAllBadges();
+                    if(typeof showToast === 'function') showToast('🗑️ 오목 랭킹 초기화 완료');
+                },
+                {icon:'🗑️', okLabel:'초기화', okClass:'btn-red', cancelLabel:'취소'})
+            : (confirm(`${_ym} 오목 랭킹을 초기화할까요?`) && (() => {
+                getPlzRef().child('omokRank/'+_ym).remove();
+                window._omokRankCache = new Map();
+                window._omokRankSorted = [];
+                window._omokRankFullLoaded = false;
+                if(typeof window._omokRenderPlzRanking === 'function') window._omokRenderPlzRanking();
+                if(typeof _omokRenderAllBadges === 'function') _omokRenderAllBadges();
+            })());
+    };
+
     window._omokMenu = function(){
         if(!me) return;
         if(window._isPlzSpectator && window._isPlzSpectator(me.cd)) { alert('👻 참관자는 시작할 수 없어요.'); return; }
@@ -27612,14 +28760,10 @@ window.addCharRow = function() {
                 ${hasMyGame ? `
                 <div style="background:#FFF3E0;border:2px solid #FF9800;border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:11px;color:#E65100;text-align:center;">📌 이미 만든 방이 있어요</div>
                 <div style="display:flex;gap:8px;">
-                    <button onclick="document.getElementById('_omokMenu').remove()" style="flex:1;padding:11px;border:2px solid #ccc;border-radius:12px;background:white;font-family:Jua;cursor:pointer;">취소</button>
                     <button id="_omokOpenMineBtn" style="flex:1;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5D4037,#3E2723);color:white;font-family:Jua;font-size:14px;cursor:pointer;">🎯 내 방 보기</button>
                     <button id="_omokCloseMineBtn" style="flex:1;padding:11px;border:2px solid #EF5350;border-radius:12px;background:white;color:#C62828;font-family:Jua;font-size:14px;cursor:pointer;">🗑️ 내 방 닫기</button>
                 </div>` : `
-                <div style="display:flex;gap:8px;">
-                    <button onclick="document.getElementById('_omokMenu').remove()" style="flex:1;padding:11px;border:2px solid #ccc;border-radius:12px;background:white;font-family:Jua;cursor:pointer;">취소</button>
-                    <button id="_omokStartBtn" style="flex:2;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#5D4037,#3E2723);color:white;font-family:Jua;font-size:15px;cursor:pointer;">⚫ 방 만들기 (흑)</button>
-                </div>`}
+                <button id="_omokStartBtn" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#5D4037,#3E2723);color:white;font-family:Jua;font-size:15px;cursor:pointer;">⚫ 방 만들기 (흑)</button>`}
             </div>
         </div>`;
         el.onclick = e => { if(e.target===el) el.remove(); };
@@ -27645,7 +28789,7 @@ window.addCharRow = function() {
             hostUid: me.cd,
             black:{ uid: me.cd, nm: me.nm || '' },
             white: null,
-            board: {}, turn: 'b',
+            moves: [], turn: 'b',
             score: {},
             startedAt: now
         };
@@ -27681,7 +28825,7 @@ window.addCharRow = function() {
         const myColor = (g.black && g.black.uid === me.cd) ? 'b'
                       : (g.white && g.white.uid === me.cd) ? 'w' : null;
         if(!myColor || g.turn !== myColor) return;
-        if(g.board && g.board[idx]) return;
+        if(_omokBuildBoard(g)[idx]) return;
         if(window._omokPendingByGame[gid] === idx){
             window._omokConfirmMove(gid);
             return;
@@ -27709,18 +28853,20 @@ window.addCharRow = function() {
         const myColor = (g.black && g.black.uid === me.cd) ? 'b'
                       : (g.white && g.white.uid === me.cd) ? 'w' : null;
         if(!myColor || g.turn !== myColor) return;
-        if(g.board && g.board[idx]) return;
+        const _curBoard = _omokBuildBoard(g);
+        if(_curBoard[idx]) return;
         const now = Date.now();
         if(now - window._omokLastMoveTs < 300) return;
         window._omokLastMoveTs = now;
         // 착수도 광장 활동으로 간주 — idle 자동 퇴장 방지
         try { if(typeof _plzLastMoveTime !== 'undefined') _plzLastMoveTime = now; } catch(_){}
+        const _moveCount = g.moves ? (Array.isArray(g.moves) ? g.moves.length : Object.keys(g.moves).length) : 0;
         const update = {};
-        update['board/'+idx] = myColor;
+        update['moves/'+_moveCount] = idx;
         update['turn'] = (myColor === 'b') ? 'w' : 'b';
         update['lastMove'] = idx;
         // ※ lastMoveAt/winLine 제거 — 사용처 없음 또는 클라이언트 재계산 가능 (트래픽 절감)
-        const newBoard = Object.assign({}, g.board||{});
+        const newBoard = Object.assign({}, _curBoard);
         newBoard[idx] = myColor;
         const winLine = _omokCheckWin(newBoard, idx, myColor);
         if(winLine){
@@ -27733,12 +28879,35 @@ window.addCharRow = function() {
         }
         _omokGameRef(gid).update(update);
         // 승리 시 dir 인덱스도 phase·score·winner 갱신 (광장 학생들의 배지 점수 업데이트)
-        if(winLine){
+        // aborted(제한시간 퇴장 등) 게임은 승수 기록 건너뜀
+        if(winLine && !g.aborted){
             const dirUpd = { phase:'end', winner:myColor };
             const newScore = ((g.score && g.score[me.cd]) || 0) + 1;
             if(g.black?.uid === me.cd) dirUpd.blackScore = newScore;
             else if(g.white?.uid === me.cd) dirUpd.whiteScore = newScore;
             _omokDirRef(gid).update(dirUpd);
+            // omokRank 월별 전적 업데이트
+            const _ym2 = new Date().toISOString().slice(0,7).replace('-','');
+            const _loseColor = myColor === 'b' ? 'w' : 'b';
+            const _loseUid = _loseColor === 'b' ? g.black?.uid : g.white?.uid;
+            const _loseNm = _loseColor === 'b' ? (g.black?.nm||'') : (g.white?.nm||'');
+            const _winNm = me.nm || '';
+            const _rankRef = getPlzRef().child('omokRank/'+_ym2);
+            _rankRef.child(me.cd).transaction(cur => ({ w:(cur?.w||0)+1, streak:(cur?.streak||0)+1, nm:_winNm }), (err, committed, snap) => {
+                if(!err && committed && snap){
+                    const v = snap.val();
+                    if(v && window._omokRankCache) window._omokRankCache.set(me.cd, v);
+                }
+                if(_loseUid){
+                    const _lc = window._omokRankCache?.get(_loseUid) || {w:0,streak:0};
+                    window._omokRankCache?.set(_loseUid, {w:_lc.w, streak:0, nm:_loseNm});
+                }
+                window._omokRankSorted = _omokBuildSorted();
+                _omokRenderAllBadges();
+                if(typeof window._omokRenderPlzRanking === 'function') window._omokRenderPlzRanking();
+            });
+            // 패자 streak 리셋 — streak=0은 항상 덮어쓰면 되므로 transaction 불필요 (round-trip 절감)
+            if(_loseUid) _rankRef.child(_loseUid).update({ streak:0, nm:_loseNm });
         }
     }
 
@@ -27785,6 +28954,26 @@ window.addCharRow = function() {
             else if(g.white?.uid === winUid) dirUpd.whiteScore = newScore;
         }
         _omokDirRef(gid).update(dirUpd);
+        // omokRank 월별 전적 업데이트 (기권)
+        const _ym3 = new Date().toISOString().slice(0,7).replace('-','');
+        const _winNm3 = winColor==='b' ? (g.black?.nm||'') : (g.white?.nm||'');
+        const _loseNm3 = me.nm || '';
+        const _rankRef3 = getPlzRef().child('omokRank/'+_ym3);
+        if(winUid){
+            _rankRef3.child(winUid).transaction(cur => ({ w:(cur?.w||0)+1, streak:(cur?.streak||0)+1, nm:_winNm3 }), (err, committed, snap) => {
+                if(!err && committed && snap){
+                    const v = snap.val();
+                    if(v && window._omokRankCache) window._omokRankCache.set(winUid, v);
+                }
+                const _lc = window._omokRankCache?.get(me.cd) || {w:0,streak:0};
+                window._omokRankCache?.set(me.cd, {w:_lc.w, streak:0, nm:_loseNm3});
+                window._omokRankSorted = _omokBuildSorted();
+                _omokRenderAllBadges();
+                if(typeof window._omokRenderPlzRanking === 'function') window._omokRenderPlzRanking();
+            });
+        }
+        // 기권자 streak 리셋 — streak=0은 덮어쓰면 되므로 transaction 불필요 (round-trip 절감)
+        _rankRef3.child(me.cd).update({ streak:0, nm:_loseNm3 });
     };
 
     window._omokEndGame = function(gid){
@@ -27794,6 +28983,40 @@ window.addCharRow = function() {
         if(!confirm('오목 방을 닫을까요?')) return;
         _omokGameRef(gid).remove();
         _omokDirRef(gid).remove();
+    };
+
+    window._omokAcceptChallenger = function(gid){
+        const g = _omokGet(gid); if(!g || !me) return;
+        const _dirD = (window._omokDir && window._omokDir[gid]) || {};
+        const _chal = _dirD.nextChallenger; if(!_chal) return;
+        const myColor = (g.black && g.black.uid === me.cd) ? 'b' : (g.white && g.white.uid === me.cd) ? 'w' : null;
+        if(!myColor) return; // 승자만 수락 가능
+        const winColor = g.winner;
+        if(myColor !== winColor) return;
+        const _loserUid = winColor === 'b' ? g.white?.uid : g.black?.uid;
+        const _prevScore = g.score || {};
+        document.getElementById('_omokEndModal_'+gid)?.remove();
+        _omokDirRef(gid).child('nextChallenger').remove();
+        const _newGame = {
+            on: true, phase: 'playing',
+            hostUid: me.cd,
+            black: { uid: me.cd, nm: me.nm || '' },
+            white: { uid: _chal.uid, nm: _chal.nm || '' },
+            moves: [], turn: 'b',
+            score: _prevScore,
+            startedAt: Date.now()
+        };
+        _omokGameRef(gid).set(_newGame);
+        const _dirUpdate = {
+            phase: 'playing', winner: null, winnerUid: null,
+            blackUid: me.cd, blackNm: me.nm || '',
+            whiteUid: _chal.uid, whiteNm: _chal.nm || '',
+            blackScore: _prevScore[me.cd] || 0,
+            whiteScore: _prevScore[_chal.uid] || 0,
+            nextChallenger: null
+        };
+        if(_loserUid) _dirUpdate['spectators/'+_loserUid] = true; // 패배자 자동 관전 등록
+        _omokDirRef(gid).update(_dirUpdate);
     };
 
     window._omokRequestRematch = function(gid){
@@ -27832,6 +29055,20 @@ window.addCharRow = function() {
         }
     };
 
+    window._omokRequestNext = function(gid){
+        if(!me) return;
+        const _d = window._omokDir && window._omokDir[gid];
+        if(!_d || _d.phase !== 'playing') return;
+        if(_d.nextChallenger) return;
+        _omokDirRef(gid).child('nextChallenger').set({ uid: me.cd, nm: me.nm || '', ts: Date.now() });
+        // 연결 끊기면 자동 취소
+        _omokDirRef(gid).child('nextChallenger').onDisconnect().remove();
+    };
+    window._omokCancelNext = function(gid){
+        if(!me) return;
+        _omokDirRef(gid).child('nextChallenger').remove();
+    };
+
     window._omokDeclineRematch = function(gid){
         const g = _omokGet(gid); if(!g) return;
         if(!me) return;
@@ -27849,6 +29086,28 @@ window.addCharRow = function() {
         window._omokEndShownIds = {};
         window._omokPendingByGame = {};
         if(!window._omokGameSubs) window._omokGameSubs = {};
+        // omokRank: 이달 top-10만 초기 로드 (트래픽 절감)
+        window._omokRankCache = new Map();
+        window._omokRankSorted = [];
+        window._omokRankFullLoaded = false;
+        const _ym = new Date().toISOString().slice(0,7).replace('-','');
+        // top-3만 fetch (왕관 배지용) + 내 데이터 별도 fetch (위젯 내 랭킹용)
+        getPlzRef().child('omokRank/'+_ym).orderByChild('w').limitToLast(3)
+            .once('value', snap => {
+                const all = snap.val() || {};
+                Object.entries(all).forEach(([uid, v]) => { if(v) window._omokRankCache.set(uid, v); });
+                window._omokRankSorted = _omokBuildSorted();
+                _omokRenderAllBadges();
+                if(typeof window._omokRenderPlzRanking === 'function') window._omokRenderPlzRanking();
+            });
+        // 내 전적 별도 fetch (top-3에 없을 수 있으므로)
+        if(me && me.cd){
+            getPlzRef().child('omokRank/'+_ym+'/'+me.cd).once('value', snap => {
+                const v = snap.val();
+                if(v){ window._omokRankCache.set(me.cd, v); window._omokRankSorted = _omokBuildSorted(); }
+                if(typeof window._omokRenderPlzRanking === 'function') window._omokRenderPlzRanking();
+            });
+        }
         const dirRef = getPlzRef().child('omokDir');
         // 진입 시 stale 방 정리: 호스트가 광장에 없거나 1시간 이상 된 방 제거
         dirRef.once('value', snap => {
@@ -27894,6 +29153,11 @@ window.addCharRow = function() {
                     if(p && p.phase==='lobby' && d.phase==='playing'){
                         window._omokOpenedId = gid;
                     }
+                    // 게임 종료 + nextChallenger 있으면 종료 모달 갱신 (자동 시작 X — 승자가 수락 버튼 눌러야)
+                    if(p && p.phase==='playing' && d.phase==='end' && d.nextChallenger){
+                        const _endEl = document.getElementById('_omokEndModal_'+gid);
+                        if(_endEl){ const _g2 = _omokGet(gid); if(_g2) _omokRenderEndModal(gid, _g2); }
+                    }
                 }
                 // 플레이어가 아닌데 구독 중이면 (관전 중) 그대로 유지
             });
@@ -27903,9 +29167,6 @@ window.addCharRow = function() {
         };
         dirRef.on('value', fn);
         plzListeners.push({ref:dirRef, type:'value', fn, who:'student'});
-        if(!window._omokBadgeTimer){
-            window._omokBadgeTimer = setInterval(_omokRenderAllBadges, 1500);
-        }
     }
 
     // 특정 게임의 풀 데이터 구독 (플레이어 또는 풀스크린 보고 있는 학생만 호출)
@@ -27968,8 +29229,8 @@ window.addCharRow = function() {
             const g = _omokDirAsGame(d);
             if(g.hostUid) liveHostUids.add(g.hostUid);
             // guest = 호스트가 아닌 플레이어
-            if(g.black && g.black.uid !== g.hostUid) guestMap[g.black.uid] = {gid, color:'b'};
-            if(g.white && g.white.uid !== g.hostUid) guestMap[g.white.uid] = {gid, color:'w'};
+            if(g.black && g.black.uid !== g.hostUid) guestMap[g.black.uid] = {gid, color:'b', oppNm: g.white?.nm||''};
+            if(g.white && g.white.uid !== g.hostUid) guestMap[g.white.uid] = {gid, color:'w', oppNm: g.black?.nm||''};
             // 관전자 (플레이어 제외)
             if(g.spectators){
                 Object.keys(g.spectators).forEach(uid => {
@@ -27989,18 +29250,18 @@ window.addCharRow = function() {
         document.querySelectorAll('._omokSpectatorBadge').forEach(el => {
             if(!spectatorSet.has(el.dataset.uid)) el.remove();
         });
-        // 참가자 (게스트) 배지 부착 — 상대 이름 표시
+        // 참가자 (게스트) 배지 부착 — "OO과 대국중"
         Object.entries(guestMap).forEach(([uid, info]) => {
-            const d = dir[info.gid] || {};
-            const oppUid = (d.blackUid === uid) ? d.whiteUid : d.blackUid;
-            const oppNm = (oppUid && (_plzUserCache[oppUid]?.nm || (db.stu||[]).find(s => s && s.cd === oppUid)?.nm)) || '상대';
-            const sigKey = `${info.color}:${oppNm}`;
+            const ic = info.color === 'b' ? '⚫' : '⚪';
+            const _oppNm = info.oppNm || '상대';
+            const _badgeTxt = `${ic} ${_oppNm}과 대국중`;
+            const sigKey = `${uid}:${_badgeTxt}`;
             const charEl = document.querySelector(`.plz-char[data-uid="${uid}"]`);
             if(!charEl) return;
             const existing = charEl.querySelector('._omokGuestBadge');
             if(existing){
                 if(existing.dataset.sig !== sigKey){
-                    existing.textContent = `${info.color === 'b' ? '⚫' : '⚪'} ${oppNm}과 대국 중`;
+                    existing.textContent = _badgeTxt;
                     existing.dataset.sig = sigKey;
                 }
                 return;
@@ -28010,8 +29271,7 @@ window.addCharRow = function() {
             b.dataset.uid = uid;
             b.dataset.sig = sigKey;
             b.style.cssText = 'position:absolute;top:-72px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#FFF,#F5F5F5);color:#1A1A1A;font-family:Jua;font-size:12px;font-weight:bold;padding:4px 10px;border-radius:11px;border:2px solid #FF5722;box-shadow:0 4px 8px rgba(0,0,0,0.45);z-index:30;pointer-events:auto;cursor:pointer;white-space:nowrap;';
-            const ic = info.color === 'b' ? '⚫' : '⚪';
-            b.textContent = `${ic} ${oppNm}과 대국 중`;
+            b.textContent = _badgeTxt;
             b.title = '오목 보기';
             const localGid = info.gid;
             b.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); window._omokOpenBoard(localGid); };
@@ -28038,12 +29298,15 @@ window.addCharRow = function() {
             const g = _omokDirAsGame(d);
             const bs = d.blackScore || 0;
             const ws = d.whiteScore || 0;
+            // 호스트의 상대방 이름
+            const _hostOppNm = d.whiteUid ? (d.hostUid === d.blackUid ? (d.whiteNm||'') : (d.blackNm||'')) : '';
+            const _scoreLineTxt = _hostOppNm ? `${_hostOppNm}과 대국중` : `⚫ ${bs} : ${ws} ⚪`;
             const scoreKey = `${bs}:${ws}:${d.blackUid}:${d.whiteUid||''}`;
             const existing = hostEl.querySelector('._omokBadge');
             if(existing){
                 if(existing.dataset.scoreKey !== scoreKey){
                     const sl = existing.querySelector('._omokScoreLine');
-                    if(sl) sl.textContent = `⚫ ${bs} : ${ws} ⚪`;
+                    if(sl) sl.textContent = _scoreLineTxt;
                     existing.dataset.scoreKey = scoreKey;
                 }
                 return;
@@ -28070,10 +29333,38 @@ window.addCharRow = function() {
                     </svg>
                     <div style="position:absolute;top:-8px;right:-8px;background:#FF5722;color:white;font-size:10px;font-weight:bold;padding:2px 5px;border-radius:8px;font-family:Jua;border:1.5px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);pointer-events:none;">오목</div>
                 </div>
-                <div class="_omokScoreLine" style="margin-top:3px;background:rgba(0,0,0,0.78);color:white;font-family:Jua;font-size:12px;font-weight:bold;text-align:center;padding:2px 6px;border-radius:8px;letter-spacing:1px;border:1.5px solid #FFD54F;pointer-events:none;white-space:nowrap;">⚫ ${bs} : ${ws} ⚪</div>`;
+                <div class="_omokScoreLine" style="margin-top:3px;background:rgba(0,0,0,0.78);color:white;font-family:Jua;font-size:12px;font-weight:bold;text-align:center;padding:2px 6px;border-radius:8px;letter-spacing:1px;border:1.5px solid #FFD54F;pointer-events:none;white-space:nowrap;">${_scoreLineTxt}</div>`;
             badge.dataset.scoreKey = scoreKey;
             hostEl.appendChild(badge);
         });
+        // 1·2·3위 왕관 배지만 표시 (게임 중인 유저는 게임 배지 우선)
+        if(window._omokRankSorted !== undefined){
+            const _crownMap = new Map();
+            (window._omokRankSorted||[]).forEach(e => {
+                if(e.rank === 1) _crownMap.set(e.uid, '👑');
+                else if(e.rank === 2) _crownMap.set(e.uid, '🥈');
+                else if(e.rank === 3) _crownMap.set(e.uid, '🥉');
+            });
+            // 자격 잃은 왕관 제거
+            document.querySelectorAll('._omokCrownBadge').forEach(el => {
+                const uid = el.dataset.uid;
+                if(!_crownMap.has(uid) || liveHostUids.has(uid) || guestMap[uid] || spectatorSet.has(uid)) el.remove();
+            });
+            // 왕관 부착/갱신
+            _crownMap.forEach((crown, uid) => {
+                if(liveHostUids.has(uid) || guestMap[uid] || spectatorSet.has(uid)) return;
+                const charEl = document.querySelector(`.plz-char[data-uid="${uid}"]`);
+                if(!charEl) return;
+                const existing = charEl.querySelector('._omokCrownBadge');
+                if(existing){ if(existing.textContent !== crown) existing.textContent = crown; return; }
+                const b = document.createElement('div');
+                b.className = '_omokCrownBadge';
+                b.dataset.uid = uid;
+                b.style.cssText = 'position:absolute;top:-42px;left:50%;transform:translateX(-50%);font-size:30px;line-height:1;z-index:28;pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));';
+                b.textContent = crown;
+                charEl.appendChild(b);
+            });
+        }
         if(!document.getElementById('_omokBadgeStyle')){
             const s = document.createElement('style');
             s.id = '_omokBadgeStyle';
@@ -28093,7 +29384,7 @@ window.addCharRow = function() {
             return;
         }
         const N = _OMOK_N;
-        const board = g.board || {};
+        const board = _omokBuildBoard(g);
         // winLine은 더 이상 broadcast하지 않음 — 승리 시 클라이언트에서 재계산 (트래픽 절감)
         const _winLine = (g.winner && g.lastMove != null) ? (_omokCheckWin(board, g.lastMove, g.winner) || []) : [];
         const winSet = new Set(g.winLine || _winLine);
@@ -28165,7 +29456,25 @@ window.addCharRow = function() {
             if(isPlayer){
                 actions = `<button onclick="window._omokResign('${gid}')" style="flex:1;padding:11px;border:2px solid #EF5350;border-radius:10px;background:white;color:#C62828;font-family:Jua;font-size:13px;cursor:pointer;">🏳️ 기권</button>`;
             } else {
-                actions = `<div style="flex:1;text-align:center;font-size:13px;color:white;background:rgba(0,0,0,0.55);padding:11px;border-radius:10px;">👀 관전 중</div>`;
+                const _d = window._omokDir && window._omokDir[gid] || {};
+                const _nc = _d.nextChallenger;
+                const _isMe = _nc && _nc.uid === me.cd;
+                if(_isMe){
+                    actions = `<div style="flex:1;display:flex;gap:6px;align-items:center;">
+                        <div style="flex:1;text-align:center;font-size:12px;color:#FFE082;background:rgba(0,0,0,0.6);padding:9px;border-radius:10px;">⏳ 다음 대국 대기 중</div>
+                        <button onclick="window._omokCancelNext('${gid}')" style="padding:9px 12px;border:2px solid #EF5350;border-radius:10px;background:white;color:#C62828;font-family:Jua;font-size:12px;cursor:pointer;">취소</button>
+                    </div>`;
+                } else if(_nc){
+                    actions = `<div style="flex:1;display:flex;gap:6px;align-items:center;">
+                        <div style="flex:1;text-align:center;font-size:12px;color:white;background:rgba(0,0,0,0.55);padding:9px;border-radius:10px;">👀 관전 중</div>
+                        <div style="padding:9px 12px;border:2px solid #888;border-radius:10px;background:rgba(255,255,255,0.1);color:#CCC;font-family:Jua;font-size:12px;white-space:nowrap;">⏳ ${_nc.nm} 대기 중</div>
+                    </div>`;
+                } else {
+                    actions = `<div style="flex:1;display:flex;gap:6px;align-items:center;">
+                        <div style="flex:1;text-align:center;font-size:13px;color:white;background:rgba(0,0,0,0.55);padding:11px;border-radius:10px;">👀 관전 중</div>
+                        <button onclick="window._omokRequestNext('${gid}')" style="padding:9px 14px;border:none;border-radius:10px;background:linear-gradient(135deg,#FF8F00,#E65100);color:white;font-family:Jua;font-size:13px;cursor:pointer;font-weight:bold;white-space:nowrap;">⚔️ 다음 대국 신청</button>
+                    </div>`;
+                }
             }
         }
 
@@ -28235,9 +29544,9 @@ window.addCharRow = function() {
                     </svg>
                 </div>
             </div>
-            <!-- 하단 힌트 -->
-            <div style="position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;z-index:5;">
-                ${myTurn ? `<div style="font-size:12px;color:white;background:rgba(0,0,0,0.65);padding:6px 14px;border-radius:10px;font-weight:bold;">💡 같은 칸을 두 번 누르면 돌이 놓입니다${pending!=null?' (한 번 더 누르세요!)':''}</div>` : (isPlayer ? '' : `<div style="font-size:12px;color:white;background:rgba(0,0,0,0.55);padding:5px 12px;border-radius:10px;">👀 관전 중</div>`)}
+            <!-- 하단 힌트 / 관전자 액션 -->
+            <div style="position:absolute;bottom:10px;left:8px;right:8px;display:flex;justify-content:center;z-index:5;">
+                ${myTurn ? `<div style="font-size:12px;color:white;background:rgba(0,0,0,0.65);padding:6px 14px;border-radius:10px;font-weight:bold;">💡 같은 칸을 두 번 누르면 돌이 놓입니다${pending!=null?' (한 번 더 누르세요!)':''}</div>` : (isPlayer ? '' : `<div style="display:flex;gap:6px;align-items:center;width:100%;max-width:360px;">${actions}</div>`)}
             </div>
             ${lobbyJoin}`;
         document.body.appendChild(panel);
@@ -28267,8 +29576,21 @@ window.addCharRow = function() {
         const oppUid = me && (g.black?.uid === me.cd ? g.white?.uid : g.black?.uid);
         const oppWantsRematch = oppUid && rematch[oppUid];
 
+        // nextChallenger: omokDir에서 가져옴 (game 객체에는 없을 수 있음)
+        const _dirD = (window._omokDir && window._omokDir[gid]) || {};
+        const _nc = _dirD.nextChallenger || null;
+        const _ncNm = _nc?.nm || '';
+        const _ncUid = _nc?.uid || '';
+
         let buttons = '';
-        if(isPlayer){
+        if(isPlayer && myWin && _nc){
+            // 승자 + 도전자 있음 → 수락 or 종료만 (다시하기 없음)
+            buttons = `
+                <div style="display:flex;flex-direction:column;gap:8px;width:100%;">
+                    <button onclick="window._omokAcceptChallenger('${gid}')" style="width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#FF8F00,#E65100);color:white;font-family:Jua;font-size:15px;cursor:pointer;font-weight:bold;box-shadow:0 4px 0 rgba(230,81,0,0.4);">⚔️ ${_ncNm}의 도전 수락</button>
+                    <button onclick="window._omokDeclineRematch('${gid}')" style="width:100%;padding:12px;border:2px solid #ccc;border-radius:12px;background:white;color:#555;font-family:Jua;font-size:14px;cursor:pointer;">🚪 종료</button>
+                </div>`;
+        } else if(isPlayer){
             const rematchLabel = iWantRematch
                 ? (oppWantsRematch ? '✨ 새 판 시작 중...' : '⏳ 상대 응답 대기 중')
                 : (oppWantsRematch ? '🎯 상대가 다시하기 원함! 수락' : '🔄 다시하기');
@@ -29603,7 +30925,7 @@ window.addCharRow = function() {
         window._catchMindSubs.push({ ref: cmRef, type: 'value', fn });
         // 호스트 heartbeat staleness 검사 — 모든 client에서 30초 주기로 once
         if(window._cmHbCheckInterval) clearInterval(window._cmHbCheckInterval);
-        window._cmHbCheckInterval = setInterval(_catchMindHbStaleCheck, 30000);
+        window._cmHbCheckInterval = setInterval(_catchMindHbStaleCheck, 60000); // 60s — 트래픽 절감
         // 사이클 별도 ref — child 이벤트만 사용 (value 구독 시 매 child 변경마다 full echo가 와서 의미 없음)
         const cycRef = _catchMindCycleRef();
         window._catchMindCycleLocal = window._catchMindCycleLocal || {};
@@ -32844,7 +34166,7 @@ window.addCharRow = function() {
                     if(mfOn && me) html += `<button id="plzMafiaBtn" onclick="window._mafiaMenu()" style="position:absolute;top:170px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(94,53,177,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🕵️ 마피아</button>`;
                     if(lrOn && me) html += `<button id="plzLiarBtn" onclick="window._liarMenu()" style="position:absolute;top:210px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(216,67,21,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🎭 라이어</button>`;
                     const omOn = cfg.omokOn === true;
-                    if(omOn && me) html += `<button id="plzOmokBtn" onclick="window._omokMenu()" style="position:absolute;top:250px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(62,39,35,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">⚫ 오목</button>`;
+                    if(omOn && me) html += `<button id="plzOmokBtn" onclick="window._omokMenu()" style="position:absolute;top:250px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(62,39,35,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">⚫ 오목</button><div id="plzOmokRankWidget" style="position:absolute;top:286px;right:6px;z-index:30;width:272px;background:rgba(40,26,22,0.9);border-radius:20px;padding:14px 16px;font-family:'Jua';backdrop-filter:blur(4px);border:1.5px solid rgba(161,136,127,0.45);"><div style="font-size:18px;color:#FFE082;font-weight:bold;margin-bottom:10px;text-align:center;letter-spacing:0.5px;">🏆 오목 랭킹</div><div id="plzOmokRankList">로딩 중...</div></div>`;
                     const cmOn = cfg.catchMindOn === true;
                     if(cmOn && me) html += `<button id="plzCatchMindBtn" onclick="window._catchMindMenu()" style="position:absolute;top:290px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(233,30,99,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🎨 캐치마인드</button>`;
                     const bgOn = cfg.bombGameOn === true;
@@ -35721,6 +37043,24 @@ window.addCharRow = function() {
 
     function exitPlaza() {
         window._plzActive = false;
+        // 제한시간/강제 퇴장 시 진행 중인 오목 게임 — resigned 없이 조용히 종료 (승수 미기록)
+        try {
+            const _games = window._omokGames || {};
+            Object.entries(_games).forEach(([gid, g]) => {
+                if(!g || !g.on || g.phase === 'end') return;
+                const _isPlayer = (g.black && g.black.uid === me?.cd) || (g.white && g.white.uid === me?.cd);
+                const _isHost = g.hostUid === me?.cd;
+                if(!_isPlayer && !_isHost) return;
+                // resigned 없이 phase:end 처리 — 승수 계산 건너뜀
+                if(typeof _omokGameRef === 'function') {
+                    _omokGameRef(gid).update({ phase:'end', endedAt: Date.now(), aborted: true });
+                    if(_isHost) {
+                        try { _omokGameRef(gid).onDisconnect().cancel(); } catch(_){}
+                        try { _omokDirRef(gid).onDisconnect().cancel(); } catch(_){}
+                    }
+                }
+            });
+        } catch(_){}
         // 광장 cfg 키 라이브 해제
         if(window._detachPlzCfgLive) try { window._detachPlzCfgLive(); } catch(_){}
         window._plzObsViewOn = false;
