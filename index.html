@@ -174,6 +174,7 @@
        /* === 상점 렌더링 세팅 === */
         /* === 상점 렌더링 세팅 === */
         #s_sh { background-color: #5D4037 !important; background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 40px), linear-gradient(to bottom, #6D4C41, #4E342E) !important; padding: 50px 30px; border-radius: 25px; border: 8px solid #3E2723; box-shadow: inset 0 0 80px rgba(0,0,0,0.7); }
+        #s_kiosk { padding: 8px !important; border-radius: 24px !important; border: none !important; box-shadow: none !important; overflow: hidden !important; }
         .shop-section { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; margin-bottom: 70px !important; position: relative; }
         
         /* 🌟 상점 아이템 중앙 정렬 (justify-content: center 추가) */
@@ -997,7 +998,6 @@
         <div id="menu_avt" class="menu" onclick="nav('t_avt',this)" style="position:relative;">👤 아바타 관리</div>
         <div class="menu" onclick="nav('t_plz',this)">🏫 광장 관리</div>
         <div class="menu" onclick="nav('t_events',this)">🎉 이벤트</div>
-
         <button class="btn btn-gray" onclick="localStorage.removeItem('teacherLogged');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>   
 
@@ -1271,7 +1271,15 @@
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 단어 관리" oncontextmenu="event.preventDefault();window._liarWordEditor&&window._liarWordEditor();return false;"><input type="checkbox" id="plz_room_liar_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🎭 라이어 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_mafia_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🕵️ 마피아</label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="체크 시 OX 퀴즈 방 — 인원 제한·전체 열기/닫기 무시"><input type="checkbox" id="plz_room_oxquiz_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">📝 OX 퀴즈</label>
-                                <label oncontextmenu="event.preventDefault();window._omokResetRank&&window._omokResetRank();return false;" title="우클릭: 이달 랭킹 초기화" style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_omok_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">⚫ 오목 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
+                                <label oncontextmenu="event.preventDefault();window._omokResetRank&&window._omokResetRank();return false;" title="우클릭: 현 기간 랭킹 초기화" style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_omok_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">⚫ 오목 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
+                                <div style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 8px;">
+                                    <span style="color:#888;">↳ 랭킹 주기</span>
+                                    <select id="omok_rank_period" onchange="saveOmokRankPeriod()" style="font-size:12px;border:1px solid #DDD;border-radius:6px;padding:2px 6px;">
+                                        <option value="monthly">한 달</option>
+                                        <option value="biweekly">2주</option>
+                                        <option value="weekly">1주</option>
+                                    </select>
+                                </div>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 단어 관리" oncontextmenu="event.preventDefault();window._catchMindWordEditor&&window._catchMindWordEditor();return false;"><input type="checkbox" id="plz_room_catchmind_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🎨 캐치마인드 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 토픽 추가" oncontextmenu="event.preventDefault();window._bombTopicsEditor&&window._bombTopicsEditor();return false;"><input type="checkbox" id="plz_room_bombgame_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">💣 폭탄게임 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                             </div>
@@ -1442,30 +1450,8 @@
         <div id="t_events" class="hidden">
             <h2 style="margin:0 0 14px;">🎉 이벤트</h2>
 
-            <!-- 패션쇼 -->
-            <div class="card" style="padding:16px;margin-bottom:14px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                    <h3 style="margin:0;font-size:18px;">👗 패션쇼</h3>
-                    <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
-                        <input type="checkbox" id="fs_active_chk" onchange="window._saveFashionCfg && _saveFashionCfg()"> 이벤트 진행
-                    </label>
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px;">
-                    <div><label style="font-size:12px;color:#666;">시작일</label><input id="fs_start" type="date" onchange="_saveFashionCfg()" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:6px;"></div>
-                    <div><label style="font-size:12px;color:#666;">투표 마감</label><input id="fs_voteEnd" type="date" onchange="_saveFashionCfg()" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:6px;"></div>
-                    <div><label style="font-size:12px;color:#666;">종료일</label><input id="fs_end" type="date" onchange="_saveFashionCfg()" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:6px;"></div>
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
-                    <button class="btn btn-blue" onclick="_publishFashionResult()" id="fs_publish_btn" style="padding:6px 14px;font-size:13px;">🏆 결과 공개</button>
-                    <button class="btn btn-gray" onclick="_unpublishFashionResult()" style="padding:6px 12px;font-size:12px;">↩️ 공개 취소</button>
-                    <button class="btn btn-red" onclick="_resetFashion()" style="padding:6px 12px;font-size:12px;">🗑️ 데이터 초기화</button>
-                </div>
-                <div id="fs_status" style="font-size:13px;color:#5D4037;background:#FFF8E1;padding:10px;border-radius:8px;margin-bottom:10px;"></div>
-                <div id="fs_entries_list"></div>
-            </div>
-
             <!-- 시간통장 -->
-            <div class="card" style="padding:16px;">
+            <div class="card" style="padding:16px;margin-bottom:14px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                     <h3 style="margin:0;font-size:18px;">⏱️ 시간통장</h3>
                     <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
@@ -1487,7 +1473,7 @@
             </div>
 
             <!-- 가바보 용사 -->
-            <div class="card" style="padding:16px;margin-top:14px;">
+            <div class="card" style="padding:16px;margin-bottom:14px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                     <h3 style="margin:0;font-size:18px;">⚔ 가바보 용사</h3>
                     <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
@@ -1540,7 +1526,77 @@
                 </div>
                 <div id="ge_preview"></div>
             </div>
+
+            <!-- 패션쇼 -->
+            <div class="card" style="padding:16px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <h3 style="margin:0;font-size:18px;">👗 패션쇼</h3>
+                    <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                        <input type="checkbox" id="fs_active_chk" onchange="window._saveFashionCfg && _saveFashionCfg()"> 이벤트 진행
+                    </label>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px;">
+                    <div><label style="font-size:12px;color:#666;">시작일</label><input id="fs_start" type="date" onchange="_saveFashionCfg()" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:6px;"></div>
+                    <div><label style="font-size:12px;color:#666;">투표 마감</label><input id="fs_voteEnd" type="date" onchange="_saveFashionCfg()" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:6px;"></div>
+                    <div><label style="font-size:12px;color:#666;">종료일</label><input id="fs_end" type="date" onchange="_saveFashionCfg()" style="width:100%;padding:5px;border:1px solid #ddd;border-radius:6px;"></div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+                    <button class="btn btn-blue" onclick="_publishFashionResult()" id="fs_publish_btn" style="padding:6px 14px;font-size:13px;">🏆 결과 공개</button>
+                    <button class="btn btn-gray" onclick="_unpublishFashionResult()" style="padding:6px 12px;font-size:12px;">↩️ 공개 취소</button>
+                    <button class="btn btn-red" onclick="_resetFashion()" style="padding:6px 12px;font-size:12px;">🗑️ 데이터 초기화</button>
+                </div>
+                <div id="fs_status" style="font-size:13px;color:#5D4037;background:#FFF8E1;padding:10px;border-radius:8px;margin-bottom:10px;"></div>
+                <div id="fs_entries_list"></div>
+            </div>
+
+            <!-- 키오스크 -->
+            <div class="card" style="padding:16px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <h3 style="margin:0;font-size:18px;">🎉 경험치 축제</h3>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                            <input type="checkbox" id="kioskIsOpen" style="width:16px;height:16px;" onchange="window.kioskToggleOpen(this.checked)">
+                            <span id="kioskOpenLabel" style="font-size:14px;font-weight:bold;color:#999;">이벤트 진행</span>
+                        </label>
+                        <button onclick="window.kioskOpenSettings()" style="background:#FFB366;color:white;border:none;padding:6px 14px;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">⚙️ 설정</button>
+                    </div>
+                </div>
+                <!-- 구입 신청 대기열 -->
+                <div id="kioskOrderQueue" style="display:flex;flex-direction:column;gap:0;"></div>
+                <div id="kioskOrderEmpty" style="color:#999;text-align:center;padding:30px;font-size:14px;display:none;">대기 중인 주문이 없습니다.</div>
+            </div>
         </div>
+    </div>
+</div>
+
+<!-- 키오스크 설정 모달 (body 레벨) -->
+<div id="kioskSettingsModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:3000;justify-content:center;align-items:center;" onclick="this.style.display='none'">
+    <div style="background:#FFFDF2;padding:36px;border-radius:36px;width:680px;max-width:90%;box-shadow:0 20px 50px rgba(0,0,0,0.15);border:4px dashed #FFE0B2;max-height:90vh;overflow-y:auto;" onclick="event.stopPropagation()">
+        <h2 style="margin:0 0 20px;font-family:'Jua',sans-serif;font-size:28px;color:#5D4037;">⚙️ 키오스크 설정</h2>
+        <div style="background:white;padding:18px;border-radius:18px;margin-bottom:14px;">
+            <div style="font-size:15px;font-weight:bold;color:#8D6E63;margin-bottom:10px;">🔒 키오스크 비밀번호 · 수라상 환율</div>
+            <input type="text" id="kioskCfgPw" placeholder="관리자 비밀번호">
+            <input type="number" id="kioskCfgSura" placeholder="왕의 수라상 환율 (기본 5)" style="margin-top:6px;">
+            <button onclick="window.kioskSaveSettings()" style="width:100%;background:#FFB366;color:white;border:none;padding:10px;border-radius:12px;font-weight:bold;cursor:pointer;font-size:15px;margin-top:6px;">저장</button>
+        </div>
+        <div style="background:white;padding:18px;border-radius:18px;margin-bottom:14px;">
+            <div style="font-size:15px;font-weight:bold;color:#8D6E63;margin-bottom:8px;">🖼️ 배경 이미지</div>
+            <div id="kioskBgPreview" style="width:100%;height:80px;border-radius:10px;background:#FFF3E0;background-size:cover;background-position:bottom center;margin-bottom:8px;border:2px dashed #FFB74D;display:flex;align-items:center;justify-content:center;color:#BCAAA4;font-size:13px;">미리보기</div>
+            <div style="display:flex;gap:6px;">
+                <input type="text" id="kioskCfgBg" placeholder="이미지 URL 입력 또는 아래에서 업로드" style="flex:1;margin-bottom:0;" oninput="window._kioskBgPreview(this.value)">
+                <button onclick="window._kioskBgUpload()" title="GitHub에 업로드" style="background:#24292F;color:white;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;font-size:14px;flex-shrink:0;">🐙</button>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:6px;">
+                <button onclick="window.kioskSaveBg()" style="flex:1;background:#FF8F00;color:white;border:none;padding:10px;border-radius:12px;font-weight:bold;cursor:pointer;">배경 저장</button>
+                <button onclick="window.kioskSaveBg(true)" style="background:#EEE;color:#888;border:none;padding:10px 14px;border-radius:12px;font-weight:bold;cursor:pointer;font-size:13px;">제거</button>
+            </div>
+        </div>
+        <div style="background:white;padding:18px;border-radius:18px;margin-bottom:14px;">
+            <div style="font-size:15px;font-weight:bold;color:#8D6E63;margin-bottom:10px;">📋 메뉴 관리</div>
+            <div id="kioskAdminItemList" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;"></div>
+            <button onclick="window.kioskAddItem()" style="width:100%;background:#A5D6A7;color:#2E7D32;border:none;padding:10px;border-radius:12px;font-weight:bold;cursor:pointer;">+ 메뉴 추가</button>
+        </div>
+                        <button onclick="document.getElementById('kioskSettingsModal').style.display='none'" style="width:100%;background:#F1F3F5;border:none;padding:14px;border-radius:18px;font-size:16px;font-weight:bold;cursor:pointer;">닫기</button>
     </div>
 </div>
 
@@ -1556,6 +1612,7 @@
         <div class="menu" id="menuFashionBtn" onclick="navS('s_fashion',this)" style="display:none;">👗 패션쇼</div>
         <div class="menu" id="menuTimeBankBtn" onclick="navS('s_tbank',this)" style="display:none;">⏱️ 시간통장</div>
         <div class="menu" id="menuGababoBtn" onclick="navS('s_gababo',this)" style="display:none;">⚔ 가바보 용사</div>
+        <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 경험치 축제</div>
 
         <button class="btn btn-gray" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
@@ -1568,6 +1625,7 @@
         <div id="s_fashion" class="hidden" style="flex:1;overflow-y:auto;"></div>
         <div id="s_tbank" class="hidden" style="flex:1;overflow-y:auto;"></div>
         <div id="s_gababo" class="hidden" style="flex:1;overflow-y:auto;"></div>
+        <div id="s_kiosk" class="hidden" style="flex:1;overflow-y:auto;"></div>
     </div>
 </div>
 
@@ -2517,13 +2575,14 @@ let _renderLock = false; // 재진입 방지
             // 광장 관련 키는 enterPlaza에서 _attachPlzCfgLive(), exitPlaza에서 _detachPlzCfgLive()로 동적 부착.
             const _isStudentSession = !window._isTeacherSession;
             if(p === 'cfg' && _isStudentSession) {
-                ['maintenance', 'reloadAt', 'gababoEvent', 'fashionShow', 'timeBank'].forEach(k => {
+                ['maintenance', 'reloadAt', 'gababoEvent', 'fashionShow', 'timeBank', 'kiosk'].forEach(k => {
                     dbRef.child('cfg/'+k).on('value', s => {
                         const v = s.val();
                         if(!db.cfg) db.cfg = {};
                         if(v === null || v === undefined) delete db.cfg[k];
                         else db.cfg[k] = v;
                         if(_splitInitialDone) _splitFire();
+                        if(k === 'kiosk') try { _refreshEventMenus && _refreshEventMenus(); } catch(_) {}
                     });
                 });
                 return;
@@ -5749,6 +5808,7 @@ let _renderLock = false; // 재진입 방지
             // 이벤트 메뉴 노출 동기화 (cfg 로드 타이밍에 따라 약간 지연)
             try { _refreshGababoMenu(); } catch(_){}
             try { window._refreshEventMenus && _refreshEventMenus(); } catch(_){}
+            try { _kioskAttachIsOpenListener && _kioskAttachIsOpenListener(); } catch(_){}
             setTimeout(() => {
                 try { _refreshGababoMenu(); } catch(_){}
                 try { window._refreshEventMenus && _refreshEventMenus(); } catch(_){}
@@ -6250,11 +6310,7 @@ let _renderLock = false; // 재진입 방지
                 const _ts = Date.now();
                 _safe.updatedAt = _ts;
                 updates.updatedAt = _ts;
-                if(Object.keys(updates).length >= Object.keys(_safe).length / 2) {
-                    dbRef.child('stu/' + i).set(_safe);
-                } else {
-                    dbRef.child('stu/' + i).update(updates);
-                }
+                dbRef.child('stu/' + i).update(updates);
             }
             // /reqCnt/{i} 미러링 — 교사-홈 경량 구독용. hash 비교로 변경 없으면 skip
             try {
@@ -6282,9 +6338,7 @@ let _renderLock = false; // 재진입 방지
             } catch(_){}
             window._upMeLastHash[me.cd] = newHash;
         } catch(e) {
-            // 안전 fallback: 전체 set
-            console.warn('[upMe] partial 실패 — 전체 set fallback', e);
-            dbRef.child('stu/' + i).set(_safe);
+            console.error('[upMe] partial 실패 — 저장 건너뜀:', e);
         }
     }
 
@@ -6383,7 +6437,13 @@ let _renderLock = false; // 재진입 방지
         }
         if(id==='t_avt') rAvt();
         if(id==='t_plz') rPlzT();
-        if(id==='t_events') { try { _renderTeacherEvents(); } catch(_){} try { rGababoT(); } catch(_){} }
+        if(id==='t_events') {
+            try { _renderTeacherEvents(); } catch(_){}
+            try { rGababoT(); } catch(_){}
+            try { window._kioskEnterTab && window._kioskEnterTab(); } catch(_){}
+        } else {
+            try { window._kioskLeaveTab && window._kioskLeaveTab(); } catch(_){}
+        }
     }
 
     function navS(id,e){
@@ -6455,6 +6515,7 @@ let _renderLock = false; // 재진입 방지
         if(id==='s_gababo') rGababoS();
         if(id==='s_fashion') { try { _renderStudentFashion(); } catch(_){} }
         if(id==='s_tbank') { try { _renderStudentTimeBank(); } catch(_){} }
+        if(id==='s_kiosk') { try { window.rKioskS && rKioskS(); } catch(_){} }
         if(id==='s_plz') {
             // 광장 진입 — 학생 단말은 plaza presence 만 사용. 교사·풀모드만 db.stu 로드.
             if((window._isTeacherSession || window._rpgStudentStuFull) && window._ensureStuLoaded) {
@@ -8099,17 +8160,17 @@ let _renderLock = false; // 재진입 방지
             const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
             const curIcon = lg.cur==='cn'?'🍯':lg.cur==='cd'?'🍭':'🍪';
             const passStr = lg.passUsed ? ` (이용권 ${lg.passUsed}개)` : '';
-            return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #F0F0F0;">
+            return `<div oncontextmenu="window._refundPurchaseLog(${lg.ts},'${lg._stuCd}','${(lg.cur||'kc')}',${lg.cost||0}); return false;" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #F0F0F0;cursor:context-menu;" title="우클릭: 구매 취소 및 환불">
                 <div style="min-width:110px;font-size:11px;color:#999;">${ds}</div>
                 <div style="min-width:55px;font-size:13px;font-weight:bold;color:#5D4037;">${lg._stuNm}</div>
                 <div style="flex:1;font-size:13px;">${lg.name||lg.type}</div>
                 <div style="font-size:12px;color:#666;">${lg.type||''}</div>
                 <div style="font-size:13px;font-weight:bold;color:#E53935;">${curIcon}${lg.cost||0}${passStr}</div>
-                <button onclick="window._delPurchaseLog(${lg.ts},'${lg._stuCd}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:#CCC;padding:0 4px;" title="삭제">🗑️</button>
+                <button onclick="event.stopPropagation();window._delPurchaseLog(${lg.ts},'${lg._stuCd}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:#CCC;padding:0 4px;" title="내역만 삭제(환불 없음)">🗑️</button>
             </div>`;
         }).join('') : '<div style="text-align:center;color:#999;padding:30px;">구매 내역 없음</div>';
 
-        // 삭제 함수 등록
+        // 내역만 삭제 (환불 없음)
         window._delPurchaseLog = function(ts, stuCd) {
             const stuList2 = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
             const s2 = stuList2.find(x=>x.cd===stuCd); if(!s2) return;
@@ -8118,6 +8179,24 @@ let _renderLock = false; // 재진입 방지
             if(idx!==-1) { logs.splice(idx,1); s2.shopLog = logs; }
             db.stu = stuList2; sv();
             // 모달 재렌더
+            const bk = document.getElementById('_allPurchaseModal'); if(bk) bk.remove();
+            window.showAllPurchaseLog();
+        };
+
+        // 구매 취소 + 쿠키 환불 (우클릭)
+        window._refundPurchaseLog = function(ts, stuCd, cur, cost) {
+            if(!confirm(`구매를 취소하고 ${cost}${cur==='kc'?'🍪':cur==='cn'?'🍯':'🍭'}을 환불할까요?`)) return;
+            const stuList2 = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
+            const s2 = stuList2.find(x=>x.cd===stuCd); if(!s2) return;
+            const logs = Array.isArray(s2.shopLog)?s2.shopLog:Object.values(s2.shopLog||{});
+            const idx = logs.findIndex(lg=>lg.ts===ts);
+            if(idx!==-1) { logs.splice(idx,1); s2.shopLog = logs; }
+            // 쿠키 환불
+            if(cost > 0) {
+                if(cur==='kc') s2.shopUsed = Math.max(0, (s2.shopUsed||0) - cost);
+                else s2[cur] = (s2[cur]||0) + cost;
+            }
+            db.stu = stuList2; sv();
             const bk = document.getElementById('_allPurchaseModal'); if(bk) bk.remove();
             window.showAllPurchaseLog();
         };
@@ -12719,18 +12798,7 @@ window.appU = function(y, si, k) {
             me.shopUsed = (me.shopUsed || 0) + effectiveCost;
             if(!me.shopLog) me.shopLog = [];
             me.shopLog.push({type:'아이템 구입', name:item.n, cost:effectiveCost, passUsed, ts:Date.now()});
-            // 키오스크에도 즉시 반영: kiosk_users/spent 증가 + kiosk_history 기록
-            if (effectiveCost > 0) {
-                const _logId = Date.now().toString();
-                const _rootRef = firebase.database().ref();
-                _rootRef.child(`kiosk_users/${me.cd}/spent`).transaction(val => (val||0) + effectiveCost);
-                _rootRef.child(`kiosk_users/${me.cd}/highlight`).transaction(val => (val||0) + effectiveCost);
-                _rootRef.child(`kiosk_history/${_logId}`).set({
-                    id: _logId, code: me.cd, studentName: me.nm,
-                    itemName: item.n, price: effectiveCost, timestamp: Date.now(),
-                    fromEventShop: true
-                });
-            }
+
         } else {
             me[cType] -= effectiveCost;
             if(!me.shopLog) me.shopLog = [];
@@ -14876,7 +14944,7 @@ window.addCharRow = function() {
         const badgePanelHtml = customBadges2.length > 0
             ? customBadges2.map(b=>`
                 <div style="display:flex;align-items:center;gap:8px;background:#FFF8E1;border:2px solid #FFE082;border-radius:12px;padding:7px 10px;">
-                    ${b.img ? `<img src="${b.img}" style="width:36px;height:36px;object-fit:contain;border-radius:6px;">` : `<div style="font-size:28px;line-height:1;">${b.icon||'🏅'}</div>`}
+                    ${b.img ? `<img src="${b.img}" style="width:36px;height:36px;object-fit:contain;border-radius:6px;">` : `<div style="font-size:22px;line-height:1;">${b.icon||'🏅'}</div>`}
                     <div>
                         <div style="font-size:13px;font-weight:bold;color:#5D4037;">${b.name}</div>
                         <div style="font-size:11px;color:#888;">${b.desc||''}</div>
@@ -21316,6 +21384,16 @@ window.addCharRow = function() {
         const tbBtn = document.getElementById('menuTimeBankBtn');
         if(fsBtn) fsBtn.style.display = (_isEventActive(fsCfg) || fsCfg.resultPublished) ? '' : 'none';
         if(tbBtn) tbBtn.style.display = _isEventActive(tbCfg) ? '' : 'none';
+        const kioskBtn = document.getElementById('menuKioskBtn');
+        if(kioskBtn) {
+            const _kOpen = !!(db.cfg && db.cfg.kiosk && db.cfg.kiosk.isOpen);
+            kioskBtn.style.display = _kOpen ? '' : 'none';
+        }
+        // 학생이 kiosk 탭에 있으면 즉시 재렌더
+        try {
+            var _ks = document.getElementById('s_kiosk');
+            if (_ks && _ks.style.display !== 'none' && window.rKioskS) rKioskS();
+        } catch(_){}
     }
     window._refreshEventMenus = _refreshEventMenus;
 
@@ -22023,6 +22101,10 @@ window.addCharRow = function() {
         if(idEnEl) idEnEl.checked = !!plzIdle.enabled;
         if(idMnEl) idMnEl.value = plzIdle.minutes || 5;
         if(idStEl) idStEl.textContent = plzIdle.enabled ? `✅ ${plzIdle.minutes||5}분 무움직임 시 자동 퇴장` : '';
+
+        // 오목 랭킹 주기 반영
+        const omokPeriodEl = document.getElementById('omok_rank_period');
+        if(omokPeriodEl) omokPeriodEl.value = (db.cfg && db.cfg.plz && db.cfg.plz.omokRankPeriod) || 'monthly';
 
         // 최대 접속 시간 설정 반영
         const plzMaxTime = (db.cfg && db.cfg.plzMaxTime) || {};
@@ -23409,6 +23491,711 @@ window.addCharRow = function() {
         _renderPlzRoomTabs();
         rPlzT();
     };
+
+    window.saveOmokRankPeriod = function() {
+        const val = document.getElementById('omok_rank_period')?.value || 'monthly';
+        if (!db.cfg.plz) db.cfg.plz = {};
+        db.cfg.plz.omokRankPeriod = val;
+        sv();
+        // 랭킹 캐시 초기화 (새 주기 키로 재로드되도록)
+        window._omokRankCache = new Map();
+        window._omokRankSorted = [];
+        window._omokRankFullLoaded = false;
+    };
+
+
+    // ═══════════════════════════════════════════════════
+    // 🎉 경험치 축제 (키오스크) — db.cfg.kiosk 구조 활용
+    // ═══════════════════════════════════════════════════
+    var _kioskOrdRef = null;
+    var _kioskOrdCache = {};
+
+    // 교사: t_events 탭 진입
+    window._kioskEnterTab = function() {
+        var k = (db.cfg && db.cfg.kiosk) || {};
+        var chk = document.getElementById('kioskIsOpen');
+        var lbl = document.getElementById('kioskOpenLabel');
+        if (chk) chk.checked = !!k.isOpen;
+        if (lbl) { lbl.textContent = k.isOpen ? '운영 중' : '이벤트 진행'; lbl.style.color = k.isOpen ? '#43A047' : '#999'; }
+        if (_kioskOrdRef) return;
+        _kioskOrdRef = firebase.database().ref('kiosk_orders');
+        _kioskOrdRef.on('value', function(snap) { _kioskRenderOrders(snap.val()||{}); });
+    };
+
+    // 교사: t_events 탭 이탈
+    window._kioskLeaveTab = function() {
+        if (_kioskOrdRef) { _kioskOrdRef.off(); _kioskOrdRef = null; }
+    };
+
+    // 교사: 주문 대기열 렌더
+    function _kioskRenderOrders(orders) {
+        _kioskOrdCache = orders;
+        var queue = document.getElementById('kioskOrderQueue');
+        var empty = document.getElementById('kioskOrderEmpty');
+        if (!queue) return;
+        var list = Object.entries(orders).sort(function(a,b){ return (a[1].ts||0)-(b[1].ts||0); });
+        if (!list.length) {
+            queue.innerHTML = '';
+            if (empty) empty.style.display = '';
+            return;
+        }
+        if (empty) empty.style.display = 'none';
+        queue.innerHTML = list.map(function(entry) {
+            var id = entry[0], o = entry[1];
+            var passStr = (o.passKeys && o.passKeys.length) ? ' <span style="color:#FF8F00;font-size:11px;">(+이용권' + o.passKeys.length + '개)</span>' : '';
+            var ts = o.ts ? new Date(o.ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '';
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #F5F5F5;font-size:13px;">'
+                + '<span style="color:#aaa;min-width:36px;">' + ts + '</span>'
+                + '<span style="flex:1;color:#4E342E;"><b>' + (o.no||'') + '번 ' + (o.nm||'') + '</b> → ' + (o.itemName||'') + passStr + ' <span style="color:#E65100;">' + (o.price||0) + '🍪</span></span>'
+                + '<button onclick="window.kioskOrderDone(\'' + id + '\')" style="background:#43A047;color:white;border:none;padding:4px 10px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:bold;">완료</button>'
+                + '<button onclick="window.kioskOrderRefund(\'' + id + '\')" style="background:#EF5350;color:white;border:none;padding:4px 10px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:bold;">환불</button>'
+                + '</div>';
+        }).join('');
+    }
+
+    // 교사: 완료
+    window.kioskOrderDone = function(id) {
+        firebase.database().ref('kiosk_orders/'+id).remove();
+    };
+
+    // 교사: 환불
+    window.kioskOrderRefund = function(id) {
+        var order = _kioskOrdCache[id];
+        if (!order) return;
+        var refundAmt = order.price || 0;
+
+        function _doRefund(stuK) {
+            var updates = {};
+            updates['kiosk_orders/' + id] = null;
+            if (stuK !== null && stuK !== undefined) {
+                if (refundAmt > 0) {
+                    updates['ClassData/EventShop/stu/' + stuK + '/shopUsed'] =
+                        firebase.database.ServerValue.increment(-refundAmt);
+                }
+                if (order.passKeys && order.passKeys.length) {
+                    order.passKeys.forEach(function(pk) {
+                        updates['ClassData/EventShop/stu/' + stuK + '/inv/' + pk + '/st'] = 'active';
+                    });
+                }
+            }
+            firebase.database().ref().update(updates);
+        }
+
+        // 1) 주문에 저장된 stuIdx 바로 사용 (신규 주문)
+        if (order.stuIdx !== null && order.stuIdx !== undefined) {
+            _doRefund(order.stuIdx);
+            return;
+        }
+        // 2) db.stu 로컬 캐시 검색 (구 주문 폴백)
+        var keys = Object.keys(db.stu||{});
+        var stuK = keys.find(function(k) {
+            var s = db.stu[k];
+            return s && String(s.cd) === String(order.cd);
+        });
+        if (stuK !== undefined) {
+            _doRefund(stuK);
+            return;
+        }
+        // 3) Firebase 직접 쿼리 (db.stu 없을 때 최후 수단)
+        firebase.database().ref('ClassData/EventShop/stu')
+            .orderByChild('cd').equalTo(String(order.cd)).limitToFirst(1)
+            .once('value').then(function(snap) {
+                var foundKey = null;
+                snap.forEach(function(child) { foundKey = child.key; return true; });
+                _doRefund(foundKey);
+            });
+    };
+
+    // 교사: 이벤트 진행 토글
+    function _kioskAttachIsOpenListener() {
+        try {
+            dbRef.child('cfg/kiosk/isOpen').on('value', function(snap) {
+                if (!db.cfg) db.cfg = {};
+                if (!db.cfg.kiosk) db.cfg.kiosk = {};
+                var v = snap.val();
+                db.cfg.kiosk.isOpen = !!v;
+                try { _refreshEventMenus && _refreshEventMenus(); } catch(_) {}
+            });
+        } catch(_) {}
+    }
+
+    window.kioskToggleOpen = function(isOpen) {
+        if (!db.cfg) db.cfg = {};
+        if (!db.cfg.kiosk) db.cfg.kiosk = {};
+        db.cfg.kiosk.isOpen = isOpen;
+        dbRef.child('cfg/kiosk/isOpen').set(isOpen);
+        if (typeof _refreshEventMenus === 'function') _refreshEventMenus();
+        var lbl = document.getElementById('kioskOpenLabel');
+        if (lbl) { lbl.textContent = isOpen ? '운영 중' : '이벤트 진행'; lbl.style.color = isOpen ? '#43A047' : '#999'; }
+    };
+
+    // 교사: 설정 모달 열기
+    window.kioskOpenSettings = function() {
+        var modal = document.getElementById('kioskSettingsModal');
+        if (!modal) { alert('설정 모달을 찾을 수 없습니다.'); return; }
+        var k = (db.cfg && db.cfg.kiosk) || {};
+        var pw = document.getElementById('kioskCfgPw');
+        var sura = document.getElementById('kioskCfgSura');
+        if (pw) pw.value = k.pw || '0404';
+        if (sura) sura.value = k.sura_rate || 5;
+        // 배경이미지 설정 채우기
+        var bgInp = document.getElementById('kioskCfgBg');
+        if (bgInp) bgInp.value = k.bgUrl || '';
+        window._kioskBgPreview(k.bgUrl || '');
+        _kioskRenderAdminItems();
+        modal.style.display = 'flex';
+    };
+
+    // 배경이미지 미리보기
+    window._kioskBgPreview = function(url) {
+        var el = document.getElementById('kioskBgPreview');
+        if (!el) return;
+        if (url) {
+            el.style.backgroundImage = 'url(' + url + ')';
+            el.textContent = '';
+        } else {
+            el.style.backgroundImage = 'none';
+            el.textContent = '미리보기';
+        }
+    };
+
+    // 배경이미지 저장
+    window.kioskSaveBg = function(clear) {
+        var url = clear ? '' : ((document.getElementById('kioskCfgBg')||{}).value || '').trim();
+        if (!db.cfg) db.cfg = {};
+        if (!db.cfg.kiosk) db.cfg.kiosk = {};
+        db.cfg.kiosk.bgUrl = url;
+        dbRef.child('cfg/kiosk/bgUrl').set(url || null);
+        if (clear) { var inp = document.getElementById('kioskCfgBg'); if (inp) inp.value = ''; window._kioskBgPreview(''); }
+        alert(clear ? '배경 이미지가 제거되었습니다.' : '배경 이미지가 저장되었습니다.');
+    };
+
+    // 배경이미지 GitHub 업로드
+    window._kioskBgUpload = function() {
+        var gh = (db.cfg && db.cfg.gh) || {};
+        if (!gh.owner || !gh.repo) { alert('상점 설정(🐙)에서 GitHub 저장소를 먼저 설정해주세요.'); return; }
+        if (!gh.token) { alert('상점 설정(🐙)에서 GitHub Token을 먼저 입력해주세요.'); return; }
+        var inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        inp.onchange = async function() {
+            var file = this.files[0]; if (!file) return;
+            var reader = new FileReader();
+            reader.onload = async function(ev) {
+                var b64 = ev.target.result.split(',')[1];
+                var ext = file.name.split('.').pop() || 'png';
+                var fname = 'kiosk/bg_' + Date.now() + '.' + ext;
+                var url = 'https://api.github.com/repos/' + gh.owner + '/' + gh.repo + '/contents/' + fname;
+                try {
+                    var resp = await fetch(url, {
+                        method: 'PUT',
+                        headers: { 'Authorization': 'token ' + gh.token, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: 'kiosk bg image', content: b64 })
+                    });
+                    var data = await resp.json();
+                    if (!resp.ok) { alert('업로드 실패: ' + (data.message||resp.status)); return; }
+                    var rawUrl = 'https://raw.githubusercontent.com/' + gh.owner + '/' + gh.repo + '/main/' + fname;
+                    var bgInp = document.getElementById('kioskCfgBg');
+                    if (bgInp) bgInp.value = rawUrl;
+                    window._kioskBgPreview(rawUrl);
+                } catch(err) { alert('업로드 오류: ' + err.message); }
+            };
+            reader.readAsDataURL(file);
+        };
+        inp.click();
+    };
+
+    // 교사: 설정 저장
+    window.kioskSaveSettings = function() {
+        if (!db.cfg) db.cfg = {};
+        if (!db.cfg.kiosk) db.cfg.kiosk = {};
+        var pw = (document.getElementById('kioskCfgPw')||{}).value || '0404';
+        var sr = Number((document.getElementById('kioskCfgSura')||{}).value) || 5;
+        db.cfg.kiosk.pw = pw;
+        db.cfg.kiosk.sura_rate = sr;
+        dbRef.child('cfg/kiosk').update({ pw: pw, sura_rate: sr });
+        alert('저장 완료');
+    };
+
+    // 교사: 아이템 목록 렌더
+    var _kioskDragId = null;
+
+    function _kioskRenderAdminItems() {
+        var list = document.getElementById('kioskAdminItemList');
+        if (!list) return;
+        var items = Object.entries((db.cfg && db.cfg.kiosk && db.cfg.kiosk.items) || {})
+            .sort(function(a,b){ return (a[1].ord==null?999:a[1].ord)-(b[1].ord==null?999:b[1].ord); });
+        if (!items.length) {
+            list.innerHTML = '<div style="color:#aaa;text-align:center;padding:20px;grid-column:1/-1;">메뉴가 없습니다. 아래 버튼으로 추가하세요.</div>';
+            return;
+        }
+        list.innerHTML = items.map(function(entry) {
+            var id = entry[0], item = entry[1];
+            var iconHtml = (item.icon && item.icon.startsWith('http'))
+                ? '<img src="' + item.icon + '" style="width:28px;height:28px;object-fit:contain;border-radius:6px;">'
+                : (item.icon || '🛍️');
+            var safeId = id.replace(/'/g, "\\'");
+            var safeName = (item.name||'').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            var safeIcon = (item.icon||'').replace(/"/g, '&quot;');
+            return '<div draggable="true" data-kid="' + id + '" ondragstart="window._kioskDragStart(event,\'' + safeId + '\')" ondragover="if([].indexOf.call(event.dataTransfer.types,\'Files\')<0){event.preventDefault();this.style.outline=\'3px dashed #81C784\';}" ondragleave="this.style.outline=\'\'" ondrop="window._kioskDrop(event,\'' + safeId + '\')" style="border:2px solid #A5D6A7;border-radius:14px;padding:10px;text-align:center;background:#F1F8E9;position:relative;cursor:grab;">'
+                + '<div style="position:absolute;top:4px;left:6px;color:#B0BEC5;font-size:14px;cursor:grab;" title="드래그로 순서 변경">☰</div>'
+                + '<div onclick="window.kioskDelItem(\'' + safeId + '\')" style="position:absolute;top:-8px;right:-8px;background:#EF5350;color:white;border-radius:50%;width:22px;height:22px;font-size:13px;line-height:22px;cursor:pointer;text-align:center;">✕</div>'
+                + '<div style="font-size:26px;margin-bottom:4px;border:2px dashed transparent;border-radius:10px;'+ ' padding:2px;transition:border-color .2s;cursor:pointer;"'+ ' title="이미지를 드래그하거나 클릭해서 업로드"'+ ' onclick="window._kioskPickImg(\'' + safeId + '\')"'+ ' ondragover="if([].indexOf.call(event.dataTransfer.types,\'Files\')>=0){event.preventDefault();event.stopPropagation();this.style.borderColor=\'#43A047\';this.style.background=\'#E8F5E9\';}"'+ ' ondragleave="this.style.borderColor=\'transparent\';this.style.background=\'\'"'+ ' ondrop="if(event.dataTransfer.files&&event.dataTransfer.files.length){event.stopPropagation();window._kioskImgDrop(event,\'' + safeId + '\');}"'+ '>' + iconHtml + '</div>'
+                + '<div style="display:flex;gap:4px;margin-bottom:3px;">'
+                + '<input value="' + safeIcon + '" onchange="window.kioskUpdateItem(\'' + safeId + '\',\'icon\',this.value)" placeholder="이모지 또는 이미지 URL" style="flex:1;min-width:0;text-align:center;border:1px solid #DDD;border-radius:6px;padding:3px;font-size:11px;color:#1565C0;">'
+                + '<button onclick="window._kioskPickImg(\'' + safeId + '\')" title="GitHub에 이미지 업로드" style="background:#24292F;color:white;border:none;border-radius:6px;padding:3px 6px;font-size:11px;cursor:pointer;flex-shrink:0;">🐙</button>'
+                + '</div>'
+                + '<input value="' + safeName + '" onchange="window.kioskUpdateItem(\'' + safeId + '\',\'name\',this.value)" style="width:100%;text-align:center;border:1px solid #DDD;border-radius:6px;padding:3px;font-size:12px;margin-bottom:3px;">'
+                + '<input value="' + (item.priceValue||0) + '" type="number" onchange="window.kioskUpdateItem(\'' + safeId + '\',\'priceValue\',this.value)" style="width:100%;text-align:center;border:1px solid #DDD;border-radius:6px;padding:3px;font-size:12px;color:#E53935;">'
+                + '</div>';
+        }).join('');
+    }
+
+    // 드래그&드롭 핸들러
+    window._kioskDragStart = function(e, id) {
+        _kioskDragId = id;
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    window._kioskDrop = function(e, targetId) {
+        e.preventDefault();
+        var el = e.currentTarget; el.style.outline = '';
+        if (!_kioskDragId || _kioskDragId === targetId) return;
+        var items = (db.cfg && db.cfg.kiosk && db.cfg.kiosk.items) || {};
+        var entries = Object.entries(items).sort(function(a,b){ return (a[1].ord==null?999:a[1].ord)-(b[1].ord==null?999:b[1].ord); });
+        var fromIdx = entries.findIndex(function(x){ return x[0] === _kioskDragId; });
+        var toIdx   = entries.findIndex(function(x){ return x[0] === targetId; });
+        if (fromIdx === -1 || toIdx === -1) return;
+        // 재정렬
+        var moved = entries.splice(fromIdx, 1)[0];
+        entries.splice(toIdx, 0, moved);
+        entries.forEach(function(x, i){ x[1].ord = i; });
+        // 순서 변경을 직접 Firebase에 저장
+        var ordUpdate = {};
+        entries.forEach(function(x){ ordUpdate[x[0] + '/ord'] = x[1].ord; });
+        dbRef.child('cfg/kiosk/items').update(ordUpdate);
+        _kioskRenderAdminItems();
+        _kioskDragId = null;
+    };
+
+    // GitHub 이미지 업로드
+    var _kioskGhTarget = null;
+    window._kioskPickImg = function(itemId) {
+        var gh = (db.cfg && db.cfg.gh) || {};
+        if (!gh.owner || !gh.repo) { alert('상점 설정(🐙)에서 GitHub 저장소를 먼저 설정해주세요.'); return; }
+        var token = gh.token || '';
+        if (!token) { alert('상점 설정(🐙)에서 GitHub Token을 먼저 입력해주세요.'); return; }
+        _kioskGhTarget = itemId;
+        var inp = document.getElementById('_kioskGhFileInput');
+        if (!inp) {
+            inp = document.createElement('input');
+            inp.type = 'file'; inp.id = '_kioskGhFileInput'; inp.accept = 'image/*'; inp.style.display = 'none';
+            inp.onchange = _kioskGhUpload;
+            document.body.appendChild(inp);
+        }
+        inp.value = ''; inp.click();
+    };
+
+    window._kioskImgDrop = function(e, itemId) {
+        e.preventDefault();
+        var el = e.currentTarget;
+        el.style.borderColor = 'transparent'; el.style.background = '';
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (!files || !files[0]) return;
+        var gh = (db.cfg && db.cfg.gh) || {};
+        if (!gh.owner || !gh.repo) { alert('상점 설정(🐙)에서 GitHub 저장소를 먼저 설정해주세요.'); return; }
+        if (!gh.token) { alert('상점 설정(🐙)에서 GitHub Token을 먼저 입력해주세요.'); return; }
+        _kioskGhTarget = itemId;
+        _kioskGhUploadFile(files[0]);
+    };
+
+    function _kioskGhUpload() {
+        var file = this.files[0]; if (!file) return;
+        _kioskGhUploadFile(file);
+    }
+
+    function _kioskGhUploadFile(file) {
+        var gh = (db.cfg && db.cfg.gh) || {};
+        var token = gh.token || '';
+        var reader = new FileReader();
+        reader.onload = async function(ev) {
+            var b64 = ev.target.result.split(',')[1];
+            var ext = file.name.split('.').pop() || 'png';
+            var fname = 'kiosk/item_' + Date.now() + '.' + ext;
+            var url = 'https://api.github.com/repos/' + gh.owner + '/' + gh.repo + '/contents/' + fname;
+            try {
+                var resp = await fetch(url, {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'token ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'kiosk item image', content: b64 })
+                });
+                var data = await resp.json();
+                if (!resp.ok) { alert('업로드 실패: ' + (data.message||resp.status)); return; }
+                var rawUrl = 'https://raw.githubusercontent.com/' + gh.owner + '/' + gh.repo + '/main/' + fname;
+                if (_kioskGhTarget) {
+                    window.kioskUpdateItem(_kioskGhTarget, 'icon', rawUrl);
+                    _kioskRenderAdminItems();
+                }
+            } catch(err) { alert('업로드 오류: ' + err.message); }
+        };
+        reader.readAsDataURL(file);
+    }
+
+
+    // 교사: 아이템 추가
+    window.kioskAddItem = function() {
+        if (!db.cfg) db.cfg = {};
+        if (!db.cfg.kiosk) db.cfg.kiosk = {};
+        if (!db.cfg.kiosk.items) db.cfg.kiosk.items = {};
+        var id = 'k' + Date.now();
+        var ord = Object.keys(db.cfg.kiosk.items).length;
+        var newItem = { id: id, name: '새 메뉴', priceValue: 10, icon: '🛍️', ord: ord };
+        db.cfg.kiosk.items[id] = newItem;
+        dbRef.child('cfg/kiosk/items/' + id).set(newItem);
+        _kioskRenderAdminItems();
+    };
+
+    // 교사: 아이템 삭제
+    window.kioskDelItem = function(id) {
+        if (!db.cfg || !db.cfg.kiosk || !db.cfg.kiosk.items) return;
+        delete db.cfg.kiosk.items[id];
+        dbRef.child('cfg/kiosk/items/' + id).remove();
+        _kioskRenderAdminItems();
+    };
+
+    // 교사: 아이템 수정
+    window.kioskUpdateItem = function(id, field, val) {
+        if (!db.cfg || !db.cfg.kiosk || !db.cfg.kiosk.items || !db.cfg.kiosk.items[id]) return;
+        var v = (field === 'priceValue') ? Number(val) : val;
+        db.cfg.kiosk.items[id][field] = v;
+        dbRef.child('cfg/kiosk/items/' + id + '/' + field).set(v);
+    };
+
+    // 학생: 키오스크 탭 렌더
+    window.rKioskS = function() {
+        var wrap = document.getElementById('s_kiosk');
+        if (!wrap) return;
+        var k = (db.cfg && db.cfg.kiosk) || {};
+        var items = Object.values(k.items || {}).sort(function(a,b){ return (a.ord==null?999:a.ord)-(b.ord==null?999:b.ord); });
+        var myBal = (me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0);
+        var _sr = k.sura_rate || 5;
+        var _kwonCount = 0, _suraCount = 0;
+        if (me.inv) {
+            Object.values(me.inv).forEach(function(it) {
+                if (!it || !(it.st==='active'||it.st==='new')) return;
+                if (it.n && it.n.includes('상점 이용권')) _kwonCount++;
+                if (it.n && it.n.includes('왕의 수라상')) _suraCount++;
+            });
+        }
+        var cardsHtml = items.map(function(item) {
+            var isPlus = item.priceValue < 0;
+            var priceAbs = Math.abs(item.priceValue);
+            var affordable = isPlus || (myBal + _kwonCount + _suraCount * _sr >= item.priceValue);
+            var iconHtml = (item.icon && item.icon.startsWith('http'))
+                ? '<img src="' + item.icon + '" style="width:100%;height:100%;object-fit:contain;border-radius:10px;display:block;">'
+                : '<div style="font-size:28px;line-height:1;">' + (item.icon||'🛍️') + '</div>';
+            var safeId   = (item.id||'').replace(/'/g, "\'");
+            var safeName = (item.name||'').replace(/'/g, "\'");
+            return '<div onclick="window.kioskStudentBuy(\'' + safeId + '\',\'' + safeName + '\',' + item.priceValue + ')" '
+                + 'style="display:flex;flex-direction:column;align-items:center;gap:3px;'
+                + 'background:rgba(255,255,255,0.90);border-radius:16px;'
+                + 'border:2px solid #D4A017;'
+                + 'box-shadow:0 2px 8px rgba(0,0,0,0.10);'
+                + 'padding:8px 4px 6px;cursor:pointer;text-align:center;aspect-ratio:1;overflow:hidden;justify-content:center;">'
+                + '<div style="width:45%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:10px;background:#FFF8F0;">' + iconHtml + '</div>'
+                + '<div style="font-size:20px;font-weight:800;color:#3E2723;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px;">' + (item.name||'') + '</div>'
+                + '<div style="font-size:18px;font-weight:900;color:#C25E00;">'
+                + (isPlus?'+':'') + priceAbs + '<span style="font-size:20px;font-weight:700;margin-left:1px;">🍪</span></div>'
+                + '</div>';
+        }).join('');
+        var emptyHtml = items.length === 0
+            ? '<div style="color:#BCAAA4;text-align:center;padding:80px 20px;font-size:16px;grid-column:1/-1;">메뉴가 없습니다.</div>'
+            : '';
+        var _bgUrl = k.bgUrl || '';
+        var _bgStyle = _bgUrl
+            ? 'background:#FFF3E0;background-image:url(' + _bgUrl + ');background-size:cover;background-position:bottom center;background-repeat:no-repeat;'
+            : 'background:#FFF3E0;';
+        wrap.style.setProperty('background-color', _bgUrl ? 'transparent' : '#EDE0D0', 'important');
+        wrap.style.setProperty('background-image', _bgUrl ? 'url(' + _bgUrl + ')' : 'none', 'important');
+        wrap.style.setProperty('background-size', '100%', 'important');
+        wrap.style.setProperty('background-repeat', 'no-repeat', 'important');
+        wrap.style.setProperty('background-position', 'center top', 'important');
+        wrap.style.setProperty('height', '100%', 'important');
+        wrap.style.setProperty('overflow-y', 'auto', 'important');
+        wrap.innerHTML = ''
+            + '<div style="min-height:100%;box-sizing:border-box;padding-bottom:24px;">'
+            + '<div style="padding:24px 16px 12px;text-align:center;">'
+            + '<div style="font-size:29px;font-weight:700;color:#5D4037;letter-spacing:2px;margin-bottom:6px;text-shadow:1px 1px 0 rgba(255,255,255,0.7);">RPG 월드</div>'
+            + '<div style="font-size:60px;font-weight:900;color:#3E2723;letter-spacing:-2px;line-height:1.1;'
+            + 'text-shadow:3px 3px 0 rgba(255,255,255,0.6);">경험치 대축제</div>'
+            + '</div>'
+            + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:40px 16px 20px;">'
+            + cardsHtml + emptyHtml
+            + '</div>'
+            + '</div>';
+    };
+
+    // 학생: 구매 처리
+    window.kioskStudentBuy = function(itemId, itemName, priceValue) {
+        var k = (db.cfg && db.cfg.kiosk) || {};
+        var _sr = k.sura_rate || 5;
+        var myBal = (me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0);
+
+        var _kwonKeys = [], _suraKeys = [];
+        if (me.inv && priceValue > 0) {
+            Object.entries(me.inv).forEach(function(entry) {
+                var kk = entry[0], it = entry[1];
+                if (!it || !(it.st==='active'||it.st==='new')) return;
+                if (it.n && it.n.includes('상점 이용권')) _kwonKeys.push(kk);
+                if (it.n && it.n.includes('왕의 수라상')) _suraKeys.push(kk);
+            });
+        }
+        var _kwonCount = _kwonKeys.length, _suraCount = _suraKeys.length;
+
+        // 아이템 아이콘
+        var kItems = k.items || {};
+        var iconRaw = (kItems[itemId] && kItems[itemId].icon) ? kItems[itemId].icon : '🛍️';
+        var iconHtml = iconRaw.startsWith('http')
+            ? '<img src="' + iconRaw + '" style="width:56px;height:56px;object-fit:cover;border-radius:12px;box-shadow:0 3px 8px rgba(0,0,0,0.13);">'
+            : '<span style="font-size:44px;line-height:1;">' + iconRaw + '</span>';
+
+        // 최대 구매 가능 수량 (쿠키+수라상+이용권 합산 기준)
+        var totalPower = myBal + _kwonCount + _suraCount * _sr;
+        var maxQty = priceValue <= 0 ? 99 : Math.max(1, Math.floor(totalPower / priceValue));
+        var canAfford = priceValue <= 0 || totalPower >= priceValue;
+
+        // 전역 상태
+        window._kbs = { itemId:itemId, itemName:itemName, priceValue:priceValue,
+            myBal:myBal, sr:_sr, kwonKeys:_kwonKeys, suraKeys:_suraKeys,
+            useSura:0, useKwon:0, qty:1, maxQty:maxQty };
+
+        // 기존 모달 제거
+        var old = document.getElementById('_kioskBuyModal');
+        if (old) old.remove();
+
+        var priceBase = priceValue < 0 ? '획득 +' + Math.abs(priceValue) + ' 🍪' : priceValue + ' 🍪';
+
+        // 수량 선택 행
+        var qtySection = '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px dashed #FFCC80;margin-bottom:10px;">'
+            + '<div style="font-size:13px;font-weight:700;color:#4E342E;">📦 수량</div>'
+            + '<div style="display:flex;align-items:center;gap:8px;">'
+            + '<button onclick="window._kbsAdj(\'qty\',-1)" style="width:30px;height:30px;border-radius:50%;border:none;background:#FFE0B2;font-size:16px;font-weight:900;cursor:pointer;color:#E65100;">−</button>'
+            + '<span id="_kbsQtyN" style="font-size:16px;font-weight:900;min-width:24px;text-align:center;">1</span>'
+            + '<button onclick="window._kbsAdj(\'qty\',1)" style="width:30px;height:30px;border-radius:50%;border:none;background:#FFE0B2;font-size:16px;font-weight:900;cursor:pointer;color:#E65100;">+</button>'
+            + '</div></div>';
+
+        // 수라상/이용권 버튼 공통 스타일
+        var btnBase = 'width:30px;height:30px;border-radius:50%;border:none;font-size:16px;font-weight:900;color:#E65100;';
+
+        // 이용권/수라상 섹션 (양수 가격일 때 항상 표시)
+        var passSection = '';
+        if (priceValue > 0) {
+            var suraDis = _suraCount === 0 ? 'opacity:0.35;cursor:not-allowed;background:#EEE;' : 'cursor:pointer;background:#FFE0B2;';
+            var kwonDis = _kwonCount === 0 ? 'opacity:0.35;cursor:not-allowed;background:#EEE;' : 'cursor:pointer;background:#FFE0B2;';
+            passSection = '<div style="background:#FFF8F0;border-radius:14px;padding:14px 16px;margin:14px 0;">'
+                + qtySection
+                // 왕의 수라상 (항상 표시)
+                + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">'
+                + '<div><div style="font-size:13px;font-weight:700;color:#4E342E;">🍖 왕의 수라상</div>'
+                + '<div style="font-size:11px;color:#999;">보유 ' + _suraCount + '개 · 1개당 ' + _sr + '🍪</div></div>'
+                + '<div style="display:flex;align-items:center;gap:8px;">'
+                + '<button onclick="window._kbsAdj(&quot;sura&quot;,-1)" style="' + btnBase + suraDis + '">−</button>'
+                + '<span id="_kbsSuraN" style="font-size:16px;font-weight:900;min-width:20px;text-align:center;">0</span>'
+                + '<button onclick="window._kbsAdj(&quot;sura&quot;,1)" style="' + btnBase + suraDis + '">+</button>'
+                + '</div></div>'
+                // 상점 이용권 (항상 표시)
+                + '<div style="display:flex;align-items:center;justify-content:space-between;">'
+                + '<div><div style="font-size:13px;font-weight:700;color:#4E342E;">🎟️ 상점 이용권</div>'
+                + '<div style="font-size:11px;color:#999;">보유 ' + _kwonCount + '개 · 1개당 1🍪</div></div>'
+                + '<div style="display:flex;align-items:center;gap:8px;">'
+                + '<button onclick="window._kbsAdj(&quot;kwon&quot;,-1)" style="' + btnBase + kwonDis + '">−</button>'
+                + '<span id="_kbsKwonN" style="font-size:16px;font-weight:900;min-width:20px;text-align:center;">0</span>'
+                + '<button onclick="window._kbsAdj(&quot;kwon&quot;,1)" style="' + btnBase + kwonDis + '">+</button>'
+                + '</div></div>'
+                // 실제 차감 쿠키
+                + '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed #FFCC80;text-align:center;">'
+                + '<div style="font-size:12px;color:#999;margin-bottom:2px;">실제 차감 쿠키</div>'
+                + '<div id="_kbsCost" style="font-size:26px;font-weight:900;color:#E65100;">🍪 ' + priceValue + '</div>'
+                + '<div id="_kbsErrMsg" style="display:none;margin-top:8px;background:#FFEBEE;border-radius:10px;padding:8px 12px;">'
+                + '<div style="font-size:14px;font-weight:900;color:#C62828;">🍪 쿠키가 부족해요!</div>'
+                + '<div id="_kbsErrDetail" style="font-size:11px;color:#E57373;margin-top:2px;"></div>'
+                + '</div>'
+                + '</div>'
+                + '</div>';
+        }
+
+        // 구매 버튼 비활성화 여부
+        var buyBtnStyle = 'flex:2;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:900;color:#FFF;cursor:pointer;';
+        buyBtnStyle += canAfford
+            ? 'background:linear-gradient(135deg,#FF6D00,#FF8F00);box-shadow:0 4px 12px rgba(230,81,0,0.35);'
+            : 'background:#BDBDBD;cursor:not-allowed;';
+
+        var html = ''
+            + '<div id="_kioskBuyModal" onclick="if(event.target===this)window._kbsClose()" '
+            + 'style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">'
+            + '<div style="background:#FFF;border-radius:28px;padding:28px 22px 22px;width:100%;max-width:340px;box-shadow:0 24px 64px rgba(0,0,0,0.30);animation:_kbsFadeIn .2s;">'
+            + '<style>@keyframes _kbsFadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}</style>'
+            + '<div style="text-align:center;margin-bottom:4px;">'
+            + '<div style="margin-bottom:12px;">' + iconHtml + '</div>'
+            + '<div style="font-size:20px;font-weight:900;color:#3E2723;">' + itemName + '</div>'
+            + '<div style="font-size:13px;color:#BCAAA4;margin-top:4px;">기본 가격: ' + priceBase + '</div>'
+            + '</div>'
+            + passSection
+            + '<div style="display:flex;gap:10px;margin-top:4px;">'
+            + '<button onclick="window._kbsClose()" style="flex:1;padding:14px;border:none;border-radius:14px;background:#F5F5F5;font-size:15px;font-weight:700;color:#999;cursor:pointer;">취소</button>'
+            + '<button onclick="window._kbsConfirm()" style="' + buyBtnStyle + '">🛒 구매하기</button>'
+            + '</div>'
+            + '</div></div>';
+
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+
+    // 이용권/수라상/수량 +/- 조절
+    window._kbsAdj = function(type, delta) {
+        var s = window._kbs; if (!s) return;
+        var priceValue = s.priceValue, myBal = s.myBal, sr = s.sr;
+
+        if (type === 'qty') {
+            s.qty = Math.max(1, Math.min(s.maxQty, s.qty + delta));
+            s.useSura = 0; s.useKwon = 0;
+        } else {
+            // 보유 개수 한도 내 자유롭게 설정 (쿠키 충분해도 사용 가능)
+            var maxSura = s.suraKeys.length;
+            var maxKwon = s.kwonKeys.length;
+            if (type === 'sura') {
+                s.useSura = Math.max(0, Math.min(maxSura, s.useSura + delta));
+            }
+            if (type === 'kwon') {
+                s.useKwon = Math.max(0, Math.min(maxKwon, s.useKwon + delta));
+            }
+        }
+
+        var qtyEl  = document.getElementById('_kbsQtyN');
+        var suraEl = document.getElementById('_kbsSuraN');
+        var kwonEl = document.getElementById('_kbsKwonN');
+        var costEl = document.getElementById('_kbsCost');
+        var errEl  = document.getElementById('_kbsErrMsg');
+        if (qtyEl)  qtyEl.textContent  = s.qty;
+        if (suraEl) suraEl.textContent = s.useSura;
+        if (kwonEl) kwonEl.textContent = s.useKwon;
+        var cost = Math.max(0, s.qty * priceValue - s.useSura * sr - s.useKwon);
+        if (costEl) costEl.textContent = '🍪 ' + cost;
+        if (errEl)  errEl.style.display = 'none';
+    };
+
+    // 구매 확인 실행
+    window._kbsConfirm = async function() {
+        var s = window._kbs; if (!s) return;
+        var btn = document.querySelector('#_kioskBuyModal button:last-child');
+
+        var priceValue = s.priceValue;
+        var qty = s.qty || 1;
+        var useSura = s.useSura, useKwon = s.useKwon;
+        var totalBase = qty * priceValue;
+        var effectiveCost = priceValue < 0 ? 0 : Math.max(0, totalBase - useSura * s.sr - useKwon);
+
+        // 잔액 검증 → 예쁜 모달 내 메시지로 표시
+        if (priceValue > 0 && effectiveCost > s.myBal) {
+            var errEl  = document.getElementById('_kbsErrMsg');
+            var detEl  = document.getElementById('_kbsErrDetail');
+            if (errEl) {
+                if (detEl) detEl.textContent = '필요 ' + effectiveCost + '🍪 / 보유 ' + s.myBal + '🍪 — 왕의 수라상 또는 상점 이용권을 사용해보세요.';
+                errEl.style.display = 'block';
+            }
+            return;
+        }
+
+        if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
+
+        var passKeys = [].concat(s.suraKeys.slice(0, useSura), s.kwonKeys.slice(0, useKwon));
+
+        if (priceValue > 0) me.shopUsed = (me.shopUsed||0) + effectiveCost;
+        if (passKeys.length && me.inv) passKeys.forEach(function(pk){ if(me.inv[pk]) me.inv[pk].st='used'; });
+
+        var myKey = null;
+        var stuKeys = Object.keys(db.stu||{});
+        for (var i=0; i<stuKeys.length; i++) {
+            var st = db.stu[stuKeys[i]];
+            if (st && String(st.cd) === String(me.cd)) { myKey = stuKeys[i]; break; }
+        }
+
+        var orderId = 'o' + Date.now() + '_' + (me.cd||'');
+        var updates = {};
+        var _myStuIdx = (typeof window._myFbIdx === 'number' && window._myFbIdx >= 0)
+            ? window._myFbIdx
+            : (myKey !== null ? Number(myKey) : null);
+        updates['kiosk_orders/' + orderId] = {
+            cd: me.cd, nm: me.nm||me.name||'', no: me.no||'',
+            itemId: s.itemId, itemName: s.itemName, qty: qty,
+            price: effectiveCost, priceValue: priceValue,
+            ts: Date.now(), passKeys: passKeys,
+            stuIdx: _myStuIdx
+        };
+        if (myKey) {
+            updates['ClassData/EventShop/stu/' + myKey + '/shopUsed'] = firebase.database.ServerValue.increment(effectiveCost);
+            passKeys.forEach(function(pk){ updates['ClassData/EventShop/stu/' + myKey + '/inv/' + pk + '/st'] = 'used'; });
+        }
+
+        try {
+            await firebase.database().ref().update(updates);
+            window._kbsClose();
+            try { upMe(); } catch(e2) {}
+            var msg = qty > 1 ? '[' + s.itemName + '] × ' + qty + '개 신청 완료!' : '[' + s.itemName + '] 신청 완료!';
+            // 예쁜 완료 모달
+            var doneHtml = ''
+                + '<div id="_kioskDoneModal" onclick="this.remove()" '
+                + 'style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">'
+                + '<div style="background:#FFF;border-radius:28px;padding:32px 24px;width:100%;max-width:320px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.25);animation:_kbsFadeIn .2s;">'
+                + '<div style="font-size:60px;margin-bottom:12px;">✅</div>'
+                + '<div style="font-size:18px;font-weight:900;color:#3E2723;margin-bottom:8px;">' + msg + '</div>'
+                + '<div style="font-size:13px;color:#A1887F;">선생님이 확인 후 처리해드립니다.</div>'
+                + '<button onclick="document.getElementById(\'_kioskDoneModal\').remove()" '
+                + 'style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#FF6D00,#FF8F00);color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">확인</button>'
+                + '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', doneHtml);
+            window.rKioskS();
+        } catch(e) {
+            // 예쁜 실패 모달
+            var failHtml = ''
+                + '<div id="_kioskFailModal" onclick="this.remove()" '
+                + 'style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.45);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">'
+                + '<div style="background:#FFF;border-radius:28px;padding:32px 24px;width:100%;max-width:320px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.25);">'
+                + '<div style="font-size:50px;margin-bottom:12px;">❌</div>'
+                + '<div style="font-size:17px;font-weight:900;color:#C62828;">처리에 실패했어요.</div>'
+                + '<div style="font-size:13px;color:#999;margin-top:6px;">잠시 후 다시 시도해주세요.</div>'
+                + '<button onclick="document.getElementById(\'_kioskFailModal\').remove()" '
+                + 'style="margin-top:20px;width:100%;padding:12px;border:none;border-radius:14px;background:#EEE;color:#555;font-size:15px;font-weight:700;cursor:pointer;">닫기</button>'
+                + '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', failHtml);
+            if (priceValue > 0) me.shopUsed = Math.max(0, (me.shopUsed||0) - effectiveCost);
+            if (passKeys.length && me.inv) passKeys.forEach(function(pk){ if(me.inv[pk]) me.inv[pk].st='active'; });
+            if (btn) { btn.disabled = false; btn.textContent = '구매하기'; }
+        }
+    };
+
+    // 모달 닫기    // 모달 닫기    // 모달 닫기
+    window._kbsClose = function() {
+        var m = document.getElementById('_kioskBuyModal');
+        if (m) m.remove();
+    };
+
+    // 예쁜 구매 확인 다이얼로그
+    function _kioskConfirm(msg, icon, okLabel) {
+        return new Promise(function(resolve) {
+            var ov = document.createElement('div');
+            ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
+            ov.innerHTML = '<div style="background:#FFF8E1;border-radius:24px;padding:30px 32px 24px;width:min(360px,90vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.4);border:3px solid #FFECB3;">'
+                + '<div style="font-size:52px;margin-bottom:12px;">' + icon + '</div>'
+                + '<div style="font-size:15px;color:#4E342E;font-family:Jua,sans-serif;line-height:1.6;margin-bottom:24px;">' + msg + '</div>'
+                + '<div style="display:flex;gap:12px;justify-content:center;">'
+                + '<button id="_kcOk" style="background:linear-gradient(135deg,#FF9800,#F44336);color:white;border:none;padding:12px 28px;border-radius:14px;font-size:15px;font-weight:bold;cursor:pointer;">' + (okLabel||'구매 🍪') + '</button>'
+                + '<button id="_kcCancel" style="background:#EFEBE9;color:#795548;border:none;padding:12px 20px;border-radius:14px;font-size:15px;font-weight:bold;cursor:pointer;">취소</button>'
+                + '</div></div>';
+            document.body.appendChild(ov);
+            ov.querySelector('#_kcOk').onclick = function() { ov.remove(); resolve(true); };
+            ov.querySelector('#_kcCancel').onclick = function() { ov.remove(); resolve(false); };
+            ov.onclick = function(e) { if (e.target === ov) { ov.remove(); resolve(false); } };
+        });
+    }
 
     window.savePlzRoomGames = function() {
         const ic = document.getElementById('plz_room_icetag_on')?.checked;
@@ -28701,7 +29488,7 @@ window.addCharRow = function() {
         if(window._omokRankFullLoaded){ window._omokRenderPlzRanking(true); return; }
         const listEl = document.getElementById('plzOmokRankList');
         if(listEl) listEl.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;font-size:10px;padding:8px;">로딩 중...</div>';
-        const _ym = new Date().toISOString().slice(0,7).replace('-','');
+        const _ym = window._omokRankKey();
         getPlzRef().child('omokRank/'+_ym).once('value', snap => {
             const all = snap.val() || {};
             window._omokRankCache = new Map();
@@ -28713,8 +29500,26 @@ window.addCharRow = function() {
         });
     };
 
+    // 오목 랭킹 주기 키 (교사 설정: weekly/biweekly/monthly)
+    window._omokRankKey = function() {
+        const period = (db.cfg && db.cfg.plz && db.cfg.plz.omokRankPeriod) || 'monthly';
+        const now = new Date();
+        if (period === 'weekly' || period === 'biweekly') {
+            const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+            const day = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - day);
+            const ys = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            const wk = Math.ceil((((d - ys) / 86400000) + 1) / 7);
+            if (period === 'biweekly') {
+                return d.getUTCFullYear() + 'B' + String(Math.ceil(wk / 2)).padStart(2, '0');
+            }
+            return d.getUTCFullYear() + 'W' + String(wk).padStart(2, '0');
+        }
+        return now.toISOString().slice(0, 7).replace('-', '');
+    };
+
     window._omokResetRank = function(){
-        const _ym = new Date().toISOString().slice(0,7).replace('-','');
+        const _ym = window._omokRankKey();
         prettyConfirm
             ? prettyConfirm(`⚫ <b>${_ym} 오목 랭킹 초기화</b><br><span style="font-size:13px;color:#888;">이달의 모든 승수·연승 기록이 삭제됩니다.</span>`,
                 () => {
@@ -29090,7 +29895,7 @@ window.addCharRow = function() {
         window._omokRankCache = new Map();
         window._omokRankSorted = [];
         window._omokRankFullLoaded = false;
-        const _ym = new Date().toISOString().slice(0,7).replace('-','');
+        const _ym = window._omokRankKey();
         // top-3만 fetch (왕관 배지용) + 내 데이터 별도 fetch (위젯 내 랭킹용)
         getPlzRef().child('omokRank/'+_ym).orderByChild('w').limitToLast(3)
             .once('value', snap => {
@@ -39044,12 +39849,15 @@ window.addCharRow = function() {
                 await window.dbUpdate(window.dbPath(window.db, `ClassData/Gababo/users/${code}`), {
                     extra: parseInt(val) || 0
                 });
-                loadAdminTable(); 
+                loadAdminTable();
             } catch(e) { alert("서버 저장 실패"); }
         }
     </script>
+
+
 </body>
 </html>
 </template>
+
 </body>
 </html>
