@@ -3440,7 +3440,7 @@ let _renderLock = false; // 재진입 방지
         out.invReq = newKeys.size;
         const invAppr = {};
         const _todayStr = new Date().toLocaleDateString('sv-SE');
-        Object.keys(apprByDate).forEach(d => { if(d >= _todayStr) invAppr[d] = apprByDate[d].size; }); // 만료일 자동 정리
+        Object.keys(apprByDate).forEach(d => { invAppr[d] = apprByDate[d].size; }); // 완료 안 된 항목은 날짜 지나도 유지
         if(Object.keys(invAppr).length) out.invAppr = invAppr;
         if(s.updatedAt) out.updatedAt = s.updatedAt; // 교사 fetch 캐시 비교용
         return out;
@@ -24356,7 +24356,8 @@ window.addCharRow = function() {
             // 사용기간 아이템 자동 used 전환: reqApproved && useEndDate 지났으면
             s.inv.forEach(it => {
                 if(!it) return;
-                if(it.st === 'req' && it.reqApproved && it.useEndDate && !it.reqDone) {
+                if(it.st === 'req' && it.reqApproved && it.useEndDate && !it.reqDone
+                    && !(it.n && it.n.includes('성장의 불꽃'))) {
                     const endMid = new Date(it.useEndDate + 'T23:59:59').getTime();
                     if(endMid < NOW) {
                         it.st = 'used';
