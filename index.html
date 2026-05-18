@@ -8599,9 +8599,9 @@ let _renderLock = false; // 재진입 방지
                 const isPending = it.st==='req' || it.st==='shop_req';
                 if(!isPending) return;
                 const gk = s.cd+'|'+_groupKey(it);
-                // 성장의 불꽃 N일권: 오늘 이전 미정산도 표시 (과거 날짜 미정산 허용)
-                const _xpbCurrent = it.currentDay && it.reqApproved && it.useDate && it.useDate <= _today;
-                const target = it.reqApproved ? (it.useDate===_today || _xpbCurrent ? apprMap : null) : reqMap;
+                // 승인된 항목: 오늘 이하 날짜는 모두 표시 (배지 합산 로직과 일치 — 과거 미완료 포함)
+                const _apprShow = it.reqApproved && it.useDate && it.useDate <= _today;
+                const target = it.reqApproved ? (_apprShow ? apprMap : null) : reqMap;
                 if(!target) return;
                 if(!target.has(gk)) target.set(gk, {s, it:{...it}, ks:[], cd:s.cd});
                 target.get(gk).ks.push(k);
@@ -17869,7 +17869,10 @@ window.addCharRow = function() {
             const _today = new Date().toLocaleDateString('sv-SE');
             const _aucReqCnt = (db.auc||[]).filter(a=>a.st==='req').length;
             const _todayReqCnt = Object.values(window._reqCntMap||{}).reduce((sum,c)=>{
-                return sum + (c.invReq||0) + ((c.invAppr && c.invAppr[_today]) || 0);
+                // 오늘 포함 과거 날짜의 미완료 항목 모두 포함 (성장의 불꽃 N일권 등 교사 완료 전까지 유지)
+                let _apprSum = 0;
+                if(c.invAppr) Object.keys(c.invAppr).forEach(d => { if(d <= _today) _apprSum += (c.invAppr[d]||0); });
+                return sum + (c.invReq||0) + _apprSum;
             },0);
             const _gacWaitCnt = Object.values(db.gacQueue||{}).reduce((s,arr)=>{
                 const a=Array.isArray(arr)?arr:Object.values(arr); return s+a.filter(e=>e.st==='wait').length;
@@ -17880,7 +17883,7 @@ window.addCharRow = function() {
                 b.className = 'menu-badge-auc';
                 b.textContent = _totalBadge;
                 b.style.cssText = 'position:absolute;top:6px;right:6px;background:#E53935;color:white;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;z-index:5;pointer-events:auto;';
-                b.onclick = (e) => { e.stopPropagation(); window._showReqMiniPopup(); };
+                b.onclick = (e) => { e.stopPropagation(); nav('t_auc', _mAuc); };
                 _mAuc.appendChild(b);
             }
         }
@@ -17906,7 +17909,9 @@ window.addCharRow = function() {
             const _today2 = new Date().toLocaleDateString('sv-SE');
             const _ar = (db.auc||[]).filter(a=>a.st==='req').length;
             const _tr = Object.values(window._reqCntMap||{}).reduce((sum,c)=>{
-                return sum + (c.invReq||0) + ((c.invAppr && c.invAppr[_today2]) || 0);
+                let _apprSum = 0;
+                if(c.invAppr) Object.keys(c.invAppr).forEach(d => { if(d <= _today2) _apprSum += (c.invAppr[d]||0); });
+                return sum + (c.invReq||0) + _apprSum;
             },0);
             const _gw = Object.values(db.gacQueue||{}).reduce((s,arr)=>{
                 const a=Array.isArray(arr)?arr:Object.values(arr); return s+a.filter(e=>e.st==='wait').length;
