@@ -2592,6 +2592,10 @@ let _renderLock = false; // 재진입 방지
                         if(!window._remoteStuTs) window._remoteStuTs = {};
                         window._remoteStuTs[i] = v.updatedAt;
                     }
+                    // 🛡️ inv 길이 — 삭제 의도 감지용
+                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
+                    window._lastSentInvLen[i] = Array.isArray(v.inv) ? v.inv.length
+                                              : (v.inv && typeof v.inv === 'object') ? Object.keys(v.inv).length : 0;
                     window._fetchedStuTs[i] = v.updatedAt || Date.now(); // 캐시 갱신
                 }
             }).catch(()=>{})
@@ -3200,7 +3204,22 @@ let _renderLock = false; // 재진입 방지
     window._loadStuCache = () => {
         try {
             const raw = localStorage.getItem('_teacherStuCache');
-            if(raw) { const arr = JSON.parse(raw); if(Array.isArray(arr)) { db.stu = arr; return true; } }
+            if(raw) {
+                const arr = JSON.parse(raw);
+                if(Array.isArray(arr)) {
+                    db.stu = arr;
+                    // 🛡️ 삭제 의도 감지용 inv 길이 + stale 가드용 ts 초기화
+                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
+                    if(!window._remoteStuTs) window._remoteStuTs = {};
+                    arr.forEach((s, i) => {
+                        if(!s) return;
+                        window._lastSentInvLen[i] = Array.isArray(s.inv) ? s.inv.length
+                                                  : (s.inv && typeof s.inv === 'object') ? Object.keys(s.inv).length : 0;
+                        if(s.updatedAt) window._remoteStuTs[i] = s.updatedAt;
+                    });
+                    return true;
+                }
+            }
         } catch(_){}
         return false;
     };
@@ -3260,6 +3279,12 @@ let _renderLock = false; // 재진입 방지
                 // 🔄 inv fetch 캐시도 listener delivery로 갱신 (캐시 무효화 + 최신 inv로 미리 채움)
                 if(!window._invFetchCache) window._invFetchCache = {};
                 window._invFetchCache[i] = { ts: Date.now(), inv: v.inv || [] };
+            }
+            // 🛡️ inv 길이 기록 — 삭제 의도 감지용
+            if(!isNaN(i)) {
+                if(!window._lastSentInvLen) window._lastSentInvLen = {};
+                window._lastSentInvLen[i] = Array.isArray(v.inv) ? v.inv.length
+                                          : (v.inv && typeof v.inv === 'object') ? Object.keys(v.inv).length : 0;
             }
             if(_splitInitialDone) _splitFire();
             window._saveStuCache && window._saveStuCache();
@@ -3366,6 +3391,10 @@ let _renderLock = false; // 재진입 방지
                             if(!window._remoteStuTs) window._remoteStuTs = {};
                             window._remoteStuTs[i] = v.updatedAt;
                         }
+                        // 🛡️ inv 길이 — 삭제 의도 감지용
+                        if(!window._lastSentInvLen) window._lastSentInvLen = {};
+                        window._lastSentInvLen[i] = Array.isArray(v.inv) ? v.inv.length
+                                                  : (v.inv && typeof v.inv === 'object') ? Object.keys(v.inv).length : 0;
                     }
                 });
                 console.log('[ensureStuLoaded] 증분 fetch — 변경 학생:', cnt);
@@ -3410,10 +3439,15 @@ let _renderLock = false; // 재진입 방지
                     window._stuLoaded = true;
                     let maxTs = 0;
                     if(!window._remoteStuTs) window._remoteStuTs = {};
+                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
                     db.stu.forEach((s, i) => {
                         if(s && s.updatedAt) {
                             if(s.updatedAt > maxTs) maxTs = s.updatedAt;
                             window._remoteStuTs[i] = s.updatedAt; // 🛡️ stale 가드용
+                        }
+                        if(s) {
+                            window._lastSentInvLen[i] = Array.isArray(s.inv) ? s.inv.length
+                                                      : (s.inv && typeof s.inv === 'object') ? Object.keys(s.inv).length : 0;
                         }
                     });
                     if(maxTs) window._setStuLastSyncTs(maxTs);
@@ -4669,8 +4703,16 @@ let _renderLock = false; // 재진입 방지
             if(_stuChanged) _expChangedIdxs.push(_si);
         });
         // 변경된 학생만 타깃 저장 — 교사 세션에서만 실행 (학생은 자기 데이터만 upMe로 저장)
+        // 🛡️ listener가 모든 대상 학생 데이터 받은 후에만 write — 페이지 로드 직후 stale 메모리 wipe 사고 방지
         if(_expChangedIdxs.length && localStorage.getItem('teacherLogged') === '1') {
-            setTimeout(() => { if(typeof window._svStu === 'function') window._svStu(_expChangedIdxs); }, 3000);
+            setTimeout(() => {
+                if(typeof window._svStu !== 'function') return;
+                if(!window._remoteStuTs) window._remoteStuTs = {};
+                const _safeIdxs = _expChangedIdxs.filter(i => (window._remoteStuTs[i] || 0) > 0);
+                const _skipped = _expChangedIdxs.length - _safeIdxs.length;
+                if(_skipped > 0) console.warn('[migrate] listener 미도착 학생', _skipped, '명 write 스킵');
+                if(_safeIdxs.length) window._svStu(_safeIdxs);
+            }, 5000); // 3초 → 5초로 늘려 listener 도착 여유 확보
         }
 // 학생 inv의 아이콘·이름을 db.itm 등록값에 동기화
         // (골든티켓·달고나는 special로, 그 외(왕의 수라상 등)는 이름으로)
@@ -5619,12 +5661,24 @@ let _renderLock = false; // 재진입 방지
                     _invChangedIdx.size ? 'inv머지:'+_invChangedIdx.size+'명' : '',
                     _otherKeys.length ? 'keys:'+_otherKeys.join(',') : '',
                     'memTotal:'+(db.stu||[]).filter(_isRealStu).length+'명');
+                // 🛡️ 캐시 즉시 저장 — 새로고침 시 stale 캐시 복원으로 인한 항목 부활 방지
+                try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); } catch(_) {}
                 // 🛡️ inv 변경 학생: remote와 머지 (race로 학생 req가 wipe되는 사고 방지)
                 if(_invChangedIdx.size) {
                     if(!window._invFetchCache) window._invFetchCache = {};
+                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
                     const _CACHE_MS = 30000; // 30초 캐시. listener가 child_changed 받으면 자동 갱신되므로 안전.
                     const _invMergePromises = [...(_invChangedIdx)].map(i => {
                         const localStu = db.stu[i]; if(!localStu) return Promise.resolve();
+                        // 🛡️ 삭제 의도 감지: 로컬 inv 길이가 마지막 송신 때보다 줄었으면 = 교사 삭제 → 머지 스킵
+                        const _localLen = Array.isArray(localStu.inv) ? localStu.inv.length : 0;
+                        const _lastSentLen = window._lastSentInvLen[i] || 0;
+                        if(_lastSentLen > 0 && _localLen < _lastSentLen) {
+                            console.log('[sv-merge] 학생', i, '— 삭제 감지 ('+_lastSentLen+'→'+_localLen+'), 머지 스킵');
+                            window._lastSentInvLen[i] = _localLen; // 갱신
+                            return Promise.resolve();
+                        }
+                        window._lastSentInvLen[i] = _localLen;
                         const _cache = window._invFetchCache[i];
                         const _useCached = _cache && (Date.now() - _cache.ts) < _CACHE_MS;
                         const _fetchPromise = _useCached
@@ -5639,7 +5693,13 @@ let _renderLock = false; // 재진입 방지
                                             : (remoteInv && typeof remoteInv === 'object') ? Object.values(remoteInv) : [];
                             if(!remoteArr.length) return; // remote 비었으면 머지 불필요
                             const localArr = Array.isArray(localStu.inv) ? localStu.inv : [];
-                            const _fp = it => { try { return JSON.stringify(it); } catch(_) { return null; } };
+                            // 🔑 키 정렬 fingerprint — Firebase가 lex 순서로 반환하므로 insertion 순서와 다를 수 있음
+                            // 정렬 안 하면 같은 아이템이 다른 fingerprint로 인식돼 merge가 중복 append (= 아이템 증식 버그)
+                            const _fp = it => { try {
+                                if(!it || typeof it !== 'object') return JSON.stringify(it);
+                                const _sorted = {}; Object.keys(it).sort().forEach(k => _sorted[k] = it[k]);
+                                return JSON.stringify(_sorted);
+                            } catch(_) { return null; } };
                             const localFps = new Set(localArr.map(_fp));
                             const merged = localArr.slice();
                             let _added = 0;
@@ -5758,12 +5818,24 @@ let _renderLock = false; // 재진입 방지
                 if(window._lastSentHash) {
                     try { window._lastSentHash['stu'] = JSON.stringify(db.stu); } catch(_) {}
                 }
+                // 🛡️ 캐시 즉시 저장 — 삭제 직후 새로고침 시 stale 캐시 복원으로 인한 항목 부활 방지
+                try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); } catch(_) {}
             };
             if(_invChangedIdx.size) {
                 if(!window._invFetchCache) window._invFetchCache = {};
+                if(!window._lastSentInvLen) window._lastSentInvLen = {};
                 const _CACHE_MS = 30000;
                 const _promises = [..._invChangedIdx].map(i => {
                     const localStu = db.stu[i]; if(!localStu) return Promise.resolve();
+                    // 🛡️ 삭제 의도 감지
+                    const _localLen = Array.isArray(localStu.inv) ? localStu.inv.length : 0;
+                    const _lastSentLen = window._lastSentInvLen[i] || 0;
+                    if(_lastSentLen > 0 && _localLen < _lastSentLen) {
+                        console.log('[_svStu-merge] 학생', i, '— 삭제 감지 ('+_lastSentLen+'→'+_localLen+'), 머지 스킵');
+                        window._lastSentInvLen[i] = _localLen;
+                        return Promise.resolve();
+                    }
+                    window._lastSentInvLen[i] = _localLen;
                     const _cache = window._invFetchCache[i];
                     const _useCached = _cache && (Date.now() - _cache.ts) < _CACHE_MS;
                     const _fetchP = _useCached
@@ -9893,12 +9965,13 @@ window.appU = function(y, si, k) {
                     const arr = x.y==='c' ? s.inv : s.ibx;
                     if(arr && arr[x.k]) {
                         const iName = arr[x.k].n;
-                        // 회수 시 비용 환불 (학생이 구매한 아이템만)
+                        // 회수 시 비용 환불 — paid가 명시된 항목(=실제 구매)만 환불
+                        // 🛡️ 이전: it.paid || itDef.p fallback으로 교사 지급 항목도 환불되는 버그 → 캔디 자동 추가
                         const _it = arr[x.k];
                         const _itDef = (db.itm||[]).find(d=>d.n===iName);
-                        const _refund = _it.paid || _itDef?.p || 0;
+                        const _isPurchased = (_it.paid > 0) || _it.st === 'shop_req';
+                        const _refund = _isPurchased ? (_it.paid || _itDef?.p || 0) : 0;
                         const _cur = _it.cur || _itDef?.c || 'kc';
-                        // shop_req/active 상태(=구매한 것)일 때만 환불, used(이미 사용)는 환불 안 함
                         if(_refund > 0 && _it.st !== 'used' && _it.st !== 'usd') {
                             if(_cur === 'kc') s.shopUsed = Math.max(0, (s.shopUsed||0) - _refund);
                             else s[_cur] = (s[_cur]||0) + _refund;
