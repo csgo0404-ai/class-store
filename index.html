@@ -1617,7 +1617,10 @@
         <button class="btn btn-gray" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
     <div class="cont" style="padding:15px; display:flex; flex-direction:column;">
-        <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="zoom:0.7;"></div></div>
+        <div id="s_char" style="flex:1;overflow-y:auto;position:relative;">
+            <div id="appVerBadge" style="position:absolute;top:8px;right:12px;font-size:11px;color:#9E9E9E;background:rgba(255,255,255,0.7);border:1px solid #E0E0E0;border-radius:8px;padding:2px 7px;z-index:5;font-family:monospace;pointer-events:none;">v.5.19</div>
+            <div id="s_char_inner" style="zoom:0.7;"></div>
+        </div>
         <div id="s_bg" class="hidden"></div>
         <div id="s_col" class="hidden"></div>
         <div id="s_sh" class="hidden"></div>
@@ -1967,6 +1970,31 @@ const firebaseConfig = {
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
+    // 📱 태블릿 가로모드 강제 — PWA fullscreen에선 lock, 일반 브라우저에선 회전 안내 오버레이
+    (function _enforceLandscape(){
+        const _tryLock = () => {
+            if(screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+            }
+        };
+        _tryLock();
+        document.addEventListener('fullscreenchange', _tryLock);
+        // CSS 오버레이로 세로일 때 안내
+        const _style = document.createElement('style');
+        _style.textContent = `
+            #_portraitOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99999; color:white; flex-direction:column; align-items:center; justify-content:center; font-family:'Jua',sans-serif; text-align:center; padding:20px; }
+            @media (orientation: portrait) and (max-width: 1366px) {
+                #_portraitOverlay { display:flex; }
+            }
+        `;
+        document.head.appendChild(_style);
+        const _ov = document.createElement('div');
+        _ov.id = '_portraitOverlay';
+        _ov.innerHTML = '<div style="font-size:80px;margin-bottom:20px;animation:rotateHint 2s ease-in-out infinite;">📱↻</div><div style="font-size:24px;font-weight:bold;margin-bottom:8px;">가로 모드로 회전해주세요</div><div style="font-size:14px;color:#BBB;">태블릿을 옆으로 돌려서 사용하세요</div><style>@keyframes rotateHint { 0%,100% { transform:rotate(0deg);} 50%{transform:rotate(90deg);} }</style>';
+        document.addEventListener('DOMContentLoaded', () => document.body.appendChild(_ov), {once:true});
+        if(document.readyState !== 'loading') document.body.appendChild(_ov);
+    })();
+
     // 모바일/태블릿 브라우저(특히 삼성 인터넷) 뷰포트 보정 — visualViewport 사용해 실제 visible 영역으로 --app-h 갱신
     (function _setupAppHeight(){
         const setH = () => {
@@ -2561,6 +2589,11 @@ let _renderLock = false; // 재진입 방지
                 if(v) {
                     if(!Array.isArray(db.stu)) db.stu = [];
                     db.stu[i] = v;
+                    // 🛡️ stale write 가드용 — fetch한 학생의 remote updatedAt 기록
+                    if(v.updatedAt) {
+                        if(!window._remoteStuTs) window._remoteStuTs = {};
+                        window._remoteStuTs[i] = v.updatedAt;
+                    }
                     window._fetchedStuTs[i] = v.updatedAt || Date.now(); // 캐시 갱신
                 }
             }).catch(()=>{})
@@ -3226,6 +3259,9 @@ let _renderLock = false; // 재진입 방지
             if(!isNaN(i) && v.updatedAt) {
                 if(!window._remoteStuTs) window._remoteStuTs = {};
                 window._remoteStuTs[i] = v.updatedAt;
+                // 🔄 inv fetch 캐시도 listener delivery로 갱신 (캐시 무효화 + 최신 inv로 미리 채움)
+                if(!window._invFetchCache) window._invFetchCache = {};
+                window._invFetchCache[i] = { ts: Date.now(), inv: v.inv || [] };
             }
             if(_splitInitialDone) _splitFire();
             window._saveStuCache && window._saveStuCache();
@@ -3327,6 +3363,11 @@ let _renderLock = false; // 재진입 방지
                         db.stu[i] = v;
                         cnt++;
                         if(v.updatedAt && v.updatedAt > maxTs) maxTs = v.updatedAt;
+                        // 🛡️ stale write 가드용
+                        if(v.updatedAt) {
+                            if(!window._remoteStuTs) window._remoteStuTs = {};
+                            window._remoteStuTs[i] = v.updatedAt;
+                        }
                     }
                 });
                 console.log('[ensureStuLoaded] 증분 fetch — 변경 학생:', cnt);
@@ -3370,7 +3411,13 @@ let _renderLock = false; // 재진입 방지
                     }
                     window._stuLoaded = true;
                     let maxTs = 0;
-                    db.stu.forEach(s => { if(s && s.updatedAt && s.updatedAt > maxTs) maxTs = s.updatedAt; });
+                    if(!window._remoteStuTs) window._remoteStuTs = {};
+                    db.stu.forEach((s, i) => {
+                        if(s && s.updatedAt) {
+                            if(s.updatedAt > maxTs) maxTs = s.updatedAt;
+                            window._remoteStuTs[i] = s.updatedAt; // 🛡️ stale 가드용
+                        }
+                    });
                     if(maxTs) window._setStuLastSyncTs(maxTs);
                     window._saveStuCache && window._saveStuCache();
                     if(window._attachSplitStuFullListener) try { window._attachSplitStuFullListener(); } catch(_){}
@@ -5489,10 +5536,12 @@ let _renderLock = false; // 재진입 방지
                 // stu per-student write — partial db.stu도 안전. 변경된 학생만 stu/{idx}로 update.
                 // (_stuPerHash는 위 5384~5399에서 이미 갱신됨)
                 const _changedStuIdx = new Set();
+                const _invChangedIdx = new Set(); // inv 필드 변경된 학생 — fetch+머지 필요
                 const _skippedReasons = [];
                 if(Array.isArray(db.stu) && window._stuPerHash) {
                     if(!window._stuSentHash) window._stuSentHash = {};
                     if(!window._remoteStuTs) window._remoteStuTs = {};
+                    if(!window._stuInvHashSent) window._stuInvHashSent = {};
                     db.stu.forEach((s, i) => {
                         if(!s) return;
                         // 🛡️ schema validation: cd/nm 없는 손상된 객체는 write 거부 (예: 캐시 깨짐, undefined cd)
@@ -5510,6 +5559,12 @@ let _renderLock = false; // 재진입 방지
                         const h = window._stuPerHash[i];
                         if(h == null) return;
                         if(window._stuSentHash[i] === h) return;
+                        // inv 변경 여부 별도 체크 (race wipe 방지용 머지 처리)
+                        let _curInvHash; try { _curInvHash = JSON.stringify(s.inv || []); } catch(_) { _curInvHash = null; }
+                        if(_curInvHash != null && window._stuInvHashSent[i] !== _curInvHash) {
+                            _invChangedIdx.add(i);
+                            window._stuInvHashSent[i] = _curInvHash;
+                        }
                         payload['stu/' + i] = s;
                         window._stuSentHash[i] = h;
                         _changedStuIdx.add(i);
@@ -5563,9 +5618,62 @@ let _renderLock = false; // 재진입 방지
                 const _otherKeys = Object.keys(payload).filter(k => !k.startsWith('stu/') && !k.startsWith('reqCnt/') && !k.startsWith('cacheVer/') && k!=='lastWriteTs' && k!=='lastWriter');
                 console.log('[sv-write]', new Date().toISOString().slice(11,19),
                     'stu:'+_stuKeys.length+'명',
+                    _invChangedIdx.size ? 'inv머지:'+_invChangedIdx.size+'명' : '',
                     _otherKeys.length ? 'keys:'+_otherKeys.join(',') : '',
                     'memTotal:'+(db.stu||[]).filter(_isRealStu).length+'명');
-                dbRef.update(payload);
+                // 🛡️ inv 변경 학생: remote와 머지 (race로 학생 req가 wipe되는 사고 방지)
+                if(_invChangedIdx.size) {
+                    if(!window._invFetchCache) window._invFetchCache = {};
+                    const _CACHE_MS = 30000; // 30초 캐시. listener가 child_changed 받으면 자동 갱신되므로 안전.
+                    const _invMergePromises = [...(_invChangedIdx)].map(i => {
+                        const localStu = db.stu[i]; if(!localStu) return Promise.resolve();
+                        const _cache = window._invFetchCache[i];
+                        const _useCached = _cache && (Date.now() - _cache.ts) < _CACHE_MS;
+                        const _fetchPromise = _useCached
+                            ? Promise.resolve({ val: () => _cache.inv })
+                            : dbRef.child('stu/'+i+'/inv').once('value').then(snap => {
+                                window._invFetchCache[i] = { ts: Date.now(), inv: snap.val() };
+                                return snap;
+                            });
+                        return _fetchPromise.then(snap => {
+                            const remoteInv = snap.val();
+                            const remoteArr = Array.isArray(remoteInv) ? remoteInv
+                                            : (remoteInv && typeof remoteInv === 'object') ? Object.values(remoteInv) : [];
+                            if(!remoteArr.length) return; // remote 비었으면 머지 불필요
+                            const localArr = Array.isArray(localStu.inv) ? localStu.inv : [];
+                            const _fp = it => { try { return JSON.stringify(it); } catch(_) { return null; } };
+                            const localFps = new Set(localArr.map(_fp));
+                            const merged = localArr.slice();
+                            let _added = 0;
+                            remoteArr.forEach(rIt => {
+                                if(!rIt) return;
+                                const fp = _fp(rIt);
+                                if(fp != null && !localFps.has(fp)) {
+                                    merged.push(rIt);
+                                    _added++;
+                                }
+                            });
+                            if(_added > 0) {
+                                console.log('[sv-merge] 학생', i, '— remote inv', _added, '건 머지 (race 방지)');
+                                localStu.inv = merged;
+                                payload['stu/' + i] = localStu; // payload 갱신
+                                // hash 동기화
+                                let _newH; try { _newH = JSON.stringify(localStu); } catch(_) {}
+                                if(_newH != null) {
+                                    window._stuPerHash[i] = _newH;
+                                    window._stuSentHash[i] = _newH;
+                                }
+                                let _newInvH; try { _newInvH = JSON.stringify(merged); } catch(_) {}
+                                if(_newInvH != null) window._stuInvHashSent[i] = _newInvH;
+                            }
+                        }).catch(e => console.warn('[sv-merge] 학생', i, 'fetch 실패 — 머지 스킵', e));
+                    });
+                    Promise.all(_invMergePromises).then(() => {
+                        dbRef.update(payload);
+                    });
+                } else {
+                    dbRef.update(payload);
+                }
             }
         } catch(e) { console.error('[sv] write error', e); }
     }
@@ -5620,12 +5728,79 @@ let _renderLock = false; // 재진입 방지
         if(!uniq.length) { sv(); return; }
         try {
             const updates = {};
-            uniq.forEach(i => { if(db.stu[i]) updates['stu/' + i] = db.stu[i]; });
-            dbRef.update(updates);
-            // 타깃 저장 후 _lastSentHash['stu']를 현재 상태로 동기화
-            // → 다음 sv() 호출 시 stu 전체를 불필요하게 재전송하지 않도록 방지
-            if(window._lastSentHash) {
-                try { window._lastSentHash['stu'] = JSON.stringify(db.stu); } catch(_) {}
+            const _skipped = [];
+            const _invChangedIdx = new Set();
+            uniq.forEach(i => {
+                const s = db.stu[i]; if(!s) return;
+                // 🛡️ schema validation
+                if(!s.cd || !s.nm) { _skipped.push({idx:i, reason:'invalid-schema', cd:s.cd, nm:s.nm}); return; }
+                // 🛡️ stale write 방지
+                if(!window._remoteStuTs) window._remoteStuTs = {};
+                const _remoteTs = window._remoteStuTs[i] || 0;
+                const _localTs = s.updatedAt || 0;
+                if(_remoteTs > 0 && _localTs > 0 && _localTs < _remoteTs) {
+                    _skipped.push({idx:i, reason:'stale', cd:s.cd, nm:s.nm, localTs:_localTs, remoteTs:_remoteTs});
+                    return;
+                }
+                // inv 변경 감지 (머지 대상)
+                if(!window._stuInvHashSent) window._stuInvHashSent = {};
+                let _curInvH; try { _curInvH = JSON.stringify(s.inv || []); } catch(_) {}
+                if(_curInvH != null && window._stuInvHashSent[i] !== _curInvH) {
+                    _invChangedIdx.add(i);
+                    window._stuInvHashSent[i] = _curInvH;
+                }
+                updates['stu/' + i] = s;
+            });
+            if(_skipped.length) console.warn('[_svStu] write 거부:', _skipped);
+            if(Object.keys(updates).length === 0) return;
+            console.log('[_svStu-write]', new Date().toISOString().slice(11,19), '학생:', Object.keys(updates).length+'명', _invChangedIdx.size ? 'inv머지:'+_invChangedIdx.size : '');
+            // 🛡️ inv 변경 학생 머지 (sv()와 동일 로직)
+            const _doWrite = () => {
+                dbRef.update(updates);
+                if(window._lastSentHash) {
+                    try { window._lastSentHash['stu'] = JSON.stringify(db.stu); } catch(_) {}
+                }
+            };
+            if(_invChangedIdx.size) {
+                if(!window._invFetchCache) window._invFetchCache = {};
+                const _CACHE_MS = 30000;
+                const _promises = [..._invChangedIdx].map(i => {
+                    const localStu = db.stu[i]; if(!localStu) return Promise.resolve();
+                    const _cache = window._invFetchCache[i];
+                    const _useCached = _cache && (Date.now() - _cache.ts) < _CACHE_MS;
+                    const _fetchP = _useCached
+                        ? Promise.resolve({ val: () => _cache.inv })
+                        : dbRef.child('stu/'+i+'/inv').once('value').then(snap => {
+                            window._invFetchCache[i] = { ts: Date.now(), inv: snap.val() };
+                            return snap;
+                        });
+                    return _fetchP.then(snap => {
+                        const remoteInv = snap.val();
+                        const remoteArr = Array.isArray(remoteInv) ? remoteInv
+                                        : (remoteInv && typeof remoteInv === 'object') ? Object.values(remoteInv) : [];
+                        if(!remoteArr.length) return;
+                        const localArr = Array.isArray(localStu.inv) ? localStu.inv : [];
+                        const _fp = it => { try { return JSON.stringify(it); } catch(_) { return null; } };
+                        const localFps = new Set(localArr.map(_fp));
+                        const merged = localArr.slice();
+                        let _added = 0;
+                        remoteArr.forEach(rIt => {
+                            if(!rIt) return;
+                            const fp = _fp(rIt);
+                            if(fp != null && !localFps.has(fp)) { merged.push(rIt); _added++; }
+                        });
+                        if(_added > 0) {
+                            console.log('[_svStu-merge] 학생', i, '— remote inv', _added, '건 머지');
+                            localStu.inv = merged;
+                            updates['stu/' + i] = localStu;
+                            let _newInvH; try { _newInvH = JSON.stringify(merged); } catch(_) {}
+                            if(_newInvH != null) window._stuInvHashSent[i] = _newInvH;
+                        }
+                    }).catch(e => console.warn('[_svStu-merge] 학생', i, 'fetch 실패', e));
+                });
+                Promise.all(_promises).then(_doWrite);
+            } else {
+                _doWrite();
             }
             // localStorage 스냅샷도 갱신
             if(db.cfg?.emergencyRestore !== false) {
