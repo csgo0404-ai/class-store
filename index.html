@@ -2419,6 +2419,27 @@ let _renderLock = false; // 재진입 방지
     let _splitInitialDone = false;
     let _splitLogAttached = false;
 
+    // 🛡️ visibility 기반 stale 방지 — 교사 탭이 백그라운드로 30분+ 있다가 돌아오면 강제 refetch
+    (function _attachVisibilityRefetch(){
+        let _hiddenSince = 0;
+        const _STALE_MS = 30 * 60 * 1000;
+        document.addEventListener('visibilitychange', () => {
+            if(document.visibilityState === 'hidden') {
+                _hiddenSince = Date.now();
+            } else if(document.visibilityState === 'visible') {
+                if(!window._isTeacherSession) return; // 교사만 대상
+                const _gap = _hiddenSince > 0 ? (Date.now() - _hiddenSince) : 0;
+                _hiddenSince = 0;
+                if(_gap < _STALE_MS) return;
+                console.log('[visibility] 교사 탭이', Math.round(_gap/60000), '분 백그라운드 → stu 강제 refetch');
+                window._stuLoaded = false;
+                if(window._refreshAllStu) {
+                    try { window._refreshAllStu().catch(e => console.warn('[visibility] refetch 실패', e)); } catch(_){}
+                }
+            }
+        });
+    })();
+
     function _splitFire() {
         if(_dbDebounceTimer) clearTimeout(_dbDebounceTimer);
         _dbDebounceTimer = setTimeout(() => {
@@ -3181,6 +3202,11 @@ let _renderLock = false; // 재진입 방지
             const i = parseInt(snap.key);
             if(!isNaN(i)) db.stu[i] = v; else db.stu[snap.key] = v;
             if(v.updatedAt) window._setStuLastSyncTs(v.updatedAt);
+            // 🛡️ stale write 방지용 — 학생별 remote updatedAt 기록 (sv()에서 비교)
+            if(!isNaN(i) && v.updatedAt) {
+                if(!window._remoteStuTs) window._remoteStuTs = {};
+                window._remoteStuTs[i] = v.updatedAt;
+            }
             if(_splitInitialDone) _splitFire();
             window._saveStuCache && window._saveStuCache();
         };
@@ -5311,9 +5337,10 @@ let _renderLock = false; // 재진입 방지
                         alert(`⚠️ 메모리에 학생이 없는데 Firebase에는 ${fbCountApprox}건 데이터가 있어요.\n저장이 취소되었습니다.\n\n페이지 새로고침 후 다시 시도하세요.`);
                         return;
                     }
-                    // 2) reqCnt 키 수가 메모리보다 50%+ 많음 → 풀 fetch 로 정확 검증
-                    //    (T- 학생 포함되므로 reqCnt 가 약간 더 많을 수 있어 60% 마진)
-                    const _suspicious = fbCountApprox > 0 && curCount < fbCountApprox * 0.6;
+                    // 2) reqCnt 키 수가 메모리보다 조금이라도 많으면 → 풀 fetch 로 정확 검증
+                    //    (이전 60% 마진은 21/26 같은 partial 상태를 통과시켜 다른 학생 wipe 사고 발생.
+                    //     A안(stu per-student write)으로 이미 wipe는 방지되지만, 메모리도 풀로 복원해서 표시 정합성 보장.)
+                    const _suspicious = fbCountApprox > 0 && curCount < fbCountApprox * 0.95;
                     if(!_suspicious){
                         // 일치 경로 — 풀 fetch 생략, 바로 쓰기 (대부분의 케이스)
                         _doWrite();
@@ -5400,7 +5427,9 @@ let _renderLock = false; // 재진입 방지
                 } catch(_){}
                 const payload = {};
                 const TEACHER_KEYS = ['cfg','itm','gac','avt','bdg','tit','petDef','log','rec','ak'];
-                const SHARED_KEYS = ['stu','auc','gacQueue'];
+                // ⚠️ stu는 SHARED_KEYS에서 제외 — partial db.stu가 통째 set으로 다른 학생 wipe하는 사고 방지.
+                // 대신 아래에서 변경된 학생만 stu/{idx} per-path로 update.
+                const SHARED_KEYS = ['auc','gacQueue'];
                 const keys = [...TEACHER_KEYS, ...SHARED_KEYS];
                 // 트래픽 절감: 직전 송신 hash와 비교 — 실제로 바뀐 키만 payload에 포함
                 if(!window._lastSentHash) window._lastSentHash = {};
@@ -5421,25 +5450,46 @@ let _renderLock = false; // 재진입 방지
                     payload[k] = toSend;
                     if(curHash != null) window._lastSentHash[k] = curHash;
                 }
-                // /reqCnt 미러링 — stu 페이로드에 포함될 때만, 그리고 학생별 hash가 바뀐 경우만 송신
-                if('stu' in payload && Array.isArray(payload.stu) && typeof window._computeReqCnt === 'function') {
-                    if(!window._reqCntLastSent) window._reqCntLastSent = {};
-                    const _curIdx = new Set();
-                    payload.stu.forEach((s, i) => {
+                // stu per-student write — partial db.stu도 안전. 변경된 학생만 stu/{idx}로 update.
+                // (_stuPerHash는 위 5384~5399에서 이미 갱신됨)
+                const _changedStuIdx = new Set();
+                const _skippedReasons = [];
+                if(Array.isArray(db.stu) && window._stuPerHash) {
+                    if(!window._stuSentHash) window._stuSentHash = {};
+                    if(!window._remoteStuTs) window._remoteStuTs = {};
+                    db.stu.forEach((s, i) => {
                         if(!s) return;
-                        _curIdx.add(i);
+                        // 🛡️ schema validation: cd/nm 없는 손상된 객체는 write 거부 (예: 캐시 깨짐, undefined cd)
+                        if(!s.cd || !s.nm) {
+                            _skippedReasons.push({idx:i, reason:'invalid-schema', cd:s.cd, nm:s.nm});
+                            return;
+                        }
+                        // 🛡️ stale write 방지: 라이브 listener가 받은 remote updatedAt보다 로컬이 작으면 거부
+                        const _remoteTs = window._remoteStuTs[i] || 0;
+                        const _localTs = s.updatedAt || 0;
+                        if(_remoteTs > 0 && _localTs > 0 && _localTs < _remoteTs) {
+                            _skippedReasons.push({idx:i, reason:'stale', cd:s.cd, nm:s.nm, localTs:_localTs, remoteTs:_remoteTs});
+                            return;
+                        }
+                        const h = window._stuPerHash[i];
+                        if(h == null) return;
+                        if(window._stuSentHash[i] === h) return;
+                        payload['stu/' + i] = s;
+                        window._stuSentHash[i] = h;
+                        _changedStuIdx.add(i);
+                    });
+                }
+                if(_skippedReasons.length) console.warn('[sv] 학생 write 거부:', _skippedReasons);
+                // /reqCnt 미러링 — 변경된 학생에 대해서만 (reqCnt도 partial wipe 위험 없음, 학생별 path)
+                if(_changedStuIdx.size && typeof window._computeReqCnt === 'function') {
+                    if(!window._reqCntLastSent) window._reqCntLastSent = {};
+                    _changedStuIdx.forEach(i => {
+                        const s = db.stu[i]; if(!s) return;
                         const cnt = window._computeReqCnt(s);
                         let h; try { h = JSON.stringify(cnt); } catch(_) { h = null; }
-                        if(h != null && window._reqCntLastSent[i] === h) return; // 변경 없음 — skip
+                        if(h != null && window._reqCntLastSent[i] === h) return;
                         payload['reqCnt/' + i] = cnt;
                         if(h != null) window._reqCntLastSent[i] = h;
-                    });
-                    // 삭제된 학생의 reqCnt도 제거 (실제로 stu가 sparse 압축됐을 때)
-                    Object.keys(window._reqCntLastSent).forEach(k => {
-                        if(!_curIdx.has(parseInt(k))) {
-                            payload['reqCnt/' + k] = null;
-                            delete window._reqCntLastSent[k];
-                        }
                     });
                 }
                 // 변경 없으면 write 생략 (lastWriteTs도 송신 안 함)
@@ -5472,6 +5522,13 @@ let _renderLock = false; // 재진입 방지
                         _cachePaths.forEach(p => { payload['cacheVer/' + p] = _now; });
                     }
                 }
+                // 📋 write 명세 로깅 (포렌식용)
+                const _stuKeys = Object.keys(payload).filter(k => k.startsWith('stu/'));
+                const _otherKeys = Object.keys(payload).filter(k => !k.startsWith('stu/') && !k.startsWith('reqCnt/') && !k.startsWith('cacheVer/') && k!=='lastWriteTs' && k!=='lastWriter');
+                console.log('[sv-write]', new Date().toISOString().slice(11,19),
+                    'stu:'+_stuKeys.length+'명',
+                    _otherKeys.length ? 'keys:'+_otherKeys.join(',') : '',
+                    'memTotal:'+(db.stu||[]).filter(_isRealStu).length+'명');
                 dbRef.update(payload);
             }
         } catch(e) { console.error('[sv] write error', e); }
