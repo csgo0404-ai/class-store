@@ -2431,11 +2431,31 @@ let _renderLock = false; // 재진입 방지
                 const _gap = _hiddenSince > 0 ? (Date.now() - _hiddenSince) : 0;
                 _hiddenSince = 0;
                 if(_gap < _STALE_MS) return;
-                console.log('[visibility] 교사 탭이', Math.round(_gap/60000), '분 백그라운드 → stu 강제 refetch');
-                window._stuLoaded = false;
-                if(window._refreshAllStu) {
-                    try { window._refreshAllStu().catch(e => console.warn('[visibility] refetch 실패', e)); } catch(_){}
-                }
+                console.log('[visibility] 교사 탭이', Math.round(_gap/60000), '분 백그라운드 → stu 증분 refetch');
+                // 증분 fetch: lastSyncTs 이후 변경된 학생만 가져와서 머지 (~수KB)
+                try {
+                    const _lastTs = (typeof window._getStuLastSyncTs === 'function') ? window._getStuLastSyncTs() : 0;
+                    dbRef.child('stu').orderByChild('updatedAt').startAt(_lastTs + 1).once('value').then(snap => {
+                        if(!Array.isArray(db.stu)) db.stu = [];
+                        let _cnt = 0, _maxTs = _lastTs;
+                        snap.forEach(c => {
+                            const i = parseInt(c.key);
+                            const v = c.val();
+                            if(!isNaN(i) && v) {
+                                db.stu[i] = v;
+                                if(!window._remoteStuTs) window._remoteStuTs = {};
+                                if(v.updatedAt) window._remoteStuTs[i] = v.updatedAt;
+                                if(v.updatedAt && v.updatedAt > _maxTs) _maxTs = v.updatedAt;
+                                _cnt++;
+                            }
+                        });
+                        if(_maxTs > _lastTs && typeof window._setStuLastSyncTs === 'function') {
+                            window._setStuLastSyncTs(_maxTs);
+                        }
+                        console.log('[visibility] 증분 refetch 완료 — 변경 학생:', _cnt+'명');
+                        if(_cnt > 0 && _splitInitialDone) try { _splitFire(); } catch(_){}
+                    }).catch(e => console.warn('[visibility] 증분 refetch 실패', e));
+                } catch(_){}
             }
         });
     })();
