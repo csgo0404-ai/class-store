@@ -3497,46 +3497,20 @@ let _renderLock = false; // 재진입 방지
                     const delMap = delSnap.val() || {};
                     // 캐시 사용 중이면 모든 tombstone 적용 (타임스탬프 무관)
                     // — 다른 기기에서 삭제 후 이 기기 캐시에 잔존하는 경우 방지
-                    const _nulledSlots = []; // tombstone으로 null된 슬롯 추적
                     Object.entries(delMap).forEach(([cd, ts]) => {
                         const idx = db.stu.findIndex(s => s && s.cd === cd);
-                        if(idx >= 0) { _nulledSlots.push({idx, cd}); db.stu[idx] = null; }
+                        if(idx >= 0) { db.stu[idx] = null; }
                         if(typeof ts === 'number' && ts > maxTs) maxTs = ts;
-                    });
-                    // 🛡️ 캐시에서 null인데 tombstone은 없는 슬롯 복원 시도
-                    // — tombstone 삭제 후 캐시에 null이 남아있는 경우 (다음 full-fetch 없으면 영구 소실)
-                    const _cacheNullSlots = [];
-                    db.stu.forEach((s, i) => {
-                        if(s === null || s === undefined) {
-                            const _wasNulledByTombstone = _nulledSlots.some(n => n.idx === i);
-                            if(!_wasNulledByTombstone) _cacheNullSlots.push(i);
-                        }
                     });
                     window._setStuLastSyncTs(maxTs);
 
                     window._stuLoaded = true;
                     window._hideStuLoadingOverlay && window._hideStuLoadingOverlay();
                     window._saveStuCache && window._saveStuCache();
-                    // 학생별 이름 모드(stu)에서는 live 리스너 불필요 — 종류별/학생관리 탭에서만 attach
                     if(window._attachSplitStuFullListener && window._mgrOpen !== 'stu') {
                         try { window._attachSplitStuFullListener(); } catch(_){}
                     }
                     if(_splitInitialDone) _splitFire();
-                    // 캐시 null 슬롯 검증 — Firebase에 실제 학생이 있으면 복원
-                    if(_cacheNullSlots.length > 0) {
-                        Promise.all(_cacheNullSlots.map(i =>
-                            dbRef.child('stu/' + i).once('value').then(s => {
-                                const v = s.val();
-                                if(v && v.cd && v.nm) {
-                                    db.stu[i] = v;
-                                    console.warn('[ensureStu] 캐시 null 슬롯 복원:', i, v.nm, '(', v.cd, ')');
-                                }
-                            }).catch(() => {})
-                        )).then(() => {
-                            if(_splitInitialDone) _splitFire();
-                            window._saveStuCache && window._saveStuCache();
-                        });
-                    }
                     return db.stu;
                 });
             }).catch(err => {
