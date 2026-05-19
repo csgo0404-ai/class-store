@@ -1617,10 +1617,7 @@
         <button class="btn btn-gray" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>
     <div class="cont" style="padding:15px; display:flex; flex-direction:column;">
-        <div id="s_char" style="flex:1;overflow-y:auto;position:relative;">
-            <div id="appVerBadge" style="position:absolute;top:8px;right:12px;font-size:11px;color:#9E9E9E;background:rgba(255,255,255,0.7);border:1px solid #E0E0E0;border-radius:8px;padding:2px 7px;z-index:5;font-family:monospace;pointer-events:none;">v.5.19</div>
-            <div id="s_char_inner" style="zoom:0.7;"></div>
-        </div>
+        <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="zoom:0.7;"></div></div>
         <div id="s_bg" class="hidden"></div>
         <div id="s_col" class="hidden"></div>
         <div id="s_sh" class="hidden"></div>
@@ -1982,9 +1979,10 @@ const firebaseConfig = {
         // CSS 오버레이로 세로일 때 안내
         const _style = document.createElement('style');
         _style.textContent = `
-            #_portraitOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99999; color:white; flex-direction:column; align-items:center; justify-content:center; font-family:'Jua',sans-serif; text-align:center; padding:20px; }
-            @media (orientation: portrait) and (max-width: 1366px) {
-                #_portraitOverlay { display:flex; }
+            #_portraitOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:2147483647; color:white; flex-direction:column; align-items:center; justify-content:center; font-family:'Jua',sans-serif; text-align:center; padding:20px; }
+            @media (orientation: portrait) {
+                #_portraitOverlay { display:flex !important; }
+                body { overflow:hidden !important; }
             }
         `;
         document.head.appendChild(_style);
@@ -15717,7 +15715,7 @@ window.addCharRow = function() {
         _scInner.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                 <h2 style="margin:0;">🧑 내 캐릭터</h2>
-                
+                <span style="font-size:14px;color:#9E9E9E;background:#F5F5F5;border:1px solid #E0E0E0;border-radius:8px;padding:3px 10px;font-family:monospace;">v.5.19</span>
             </div>
             <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;">
                 <!-- 좌측: 캐릭터 패널 -->
