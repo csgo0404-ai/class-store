@@ -2477,46 +2477,8 @@ let _renderLock = false; // 재진입 방지
     let _splitInitialDone = false;
     let _splitLogAttached = false;
 
-    // 🛡️ visibility 기반 stale 방지 — 교사 탭이 백그라운드로 30분+ 있다가 돌아오면 강제 refetch
-    (function _attachVisibilityRefetch(){
-        let _hiddenSince = 0;
-        const _STALE_MS = 30 * 60 * 1000;
-        document.addEventListener('visibilitychange', () => {
-            if(document.visibilityState === 'hidden') {
-                _hiddenSince = Date.now();
-            } else if(document.visibilityState === 'visible') {
-                if(!window._isTeacherSession) return; // 교사만 대상
-                const _gap = _hiddenSince > 0 ? (Date.now() - _hiddenSince) : 0;
-                _hiddenSince = 0;
-                if(_gap < _STALE_MS) return;
-                console.log('[visibility] 교사 탭이', Math.round(_gap/60000), '분 백그라운드 → stu 증분 refetch');
-                // 증분 fetch: lastSyncTs 이후 변경된 학생만 가져와서 머지 (~수KB)
-                try {
-                    const _lastTs = (typeof window._getStuLastSyncTs === 'function') ? window._getStuLastSyncTs() : 0;
-                    dbRef.child('stu').orderByChild('updatedAt').startAt(_lastTs + 1).once('value').then(snap => {
-                        if(!Array.isArray(db.stu)) db.stu = [];
-                        let _cnt = 0, _maxTs = _lastTs;
-                        snap.forEach(c => {
-                            const i = parseInt(c.key);
-                            const v = c.val();
-                            if(!isNaN(i) && v) {
-                                db.stu[i] = v;
-                                if(!window._remoteStuTs) window._remoteStuTs = {};
-                                if(v.updatedAt) window._remoteStuTs[i] = v.updatedAt;
-                                if(v.updatedAt && v.updatedAt > _maxTs) _maxTs = v.updatedAt;
-                                _cnt++;
-                            }
-                        });
-                        if(_maxTs > _lastTs && typeof window._setStuLastSyncTs === 'function') {
-                            window._setStuLastSyncTs(_maxTs);
-                        }
-                        console.log('[visibility] 증분 refetch 완료 — 변경 학생:', _cnt+'명');
-                        if(_cnt > 0 && _splitInitialDone) try { _splitFire(); } catch(_){}
-                    }).catch(e => console.warn('[visibility] 증분 refetch 실패', e));
-                } catch(_){}
-            }
-        });
-    })();
+    // visibility refetch 제거 — Firebase live listener가 백그라운드에서도 연결 유지,
+    // SDK가 재연결 시 누락 이벤트 자동 재전달하므로 별도 refetch 불필요
 
     function _splitFire() {
         if(_dbDebounceTimer) clearTimeout(_dbDebounceTimer);
@@ -2624,10 +2586,6 @@ let _renderLock = false; // 재진입 방지
                         if(!window._remoteStuTs) window._remoteStuTs = {};
                         window._remoteStuTs[i] = v.updatedAt;
                     }
-                    // 🛡️ inv 길이 — 삭제 의도 감지용
-                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
-                    window._lastSentInvLen[i] = Array.isArray(v.inv) ? v.inv.length
-                                              : (v.inv && typeof v.inv === 'object') ? Object.keys(v.inv).length : 0;
                     window._fetchedStuTs[i] = v.updatedAt || Date.now(); // 캐시 갱신
                 }
             }).catch(()=>{})
@@ -3240,13 +3198,10 @@ let _renderLock = false; // 재진입 방지
                 const arr = JSON.parse(raw);
                 if(Array.isArray(arr)) {
                     db.stu = arr;
-                    // 🛡️ 삭제 의도 감지용 inv 길이 + stale 가드용 ts 초기화
-                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
+                    // stale 가드용 ts 초기화
                     if(!window._remoteStuTs) window._remoteStuTs = {};
                     arr.forEach((s, i) => {
                         if(!s) return;
-                        window._lastSentInvLen[i] = Array.isArray(s.inv) ? s.inv.length
-                                                  : (s.inv && typeof s.inv === 'object') ? Object.keys(s.inv).length : 0;
                         if(s.updatedAt) window._remoteStuTs[i] = s.updatedAt;
                     });
                     return true;
@@ -3327,15 +3282,6 @@ let _renderLock = false; // 재진입 방지
             if(!isNaN(i) && v.updatedAt) {
                 if(!window._remoteStuTs) window._remoteStuTs = {};
                 window._remoteStuTs[i] = v.updatedAt;
-                // 🔄 inv fetch 캐시도 listener delivery로 갱신 (캐시 무효화 + 최신 inv로 미리 채움)
-                if(!window._invFetchCache) window._invFetchCache = {};
-                window._invFetchCache[i] = { ts: Date.now(), inv: v.inv || [] };
-            }
-            // 🛡️ inv 길이 기록 — 삭제 의도 감지용
-            if(!isNaN(i)) {
-                if(!window._lastSentInvLen) window._lastSentInvLen = {};
-                window._lastSentInvLen[i] = Array.isArray(v.inv) ? v.inv.length
-                                          : (v.inv && typeof v.inv === 'object') ? Object.keys(v.inv).length : 0;
             }
             if(_splitInitialDone) _splitFire();
             window._saveStuCache && window._saveStuCache();
@@ -3485,10 +3431,6 @@ let _renderLock = false; // 재진입 방지
                             if(!window._remoteStuTs) window._remoteStuTs = {};
                             window._remoteStuTs[i] = v.updatedAt;
                         }
-                        // 🛡️ inv 길이 — 삭제 의도 감지용
-                        if(!window._lastSentInvLen) window._lastSentInvLen = {};
-                        window._lastSentInvLen[i] = Array.isArray(v.inv) ? v.inv.length
-                                                  : (v.inv && typeof v.inv === 'object') ? Object.keys(v.inv).length : 0;
                     }
                 });
                 console.log('[ensureStuLoaded]', _fetchMode, 'fetch — 변경 학생:', cnt);
@@ -3506,6 +3448,29 @@ let _renderLock = false; // 재진입 방지
 
                     window._stuLoaded = true;
                     window._hideStuLoadingOverlay && window._hideStuLoadingOverlay();
+                    // 🛡️ B안: updatedAt 없는 구버전 레코드 자동 backfill (증분 fetch 경로)
+                    if(!window._remoteStuTs) window._remoteStuTs = {};
+                    const _backfillNow2 = Date.now();
+                    const _backfillUpdates2 = {};
+                    db.stu.forEach((s, i) => {
+                        if(!s) return;
+                        if(!s.updatedAt) {
+                            s.updatedAt = _backfillNow2;
+                            _backfillUpdates2['stu/' + i + '/updatedAt'] = _backfillNow2;
+                            window._remoteStuTs[i] = _backfillNow2;
+                        }
+                    });
+                    if(Object.keys(_backfillUpdates2).length) {
+                        console.log('[backfill] updatedAt 자동 부여(증분):', Object.keys(_backfillUpdates2).length, '명');
+                        dbRef.update(_backfillUpdates2).catch(e => console.warn('[backfill] 실패', e));
+                    }
+                    // 🛡️ A안: 초기 fetch 완료 → stu write 허용 (증분 fetch 경로)
+                    window._stuListenerReady = true;
+                    if(window._pendingSvQueue && window._pendingSvQueue.length) {
+                        console.log('[sv] 초기 fetch 완료(증분) — 대기 중인 stu write', window._pendingSvQueue.length, '건 실행');
+                        const _q2 = window._pendingSvQueue.splice(0);
+                        setTimeout(() => _q2.forEach(fn => { try { fn(); } catch(_){} }), 0);
+                    }
                     window._saveStuCache && window._saveStuCache();
                     if(window._attachSplitStuFullListener && window._mgrOpen !== 'stu') {
                         try { window._attachSplitStuFullListener(); } catch(_){}
@@ -3535,23 +3500,43 @@ let _renderLock = false; // 재진입 방지
                     window._hideStuLoadingOverlay && window._hideStuLoadingOverlay();
                     let maxTs = 0;
                     if(!window._remoteStuTs) window._remoteStuTs = {};
-                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
+                    // 🛡️ B안: updatedAt 없는 구버전 레코드 자동 backfill — guard가 실제 동작하려면 모든 학생에 updatedAt 필요
+                    const _backfillNow = Date.now();
+                    const _backfillUpdates = {};
                     db.stu.forEach((s, i) => {
-                        if(s && s.updatedAt) {
-                            if(s.updatedAt > maxTs) maxTs = s.updatedAt;
-                            window._remoteStuTs[i] = s.updatedAt; // 🛡️ stale 가드용
+                        if(!s) return;
+                        if(!s.updatedAt) {
+                            s.updatedAt = _backfillNow;
+                            _backfillUpdates['stu/' + i + '/updatedAt'] = _backfillNow;
                         }
-                        if(s) {
-                            window._lastSentInvLen[i] = Array.isArray(s.inv) ? s.inv.length
-                                                      : (s.inv && typeof s.inv === 'object') ? Object.keys(s.inv).length : 0;
-                        }
+                        if(s.updatedAt > maxTs) maxTs = s.updatedAt;
+                        window._remoteStuTs[i] = s.updatedAt; // 🛡️ stale 가드용
                     });
+                    if(Object.keys(_backfillUpdates).length) {
+                        console.log('[backfill] updatedAt 자동 부여:', Object.keys(_backfillUpdates).length, '명');
+                        dbRef.update(_backfillUpdates).catch(e => console.warn('[backfill] 실패', e));
+                    }
                     if(maxTs) window._setStuLastSyncTs(maxTs);
+                    // 🛡️ A안: 초기 fetch 완료 → stu write 허용
+                    window._stuListenerReady = true;
+                    if(window._pendingSvQueue && window._pendingSvQueue.length) {
+                        console.log('[sv] 초기 fetch 완료 — 대기 중인 stu write', window._pendingSvQueue.length, '건 실행');
+                        const _q = window._pendingSvQueue.splice(0);
+                        _q.forEach(fn => { try { fn(); } catch(_){} });
+                    }
                     window._saveStuCache && window._saveStuCache();
                     if(window._attachSplitStuFullListener) try { window._attachSplitStuFullListener(); } catch(_){}
                     if(_splitInitialDone) _splitFire();
                     return db.stu;
                 });
+            }).catch(err2 => {
+                // fetch 전체 실패 — _stuListenerReady 미설정 시 stu write 영구 차단되므로 강제 해제
+                console.error('[ensureStuLoaded] fallback fetch도 실패 — _stuListenerReady 강제 해제', err2);
+                window._stuListenerReady = true;
+                if(window._pendingSvQueue && window._pendingSvQueue.length) {
+                    const _qErr = window._pendingSvQueue.splice(0);
+                    setTimeout(() => _qErr.forEach(fn => { try { fn(); } catch(_){} }), 0);
+                }
             });
             return _ensureStuPromise;
         }
@@ -4809,13 +4794,17 @@ let _renderLock = false; // 재진입 방지
         if(typeof rTb === 'function') rTb();
     };
 
+    function _genItmId() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
     // ===== 생활기록부 연동: 골든티켓·달고나 자동 등록 (special 필드로 식별) =====
     function _ensureRecordCoupons() {
         if(!db.itm) db.itm = [];
         if(!Array.isArray(db.itm)) db.itm = Object.values(db.itm);
         // special 필드로 식별 — 이름·아이콘 변경된 경우에도 중복 생성 안 함
         const ensure = (specialKey, def) => {
-            if(!db.itm.some(it => it && it.special === specialKey)) db.itm.push(def);
+            if(!db.itm.some(it => it && it.special === specialKey)) db.itm.push({...def, id: _genItmId()});
         };
         ensure('goldenTicket', {n:'골든 티켓', i:'🎫', g:'L', p:0, c:'cn', d:'방어자/유망주 추천으로 받는 티켓. 모아서 뽑기 가능!', special:'goldenTicket', needApprove:true, excludeFromCol:true});
         ensure('dalgona', {n:'달고나', i:'🍯', g:'L', p:0, c:'cn', d:'친구가 보낸 따뜻한 마음. 간식 달고나는 사용 가능!', special:'dalgona', needApprove:true, excludeFromCol:true});
@@ -4823,7 +4812,7 @@ let _renderLock = false; // 재진입 방지
         // 뽑기 2배권 — 일반 inv 아이템(상점 이용권 패턴), 이름으로 식별
         const _dblExisting = db.itm.find(it => it && it.n === '뽑기 2배권');
         if(!_dblExisting) {
-            db.itm.push({n:'뽑기 2배권', i:'✨', g:'L', p:0, c:'cn', d:'뽑기 구매 시 사용하면 2개 후보 중 원하는 1개를 선택! 한 번에 1장만 사용 가능.', excludeFromCol:true});
+            db.itm.push({n:'뽑기 2배권', i:'✨', g:'L', p:0, c:'cn', d:'뽑기 구매 시 사용하면 2개 후보 중 원하는 1개를 선택! 한 번에 1장만 사용 가능.', excludeFromCol:true, id: _genItmId()});
         } else if(_dblExisting.s === false) {
             delete _dblExisting.s;
         }
@@ -4833,7 +4822,7 @@ let _renderLock = false; // 재진입 방지
         if(_oldDblIdx >= 0) db.itm.splice(_oldDblIdx, 1); // 구 이름 항목 제거
         const _dblUnlExisting = db.itm.find(it => it && it.n === '스페셜 뽑기 2배권');
         if(!_dblUnlExisting) {
-            db.itm.push({n:'스페셜 뽑기 2배권', i:'💫', g:'L', p:0, c:'cn', d:'활성화한 당일 하루 동안 뽑기 2배 효과 무제한 사용! 소진되지 않아요.', unlimitedDaily:true, unlimitedDays:1, excludeFromCol:true});
+            db.itm.push({n:'스페셜 뽑기 2배권', i:'💫', g:'L', p:0, c:'cn', d:'활성화한 당일 하루 동안 뽑기 2배 효과 무제한 사용! 소진되지 않아요.', unlimitedDaily:true, unlimitedDays:1, excludeFromCol:true, id: _genItmId()});
         }
         // 학생 인벤토리 구 이름 → 새 이름 마이그레이션
         const _todayForExp = new Date().toLocaleDateString('sv-SE');
@@ -4960,6 +4949,7 @@ let _renderLock = false; // 재진입 방지
                 }
             })();
             db.itm = _normArr(db.itm);
+            db.itm.forEach(it => { if(it && !it.id) it.id = _genItmId(); });
             db.gac = _normArr(db.gac);
             db.log = _normArr(db.log);
             db.auc = _normArr(db.auc);
@@ -5626,7 +5616,7 @@ let _renderLock = false; // 재진입 방지
                         _doWrite();
                         return;
                     }
-                    // 의심 경로 — 풀 stu fetch 로 정확 카운트 + auto-merge
+                    // 의심 경로 — 풀 stu fetch 로 정확 카운트 검증
                     console.warn('[sv] reqCnt 불일치 의심 — 풀 stu 검증', { mem: curCount, reqCntKeys: fbCountApprox });
                     dbRef.child('stu').once('value', snap => {
                         let fbCount = 0;
@@ -5636,27 +5626,6 @@ let _renderLock = false; // 재진입 방지
                             alert(`⚠️ 다른 탭에서 더 많은 학생 데이터가 감지되어 저장이 취소되었습니다.\n(이 탭: ${curCount}명, Firebase: ${fbCount}명)\n\n페이지를 새로고침하면 최신 데이터를 받아옵니다.`);
                             return;
                         }
-                        // 🛡️ auto-merge
-                        try {
-                            const _intentionallyDeleted = new Set();
-                            for(let i=0; i<localStorage.length; i++){
-                                const k = localStorage.key(i);
-                                if(k && k.startsWith('_deletedStu_')) _intentionallyDeleted.add(k.substring('_deletedStu_'.length));
-                            }
-                            const _memCds = new Set((db.stu||[]).filter(_isRealStu).map(s => s.cd));
-                            const _missing = [];
-                            snap.forEach(c => {
-                                const v = c.val();
-                                if(!_isRealStu(v)) return;
-                                if(_memCds.has(v.cd)) return;
-                                if(_intentionallyDeleted.has(v.cd)) return;
-                                _missing.push(v);
-                            });
-                            if(_missing.length){
-                                console.warn('[sv] 메모리 누락 학생 자동 복원:', _missing.map(s => s.no+'번 '+s.nm+' ('+s.cd+')').join(', '));
-                                db.stu = [...(db.stu||[]), ..._missing].filter(_isRealStu).sort((a,b) => (parseInt(a.no)||999) - (parseInt(b.no)||999));
-                            }
-                        } catch(e){ console.warn('[sv] auto-merge 실패', e); }
                         _doWrite();
                     }, err => {
                         console.warn('[sv] Firebase 풀 검증 실패', err);
@@ -5706,7 +5675,7 @@ let _renderLock = false; // 재진입 방지
                     }
                 } catch(_){}
                 const payload = {};
-                const TEACHER_KEYS = ['cfg','itm','gac','avt','bdg','tit','petDef','log','rec','ak'];
+                const TEACHER_KEYS = ['cfg','gac','avt','bdg','tit','petDef','log','rec','ak'];
                 // ⚠️ stu는 SHARED_KEYS에서 제외 — partial db.stu가 통째 set으로 다른 학생 wipe하는 사고 방지.
                 // 대신 아래에서 변경된 학생만 stu/{idx} per-path로 update.
                 const SHARED_KEYS = ['auc','gacQueue'];
@@ -5730,15 +5699,39 @@ let _renderLock = false; // 재진입 방지
                     payload[k] = toSend;
                     if(curHash != null) window._lastSentHash[k] = curHash;
                 }
+                // itm per-item write — race 방지: 각 아이템을 itm/{id} 독립 경로로 write
+                if(!window._itmSentHash) window._itmSentHash = {};
+                if(!window._deletedItmIds) window._deletedItmIds = new Set();
+                (db.itm || []).forEach(it => {
+                    if(!it || !it.id) return;
+                    let h; try { h = JSON.stringify(it); } catch(_) { h = null; }
+                    if(h != null && window._itmSentHash[it.id] === h) return;
+                    payload['itm/' + it.id] = it;
+                    if(h != null) window._itmSentHash[it.id] = h;
+                });
+                window._deletedItmIds.forEach(id => {
+                    payload['itm/' + id] = null;
+                    delete window._itmSentHash[id];
+                });
+                window._deletedItmIds.clear();
                 // stu per-student write — partial db.stu도 안전. 변경된 학생만 stu/{idx}로 update.
                 // (_stuPerHash는 위 5384~5399에서 이미 갱신됨)
+                // 🛡️ A안: 초기 fetch 완료 전 stu write 차단 — listener 미도착 상태에서 구버전 데이터 덮어쓰기 방지
+                const _stuWriteReady = !!window._stuListenerReady;
+                if(!_stuWriteReady) {
+                    console.warn('[sv] 초기 fetch 미완료 — stu write 건너뜀 (non-stu는 정상 write)');
+                    if(!window._pendingSvQueue) window._pendingSvQueue = [];
+                    // 중복 적재 방지: sv() 재실행은 1개만 등록
+                    if(!window._pendingSvQueue._svPending) {
+                        window._pendingSvQueue._svPending = true;
+                        window._pendingSvQueue.push(() => { window._pendingSvQueue._svPending = false; sv(); });
+                    }
+                }
                 const _changedStuIdx = new Set();
-                const _invChangedIdx = new Set(); // inv 필드 변경된 학생 — fetch+머지 필요
                 const _skippedReasons = [];
-                if(Array.isArray(db.stu) && window._stuPerHash) {
+                if(_stuWriteReady && Array.isArray(db.stu) && window._stuPerHash) {
                     if(!window._stuSentHash) window._stuSentHash = {};
                     if(!window._remoteStuTs) window._remoteStuTs = {};
-                    if(!window._stuInvHashSent) window._stuInvHashSent = {};
                     db.stu.forEach((s, i) => {
                         if(!s) return;
                         // 🛡️ schema validation: cd/nm 없는 손상된 객체는 write 거부 (예: 캐시 깨짐, undefined cd)
@@ -5756,12 +5749,6 @@ let _renderLock = false; // 재진입 방지
                         const h = window._stuPerHash[i];
                         if(h == null) return;
                         if(window._stuSentHash[i] === h) return;
-                        // inv 변경 여부 별도 체크 (race wipe 방지용 머지 처리)
-                        let _curInvHash; try { _curInvHash = JSON.stringify(s.inv || []); } catch(_) { _curInvHash = null; }
-                        if(_curInvHash != null && window._stuInvHashSent[i] !== _curInvHash) {
-                            _invChangedIdx.add(i);
-                            window._stuInvHashSent[i] = _curInvHash;
-                        }
                         payload['stu/' + i] = s;
                         window._stuSentHash[i] = h;
                         _changedStuIdx.add(i);
@@ -5815,7 +5802,6 @@ let _renderLock = false; // 재진입 방지
                 const _otherKeys = Object.keys(payload).filter(k => !k.startsWith('stu/') && !k.startsWith('reqCnt/') && !k.startsWith('cacheVer/') && k!=='lastWriteTs' && k!=='lastWriter');
                 console.log('[sv-write]', new Date().toISOString().slice(11,19),
                     'stu:'+_stuKeys.length+'명',
-                    _invChangedIdx.size ? 'inv머지:'+_invChangedIdx.size+'명' : '',
                     _otherKeys.length ? 'keys:'+_otherKeys.join(',') : '',
                     'memTotal:'+(db.stu||[]).filter(_isRealStu).length+'명');
                 // 🛡️ 캐시 즉시 저장 — 학생 수가 줄었으면 저장 스킵 (신규 학생 소실 방지)
@@ -5828,76 +5814,8 @@ let _renderLock = false; // 재진입 방지
                         localStorage.setItem('_teacherStuCacheTs', String(Date.now()));
                     } catch(_) {}
                 }
-                // 🛡️ inv 변경 학생: remote와 머지 (race로 학생 req가 wipe되는 사고 방지)
-                if(_invChangedIdx.size) {
-                    if(!window._invFetchCache) window._invFetchCache = {};
-                    if(!window._lastSentInvLen) window._lastSentInvLen = {};
-                    const _CACHE_MS = 10000; // 10초 캐시. listener가 child_changed 받으면 자동 갱신.
-                    const _invMergePromises = [...(_invChangedIdx)].map(i => {
-                        const localStu = db.stu[i]; if(!localStu) return Promise.resolve();
-                        // 🛡️ 삭제 의도 감지: 로컬 inv 길이가 마지막 송신 때보다 줄었으면 = 교사 삭제 → 머지 스킵
-                        const _localLen = Array.isArray(localStu.inv) ? localStu.inv.length : 0;
-                        const _lastSentLen = window._lastSentInvLen[i] || 0;
-                        if(_lastSentLen > 0 && _localLen < _lastSentLen) {
-                            console.log('[sv-merge] 학생', i, '— 삭제 감지 ('+_lastSentLen+'→'+_localLen+'), 머지 스킵');
-                            window._lastSentInvLen[i] = _localLen; // 갱신
-                            return Promise.resolve();
-                        }
-                        window._lastSentInvLen[i] = _localLen;
-                        const _cache = window._invFetchCache[i];
-                        const _useCached = _cache && (Date.now() - _cache.ts) < _CACHE_MS;
-                        const _fetchPromise = _useCached
-                            ? Promise.resolve({ val: () => _cache.inv })
-                            : dbRef.child('stu/'+i+'/inv').once('value').then(snap => {
-                                window._invFetchCache[i] = { ts: Date.now(), inv: snap.val() };
-                                return snap;
-                            });
-                        return _fetchPromise.then(snap => {
-                            const remoteInv = snap.val();
-                            const remoteArr = Array.isArray(remoteInv) ? remoteInv
-                                            : (remoteInv && typeof remoteInv === 'object') ? Object.values(remoteInv) : [];
-                            if(!remoteArr.length) return; // remote 비었으면 머지 불필요
-                            const localArr = Array.isArray(localStu.inv) ? localStu.inv : [];
-                            // 🔑 상태 필드 제외 identity fingerprint — st/useDate 등이 달라도 같은 아이템으로 인식
-                            // (반려 시 req→active로 바뀐 아이템을 remote의 req 버전이 덮어쓰는 버그 방지)
-                            const _INV_ST = new Set(['st','useDate','useEndDate','reqApproved','reqDone','currentDay','totalDays','baseCookie']);
-                            const _fp = it => { try {
-                                if(!it || typeof it !== 'object') return JSON.stringify(it);
-                                const _id = {}; Object.keys(it).sort().forEach(k => { if(!_INV_ST.has(k)) _id[k] = it[k]; });
-                                return JSON.stringify(_id);
-                            } catch(_) { return null; } };
-                            // count-based 비교: 같은 아이템이 remote에 더 많을 때만 추가 (복수 보유 정확 처리)
-                            const localIdMap = new Map();
-                            localArr.forEach(it => { if(!it) return; const k = _fp(it); if(k!=null) localIdMap.set(k,(localIdMap.get(k)||0)+1); });
-                            const remoteIdMap = new Map();
-                            remoteArr.forEach(rIt => { if(!rIt) return; const k = _fp(rIt); if(k!=null) remoteIdMap.set(k,[...(remoteIdMap.get(k)||[]),rIt]); });
-                            const merged = localArr.slice();
-                            let _added = 0;
-                            remoteIdMap.forEach((items,k) => {
-                                const lc = localIdMap.get(k)||0;
-                                if(items.length > lc) { merged.push(...items.slice(lc)); _added += items.length-lc; }
-                            });
-                            if(_added > 0) {
-                                console.log('[sv-merge] 학생', i, '— remote inv', _added, '건 머지 (race 방지)');
-                                localStu.inv = merged;
-                                payload['stu/' + i] = localStu; // payload 갱신
-                                // hash 동기화
-                                let _newH; try { _newH = JSON.stringify(localStu); } catch(_) {}
-                                if(_newH != null) {
-                                    window._stuPerHash[i] = _newH;
-                                    window._stuSentHash[i] = _newH;
-                                }
-                                let _newInvH; try { _newInvH = JSON.stringify(merged); } catch(_) {}
-                                if(_newInvH != null) window._stuInvHashSent[i] = _newInvH;
-                            }
-                        }).catch(e => console.warn('[sv-merge] 학생', i, 'fetch 실패 — 머지 스킵', e));
-                    });
-                    Promise.all(_invMergePromises).then(() => {
-                        dbRef.update(payload);
-                    });
-                } else {
-                    dbRef.update(payload);
-                }
+                // [CLEANUP 2026-05-20] inv remote 머지 로직 제거 — 무한 증가 버그 원인이었음. 단순 write 사용.
+                dbRef.update(payload);
             }
         } catch(e) { console.error('[sv] write error', e); }
     }
@@ -5948,12 +5866,19 @@ let _renderLock = false; // 재진입 방지
     // indices: 배열 인덱스 목록
     window._svStu = function(indices) {
         if(!Array.isArray(db.stu) || !indices || !indices.length) { sv(); return; }
+        // 🛡️ A안: 초기 fetch 완료 전 stu write 차단
+        if(!window._stuListenerReady) {
+            if(!window._pendingSvQueue) window._pendingSvQueue = [];
+            const _capturedIndices = [...indices];
+            window._pendingSvQueue.push(() => window._svStu(_capturedIndices));
+            console.warn('[_svStu] 초기 fetch 미완료 — stu write 대기:', _capturedIndices);
+            return;
+        }
         const uniq = [...new Set(indices.map(Number).filter(i => !isNaN(i) && i >= 0 && i < db.stu.length))];
         if(!uniq.length) { sv(); return; }
         try {
             const updates = {};
             const _skipped = [];
-            const _invChangedIdx = new Set();
             uniq.forEach(i => {
                 const s = db.stu[i]; if(!s) return;
                 // 🛡️ schema validation
@@ -5965,13 +5890,6 @@ let _renderLock = false; // 재진입 방지
                 if(_remoteTs > 0 && _localTs > 0 && _localTs < _remoteTs) {
                     _skipped.push({idx:i, reason:'stale', cd:s.cd, nm:s.nm, localTs:_localTs, remoteTs:_remoteTs});
                     return;
-                }
-                // inv 변경 감지 (머지 대상)
-                if(!window._stuInvHashSent) window._stuInvHashSent = {};
-                let _curInvH; try { _curInvH = JSON.stringify(s.inv || []); } catch(_) {}
-                if(_curInvH != null && window._stuInvHashSent[i] !== _curInvH) {
-                    _invChangedIdx.add(i);
-                    window._stuInvHashSent[i] = _curInvH;
                 }
                 // titNotify: seen:true 항목만 있거나 비어있으면 write에서 제외
                 // (학생이 이미 확인 후 직접 경로 삭제했는데 교사 메모리가 stale한 경우 덮어쓰기 방지)
@@ -5987,74 +5905,14 @@ let _renderLock = false; // 재진입 방지
             });
             if(_skipped.length) console.warn('[_svStu] write 거부:', _skipped);
             if(Object.keys(updates).length === 0) return;
-            console.log('[_svStu-write]', new Date().toISOString().slice(11,19), '학생:', Object.keys(updates).length+'명', _invChangedIdx.size ? 'inv머지:'+_invChangedIdx.size : '');
-            // 🛡️ inv 변경 학생 머지 (sv()와 동일 로직)
-            const _doWrite = () => {
-                dbRef.update(updates);
-                if(window._lastSentHash) {
-                    try { window._lastSentHash['stu'] = JSON.stringify(db.stu); } catch(_) {}
-                }
-                // 🛡️ 캐시 즉시 저장 — 삭제 직후 새로고침 시 stale 캐시 복원으로 인한 항목 부활 방지
-                try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); } catch(_) {}
-            };
-            if(_invChangedIdx.size) {
-                if(!window._invFetchCache) window._invFetchCache = {};
-                if(!window._lastSentInvLen) window._lastSentInvLen = {};
-                const _CACHE_MS = 5000;
-                const _promises = [..._invChangedIdx].map(i => {
-                    const localStu = db.stu[i]; if(!localStu) return Promise.resolve();
-                    // 🛡️ 삭제 의도 감지
-                    const _localLen = Array.isArray(localStu.inv) ? localStu.inv.length : 0;
-                    const _lastSentLen = window._lastSentInvLen[i] || 0;
-                    if(_lastSentLen > 0 && _localLen < _lastSentLen) {
-                        console.log('[_svStu-merge] 학생', i, '— 삭제 감지 ('+_lastSentLen+'→'+_localLen+'), 머지 스킵');
-                        window._lastSentInvLen[i] = _localLen;
-                        return Promise.resolve();
-                    }
-                    window._lastSentInvLen[i] = _localLen;
-                    const _cache = window._invFetchCache[i];
-                    const _useCached = _cache && (Date.now() - _cache.ts) < _CACHE_MS;
-                    const _fetchP = _useCached
-                        ? Promise.resolve({ val: () => _cache.inv })
-                        : dbRef.child('stu/'+i+'/inv').once('value').then(snap => {
-                            window._invFetchCache[i] = { ts: Date.now(), inv: snap.val() };
-                            return snap;
-                        });
-                    return _fetchP.then(snap => {
-                        const remoteInv = snap.val();
-                        const remoteArr = Array.isArray(remoteInv) ? remoteInv
-                                        : (remoteInv && typeof remoteInv === 'object') ? Object.values(remoteInv) : [];
-                        if(!remoteArr.length) return;
-                        const localArr = Array.isArray(localStu.inv) ? localStu.inv : [];
-                        const _INV_ST2 = new Set(['st','useDate','useEndDate','reqApproved','reqDone','currentDay','totalDays','baseCookie']);
-                        const _fp = it => { try {
-                            if(!it || typeof it !== 'object') return JSON.stringify(it);
-                            const _id = {}; Object.keys(it).sort().forEach(k => { if(!_INV_ST2.has(k)) _id[k] = it[k]; });
-                            return JSON.stringify(_id);
-                        } catch(_) { return null; } };
-                        const localIdMap2 = new Map();
-                        localArr.forEach(it => { if(!it) return; const k=_fp(it); if(k!=null) localIdMap2.set(k,(localIdMap2.get(k)||0)+1); });
-                        const remoteIdMap2 = new Map();
-                        remoteArr.forEach(rIt => { if(!rIt) return; const k=_fp(rIt); if(k!=null) remoteIdMap2.set(k,[...(remoteIdMap2.get(k)||[]),rIt]); });
-                        const merged = localArr.slice();
-                        let _added = 0;
-                        remoteIdMap2.forEach((items,k) => {
-                            const lc = localIdMap2.get(k)||0;
-                            if(items.length > lc) { merged.push(...items.slice(lc)); _added += items.length-lc; }
-                        });
-                        if(_added > 0) {
-                            console.log('[_svStu-merge] 학생', i, '— remote inv', _added, '건 머지');
-                            localStu.inv = merged;
-                            updates['stu/' + i] = localStu;
-                            let _newInvH; try { _newInvH = JSON.stringify(merged); } catch(_) {}
-                            if(_newInvH != null) window._stuInvHashSent[i] = _newInvH;
-                        }
-                    }).catch(e => console.warn('[_svStu-merge] 학생', i, 'fetch 실패', e));
-                });
-                Promise.all(_promises).then(_doWrite);
-            } else {
-                _doWrite();
+            console.log('[_svStu-write]', new Date().toISOString().slice(11,19), '학생:', Object.keys(updates).length+'명');
+            // [CLEANUP 2026-05-20] inv 머지 로직 제거 — 무한 증가 버그 원인이었음. 단순 write 사용.
+            dbRef.update(updates);
+            if(window._lastSentHash) {
+                try { window._lastSentHash['stu'] = JSON.stringify(db.stu); } catch(_) {}
             }
+            // 캐시 즉시 저장 — 삭제 직후 새로고침 시 stale 캐시 복원으로 인한 항목 부활 방지
+            try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); } catch(_) {}
             // localStorage 스냅샷도 갱신
             if(db.cfg?.emergencyRestore !== false) {
                 try {
@@ -7677,12 +7535,27 @@ let _renderLock = false; // 재진입 방지
                 if(!confirm(`백업 파일을 불러오면 현재 데이터가 덮어씌워집니다.\n학생 수: ${data.stu.length}명\n날짜: ${data.ts||'알 수 없음'}\n\n계속하시겠습니까?`)) return;
                 const keys = ['stu','itm','gac','avt','bdg','tit','petDef','spPetDef','log','cfg','auc','gacQueue','rec','ak'];
                 // ⚠️ Firebase 직접 set 먼저 (실제 데이터 복구는 여기서 완료) — 이후 렌더 실패해도 데이터는 안전
+                // 아이템 정의 키는 .set()으로 완전 교체 (기존 id키 잔존 방지), 나머지는 .update()
+                const setKeys = ['itm','gac','avt','bdg','tit','petDef','spPetDef'];
                 const updates = {};
-                keys.forEach(k => { if(data[k] !== undefined) updates[k] = data[k]; });
+                keys.forEach(k => { if(data[k] !== undefined && !setKeys.includes(k)) updates[k] = data[k]; });
                 updates.lastWriteTs = firebase.database.ServerValue.TIMESTAMP;
                 updates.lastWriter = (me && me.cd) || 'restore';
                 let writeOk = false;
                 try {
+                    // 아이템 정의 키: set()으로 완전 교체 (shallow merge 방지)
+                    // itm은 sv()와 동일하게 {[id]: item} 형태로 저장 (배열로 set 시 숫자키 잔존 + sv()의 id키와 이중 저장 방지)
+                    const _toFirebaseItm = arr => {
+                        if(!Array.isArray(arr)) return arr;
+                        const obj = {};
+                        arr.forEach(it => { if(it && it.id) obj[it.id] = it; });
+                        return obj;
+                    };
+                    await Promise.all(setKeys.map(k => {
+                        if(data[k] === undefined) return Promise.resolve();
+                        const val = k === 'itm' ? _toFirebaseItm(data[k]) : data[k];
+                        return dbRef.child(k).set(val);
+                    }));
                     await dbRef.update(updates);
                     writeOk = true;
                 } catch(err) {
@@ -7690,13 +7563,19 @@ let _renderLock = false; // 재진입 방지
                 }
                 // 로컬 db 갱신 (writeOk 후)
                 keys.forEach(k => { if(data[k] !== undefined) db[k] = data[k]; });
-                // _lastSentHash 동기화
+                // _lastSentHash / _itmSentHash 동기화 (restore 후 sv()가 중복 write하지 않도록)
                 if(!window._lastSentHash) window._lastSentHash = {};
                 keys.forEach(k => {
                     if(data[k] !== undefined) {
                         try { window._lastSentHash[k] = JSON.stringify(data[k]); } catch(_){}
                     }
                 });
+                // itm은 id 기반으로 저장했으므로 _itmSentHash를 id 기반으로 초기화
+                window._itmSentHash = {};
+                (data.itm || []).forEach(it => {
+                    if(it && it.id) { try { window._itmSentHash[it.id] = JSON.stringify(it); } catch(_){} }
+                });
+                window._deletedItmIds = new Set();
                 // 각 렌더 함수를 개별 try/catch로 — 한 곳 실패해도 나머지·복구 안내까지 도달
                 try { if(typeof rTb==='function') rTb(); } catch(e){ console.error('[restore] rTb', e); }
                 try { if(typeof rSet==='function') rSet(); } catch(e){ console.error('[restore] rSet', e); }
@@ -8098,7 +7977,8 @@ let _renderLock = false; // 재진입 방지
         const _oldLen = db.stu.length; // splice 전 길이
         db.stu.splice(i,1); sv();
         try { if(_delCd) dbRef.child('stuDel/' + _delCd).set(Date.now()); } catch(_){}
-        // splice 후 범위 밖이 된 마지막 reqCnt 인덱스 제거
+        // splice 후 범위 밖이 된 마지막 슬롯 명시적 삭제 — Ghost 학생 방지
+        try { dbRef.child('stu/' + (_oldLen - 1)).set(null); } catch(_){}
         try { dbRef.child('reqCnt/' + (_oldLen - 1)).remove(); } catch(_){}
         rTb();
     }
@@ -8114,8 +7994,14 @@ let _renderLock = false; // 재진입 방지
             if(db.stu.find(x => x && x.cd === cd)) { alert('이미 존재하는 cd예요.'); return; }
             data.stu.updatedAt = Date.now();
             db.stu.push(data.stu);
-            db.stu.sort((a,b) => (a.no||999) - (b.no||999));
-            sv();
+            // ⚠️ sort 금지: db.stu[i]는 Firebase stu/i와 1:1 대응 — 순서 변경 시 write 경로 오염
+            // 복구된 학생은 배열 맨 끝 슬롯(새 Firebase path)에 저장됨
+            const _restoreIdx = db.stu.length - 1;
+            if(!window._remoteStuTs) window._remoteStuTs = {};
+            window._remoteStuTs[_restoreIdx] = data.stu.updatedAt;
+            if(window._stuSentHash) delete window._stuSentHash[_restoreIdx];
+            if(window._stuPerHash) delete window._stuPerHash[_restoreIdx];
+            window._svStu([_restoreIdx]);
             // tombstone 제거
             try { dbRef.child('stuDel/' + cd).remove(); } catch(_){}
             rTb();
@@ -8357,16 +8243,19 @@ let _renderLock = false; // 재진입 방지
         window._renderPanelGrid = _renderPanelGrid;
         window._chipHtml = _chipHtml;
 
-        // 패널 내 드래그 선택
-        if(!window._spSel) window._spSel = new Set();
+        // 패널 내 드래그 선택 — 패널별 독립 Set
+        const _mySpSel = new Set(); window['_spSel_' + stuCd] = _mySpSel;
         let _spDragging = false, _spRubberBox = null, _spStartC = null, _spStartKey = null, _spDragMoved = false;
-        window._spStartDrag = function(e, gKey) {
+        window['_spStartDrag_' + stuCd] = function(e, gKey) {
             if(e.button !== 0) return;
             e.stopPropagation();
-            // 선택 추가/삭제는 클릭(움직임 없음) 확정 후 mouseup에서 처리
             _spDragging = true; _spStartC = {x:e.clientX, y:e.clientY};
             _spStartKey = gKey; _spDragMoved = false;
             window._spStartCtrl = !!(e.ctrlKey || e.metaKey);
+        };
+        // 글로벌 dispatcher — cd 기반으로 올바른 패널 핸들러 호출
+        window._spDispatchDrag = function(e, gKey, cd) {
+            (window['_spStartDrag_' + cd] || window['_spStartDrag_' + stuCd])?.(e, gKey);
         };
         // mousemove / mouseup은 패널 생성 후 연결
 
@@ -8438,8 +8327,8 @@ let _renderLock = false; // 재진입 방지
             if(!_spDragMoved) {
                 _spDragMoved = true;
                 if(!window._spStartCtrl) {
-                    window._spSel.clear();
-                    document.querySelectorAll('#_spGrid .asset').forEach(c=>c.classList.remove('sel'));
+                    _mySpSel.clear();
+                    _spGrid.querySelectorAll('.asset').forEach(c=>c.classList.remove('sel'));
                 }
             }
             const rect = _spGrid.getBoundingClientRect();
@@ -8451,29 +8340,47 @@ let _renderLock = false; // 재진입 방지
                 const cx1=cr.left-rect.left,cy1=cr.top-rect.top,cx2=cx1+cr.width,cy2=cy1+cr.height;
                 const hits=cx1<x2&&cx2>x1&&cy1<y2&&cy2>y1;
                 const gKey=card.id.replace('card_','');
-                if(hits){window._spSel.add(gKey);card.classList.add('sel');}
-                else if(!window._spStartCtrl){window._spSel.delete(gKey);card.classList.remove('sel');}
+                if(hits){_mySpSel.add(gKey);card.classList.add('sel');}
+                else if(!window._spStartCtrl){_mySpSel.delete(gKey);card.classList.remove('sel');}
             });
+        };
+        const _spUpdateDelBtn = () => {
+            const btn = panel.querySelector('.btn-red[onclick*="_delSelInPanelByCd"]');
+            if(!btn) return;
+            const n = _mySpSel.size;
+            btn.textContent = n > 0 ? `🗑️ ${n}개 삭제` : '🗑️ 삭제';
         };
         const _spMU = function() {
             // 움직임 없는 click이면 단일 카드 토글 처리
             if(_spDragging && _spStartKey && !_spDragMoved) {
                 const k = _spStartKey;
                 if(window._spStartCtrl) {
-                    if(window._spSel.has(k)) { window._spSel.delete(k); document.getElementById('card_'+k)?.classList.remove('sel'); }
-                    else { window._spSel.add(k); document.getElementById('card_'+k)?.classList.add('sel'); }
+                    if(_mySpSel.has(k)) { _mySpSel.delete(k); document.getElementById('card_'+k)?.classList.remove('sel'); }
+                    else { _mySpSel.add(k); document.getElementById('card_'+k)?.classList.add('sel'); }
                 } else {
-                    window._spSel.clear();
+                    _mySpSel.clear();
                     _spGrid.querySelectorAll('.asset').forEach(c=>c.classList.remove('sel'));
-                    window._spSel.add(k); document.getElementById('card_'+k)?.classList.add('sel');
+                    _mySpSel.add(k); document.getElementById('card_'+k)?.classList.add('sel');
                 }
             }
             _spDragging=false; _spStartC=null; _spStartKey=null; _spDragMoved=false;
+            _spUpdateDelBtn();
         };
         document.addEventListener('mousemove', _spMM);
         document.addEventListener('mouseup', _spMU);
-        // 패널 닫힐 때 이벤트 제거
-        window._spCleanup = function() { document.removeEventListener('mousemove',_spMM); document.removeEventListener('mouseup',_spMU); };
+        // 패널별 cleanup 등록 — 단일 함수 덮어쓰기 대신 cd 키로 관리
+        if(!window._spCleanups) window._spCleanups = {};
+        window._spCleanups[stuCd] = function() {
+            document.removeEventListener('mousemove', _spMM);
+            document.removeEventListener('mouseup', _spMU);
+            delete window['_spSel_' + stuCd];
+            delete window['_spStartDrag_' + stuCd];
+            delete window._spCleanups[stuCd];
+        };
+        window._spCleanup = function() {
+            Object.values(window._spCleanups || {}).forEach(fn => { try { fn(); } catch(_){} });
+            window._spCleanups = {};
+        };
     };
 
     // si(숫자) 또는 stuCd(문자열)을 stuCd로 정규화
@@ -8499,9 +8406,10 @@ let _renderLock = false; // 재진입 방지
         if(!cd) return;
         document.getElementById('_stuPanelBg_' + _safeCdId(cd))?.remove();
         if(window._stuPanelStates) window._stuPanelStates.delete(cd);
+        // 해당 패널의 이벤트 리스너만 제거 (다른 패널 영향 없음)
+        window._spCleanups?.[cd]?.();
         if(!document.querySelector('[id^="_stuPanelBg_"]')) {
             window._stuPanelSi = null;
-            window._spCleanup?.();
         }
     };
     // 패널별 필터 변경 — chip onclick에서 호출 (stuCd로)
@@ -8669,7 +8577,9 @@ let _renderLock = false; // 재진입 방지
 
     window._delSelInPanel = function(si) {
         si = +si;
-        const selected = window._spSel && window._spSel.size > 0 ? [...window._spSel] : null;
+        const _panelCd = (Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{}))[si]?.cd;
+        const _panelSel = _panelCd ? window['_spSel_' + _panelCd] : null;
+        const selected = _panelSel && _panelSel.size > 0 ? [..._panelSel] : null;
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
         // 선택한 아이템이 없으면 삭제 동작 차단 — 실수로 전체 삭제 방지
         if(!selected) return alert('삭제할 아이템을 먼저 클릭해 선택해주세요.');
@@ -8719,7 +8629,21 @@ let _renderLock = false; // 재진입 방지
                 if(s.inv)s.inv=s.inv.filter(x=>!x.del);
                 if(s.ibx)s.ibx=s.ibx.filter(x=>!x.del);
             });
-            db.stu=stuList; if(window._spSel)window._spSel.clear();
+            db.stu=stuList; if(_panelSel)_panelSel.clear();
+            // 삭제 내역을 지급내역(db.log)에 기록
+            try {
+                const _delStuNames = new Set();
+                targets.forEach(g => {
+                    const _si = g.si != null ? g.si : (g.cd ? stuList.findIndex(x=>x&&x.cd===g.cd) : -1);
+                    if(_si >= 0 && stuList[_si]) _delStuNames.add(stuList[_si].nm || ('학생'+_si));
+                    if(g.items) g.items.forEach(x => {
+                        const _s = stuList[x.si]; if(_s) _delStuNames.add(_s.nm || ('학생'+x.si));
+                    });
+                });
+                const _delItemNames = targets.map(g => g.n || g.k || '아이템').join(', ');
+                const _delTargetStr = [..._delStuNames].join(', ') + ' — ' + _delItemNames;
+                logCandy(_delTargetStr, -targets.length, '교사 직접 삭제');
+            } catch(_){}
             window._svStu([..._delChangedIdxs]); rAs();
         },{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'});
     };
@@ -9717,7 +9641,13 @@ let _renderLock = false; // 재진입 방지
             else {
                 const _stB = (x.t.st==='req'||x.t.st==='shop_req') ? 'req'
                     : (x.t.st==='used'||x.t.st==='usd') ? 'used' : 'active';
-                gKey = `${x.y}|${x.si}|${x.t.n||''}|${_stB}`;
+                const _expK = x.t.expireAt ? new Date(x.t.expireAt).toDateString() : '';
+                // 학생 가방과 동일한 기준: N일권(usageDurationDays)·유효기간(useEndDate) 다르면 별도 슬롯
+                if(_stB === 'req') {
+                    gKey = `${x.y}|${x.si}|${x.t.n||''}|req|${x.t.useDate||''}|${x.t.note||''}|${x.t.useEndDate||''}|${x.t.unlimitedDaily?'1':''}`;
+                } else {
+                    gKey = `${x.y}|${x.si}|${x.t.n||''}|${_stB}|${_expK}|${x.t.usageDurationDays||0}|${x.t.useEndDate||''}|${x.t.useDate||''}|${x.t.unlimitedDaily?'1':''}`;
+                }
             }
             if(!groupMap.has(gKey)) {
                 groupMap.set(gKey, {gKey, y:x.y, si:x.si, sn:x.sn, no:x.no, cd:x.cd, n:x.t.n, i:x.t.i, ty:x.t.y, items:[], k:x.k, ki:x.ki});
@@ -9823,6 +9753,15 @@ let _renderLock = false; // 재진입 방지
             const cntBadge = (cnt > 1 && g.y !== 'avt') ? `<div style="position:absolute;top:6px;right:8px;background:rgba(0,0,0,0.7);color:white;padding:2px 9px;border-radius:8px;font-size:14px;font-weight:bold;">×${cnt}</div>` : '';
             const _noteText = g.items.map(x=>x.t?.note).filter(Boolean).join(' / ');
             const noteBadge = _noteText ? `<div style="font-size:11px;color:#5D4037;background:#FFF8E1;border-radius:6px;padding:2px 6px;margin-top:2px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${_noteText}">💬 ${_noteText}</div>` : '';
+            // N일권 / 유효기간 뱃지
+            const _repItem = g.items[0]?.t;
+            const _durBadge = (_repItem && (g.y==='c'||g.y==='l') && _repItem.usageDurationDays)
+                ? `<div style="font-size:11px;color:#1565C0;background:#E3F2FD;border-radius:6px;padding:2px 6px;margin-top:2px;display:inline-block;">${_repItem.usageDurationDays}일권</div>` : '';
+            const _useEndBadge = (_repItem && (g.y==='c'||g.y==='l') && _repItem.useEndDate)
+                ? `<div style="font-size:11px;color:#6A1B9A;background:#F3E5F5;border-radius:6px;padding:2px 6px;margin-top:2px;display:inline-block;">~${_repItem.useEndDate}</div>` : '';
+            const _useDateBadge = (_repItem && (g.y==='c'||g.y==='l') && _repItem.useDate)
+                ? `<div style="font-size:11px;color:#E65100;background:#FFF3E0;border-radius:6px;padding:2px 6px;margin-top:2px;display:inline-block;">📅 ${_repItem.useDate}</div>` : '';
+            const _periodBadges = _durBadge + _useEndBadge + _useDateBadge;
             const statusBadge = g.hasReq
                 ? `<div style="color:red;font-weight:bold;font-size:12px;margin-bottom:2px">🚨 사용요청</div>${noteBadge}`
                 : (g.hasApprovedReq ? `<div style="color:#388E3C;font-weight:bold;font-size:12px;margin-bottom:2px">✅ 승인됨</div>${noteBadge}` : '');
@@ -9832,26 +9771,28 @@ let _renderLock = false; // 재진입 방지
             const isUsed = !g.hasReq && !g.hasActive && g.y!=='avt' && g.y!=='bdg' && g.y!=='tit';
             const escapedKey = g.gKey.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
             const inPanel = !!document.querySelector('[id^="_stuPanelBg_"]');
+            const _cardCd = (g.cd || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
             const mdHandler = inPanel
-                ? `window._spStartDrag(event,'${escapedKey}')`
+                ? `window._spDispatchDrag(event,'${escapedKey}','${_cardCd}')`
                 : `startDrag(event,${visualIdx},'${escapedKey}')`;
-            const hoverX = `<div class="card-hover-x" onclick="event.stopPropagation();prettyConfirm('이 항목을 삭제할까요?',function(){delGrp(${visualIdx});},{icon:'🗑️',okLabel:'삭제',okClass:'btn-red'})" style="display:none;position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(229,57,53,0.85);color:white;font-size:13px;font-weight:bold;align-items:center;justify-content:center;cursor:pointer;z-index:10;pointer-events:auto;">✕</div>`;
+            const hoverX = `<div class="card-hover-x" onclick="event.stopPropagation();window._delGrpWithCount(${visualIdx});" style="display:none;position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(229,57,53,0.85);color:white;font-size:13px;font-weight:bold;align-items:center;justify-content:center;cursor:pointer;z-index:10;pointer-events:auto;">✕</div>`;
             return `<div id="card_${g.gKey}" class="asset ${seld?'sel':''} ${g.hasReq?'req':''} ${isUsed?'used':''}"
                 draggable="false" ondragstart="return false;"
                 onmousedown="${mdHandler}"
                 onmouseenter="this.querySelector('.card-hover-x').style.display='flex'"
-                onmouseleave="this.querySelector('.card-hover-x').style.display='none'"> ${statusBadge} ${hoverX} ${img} ${itemTitle} ${actionBtn} ${cntBadge} </div>`;
+                onmouseleave="this.querySelector('.card-hover-x').style.display='none'"> ${statusBadge} ${hoverX} ${img} ${itemTitle} ${_periodBadges} ${actionBtn} ${cntBadge} </div>`;
         };
 
         // ── 학생별 모드 vs 평면 모드 렌더 ──
         if(asort === 'stu') {
-            // 학생별 집계 — nm 기반 중복 방지 (같은 이름이 두 인덱스에 있을 경우, 낮은 si 우선)
+            // 학생별 집계 — cd 기반 중복 방지 (같은 cd 가 두 인덱스에 있을 경우, 낮은 si 우선)
+            // [2026-05-20] nm 기준 → cd 기준으로 변경 (학생관리 목록과 일치, 동명이인·공백 이슈 회피)
             const byStu = new Map();
-            const _seenNm = new Set();
+            const _seenCd = new Set();
             stuList.forEach((s, si) => {
-                if(!s || !s.nm) return;
-                if(_seenNm.has(s.nm)) return;
-                _seenNm.add(s.nm);
+                if(!s || !s.cd) return;
+                if(_seenCd.has(s.cd)) return;
+                _seenCd.add(s.cd);
                 byStu.set(si, {s, si, groups:[]});
             });
             groups.forEach((g, visualIdx) => {
@@ -10180,11 +10121,45 @@ window.appU = function(y, si, k) {
         db.stu = stuList; window._svStu([_resSi]); setTimeout(()=>{ rAs(); rColT(); }, 100);
     };
 
-    window.delGrp = function(idx) {
-        const g = currentGroups[idx];
+    window._delGrpWithCount = function(visualIdx) {
+        const g = currentGroups[visualIdx];
         if(!g) return;
         const label = g.y==='avt'?'아바타 아이템':g.y==='bdg'?'뱃지':g.y==='tit'?'칭호':'아이템';
-        if(!confirm(`${g.sn}의 [${g.n}] ${label}을 삭제(회수)하시겠습니까?`)) return;
+        const isCountable = (g.y==='c' || g.y==='l') && g.items.length > 1;
+        if(!isCountable) {
+            prettyConfirm(`${g.sn}의 [${g.n}] ${label}을 삭제할까요?`, function(){ delGrp(visualIdx); }, {icon:'🗑️', okLabel:'삭제', okClass:'btn-red'});
+            return;
+        }
+        document.getElementById('_delGrpModal')?.remove();
+        const el = document.createElement('div');
+        el.id = '_delGrpModal';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+        const _max = g.items.length;
+        el.innerHTML = `<div style="background:#FFF8E1;border-radius:20px;padding:28px 30px 22px;width:min(340px,90vw);text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.35);animation:popUp 0.2s ease-out;border:3px solid #FFECB3;">
+            <div style="font-size:48px;margin-bottom:10px;">🗑️</div>
+            <div style="font-size:15px;color:#4E342E;font-family:'Jua',sans-serif;line-height:1.5;margin-bottom:14px;">${g.sn}의 [${g.n}]<br>몇 개 삭제할까요?</div>
+            <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:20px;">
+                <button type="button" onclick="const _i=document.getElementById('_delGrpCntIn');_i.value=Math.max(1,(_i.value|0)-1);" style="width:32px;height:32px;border-radius:50%;border:1px solid #CCC;font-size:20px;cursor:pointer;background:white;line-height:1;">−</button>
+                <input id="_delGrpCntIn" type="number" min="1" max="${_max}" value="${_max}" style="width:64px;text-align:center;font-size:20px;font-weight:bold;border:1.5px solid #E53935;border-radius:8px;padding:4px;font-family:'Jua';">
+                <button type="button" onclick="const _i=document.getElementById('_delGrpCntIn');_i.value=Math.min(${_max},(_i.value|0)+1);" style="width:32px;height:32px;border-radius:50%;border:1px solid #CCC;font-size:20px;cursor:pointer;background:white;line-height:1;">+</button>
+                <span style="font-size:13px;color:#888;">/ ${_max}개</span>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button id="_delGrpOk" class="btn btn-red" style="padding:10px 24px;font-size:15px;">삭제</button>
+                <button type="button" onclick="document.getElementById('_delGrpModal')?.remove();" class="btn btn-gray" style="padding:10px 20px;font-size:15px;">취소</button>
+            </div>
+        </div>`;
+        document.body.appendChild(el);
+        document.getElementById('_delGrpOk').onclick = function() {
+            const cnt = Math.min(_max, Math.max(1, parseInt(document.getElementById('_delGrpCntIn')?.value || String(_max)) || _max));
+            document.getElementById('_delGrpModal')?.remove();
+            delGrp(visualIdx, cnt);
+        };
+    };
+
+    window.delGrp = function(idx, _delCnt) {
+        const g = currentGroups[idx];
+        if(!g) return;
         let stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
         if(g.y==='avt') {
             const s = stuList[g.si]; if(!s) return;
@@ -10230,7 +10205,10 @@ window.appU = function(y, si, k) {
             s.earnedTit = arr.filter(tid => String(tid) !== String(g.k));
             if(String(s.equippedTit) === String(g.k)) s.equippedTit = null;
         } else {
-            g.items.forEach(x => {
+            const _itemsToDelete = (_delCnt != null && (g.y==='c' || g.y==='l') && _delCnt < g.items.length)
+                ? g.items.slice(0, _delCnt)
+                : g.items;
+            _itemsToDelete.forEach(x => {
                 const s = stuList[x.si];
                 if(!s) return;
                 // avt 구매 항목 (g:'A') → shopUsed 반환 + avtOwned/inv/eq 완전 정리
@@ -10844,6 +10822,9 @@ window.appU = function(y, si, k) {
         const ti=document.getElementById('gt').value, ii=document.getElementById('gi').value, it=db.itm[ii];
         const qty = Math.max(1, parseInt(document.getElementById('gq_cnt').value) || 1);
         const o={n:it.n, i:it.i, st:'active', g:it.g||'C'};
+        if(it.unlimitedDaily) { o.unlimitedDaily = true; o.unlimitedDays = it.unlimitedDays || 1; }
+        if(it.usageDurationDays > 0) o.usageDurationDays = it.usageDurationDays;
+        if(it.useEndDate) o.useEndDate = it.useEndDate;
         const _addToStudent = (s) => {
             if(!s.inv) s.inv=[];
             // 골든티켓·달고나는 events 배열에 추가 (외부 시스템과 호환)
@@ -10882,7 +10863,7 @@ window.appU = function(y, si, k) {
             return `giv-item-card" data-gtype="${type}" data-gidx="${idx}" style="background:${sel?'#FFF8E1':'white'};border:2px solid ${sel?'#FF9F43':'#E0E0E0'};border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:0.15s;outline:${sel?'2px solid #FF9F43':'none'};`;
         };
 
-        itmGrid.innerHTML = (db.itm||[]).filter(it=>it&&it.n!=='바구니'&&it.n!=='누구나 바구니').map((it,i)=>`
+        itmGrid.innerHTML = (db.itm||[]).map((it,i)=>(!it||it.n==='바구니'||it.n==='누구나 바구니')?'':`
             <div class="${_givCardStyle('itm',i)}">
                 <div style="font-size:28px;line-height:1.2;">${(it.i&&(it.i.startsWith('http')||it.i.startsWith('data:')))?`<img src="${it.i}" style="width:40px;height:40px;object-fit:contain;" onerror="this.style.display='none'">`:(it.i||'🎁')}</div>
                 <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-top:4px;word-break:keep-all;line-height:1.3;">${it.n}</div>
@@ -11628,7 +11609,11 @@ window.appU = function(y, si, k) {
         } 
     }
     
-    function delI_T(i) { if(confirm("아이템을 삭제하시겠습니까?")) { db.itm.splice(i,1); rSet(); sv(); } }
+    function delI_T(i) { if(confirm("아이템을 삭제하시겠습니까?")) {
+        const _delId = db.itm[i]?.id;
+        if(_delId) { if(!window._deletedItmIds) window._deletedItmIds = new Set(); window._deletedItmIds.add(_delId); delete window._itmSentHash?.[_delId]; }
+        db.itm.splice(i,1); rSet(); sv();
+    } }
     
     function mkG(){ 
         let rs=[]; 
@@ -11917,12 +11902,20 @@ window.appU = function(y, si, k) {
                 });
             }
         }
+        // id 보존: 편집 시 기존 id 유지, 신규 아이템은 id 생성
+        if(editIdx >= 0 && db.itm[editIdx]?.id) item.id = db.itm[editIdx].id;
+        else if(!item.id) item.id = _genItmId();
         if(editIdx>=0) db.itm[editIdx]=item; else db.itm.push(item);
         // 즉시 Firebase 저장 — 학생 화면 즉시 반영 + defaultGive 등 메타 즉시 적용
         try {
-            dbRef.child('itm').set(db.itm);
-            if(window._lastSentHash) window._lastSentHash.itm = JSON.stringify(db.itm);
-            console.log('[saveItm] 직접 저장 →', item.n, '/ defaultGive:', !!item.defaultGive);
+            const _itmUp = {};
+            db.itm.forEach(it => { if(it?.id) _itmUp['itm/' + it.id] = it; });
+            (window._deletedItmIds || new Set()).forEach(id => { _itmUp['itm/' + id] = null; });
+            dbRef.update(_itmUp);
+            if(window._deletedItmIds) window._deletedItmIds.clear();
+            if(!window._itmSentHash) window._itmSentHash = {};
+            db.itm.forEach(it => { if(it?.id) { try { window._itmSentHash[it.id] = JSON.stringify(it); } catch(_){} } });
+            console.log('[saveItm] per-id 저장 →', item.n, '/ defaultGive:', !!item.defaultGive);
         } catch(e) { console.error('[saveItm] direct write 실패', e); }
         sv(); rSet(); document.getElementById('itmMgrModal').remove();
     };
@@ -12446,7 +12439,7 @@ window.appU = function(y, si, k) {
                         }
                         me.inv.push({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
                         if(!me.col) me.col = [];
-                        if(!me.col.includes(getDef.n)) me.col.push(getDef.n);
+                        if(!getDef.excludeFromCol && !me.col.includes(getDef.n)) me.col.push(getDef.n);
                         try { upMe(); } catch(_){}
                         try { if(typeof rBg === 'function') rBg(); } catch(_){}
                         document.getElementById('voucherExchangeModal')?.remove();
@@ -12544,7 +12537,7 @@ window.appU = function(y, si, k) {
             // 3) 받을 쿠폰 1개 inv 추가
             me.inv.push({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
             if(!me.col) me.col = [];
-            if(!me.col.includes(getDef.n)) me.col.push(getDef.n);
+            if(!getDef.excludeFromCol && !me.col.includes(getDef.n)) me.col.push(getDef.n);
             // 화폐 스냅샷 복원 — 교환은 쿠폰 ↔ 쿠폰 1:1 이며 화폐를 건드리면 안 됨
             if((Number(me.cn)||0) !== _cnBefore) { console.warn('[voucher] me.cn 변동 감지, 복원:', me.cn, '→', _cnBefore); me.cn = _cnBefore; }
             if((Number(me.co)||0) !== _coBefore) { console.warn('[voucher] me.co 변동 감지, 복원:', me.co, '→', _coBefore); me.co = _coBefore; }
@@ -12850,8 +12843,8 @@ window.appU = function(y, si, k) {
             const _expK = i.expireAt ? new Date(i.expireAt).toDateString() : '';
             const _useEndK = i.useEndDate || '';
             const key = isPending
-                ? `__req_${i.n}_${i.st}_${i.useDate||''}_${i.note||''}_${_useEndK}`
-                : `${i.n}_${i.st}_${_expK}`;
+                ? `__req_${i.n}_${i.st}_${i.useDate||''}_${i.note||''}_${_useEndK}_${i.unlimitedDaily?'1':''}`
+                : `${i.n}_${i.st}_${_expK}_${i.usageDurationDays||0}_${i.useEndDate||''}_${i.useDate||''}_${i.unlimitedDaily?'1':''}`;
             if(!counts[key]) counts[key] = { ...i, count: 0, _invIdx: idx, _invIdxs: [] };
             counts[key].count++;
             counts[key]._invIdxs.push(idx);
@@ -19156,6 +19149,7 @@ window.addCharRow = function() {
             bdg: db.bdg || [],
             tit: db.tit || [],
             gac: db.gac || [],
+            petDef: db.petDef || [],
             plzCfg: (db.cfg && db.cfg.plz) || {}
         };
         const json = JSON.stringify(data, null, 2);
@@ -19175,10 +19169,10 @@ window.addCharRow = function() {
         reader.onload = e => {
             try {
                 const data = JSON.parse(e.target.result);
-                const keys = ['itm','avt','bdg','tit','gac','plzCfg'];
+                const keys = ['itm','avt','bdg','tit','gac','petDef','plzCfg'];
                 const imported = keys.filter(k => Array.isArray(data[k]) || (k==='plzCfg' && data[k] && typeof data[k]==='object'));
                 if(!imported.length) return alert('올바른 상점 데이터 파일이 아닙니다.');
-                const labels = {itm:'쿠폰', avt:'꾸미기 아이템', bdg:'뱃지', tit:'칭호', gac:'뽑기', plzCfg:'광장 설정'};
+                const labels = {itm:'쿠폰', avt:'꾸미기 아이템', bdg:'뱃지', tit:'칭호', gac:'뽑기', petDef:'펫 스킬', plzCfg:'광장 설정'};
                 const summary = imported.map(k=>Array.isArray(data[k])?`${labels[k]} ${data[k].length}개`:`${labels[k]}`).join(', ');
                 if(!confirm(`불러오기 하면 기존 데이터가 교체됩니다.\n\n${summary}\n\n계속하시겠습니까?`)) { inp.value=''; return; }
                 imported.forEach(k => {
@@ -21140,6 +21134,17 @@ window.addCharRow = function() {
                             <input type="checkbox" id="set_emergencyRestore" ${emergencyEnabled?'checked':''} style="width:18px;height:18px;min-width:18px;max-width:18px;flex:0 0 18px;margin:0;padding:0;border:1px solid #999;border-radius:3px;" onchange="if(!db.cfg)db.cfg={};db.cfg.emergencyRestore=this.checked;sv();">
                             <span style="flex:1;min-width:0;word-break:keep-all;">긴급복구 기능 사용 (로컬 스냅샷 자동 저장)</span>
                         </label>
+                    </div>
+                    <div style="background:#EDE7F6;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid #B39DDB;">
+                        <div style="font-size:14px;font-weight:bold;color:#4527A0;margin-bottom:8px;">📦 상점 아이템 정의 저장 / 불러오기</div>
+                        <div style="font-size:12px;color:#555;margin-bottom:8px;">쿠폰·꾸미기·뽑기·칭호 등 아이템 정의만 별도 파일로 저장하거나 불러옵니다. (학생 데이터 제외)</div>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn btn-blue" style="flex:1;padding:8px;font-size:13px;" onclick="exportShopData()">💾 아이템 저장</button>
+                            <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px;font-size:13px;background:#7E57C2;color:white;border-radius:8px;cursor:pointer;font-family:'Jua';margin:0;">
+                                📂 아이템 불러오기
+                                <input type="file" accept=".json" style="display:none;" onchange="importShopData(this)">
+                            </label>
+                        </div>
                     </div>
                     <!-- 🎫 골든티켓/달고나·🖨️ 인쇄 요청 주기 설정은 [📦 아이템 관리] 탭으로 이동했습니다 -->
                     <div style="background:#FFF3E0;border-radius:10px;padding:14px;margin-bottom:14px;border:1px solid #FFE082;">
