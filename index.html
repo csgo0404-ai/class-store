@@ -7548,7 +7548,11 @@ let _renderLock = false; // 재진입 방지
                     const _toFirebaseItm = arr => {
                         if(!Array.isArray(arr)) return arr;
                         const obj = {};
-                        arr.forEach(it => { if(it && it.id) obj[it.id] = it; });
+                        arr.forEach(it => {
+                            if(!it) return;
+                            if(!it.id) it.id = _genItmId(); // 구형 백업(id 없는 아이템) 대응
+                            obj[it.id] = it;
+                        });
                         return obj;
                     };
                     await Promise.all(setKeys.map(k => {
