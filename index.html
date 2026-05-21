@@ -477,7 +477,6 @@
     transform: none; /* transform: rotate() 또는 skew()가 적용되어 있다면 초기화 */
     font-style: normal; /* 만약 폰트 스타일로 기울임이 들어갔다면 normal로 설정 */
 }
-        @keyframes winPulse { 0% { transform: scale(1); } 100% { transform: scale(1.08); } }
         .scratch-result { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
         #scratchCanvas { position: absolute; top: 0; left: 0; z-index: 2; cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewport="0 0 96 96" style="fill:gold;stroke:orange;stroke-width:3px;"><circle cx="48" cy="48" r="40" /><text x="50%" y="50%" dy=".3em" text-anchor="middle" font-size="60">₩</text></svg>') 48 48, auto; }
         
@@ -972,6 +971,13 @@
     </div>
 </div>
 <script>
+    // [SEC] HTML 이스케이프 헬퍼 — 사용자 입력을 템플릿 리터럴에 안전하게 끼워넣기 위함
+    window._escHtml = function(s){
+        if(s===null||s===undefined) return '';
+        return String(s).replace(/[&<>"'`]/g, function(c){
+            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','`':'&#96;'})[c];
+        });
+    };
     const _urlCdParam = new URLSearchParams(location.search).get('cd');
     if(_urlCdParam) {
         // URL에 학생 코드가 있으면 학생 화면 우선 (교사 탭에서 학생 이름 클릭 시)
@@ -1382,18 +1388,6 @@
                         <label style="font-size:12px; color:#888;">명</label>
                     </div>
                     <div id="plz_maxuser_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
-                </div>
-                <div class="card" style="flex:0.5; min-width:100px; padding:12px; box-sizing:border-box;">
-                    <h4 style="margin:0 0 8px; font-size:14px;">💤 비활성 자동 퇴장</h4>
-                    <label style="display:inline-flex; align-items:center; gap:6px; font-size:12px; cursor:pointer; margin-bottom:8px; white-space:nowrap;">
-                        <input type="checkbox" id="plz_idle_enabled" onchange="savePlzIdle()">자동 퇴장 활성화
-                    </label>
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <label style="font-size:12px; color:#888;">무움직임</label>
-                        <input type="number" id="plz_idle_minutes" min="1" max="60" value="5" style="width:44px;padding:3px 6px;border:1px solid #ddd;border-radius:6px;font-size:12px;" onchange="savePlzIdle()">
-                        <label style="font-size:12px; color:#888;">분 후 퇴장</label>
-                    </div>
-                    <div id="plz_idle_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
                 </div>
                 <div class="card" style="flex:0.5; min-width:100px; padding:12px; box-sizing:border-box;">
                     <h4 style="margin:0 0 8px; font-size:14px;">⏱️ 최대 접속 시간</h4>
@@ -2305,7 +2299,49 @@ let _renderLock = false; // 재진입 방지
         }
         // _xpBoostAutoCheck 제거됨 (정산 안내 메시지 사용 안 함)
     }
-    setInterval(syncAllCookiesSilent, 10000);
+    // t_stu 탭 전용 1분 폴링 — 탭 진입 시 시작, 이탈 시 정지
+    let _stuTabCookieTimer = null;
+    window._startStuTabCookiePoll = function() {
+        if(_stuTabCookieTimer) return; // 이미 실행 중
+        _stuTabCookieTimer = setInterval(() => {
+            const tStu = document.getElementById('t_stu');
+            if(!tStu || tStu.classList.contains('hidden')) {
+                // 탭이 숨겨지면 자동 정지
+                clearInterval(_stuTabCookieTimer); _stuTabCookieTimer = null; return;
+            }
+            try { window._syncAllCookiesSilent && window._syncAllCookiesSilent(); } catch(_){}
+        }, 60000); // 1분
+    };
+    window._stopStuTabCookiePoll = function() {
+        if(_stuTabCookieTimer) { clearInterval(_stuTabCookieTimer); _stuTabCookieTimer = null; }
+    };
+
+    // 학생 1명만 쿠키 싱크 — 학생별 섹션 클릭 시 사용
+    async function _syncOneStuCookieSilent(si) {
+        const key = localStorage.getItem('dahessni_api_key') || (db && db.cfg && db.cfg.dahaeApiKey);
+        if(!key || !window._stuLoaded) return;
+        const s = (Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{}))[si];
+        if(!s || !s.cd) return;
+        try {
+            const res = await fetch(`https://api.dahandin.com/openapi/v1/get/student/total?code=${s.cd}`, { headers: { 'X-API-Key': key } });
+            if(!res.ok) return;
+            const json = await res.json();
+            if(!json.data || json.data.cookie === undefined) return;
+            if(s.cookie !== json.data.cookie || s.usedCookie !== (json.data.usedCookie || 0)) {
+                s.cookie = json.data.cookie;
+                s.usedCookie = json.data.usedCookie || 0;
+                window._svStuByCd(s.cd);
+                // 열려있는 패널 쿠키 표시 즉시 반영
+                const el = document.getElementById(`cookie_val_${si}`);
+                if(el) {
+                    const cur = Math.max(0, (s.cookie||0) - (s.usedCookie||0) - (s.shopUsed||0));
+                    if('value' in el && el.tagName === 'INPUT') { if(document.activeElement !== el) el.value = cur; }
+                    else el.innerText = cur;
+                }
+            }
+        } catch(e) {}
+    }
+    window._syncOneStuCookieSilent = _syncOneStuCookieSilent;
 
     // 🔥 성장의 불꽃 자동 정산 알림 — 매일 1회, 미정산 부스트가 있으면 무조건 띄움 (delta=0이어도)
     window._xpBoostAutoCheck = function(){
@@ -2357,7 +2393,7 @@ let _renderLock = false; // 재진입 방지
         const hasExpired = _need.some(n=>n.expired);
         const list = _need.map(n => `<div style="background:white;border:2px solid ${n.expired?'#C62828':'#FFB74D'};border-radius:10px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
             <div style="text-align:left;flex:1;min-width:0;">
-                <div style="font-size:13px;font-weight:bold;color:#3E2723;">${n.s.nm} ${n.expired?'<span style="background:#C62828;color:white;font-size:9px;padding:1px 5px;border-radius:6px;">🚨만료</span>':''}</div>
+                <div style="font-size:13px;font-weight:bold;color:#3E2723;">${_escHtml(n.s.nm)} ${n.expired?'<span style="background:#C62828;color:white;font-size:9px;padding:1px 5px;border-radius:6px;">🚨만료</span>':''}</div>
                 <div style="font-size:11px;color:#888;">${n.sd} ~ ${n.ed}</div>
             </div>
             <div style="font-size:16px;font-weight:bold;color:${n.expired?'#C62828':n.delta>0?'#E65100':'#BDBDBD'};flex-shrink:0;">${n.delta>0?'+'+n.delta+'🍪':'아직 0🍪'}</div>
@@ -2702,6 +2738,7 @@ let _renderLock = false; // 재진입 방지
                 if(!db.cfg) db.cfg = {};
                 if(v === null || v === undefined) delete db.cfg[k];
                 else db.cfg[k] = v;
+                if(k === 'plzHours') try { _checkPlzHoursLive(); } catch(_){}
                 if(_splitInitialDone) _splitFire();
             };
             ref.on('value', fn);
@@ -2715,6 +2752,91 @@ let _renderLock = false; // 재진입 방지
         Object.values(h).forEach(({ref, fn}) => { try { ref.off('value', fn); } catch(_){} });
         window._plzCfgLiveHandlers = null;
     };
+
+    // 공통: plzHours 차단 여부 판정
+    function _isPlzHoursBlocked(plzHours) {
+        if(!plzHours || !plzHours.enabled || !plzHours.start || !plzHours.end) return false;
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const [sH, sM] = plzHours.start.split(':').map(Number);
+        const [eH, eM] = plzHours.end.split(':').map(Number);
+        const startMin = sH * 60 + sM, endMin = eH * 60 + eM;
+        const dow = now.getDay();
+        const isWeekend = (dow === 0 || dow === 6);
+        return (nowMin < startMin || nowMin >= endMin) || (plzHours.noWeekend && isWeekend);
+    }
+    window._isPlzHoursBlocked = _isPlzHoursBlocked;
+
+    // plzHours Firebase 변경 수신 시 실시간 반영
+    function _checkPlzHoursLive() {
+        if(window._isTeacherSession) return;
+        const plzHours = (db.cfg && db.cfg.plzHours) || {};
+        const blocked = _isPlzHoursBlocked(plzHours);
+        if(window._plzActive) {
+            if(blocked) {
+                const gameActive = window._anyPlzGameActive && window._anyPlzGameActive();
+                if(gameActive) {
+                    // 게임 진행 중 — 게임 종료 후 자동 퇴장 예약
+                    window._plzHoursKickPending = true;
+                    _startPlzHoursKickWatch();
+                } else {
+                    window._plzHoursKickPending = false;
+                    try { window._studentExitPlaza && window._studentExitPlaza(); } catch(_){}
+                }
+            } else {
+                // 차단 해제됨 — pending 취소 + 종료 타이머 재설정
+                window._plzHoursKickPending = false;
+                if(window._plzHoursKickWatcher) { clearInterval(window._plzHoursKickWatcher); window._plzHoursKickWatcher = null; }
+                try { window._setPlzHoursExitTimer && window._setPlzHoursExitTimer(); } catch(_){}
+            }
+        } else {
+            // 광장 밖 + s_plz 탭이 열려 있는 상태 → 차단 해제 시 방 선택 화면 재렌더
+            const splz = document.getElementById('s_plz');
+            if(splz && !splz.classList.contains('hidden') && !blocked) {
+                try { window._showPlzRoomPicker && window._showPlzRoomPicker(); } catch(_){}
+            }
+        }
+    }
+    window._checkPlzHoursLive = _checkPlzHoursLive;
+
+    // 게임 종료 감지 watcher — pending kick이 걸렸을 때만 동작 (3초 폴링)
+    function _startPlzHoursKickWatch() {
+        if(window._plzHoursKickWatcher) return;
+        window._plzHoursKickWatcher = setInterval(() => {
+            if(!window._plzActive || !window._plzHoursKickPending) {
+                clearInterval(window._plzHoursKickWatcher); window._plzHoursKickWatcher = null; return;
+            }
+            if(!window._anyPlzGameActive || !window._anyPlzGameActive()) {
+                clearInterval(window._plzHoursKickWatcher); window._plzHoursKickWatcher = null;
+                window._plzHoursKickPending = false;
+                try { window._studentExitPlaza && window._studentExitPlaza(); } catch(_){}
+            }
+        }, 3000);
+    }
+
+    // plzHours 종료 시각 자동퇴장 타이머
+    function _setPlzHoursExitTimer() {
+        if(window._plzHoursExitTimer) { clearTimeout(window._plzHoursExitTimer); window._plzHoursExitTimer = null; }
+        const plzHours = (db.cfg && db.cfg.plzHours) || {};
+        if(!plzHours.enabled || !plzHours.end) return;
+        const now = new Date();
+        const [eH, eM] = plzHours.end.split(':').map(Number);
+        const endToday = new Date(now); endToday.setHours(eH, eM, 0, 0);
+        const msLeft = endToday - now;
+        if(msLeft <= 0) return;
+        window._plzHoursExitTimer = setTimeout(() => {
+            window._plzHoursExitTimer = null;
+            if(!window._plzActive) return;
+            const gameActive = window._anyPlzGameActive && window._anyPlzGameActive();
+            if(gameActive) {
+                window._plzHoursKickPending = true;
+                try { _startPlzHoursKickWatch(); } catch(_){}
+            } else {
+                try { window._studentExitPlaza && window._studentExitPlaza(); } catch(_){}
+            }
+        }, msLeft);
+    }
+    window._setPlzHoursExitTimer = _setPlzHoursExitTimer;
 
     function _attachSplitListeners() {
         // 모든 라이브 path를 child 이벤트로 — 변경 시 해당 항목만 다운로드
@@ -3940,7 +4062,7 @@ let _renderLock = false; // 재진입 방지
     };
 
     // ===== 교사 메시지 팝업 =====
-    window._tchrMsgSeen = new Set();
+    try { window._tchrMsgSeen = new Set(JSON.parse(localStorage.getItem('_tchrMsgSeen')||'[]')); } catch(_) { window._tchrMsgSeen = new Set(); }
     window._showTeacherMsgPopup = function() {
         if(!me || me.cd === 'teacher_main') return;
         if(window._anyArrivalPopupOpen()) return;
@@ -4012,6 +4134,11 @@ let _renderLock = false; // 재진입 방지
         el.remove();
         if(me && Array.isArray(me.tchrMsg)) {
             me.tchrMsg.forEach(n => { if(n && n.ts) window._tchrMsgSeen.add(n.ts); });
+            try {
+                let _seenArr = [...window._tchrMsgSeen].sort((a,b)=>b-a).slice(0,200);
+                window._tchrMsgSeen = new Set(_seenArr);
+                localStorage.setItem('_tchrMsgSeen', JSON.stringify(_seenArr));
+            } catch(_){}
         }
         // teacherMsgs도 함께 읽음 처리 — _checkTeacherMsgs 중복 팝업 방지
         if(me && Array.isArray(me.teacherMsgs)) {
@@ -5937,7 +6064,9 @@ let _renderLock = false; // 재진입 방지
         const raw = localStorage.getItem('rpg_autosnap');
         if(!raw) return alert('저장된 로컬 스냅샷이 없습니다.');
         let data;
-        try { data = JSON.parse(raw); } catch(e) { return alert('스냅샷 파싱 오류'); }
+        try { data = JSON.parse(raw); } catch(e) { console.error('[restore] snapshot parse fail:', e); return alert('스냅샷 파싱 오류 — 저장된 데이터가 손상되었습니다.'); }
+        if(!data || typeof data !== 'object') return alert('스냅샷 형식 오류 — 객체가 아닙니다.');
+        if(!data.ts || !data.stu) return alert('스냅샷 필드 누락 — ts/stu가 필요합니다.');
         const d = new Date(data.ts);
         const label = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
         prettyConfirm(`로컬 스냅샷을 불러올까요?<br><span style="font-size:12px;color:#888;">저장 시각: ${label} · 학생 ${(data.stu||[]).length}명</span><br><span style="color:#E53935;font-size:12px;">현재 Firebase 데이터를 덮어씁니다.</span>`,
@@ -6316,8 +6445,7 @@ let _renderLock = false; // 재진입 방지
             </div>`);
             return;
         }
-        const _calcEnd = (startStr, n) => { const d=new Date(startStr+'T12:00:00'); d.setDate(d.getDate()+(n-1)); return d.toLocaleDateString('sv-SE'); };
-        const _initEnd = _usageDur > 0 ? _calcEnd(_todayISO, _usageDur) : '';
+        const _initEnd = _usageDur > 0 ? _addWeekdays(_todayISO, _usageDur) : '';
         const swapList = (itDef && Array.isArray(itDef.swapWith)) ? itDef.swapWith.filter(n=>_itmList.find(o=>(o?.n||'').trim()===n.trim())) : [];
         const _swbAmt = itDef?.swapWithBasket || 0;
         const _swbEnabled = _swbAmt > 0 && !!(db.cfg?.voucherBasket?.enabled !== false);
@@ -6366,7 +6494,7 @@ let _renderLock = false; // 재진입 방지
                                    </div>
                                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                                        <label style="font-size:13px;color:#795548;white-space:nowrap;">📅 ${_usageDur>0?'시작일':'사용 날짜'}:</label>
-                                       <input id="itemUseDate" type="date" min="${_todayISO}" max="${new Date(Date.now()+7*24*60*60*1000).toLocaleDateString('sv-SE')}" value="${_todayISO}" style="padding:6px 10px;font-size:13px;border:2px solid #FFB74D;border-radius:10px;font-family:'Jua',sans-serif;" ${_usageDur>0?`onchange="(function(){var d=document.getElementById('itemUseDate').value;var n=${_usageDur};var dt=new Date(d+'T12:00:00');dt.setDate(dt.getDate()+(n-1));document.getElementById('itemUseEndDate').textContent=dt.toLocaleDateString('sv-SE');})()"`:''}>
+                                       <input id="itemUseDate" type="date" min="${_todayISO}" max="${new Date(Date.now()+7*24*60*60*1000).toLocaleDateString('sv-SE')}" value="${_todayISO}" style="padding:6px 10px;font-size:13px;border:2px solid #FFB74D;border-radius:10px;font-family:'Jua',sans-serif;" ${_usageDur>0?`onchange="(function(){var d=document.getElementById('itemUseDate').value;document.getElementById('itemUseEndDate').textContent=window._addWeekdays(d,${_usageDur});})()"`:''}>
                                    </div>
                                    ${_usageDur>0?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:#E1F5FE;border:1.5px solid #4FC3F7;border-radius:10px;padding:8px 12px;">
                                        <span style="font-size:13px;color:#01579B;">⏱️ 사용기간 <b>${_usageDur}일</b> · 종료일: <b id="itemUseEndDate" style="color:#01579B;">${_initEnd}</b></span>
@@ -6491,6 +6619,19 @@ let _renderLock = false; // 재진입 방지
         if(typeof rBg === 'function') rBg();
     };
 
+    // 평일(월~금)만 n-1일 더한 날짜 반환 — N일권 종료일 계산용 (주말 제외)
+    const _addWeekdays = (startDateStr, n) => {
+        const d = new Date(startDateStr + 'T12:00:00');
+        let added = 0;
+        while(added < n - 1) {
+            d.setDate(d.getDate() + 1);
+            const dow = d.getDay();
+            if(dow !== 0 && dow !== 6) added++;
+        }
+        return d.toLocaleDateString('sv-SE');
+    };
+    window._addWeekdays = _addWeekdays;
+
     function useQ(itemName){
         const qtyEl = document.getElementById('itemUseQty');
         const dateEl = document.getElementById('itemUseDate');
@@ -6575,9 +6716,9 @@ let _renderLock = false; // 재진입 방지
                 if(needsApprove || _hasUsageDur) {
                     me.inv[i].useDate = useDate;
                     if(_hasUsageDur) {
-                        const _d = new Date(useDate + 'T12:00:00');
-                        _d.setDate(_d.getDate() + (_usageDur - 1));
-                        me.inv[i].useEndDate = _d.toLocaleDateString('sv-SE');
+                        me.inv[i].useEndDate = _addWeekdays(useDate, _usageDur);
+                        me.inv[i].currentDay = 1;
+                        me.inv[i].totalDays = _usageDur;
                     }
                     if(useNote) me.inv[i].note = useNote;
                     delete me.inv[i].reqApproved;
@@ -6682,7 +6823,8 @@ let _renderLock = false; // 재진입 방지
         if(it.reqApproved) { alert('이미 선생님이 승인한 요청은 취소할 수 없어요.'); return; }
         if(!confirm(`[${it.n}] 사용 요청을 취소하시겠습니까?`)) return;
         it.st = 'active';
-        delete it.reqApproved; delete it.reqDone; delete it.useDate; delete it.note;
+        delete it.reqApproved; delete it.reqDone; delete it.useDate; delete it.useEndDate;
+        delete it.currentDay; delete it.totalDays; delete it.baseCookie; delete it.note;
         upMe(); rBg();
     };
 
@@ -6697,7 +6839,8 @@ let _renderLock = false; // 재진입 방지
             const it = (me.inv||[])[i];
             if(!it || it.st !== 'req' || it.reqApproved) return;
             it.st = 'active';
-            delete it.reqApproved; delete it.reqDone; delete it.useDate; delete it.note;
+            delete it.reqApproved; delete it.reqDone; delete it.useDate; delete it.useEndDate;
+            delete it.currentDay; delete it.totalDays; delete it.baseCookie; delete it.note;
         });
         upMe(); rBg();
     };
@@ -6901,6 +7044,12 @@ let _renderLock = false; // 재진입 방지
         } else {
             try { window._detachSplitStuFullListener && window._detachSplitStuFullListener(); } catch(_){}
         }
+        // t_stu 탭 쿠키 폴링 시작/정지
+        if(id === 't_stu') {
+            try { window._startStuTabCookiePoll && window._startStuTabCookiePoll(); } catch(_){}
+        } else {
+            try { window._stopStuTabCookiePoll && window._stopStuTabCookiePoll(); } catch(_){}
+        }
         if(id === 't_auc') {
             try { window._attachSplitAucFullListener && window._attachSplitAucFullListener(); } catch(_){}
         } else {
@@ -6986,6 +7135,10 @@ let _renderLock = false; // 재진입 방지
         // 광장은 자체 presence(per-uid 구독)로 별도 처리됨
         // 광장에서 나갈 때 cleanup
         if(window._plzActive && id !== 's_plz') exitPlaza();
+        // 차단 화면(⏰)에서 다른 탭으로 이동 시 plzHours 리스너 정리
+        if(!window._plzActive && id !== 's_plz' && window._plzCfgLiveHandlers) {
+            try { window._detachPlzCfgLive && window._detachPlzCfgLive(); } catch(_){}
+        }
         document.querySelectorAll('#appS .cont > div').forEach(d=>{
             d.classList.add('hidden');
             if(d.id==='s_plz') d.style.display='none';
@@ -8848,6 +9001,8 @@ let _renderLock = false; // 재진입 방지
         dbRef.child('stu/' + si).once('value').then(snap => {
             const v = snap.val();
             if(v) { if(!Array.isArray(db.stu)) db.stu = []; db.stu[si] = v; }
+            // 해당 학생 쿠키만 다하는니 싱크 (폴링 제거 대신 클릭 시 1회)
+            try { _syncOneStuCookieSilent(si); } catch(_){}
             // currentGroups 재구성 (showStuPanel의 _renderPanelGrid가 의존)
             try { rAs(); } catch(_){}
             showStuPanel(si);
@@ -9128,9 +9283,7 @@ let _renderLock = false; // 재진입 방지
             inv[k].useDate = newDate;
             const n = inv[k].usageDurationDays || 0;
             if(n > 0) {
-                const d = new Date(newDate + 'T12:00:00');
-                d.setDate(d.getDate() + (n - 1));
-                inv[k].useEndDate = d.toLocaleDateString('sv-SE');
+                inv[k].useEndDate = _addWeekdays(newDate, n);
             }
         }
         s.inv = inv; db.stu = stuList; window._svStuByCd(cd); _renderReqDate(); if(typeof rBg==='function') rBg();
@@ -9223,9 +9376,9 @@ let _renderLock = false; // 재진입 방지
                         it.reqDone = true; it.st = it.st === 'shop_req' ? 'active' : 'used';
                         delete it.currentDay; delete it.totalDays; delete it.baseCookie; delete it.useDate;
                     } else {
-                        // 다음 일차 준비
+                        // 다음 일차 준비 — 주말 건너뜀
                         const _dn = new Date((it.useDate || _todayISO) + 'T12:00:00');
-                        _dn.setDate(_dn.getDate() + 1);
+                        do { _dn.setDate(_dn.getDate() + 1); } while(_dn.getDay() === 0 || _dn.getDay() === 6);
                         it.useDate = _dn.toLocaleDateString('sv-SE');
                         it.currentDay = nextDay;
                         it.baseCookie = s.cookie || 0;
@@ -9256,12 +9409,38 @@ let _renderLock = false; // 재진입 방지
                 return;
             }
         }
+        const _todayISOg = new Date().toLocaleDateString('sv-SE');
         sorted.forEach(k => {
             const it = inv[k]; if(!it) return;
-            if(action === 'done') { it.reqDone = true; it.st = it.st==='shop_req' ? 'active' : 'used'; }
+            const _dur = it.usageDurationDays || 0;
+            const _isMultiDay = _dur > 1;
+            if((action === 'done' || action === 'instant') && _isMultiDay) {
+                // N일권 일차별 완료 (currentDay/totalDays 없는 기존 아이템도 적용)
+                const curDay = it.currentDay || 1;
+                const totalDays = it.totalDays || _dur;
+                if(curDay >= totalDays) {
+                    // 마지막 일차 — 완료
+                    it.reqDone = true;
+                    it.st = it.st === 'shop_req' ? 'active' : 'used';
+                    delete it.currentDay; delete it.totalDays;
+                    delete it.useDate; delete it.useEndDate;
+                } else {
+                    // 다음 일차로 — useDate 평일 기준 +1일
+                    const _nextDate = new Date((it.useDate || _todayISOg) + 'T12:00:00');
+                    do { _nextDate.setDate(_nextDate.getDate() + 1); } while(_nextDate.getDay() === 0 || _nextDate.getDay() === 6);
+                    it.useDate = _nextDate.toLocaleDateString('sv-SE');
+                    it.currentDay = curDay + 1;
+                    delete it.reqDone; // reqApproved 유지 — 다음 날도 재승인 없이 바로 완료 처리 가능
+                }
+            } else if(action === 'done') { it.reqDone = true; it.st = it.st==='shop_req' ? 'active' : 'used'; }
             else if(action === 'app') { it.reqApproved = true; }
             else if(action === 'instant') { it.reqApproved = true; it.reqDone = true; it.st = it.st==='shop_req' ? 'active' : 'used'; }
-            else if(action === 'rej') { it.st = 'active'; delete it.reqApproved; delete it.reqDone; }
+            else if(action === 'rej') {
+                it.st = 'active';
+                delete it.reqApproved; delete it.reqDone;
+                delete it.useDate; delete it.useEndDate;
+                delete it.currentDay; delete it.totalDays;
+            }
             else if(action === 'del') { inv.splice(k,1); }
         });
         s.inv = inv; db.stu = stuList; sv();
@@ -10090,10 +10269,16 @@ window.appU = function(y, si, k) {
     };
 
     window.doAppGrp = function(idx) {
+        // [SEC] 승인 중복 클릭 가드 — _svStu 비동기 처리 중 재진입 차단
+        if(window._appGrpBusy) return;
+        window._appGrpBusy = true;
+        try {
         const g = currentGroups[idx];
-        if(!g) return;
+        if(!g) { window._appGrpBusy = false; return; }
         const allTargets = g.hasReq ? g.items.filter(x=>x.t.st==='req'||x.t.st==='shop_req') : g.items.filter(x=>x.t.st==='active'||x.t.st==='new');
-        const qty = Math.max(1, Math.min(parseInt(document.getElementById('appGrpQty').value)||1, allTargets.length));
+        const _rawQty = parseInt(document.getElementById('appGrpQty').value, 10);
+        const _safeQty = (Number.isFinite(_rawQty) && _rawQty > 0) ? Math.min(_rawQty, 9999) : 1;
+        const qty = Math.max(1, Math.min(_safeQty, allTargets.length));
         document.getElementById('appGrpModal').remove();
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         allTargets.slice(0, qty).forEach(x => {
@@ -10124,12 +10309,16 @@ window.appU = function(y, si, k) {
         const btnH = document.getElementById('btnHide');
         if(btnH) btnH.innerText = '🙈 숨기기';
         _syncRequestViews();
+        } finally { window._appGrpBusy = false; }
     };
 
     window.rejectGrp = function(idx) {
+        if(window._rejectGrpBusy) return;
+        window._rejectGrpBusy = true;
+        try {
         const g = currentGroups[idx];
-        if(!g) return;
-        if(!confirm(`${g.sn}의 [${g.n}] 요청을 반려하고 비용을 환불할까요?`)) return;
+        if(!g) { window._rejectGrpBusy = false; return; }
+        if(!confirm(`${g.sn}의 [${g.n}] 요청을 반려하고 비용을 환불할까요?`)) { window._rejectGrpBusy = false; return; }
         const targets = g.items.filter(x=>x.t.st==='req'||x.t.st==='shop_req');
         let stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         // 아이템 정의에서 가격·화폐 조회
@@ -10170,6 +10359,7 @@ window.appU = function(y, si, k) {
         const _affectedCds = [...new Set(targets.map(x => stuList[x.si]?.cd).filter(Boolean))];
         _affectedCds.forEach(c => window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, c));
         _syncRequestViews();
+        } finally { window._rejectGrpBusy = false; }
     };
 
     window.resGrp = function(idx) {
@@ -10512,100 +10702,140 @@ window.appU = function(y, si, k) {
             </label>`).join('') || '<div style="color:#aaa;padding:10px;font-size:13px;">학생 없음</div>';
         const items = [..._givSel.values()];
         const coinNames = { cookie:'🍪 쿠키', co:'🍯 꿀', cn:'🍭 캔디', tk:'🧺 바구니' };
-        const labels = items.map(({type,idx}) => {
-            if(type==='coin') return coinNames[idx] || '화폐';
-            if(type==='itm') return db.itm[idx]?.n || '?';
-            if(type==='avt') return (db.avt||[])[idx]?.nm || '?';
-            if(type==='bdg') return (db.bdg||[])[idx]?.name || '?';
-            if(type==='tit') return (db.tit||[])[idx]?.name || '?';
-            return '?';
-        });
-        const hasItm = items.some(x=>x.type==='itm');
-        const coins = items.filter(x=>x.type==='coin');
-        const multiQtyRow = hasItm ? `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;"><span style="font-size:13px;color:#5D4037;white-space:nowrap;">아이템 개수:</span><input id="givStuQty" type="number" min="1" value="1" style="width:70px;text-align:center;font-size:15px;font-weight:bold;border:1.5px solid #FFB300;border-radius:8px;padding:3px 6px;font-family:'Jua';"></div>` : '';
-        const coinQtyRows = coins.map(c => `<div style="display:flex;align-items:center;gap:8px;margin-top:6px;"><span style="font-size:13px;color:#5D4037;white-space:nowrap;min-width:74px;">${coinNames[c.idx]||c.idx}:</span><input data-coin-qty="${c.idx}" type="number" min="1" value="1" style="width:70px;text-align:center;font-size:15px;font-weight:bold;border:1.5px solid #FFB300;border-radius:8px;padding:3px 6px;font-family:'Jua';"></div>`).join('');
+        const coinIcons = { cookie:'🍪', co:'🍯', cn:'🍭', tk:'🧺' };
         const hasTit = items.some(x=>x.type==='tit');
-        const forceRegrantRow = hasTit ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5D4037;margin-top:8px;padding:6px 8px;background:#FFF3E0;border-radius:6px;border:1px dashed #FFB74D;"><input type="checkbox" id="forceRegrantTit" style="width:15px;height:15px;flex-shrink:0;"><span>이미 보유한 학생에게도 재지급 (보상 중복 가산)</span></label>` : '';
-        document.body.insertAdjacentHTML('beforeend', `<div id="givStuPop" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border:2px solid #FFB300;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.25);z-index:9999;width:320px;max-height:490px;display:flex;flex-direction:column;overflow:hidden;">
-            <div style="padding:12px 14px;background:#FFFDE7;border-bottom:1px solid #EEE;border-radius:14px 14px 0 0;">
-                <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:4px;">🎁 ${items.length}개 아이템 지급</div>
-                <div style="font-size:11px;color:#888;margin-bottom:8px;max-height:60px;overflow-y:auto;">${labels.map(l=>`<span style="display:inline-block;background:#FFE082;border-radius:6px;padding:1px 7px;margin:2px;">${l}</span>`).join('')}</div>
-                <div style="display:flex;gap:5px;">
-                    <button class="btn btn-green" style="flex:1;padding:5px 6px;font-size:12px;" onclick="toggleAllGivStuPop(true)">전체 선택</button>
-                    <button class="btn btn-gray" style="flex:1;padding:5px 6px;font-size:12px;" onclick="toggleAllGivStuPop(false)">전체 해제</button>
-                    <button style="background:none;border:none;font-size:22px;cursor:pointer;color:#aaa;padding:0 4px;line-height:1;" onclick="document.getElementById('givStuPop')?.remove();document.getElementById('givStuPopBg')?.remove();">✕</button>
+        const forceRegrantRow = hasTit ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5D4037;margin-top:6px;padding:6px 8px;background:#FFF3E0;border-radius:6px;border:1px dashed #FFB74D;"><input type="checkbox" id="forceRegrantTit" style="width:15px;height:15px;flex-shrink:0;"><span>이미 보유한 학생에게도 재지급</span></label>` : '';
+        const _todayStr = new Date().toISOString().slice(0,10);
+        // 아이템별 개별 설정 행 빌드 (수량 + N일권 + 유효기간 각각)
+        const perItemRows = items.map(({type, idx}, ri) => {
+            const key = `${type}:${idx}`;
+            let icon = '', name = '', showQty = false, showDur = false, showExp = false;
+            if(type==='coin'){
+                icon = coinIcons[idx]||'💰'; name = coinNames[idx]||'화폐'; showQty = true;
+            } else if(type==='itm'){
+                const _l=Array.isArray(db.itm)?db.itm:Object.values(db.itm||{});
+                const it=_l[idx];
+                icon = it?.i ? `<img src="${it.i}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;image-rendering:pixelated;">` : '🎁';
+                name = it?.n || '?'; showQty = true; showDur = true; showExp = true;
+            } else if(type==='avt'){
+                const a=(db.avt||[])[idx];
+                icon = a?.img ? `<img src="${a.img}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;image-rendering:pixelated;">` : '🎨';
+                name = a?.nm || '?'; showDur = true; showExp = true;
+            } else if(type==='bdg'){
+                const b=(db.bdg||[])[idx];
+                icon = b?.img ? `<img src="${b.img}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;">` : (b?.icon||'📛');
+                name = b?.name || '?'; showExp = true;
+            } else if(type==='tit'){
+                const t=(db.tit||[])[idx];
+                const _d=document.createElement('div'); _d.innerHTML=t?.name||'';
+                icon = t?.img ? `<img src="${t.img}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;">` : '🏆';
+                name = (_d.textContent||_d.innerText||'').trim()||t?.name||'?'; showExp = true;
+            }
+            const durId = `giDur_${ri}`, durDaysId = `giDurD_${ri}`;
+            const expId = `giExp_${ri}`, expDaysId = `giExpD_${ri}`, expDateId = `giExpDt_${ri}`;
+            const qtyPart = showQty
+                ? `<label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#8D6E63;white-space:nowrap;"><span>수량</span><input data-field="qty" type="number" min="1" value="1" style="width:46px;text-align:center;font-size:12px;font-weight:bold;border:1.5px solid #FFB300;border-radius:6px;padding:1px 3px;font-family:'Jua';">개</label>`
+                : '';
+            const durPart = showDur
+                ? `<label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#0288D1;white-space:nowrap;"><span>N일권</span><select id="${durId}" data-field="dur" autocomplete="off" style="font-size:11px;border:1.5px solid #4FC3F7;border-radius:6px;padding:1px 3px;font-family:'Jua';" onchange="document.getElementById('${durDaysId}').style.display=this.value==='days'?'inline-block':'none';"><option value="">일반</option><option value="1">1일</option><option value="3">3일</option><option value="7">1주</option><option value="14">2주</option><option value="30">1달</option><option value="days">직접</option></select><input id="${durDaysId}" data-field="dur-days" type="number" min="1" max="365" value="1" placeholder="일" style="display:none;width:38px;text-align:center;font-size:11px;border:1.5px solid #4FC3F7;border-radius:6px;padding:1px 3px;font-family:'Jua';"></label>`
+                : '';
+            const expPart = showExp
+                ? `<label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#7B1FA2;white-space:nowrap;"><span>유효기간</span><select id="${expId}" data-field="expiry" autocomplete="off" style="font-size:11px;border:1.5px solid #BA68C8;border-radius:6px;padding:1px 3px;font-family:'Jua';" onchange="document.getElementById('${expDaysId}').style.display=this.value==='days'?'inline-block':'none';document.getElementById('${expDateId}').style.display=this.value==='date'?'inline-block':'none';"><option value="">영구</option><option value="1">1일</option><option value="3">3일</option><option value="7">7일</option><option value="14">14일</option><option value="30">30일</option><option value="days">직접</option><option value="date">날짜</option></select><input id="${expDaysId}" data-field="expiry-days" type="number" min="1" max="365" value="7" placeholder="일" style="display:none;width:38px;text-align:center;font-size:11px;border:1.5px solid #BA68C8;border-radius:6px;padding:1px 3px;font-family:'Jua';"><input id="${expDateId}" data-field="expiry-date" type="date" min="${_todayStr}" style="display:none;font-size:10px;border:1.5px solid #BA68C8;border-radius:6px;padding:1px 3px;font-family:'Jua';"></label>`
+                : '';
+            return `<div data-item-key="${key}" style="padding:6px 8px;border-bottom:1px solid #FFF3E0;">
+                <div style="display:flex;align-items:center;gap:5px;margin-bottom:${showDur||showExp||showQty?'4px':'0'};">
+                    <span style="font-size:16px;flex-shrink:0;">${icon}</span>
+                    <span style="font-size:12px;color:#5D4037;font-weight:bold;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_escHtml(name)}</span>
                 </div>
-                ${multiQtyRow}
-                ${coinQtyRows}
-                ${forceRegrantRow}
-                <div style="margin-top:10px;">
-                    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5D4037;margin-bottom:4px;cursor:pointer;">
-                        <input type="checkbox" id="givStuMsgOn" style="width:15px;height:15px;flex-shrink:0;" onchange="document.getElementById('givStuMsgBox').style.display=this.checked?'block':'none';">
-                        <span>✉️ 교사 메시지 함께 보내기 <span style="color:#aaa;font-weight:normal;">(선택)</span></span>
-                    </label>
-                    <textarea id="givStuMsgBox" rows="2" maxlength="500" placeholder="학생에게 전달할 메시지를 입력하세요..." style="display:none;width:100%;box-sizing:border-box;font-family:'Jua';font-size:13px;resize:none;border:1.5px solid #FFB300;border-radius:8px;padding:6px 8px;margin-top:2px;"></textarea>
-                </div>
-                <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <div style="padding:8px 10px;background:#E1F5FE;border-radius:8px;border:1px dashed #4FC3F7;">
-                        <div style="font-size:12px;color:#01579B;font-weight:bold;margin-bottom:6px;">📆 N일권</div>
-                        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-                            <select id="givStuUseDur" autocomplete="off" style="padding:4px 6px;font-size:12px;border:1.5px solid #4FC3F7;border-radius:8px;font-family:'Jua';" onchange="document.getElementById('givStuUseDurDays').style.display=this.value==='days'?'inline-block':'none';">
-                                <option value="" selected>없음</option>
-                                <option value="1">1일</option>
-                                <option value="3">3일</option>
-                                <option value="7">1주일</option>
-                                <option value="14">2주일</option>
-                                <option value="30">1개월</option>
-                                <option value="days">직접 입력</option>
-                            </select>
-                            <input id="givStuUseDurDays" type="number" min="1" max="365" value="7" placeholder="일" style="display:none;width:56px;text-align:center;padding:4px 6px;font-size:12px;border:1.5px solid #4FC3F7;border-radius:8px;font-family:'Jua';">
-                        </div>
-                    </div>
-                    <div style="padding:8px 10px;background:#F3E5F5;border-radius:8px;border:1px dashed #CE93D8;">
-                        <div style="font-size:12px;color:#6A1B9A;font-weight:bold;margin-bottom:6px;">⏳ 유효기간</div>
-                        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-                            <select id="givStuExpiry" autocomplete="off" style="padding:4px 6px;font-size:12px;border:1.5px solid #BA68C8;border-radius:8px;font-family:'Jua';" onchange="document.getElementById('givStuExpiryDays').style.display=this.value==='days'?'inline-block':'none';document.getElementById('givStuExpiryDate').style.display=this.value==='date'?'inline-block':'none';">
-                                <option value="" selected>영구</option>
-                                <option value="1">1일</option>
-                                <option value="3">3일</option>
-                                <option value="7">7일</option>
-                                <option value="14">14일</option>
-                                <option value="30">30일</option>
-                                <option value="days">직접 입력</option>
-                                <option value="date">날짜 지정</option>
-                            </select>
-                            <input id="givStuExpiryDays" type="number" min="1" max="365" value="7" placeholder="일" style="display:none;width:56px;text-align:center;padding:4px 6px;font-size:12px;border:1.5px solid #BA68C8;border-radius:8px;font-family:'Jua';">
-                            <input id="givStuExpiryDate" type="date" min="${new Date().toISOString().slice(0,10)}" style="display:none;padding:4px 6px;font-size:12px;border:1.5px solid #BA68C8;border-radius:8px;font-family:'Jua';">
-                        </div>
-                    </div>
-                </div>
+                ${qtyPart||durPart||expPart ? `<div style="display:flex;flex-wrap:wrap;gap:6px;padding-left:2px;">${qtyPart}${durPart}${expPart}</div>` : ''}
+            </div>`;
+        }).join('');
+        document.body.insertAdjacentHTML('beforeend', `<div id="givStuPop" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border:2px solid #FFB300;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.25);z-index:9999;width:min(760px,96vw);height:min(600px,92vh);display:flex;flex-direction:column;overflow:hidden;">
+            <!-- 헤더 -->
+            <div style="padding:10px 14px;background:#FFFDE7;border-bottom:1.5px solid #FFE082;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="font-size:14px;font-weight:bold;color:#5D4037;">🎁 ${items.length}개 아이템 지급</div>
+                <button style="background:none;border:none;font-size:22px;cursor:pointer;color:#aaa;padding:0;line-height:1;" onclick="document.getElementById('givStuPop')?.remove();document.getElementById('givStuPopBg')?.remove();">✕</button>
             </div>
-            <div data-givstu-list style="overflow-y:auto;flex:1;padding:4px 0;">${stuHtml}</div>
-            <div style="padding:10px 14px;border-top:1px solid #EEE;">
-                <button class="btn btn-org" style="width:100%;padding:10px;" onclick="doGivMultiStuPop()">지급 실행</button>
+            <!-- 본문: 좌우 분리 -->
+            <div style="display:flex;flex:1;min-height:0;overflow:hidden;">
+                <!-- 왼쪽: 아이템 설정 -->
+                <div style="flex:1.3;overflow-y:auto;padding:10px 12px;border-right:1.5px solid #EEE;display:flex;flex-direction:column;gap:6px;">
+                    <div style="font-size:11px;font-weight:bold;color:#8D6E63;">아이템 · 수량 · N일권 · 유효기간</div>
+                    <div style="background:white;border:1.5px solid #FFE082;border-radius:8px;overflow:hidden;">${perItemRows}</div>
+                    ${forceRegrantRow}
+                    <div>
+                        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#5D4037;cursor:pointer;">
+                            <input type="checkbox" id="givStuMsgOn" style="width:14px;height:14px;flex-shrink:0;" onchange="document.getElementById('givStuMsgBox').style.display=this.checked?'block':'none';">
+                            <span>✉️ 교사 메시지 (선택)</span>
+                        </label>
+                        <textarea id="givStuMsgBox" rows="3" maxlength="500" placeholder="학생에게 전달할 메시지를 입력하세요..." style="display:none;width:100%;box-sizing:border-box;font-family:'Jua';font-size:13px;resize:none;border:1.5px solid #FFB300;border-radius:8px;padding:6px 8px;margin-top:4px;"></textarea>
+                    </div>
+                </div>
+                <!-- 오른쪽: 학생 선택 + 실행 -->
+                <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding:10px 10px;">
+                    <div style="font-size:11px;font-weight:bold;color:#8D6E63;margin-bottom:6px;">학생 선택</div>
+                    <div style="display:flex;gap:4px;margin-bottom:6px;flex-shrink:0;">
+                        <button class="btn btn-green" style="flex:1;padding:4px 6px;font-size:12px;" onclick="toggleAllGivStuPop(true)">전체 선택</button>
+                        <button class="btn btn-gray" style="flex:1;padding:4px 6px;font-size:12px;" onclick="toggleAllGivStuPop(false)">전체 해제</button>
+                    </div>
+                    <div data-givstu-list style="flex:1;overflow-y:auto;">${stuHtml}</div>
+                    <div style="margin-top:8px;flex-shrink:0;">
+                        <button class="btn btn-org" style="width:100%;padding:10px;" onclick="doGivMultiStuPop()">지급 실행</button>
+                    </div>
+                </div>
             </div>
         </div>
         <div id="givStuPopBg" style="position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9998;" onclick="document.getElementById('givStuPop')?.remove();document.getElementById('givStuPopBg')?.remove();"></div>`);
     };
 
     window.doGivMultiStuPop = async function() {
+        if(window._givMultiRunning) return;
+        window._givMultiRunning = true;
         const pop = document.getElementById('givStuPop');
-        if(!pop) return;
+        if(!pop) { window._givMultiRunning = false; return; }
         const checked = [...pop.querySelectorAll('input[type=checkbox]:checked')].map(cb=>parseInt(cb.dataset.si)).filter(si=>!isNaN(si));
-        if(checked.length===0) return alert('학생을 선택해주세요.');
+        if(checked.length===0) { window._givMultiRunning = false; return alert('학생을 선택해주세요.'); }
         if(!Array.isArray(db.stu)) db.stu = [];
-        // 선택된 학생 중 full 레코드 없는 인덱스만 개별 fetch (트래픽 절감 — /rank만 봤을 때 대비)
-        const _missing = checked.filter(si => !db.stu[si] || !db.stu[si].cd);
-        if(_missing.length) {
-            try {
-                await Promise.all(_missing.map(si =>
-                    dbRef.child('stu/'+si).once('value').then(snap => { const v = snap.val(); if(v) db.stu[si] = v; })
-                ));
-            } catch(e) { console.warn('[givMulti] 선택 학생 fetch 실패', e); }
-        }
+        // 선택된 학생 항상 Firebase에서 최신 조회 (tchrMsg 등 학생이 클리어한 데이터 덮어쓰기 방지)
+        try {
+            await Promise.all(checked.map(si =>
+                dbRef.child('stu/'+si).once('value').then(snap => { const v = snap.val(); if(v) db.stu[si] = v; })
+            ));
+        } catch(e) { console.warn('[givMulti] 학생 데이터 재조회 실패', e); }
         const stuArr = db.stu;
         const items = [..._givSel.values()];
-        const multiQty = Math.max(1, parseInt(document.getElementById('givStuQty')?.value||'1')||1);
+        // 아이템별 개별 설정 읽기 (qty, usageDurationDays, expireAt)
+        const _itemSettings = {};
+        const _eod = d => { const t = new Date(); t.setDate(t.getDate() + d - 1); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 23, 59, 59, 999).getTime(); };
+        pop.querySelectorAll('[data-item-key]').forEach(row => {
+            const key = row.dataset.itemKey;
+            const qtyEl = row.querySelector('[data-field="qty"]');
+            const durSel = row.querySelector('[data-field="dur"]');
+            const durDays = row.querySelector('[data-field="dur-days"]');
+            const qty = qtyEl ? Math.max(1, parseInt(qtyEl.value||'1')||1) : 1;
+            let dur = 0;
+            if(durSel && durSel.value) {
+                if(durSel.value === 'days') dur = Math.max(1, parseInt(durDays?.value||'1')||1);
+                else dur = parseInt(durSel.value)||0;
+            }
+            // 유효기간 (아이템별)
+            let expireAt = null;
+            const expSel = row.querySelector('[data-field="expiry"]')?.value || '';
+            if(expSel) {
+                if(expSel === 'days') {
+                    const ed = Math.max(1, parseInt(row.querySelector('[data-field="expiry-days"]')?.value||'7')||7);
+                    expireAt = _eod(ed);
+                } else if(expSel === 'date') {
+                    const ds = row.querySelector('[data-field="expiry-date"]')?.value;
+                    if(ds) expireAt = new Date(ds + 'T23:59:59').getTime();
+                } else {
+                    const ed = parseInt(expSel)||0;
+                    if(ed > 0) expireAt = _eod(ed);
+                }
+                if(expireAt && expireAt <= Date.now()) expireAt = null;
+            }
+            _itemSettings[key] = { qty, dur, expireAt };
+        });
         // 칭호 재지급 차단 — 기본은 보유자 스킵, 체크 시에만 중복 가산 허용
         const _forceRegrantTit = !!document.getElementById('forceRegrantTit')?.checked;
         const titItems = items.filter(x => x.type==='tit');
@@ -10629,11 +10859,13 @@ window.appU = function(y, si, k) {
                 if(!ok) return;
             }
         }
-        // 화폐 개별 수량
+        // 화폐 개별 수량 — 새 UI에서 per-item qty로 읽음
         const coinQty = {};
-        pop.querySelectorAll('input[data-coin-qty]').forEach(el => {
-            const k = el.dataset.coinQty;
-            coinQty[k] = Math.max(1, parseInt(el.value||'1')||1);
+        items.forEach(({type, idx}) => {
+            if(type==='coin') {
+                const key = `${type}:${idx}`;
+                coinQty[idx] = (_itemSettings[key]?.qty) || 1;
+            }
         });
         // 의도적으로 화폐를 건드릴 항목 집합 (coin 타입 + rewardCoin 칭호)
         const _intentionalCurChange = new Set();
@@ -10657,40 +10889,12 @@ window.appU = function(y, si, k) {
                 shopUsed: Number(s.shopUsed)||0
             };
         });
-        // 사용기간(일) 계산
-        let usageDurationDays = 0;
-        const useDurSel = document.getElementById('givStuUseDur')?.value || '';
-        if(useDurSel) {
-            if(useDurSel === 'days') {
-                usageDurationDays = Math.max(1, parseInt(document.getElementById('givStuUseDurDays')?.value||'7')||7);
-            } else {
-                usageDurationDays = parseInt(useDurSel)||0;
-            }
-        }
-        // 만료 기간 계산
-        let expireAt = null;
-        const expSel = document.getElementById('givStuExpiry')?.value || '';
-        if(expSel) {
-            // 캘린더 일수 기준 만료: 오늘 포함 N일 → (N-1)일 후 23:59:59
-            const _endOfDay = d => { const t = new Date(); t.setDate(t.getDate() + d - 1); return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 23, 59, 59, 999).getTime(); };
-            if(expSel === 'days') {
-                const d = Math.max(1, parseInt(document.getElementById('givStuExpiryDays')?.value||'7')||7);
-                expireAt = _endOfDay(d);
-            } else if(expSel === 'date') {
-                const ds = document.getElementById('givStuExpiryDate')?.value;
-                if(ds) {
-                    // 지정 날짜 23:59:59 까지 유효
-                    expireAt = new Date(ds + 'T23:59:59').getTime();
-                }
-            } else {
-                const d = parseInt(expSel)||0;
-                if(d > 0) expireAt = _endOfDay(d);
-            }
-            if(expireAt && expireAt <= Date.now()) expireAt = null;
-        }
+        // 유효기간·사용기간은 _itemSettings에 아이템별로 이미 계산됨
         checked.forEach(si => {
             const s = stuArr[si]; if(!s) return;
             items.forEach(({type, idx}) => {
+                const _key = `${type}:${idx}`;
+                const _iSet = _itemSettings[_key] || {};
                 if(type==='coin'){
                     const amt = coinQty[idx] || 1;
                     // 쿠키는 me.cookie (누적값) — 다른 화폐는 직접 가산
@@ -10702,6 +10906,8 @@ window.appU = function(y, si, k) {
                     const it = _itmList[idx]; if(!it) return;
                     if(!s.inv) s.inv=[];
                     else if(!Array.isArray(s.inv)) s.inv = Object.values(s.inv);
+                    const _itmQty = _iSet.qty || 1;
+                    const _itmDur = _iSet.dur || 0;
                     // 골든티켓·달고나는 외부 시스템과 호환 위해 events 배열에 추가 (단일 inv 항목 유지)
                     if(it.special === 'goldenTicket' || it.special === 'dalgona' || it.special === 'voucher'){
                         let existing = s.inv.find(x => x && x.special === it.special);
@@ -10711,17 +10917,24 @@ window.appU = function(y, si, k) {
                         }
                         if(!Array.isArray(existing.events)) existing.events = [];
                         const _now = Date.now();
-                        for(let q=0;q<multiQty;q++) {
+                        for(let q=0;q<_itmQty;q++) {
                             const evt = {ts: _now+q, by:'teacher', gift: it.special==='dalgona' ? 'cookie' : 'ticket'};
-                            if(expireAt) evt.expireAt = expireAt;
+                            if(_iSet.expireAt) evt.expireAt = _iSet.expireAt;
                             existing.events.push(evt);
                         }
                     } else {
-                        for(let q=0;q<multiQty;q++) {
-                            const invIt = {n:it.n, i:it.i, st:'active', g:it.g||'C'};
-                            if(expireAt) invIt.expireAt = expireAt;
-                            if(usageDurationDays > 0) invIt.usageDurationDays = usageDurationDays;
-                            if(it.unlimitedDaily) { invIt.unlimitedDaily = true; invIt.unlimitedDays = it.unlimitedDays || 1; }
+                        const _givToday = new Date().toLocaleDateString('sv-SE');
+                        for(let q=0;q<_itmQty;q++) {
+                            const invIt = {n:it.n, i:it.i, g:it.g||'C'};
+                            if(_iSet.expireAt) invIt.expireAt = _iSet.expireAt;
+                            if(it.unlimitedDaily) {
+                                invIt.st = 'active';
+                                invIt.unlimitedDaily = true;
+                                invIt.unlimitedDays = it.unlimitedDays || 1;
+                            } else {
+                                invIt.st = 'active';
+                                if(_itmDur >= 1) invIt.usageDurationDays = _itmDur;
+                            }
                             s.inv.push(invIt);
                         }
                     }
@@ -10730,37 +10943,43 @@ window.appU = function(y, si, k) {
                     const a=(db.avt||[])[idx]; if(!a) return;
                     if(!s.avtOwned) s.avtOwned=[];
                     if(!s.avtOwned.includes(a.id)) s.avtOwned.push(a.id);
-                    if(expireAt) { if(!s.avtExpire) s.avtExpire={}; s.avtExpire[a.id] = expireAt; }
-                    if(a.cat==='pet') {
+                    if(_iSet.expireAt) { if(!s.avtExpire) s.avtExpire={}; s.avtExpire[a.id] = _iSet.expireAt; }
+                    if(a.cat==='prop') {
+                        // 소품 자동 착용 (최대 5개)
+                        if(!s.eq) s.eq = {};
+                        if(!Array.isArray(s.displayProps)) s.displayProps = s.eq.prop ? [s.eq.prop] : [];
+                        if(!s.displayProps.includes(a.id) && s.displayProps.length < 5) s.displayProps.push(a.id);
+                        s.eq.prop = s.displayProps[0] || a.id;
+                    } else if(a.cat==='pet') {
                         // 짝 스킬 함께 지급
                         if(a.setSkillId) {
                             if(!s.earnedBdg) s.earnedBdg=[];
                             if(!s.earnedBdg.includes(a.setSkillId)) s.earnedBdg.push(a.setSkillId);
-                            if(expireAt) { if(!s.bdgExpire) s.bdgExpire={}; s.bdgExpire[a.setSkillId] = expireAt; }
+                            if(_iSet.expireAt) { if(!s.bdgExpire) s.bdgExpire={}; s.bdgExpire[a.setSkillId] = _iSet.expireAt; }
                         }
                         // 펫은 단일종 — 같은 defId가 이미 있으면 push 안 함
                         if(!Array.isArray(s.ownedPets)) s.ownedPets = [];
                         if(!s.ownedPets.some(p => p && p.defId === a.id)) {
                             s.ownedPets.push({defId: a.id, isSpecial: false, skin: null, skill: null, gotAt: Date.now()});
                         }
-                        // 자동 착용 — 메인 펫으로 설정 + displayPets에 추가
+                        // 자동 착용 — 왼쪽 슬롯(index 0) 우선, 이미 2개면 index 0 교체
                         if(!s.eq) s.eq = {};
-                        s.eq.pet = a.id;
                         if(!Array.isArray(s.displayPets)) s.displayPets = [];
-                        if(!s.displayPets.includes(a.id)) s.displayPets.push(a.id);
+                        if(!s.displayPets.includes(a.id) && s.displayPets.length < 2) s.displayPets.push(a.id);
+                        s.eq.pet = s.displayPets[0] || a.id;
                     }
                 } else if(type==='bdg'){
                     const b=(db.bdg||[])[idx]; if(!b) return;
                     if(!s.earnedBdg) s.earnedBdg=[];
                     if(!s.earnedBdg.includes(b.id)) s.earnedBdg.push(b.id);
-                    if(expireAt) { if(!s.bdgExpire) s.bdgExpire={}; s.bdgExpire[b.id] = expireAt; }
+                    if(_iSet.expireAt) { if(!s.bdgExpire) s.bdgExpire={}; s.bdgExpire[b.id] = _iSet.expireAt; }
                 } else if(type==='tit'){
                     const t=(db.tit||[])[idx]; if(!t) return;
                     if(!s.earnedTit) s.earnedTit=[];
                     const _alreadyOwn = s.earnedTit.includes(t.id);
                     if(_alreadyOwn && !_forceRegrantTit) return; // 🛑 보유자 스킵 (보상·titNotify·earnedTit 모두 변경 없음)
                     if(!_alreadyOwn) s.earnedTit.push(t.id);
-                    if(expireAt) { if(!s.titExpire) s.titExpire={}; s.titExpire[t.id] = expireAt; }
+                    if(_iSet.expireAt) { if(!s.titExpire) s.titExpire={}; s.titExpire[t.id] = _iSet.expireAt; }
                     // 칭호 지급 시 화폐 보상 — 재발급(force) 시에만 중복 가산
                     if(t.rewardCoinType && t.rewardCoinAmt) {
                         const ct = t.rewardCoinType, amt = t.rewardCoinAmt;
@@ -10800,7 +11019,7 @@ window.appU = function(y, si, k) {
             // 회수 시 필요한 실제 지급 데이터 (표시용 _msgItems와 별도)
             const _recallData = items.map(({type,idx}) => {
                 if(type==='coin') return {type:'coin', key:idx, amt: coinQty[idx]||1};
-                if(type==='itm'){ const _l=Array.isArray(db.itm)?db.itm:Object.values(db.itm||{}); const _it=_l[idx]; return {type:'itm', name:_it?.n||'', qty:multiQty}; }
+                if(type==='itm'){ const _l=Array.isArray(db.itm)?db.itm:Object.values(db.itm||{}); const _it=_l[idx]; return {type:'itm', name:_it?.n||'', qty:(_itemSettings[`itm:${idx}`]?.qty)||1}; }
                 if(type==='avt'){ const _a=(db.avt||[])[idx]; return {type:'avt', id:_a?.id||''}; }
                 if(type==='bdg'){ const _b=(db.bdg||[])[idx]; return {type:'bdg', id:_b?.id||''}; }
                 if(type==='tit'){ const _t=(db.tit||[])[idx]; return {type:'tit', id:_t?.id||''}; }
@@ -10826,7 +11045,7 @@ window.appU = function(y, si, k) {
             items.forEach(({type, idx})=>{
                 let _itName='', _kind='', _qty=1;
                 if(type==='coin'){ _itName=_coinNames[idx]||idx; _kind='💰 화폐'; _qty=coinQty[idx]||1; }
-                else if(type==='itm'){ const _l=Array.isArray(db.itm)?db.itm:Object.values(db.itm||{}); _itName=_l[idx]?.n||''; _kind='🎁 아이템'; _qty=multiQty; }
+                else if(type==='itm'){ const _l=Array.isArray(db.itm)?db.itm:Object.values(db.itm||{}); _itName=_l[idx]?.n||''; _kind='🎁 아이템'; _qty=(_itemSettings[`itm:${idx}`]?.qty)||1; }
                 else if(type==='avt'){ _itName=(db.avt||[])[idx]?.nm||''; _kind='🎨 꾸미기'; }
                 else if(type==='bdg'){ _itName=(db.bdg||[])[idx]?.name||''; _kind='📛 펫 스킬'; }
                 else if(type==='tit'){ const _t=(db.tit||[])[idx]; const _d=document.createElement('div'); _d.innerHTML=_t?.name||''; _itName=(_d.textContent||_d.innerText||'').trim()||_t?.name||''; _kind='🏆 칭호'; }
@@ -10837,6 +11056,7 @@ window.appU = function(y, si, k) {
         document.getElementById('givStuPopBg')?.remove();
         clearGivSel();
         alert(`${checked.length}명에게 ${items.length}개 아이템 지급 완료!`);
+        window._givMultiRunning = false;
     };
 
     function upGiv(){ renderGivGrids(); }
@@ -11081,7 +11301,12 @@ window.appU = function(y, si, k) {
                 const a = (db.avt||[])[idx]; if(!a) return;
                 if(!s.avtOwned) s.avtOwned=[];
                 if(!s.avtOwned.includes(a.id)) s.avtOwned.push(a.id);
-                if(a.cat==='pet') {
+                if(a.cat==='prop') {
+                    if(!s.eq) s.eq = {};
+                    if(!Array.isArray(s.displayProps)) s.displayProps = s.eq.prop ? [s.eq.prop] : [];
+                    if(!s.displayProps.includes(a.id) && s.displayProps.length < 5) s.displayProps.push(a.id);
+                    s.eq.prop = s.displayProps[0] || a.id;
+                } else if(a.cat==='pet') {
                     if(a.setSkillId) {
                         if(!s.earnedBdg) s.earnedBdg=[];
                         if(!s.earnedBdg.includes(a.setSkillId)) s.earnedBdg.push(a.setSkillId);
@@ -11089,7 +11314,7 @@ window.appU = function(y, si, k) {
                     if(!s.eq) s.eq = {};
                     s.eq.pet = a.id;
                     if(!Array.isArray(s.displayPets)) s.displayPets = [];
-                    if(!s.displayPets.includes(a.id)) s.displayPets.push(a.id);
+                    if(!s.displayPets.includes(a.id) && s.displayPets.length < 2) s.displayPets.push(a.id);
                 }
             } else if(type==='bdg'){
                 const b = (db.bdg||[])[idx]; if(!b) return;
@@ -12850,7 +13075,7 @@ window.appU = function(y, si, k) {
                 </div>`;
             }).join('');
             if(ownedTitles.length === 0) {
-                titHtml = `<div style="grid-column:1/-1;text-align:center;padding:40px 20px;color:#BCAAA4;font-size:14px;">🏆 아직 획득한 칭호가 없어요</div>`;
+                titHtml = '';
                 for(let i = 0; i < 21; i++) titHtml += `<div class="inventory-slot"></div>`;
             } else {
                 const titEmptyCount = Math.max(0, 21 - ownedTitles.length);
@@ -15903,7 +16128,7 @@ window.addCharRow = function() {
     const getEqId   = v => (v && typeof v === 'object') ? v.id   : (v || '');
     const getEqFlip = v => (v && typeof v === 'object') ? (v.flip || 'right') : 'right';
 
-    function renderAvatar(eq, size=120, displayPetsArr) {
+    function renderAvatar(eq, size=120, displayPetsArr, displayPropsArr) {
         eq = eq || {};
         const baseUrl = (db.cfg && db.cfg.baseChar) || '기본 캐릭터.png';
         const renderLyr = (cat, zi) => {
@@ -15929,10 +16154,31 @@ window.addCharRow = function() {
             if(item.img2) html += `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img2}" style="${mkStyle2(isLeft?(100-(item.px2??px)-(item.ps2??ps)):(px2), isLeft, rot2)}">`;
             return html;
         };
+        // 소품(prop) 다중 렌더 — displayPropsArr 우선, 없으면 eq.prop 단일
+        const _propIds = Array.isArray(displayPropsArr) && displayPropsArr.length
+            ? displayPropsArr
+            : (getEqId(eq.prop) ? [getEqId(eq.prop)] : []);
+        // 펫·소품 공통 렌더 헬퍼 (isRight=true이면 scaleX 반전 + x 미러)
+        const _renderItemById = (pid, zi, isRight) => {
+            if(!pid) return '';
+            const item = (db.avt||[]).find(a=>a.id===pid);
+            if(!item || !item.img) return '';
+            const px=item.px||0, py=item.py||0, ps=item.ps||100, rot=item.rot||0;
+            const left = isRight ? Math.max(0, 100-px-ps) : px;
+            const tParts = [isRight?'scaleX(-1)':'', rot?`rotate(${rot}deg)`:''].filter(Boolean);
+            const t = tParts.length ? `transform:${tParts.join(' ')};` : '';
+            return `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img}" style="position:absolute;left:${left}%;top:${py}%;width:${ps}%;height:${ps}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t}">`;
+        };
         // 등 장식(back)은 기본 캐릭터 뒤(z-index:0), 나머지는 앞(z-index:2)
         const backLayer  = renderLyr('back', 0);
         const baseEl     = `<img class="avt-base" loading="lazy" decoding="async" src="${baseUrl}" style="position:relative;z-index:1;width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;">`;
-        const frontLayers = AVT_Z.filter(c=>c!=='back').map(c=>renderLyr(c,2)).join('');
+        // 펫: [0]=왼쪽, [1]=오른쪽 / 소품: [0]=왼쪽, [1]=오른쪽 — index 1은 scaleX 반전
+        const _petLayers = Array.isArray(displayPetsArr)
+            ? displayPetsArr.map((pid,i)=>_renderItemById(pid,3,i===1)).join('')
+            : '';
+        const frontLayers = AVT_Z.filter(c=>c!=='back'&&c!=='prop'&&c!=='pet').map(c=>renderLyr(c,2)).join('')
+            + _propIds.map((pid,i)=>_renderItemById(pid,2,i===1)).join('')
+            + _petLayers;
         return `<div class="avt-wrap" style="width:${size}px;height:${size}px;position:relative;">${backLayer}${baseEl}${frontLayers}</div>`;
     }
 
@@ -16028,13 +16274,13 @@ window.addCharRow = function() {
             : equippedTitId ? (earnedTits.find(t=>t.id===equippedTitId)||null)
             : (earnedTits[earnedTits.length-1]||null);
 
-        // 아이템 슬롯 — 클릭 시 미니팝업으로 카테고리 아이템 선택 (pet은 별도 펫 섹션에서 처리)
+        // 아이템 슬롯 — 클릭 시 미니팝업으로 카테고리 아이템 선택 (pet, prop은 아이템 섹션 내 포함)
         const mkFlipBtns = (cat) => {
             const flip = getEqFlip(me.eq && me.eq[cat]);
             const btn = (val, label) => `<button onclick="setFlip('${cat}','${val}')" style="flex:1;padding:2px 0;font-size:10px;border:1px solid #FFB300;border-radius:5px;background:${flip===val?'#FFB300':'white'};color:${flip===val?'white':'#FFB300'};cursor:pointer;font-family:inherit;">${label}</button>`;
             return `<div style="display:flex;gap:2px;width:100%;">${btn('left','◀')+btn('right','▶')}</div>`;
         };
-        const itemSlotsHtml = AVT_CATS.filter(c=>c.k!=='pet').map(c => {
+        const _mkItemSlot = (c) => {
             const eqVal = me.eq && me.eq[c.k];
             const eqId = getEqId(eqVal);
             const eqItem = eqId ? (db.avt||[]).find(a=>a.id===eqId) : null;
@@ -16047,54 +16293,60 @@ window.addCharRow = function() {
                 </div>
                 <div style="font-size:11px;color:#999;">${c.lb}</div>
             </div>`;
-        }).join('');
+        };
+        // 일반 아이템 (prop, pet 제외) + 등 장식(back) 포함
+        const itemSlotsHtml = AVT_CATS.filter(c=>c.k!=='pet'&&c.k!=='prop').map(_mkItemSlot).join('');
 
-        // 펫 슬롯 — 다중 장착 + 메인 펫 설정
+        // 소품(prop) 슬롯 — 왼쪽(index 0) / 오른쪽(index 1), 아이템 슬롯과 동일 스타일
+        if(!me.displayProps) me.displayProps = getEqId(me.eq?.prop) ? [getEqId(me.eq.prop)].filter(Boolean) : [];
+        if(!Array.isArray(me.displayProps)) me.displayProps = Object.values(me.displayProps).filter(Boolean);
+        if(me.eq) me.eq.prop = me.displayProps[0] || '';
+        const _mkPropSlot = (slotIdx) => {
+            const pid = me.displayProps[slotIdx];
+            const pItem = pid ? (db.avt||[]).find(a=>a.id===pid) : null;
+            const label = slotIdx === 0 ? '소품(왼)' : '소품(오)';
+            if(pItem) {
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                    <div onclick="openAddPropPicker('${slotIdx===0?'L':'R'}')" style="width:64px;height:64px;border:2px solid #FFB300;border-radius:14px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;">
+                        ${pItem.img ? `<img src="${pItem.img}" style="width:54px;height:54px;object-fit:contain;image-rendering:pixelated;${slotIdx===1?'transform:scaleX(-1);':''}">` : '<div style="font-size:28px;">🎭</div>'}
+                    </div>
+                    <div style="font-size:11px;color:#999;">${label}</div>
+                </div>`;
+            } else {
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+                    <div onclick="openAddPropPicker('${slotIdx===0?'L':'R'}')" style="width:64px;height:64px;border:2px dashed #DDD;border-radius:14px;background:white;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                        <div style="font-size:24px;color:#CCC;">+</div>
+                    </div>
+                    <div style="font-size:11px;color:#999;">${label}</div>
+                </div>`;
+            }
+        };
+
+        // 펫 슬롯 — 왼쪽(index 0) / 오른쪽(index 1) 2슬롯
         if(!me.displayPets) me.displayPets = me.eq?.pet ? [getEqId(me.eq.pet)].filter(Boolean) : [];
         if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
-        const mainPetId = getEqId(me.eq?.pet) || '';
-        // 메인 펫 → 펫 → 알 → 물 → 햇살 순, 각 그룹 내부 숫자 오름차순
-        const _charPetGroup = it => {
-            if(it.id === mainPetId) return 0;
-            const nm = String(it.nm||'');
-            if(nm.includes('알')) return 2;
-            if(nm.includes('물')) return 3;
-            if(nm.includes('햇살')) return 4;
-            return 1;
+        const _mkPetSlot = (slotIdx, slotLabel, slotColor) => {
+            const pid = me.displayPets[slotIdx];
+            const pItem = pid ? (db.avt||[]).find(a=>a.id===pid) : null;
+            if(pItem) {
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                    <div onclick="openAddPetPicker('${slotIdx===0?'L':'R'}')" style="width:64px;height:64px;border:2px solid ${slotColor};border-radius:14px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;">
+                        ${pItem.img ? `<img src="${pItem.img}" style="width:56px;height:56px;object-fit:contain;image-rendering:pixelated;${slotIdx===1?'transform:scaleX(-1);':''}">` : '<div style="font-size:32px;">🐾</div>'}
+                    </div>
+                    <div style="font-size:10px;color:${slotColor};text-align:center;width:64px;font-weight:bold;">${slotLabel}</div>
+                </div>`;
+            } else {
+                return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+                    <div onclick="openAddPetPicker('${slotIdx===0?'L':'R'}')" style="width:64px;height:64px;border:2px dashed #FFCC80;border-radius:14px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                        <div style="font-size:28px;color:#FFAB40;">+</div>
+                    </div>
+                    <div style="font-size:10px;color:#BDBDBD;text-align:center;width:64px;">${slotLabel}</div>
+                </div>`;
+            }
         };
-        const _charPetNums = it => {
-            const nums = (String(it.nm||'').match(/\d+/g) || []).map(Number);
-            return [nums[0] ?? -Infinity, nums[1] ?? -Infinity];
-        };
-        const _sortedDisplayPets = [...me.displayPets].sort((aId,bId)=>{
-            const ai = (db.avt||[]).find(a=>a.id===aId);
-            const bi = (db.avt||[]).find(a=>a.id===bId);
-            if(!ai && !bi) return 0;
-            if(!ai) return 1;
-            if(!bi) return -1;
-            const ga = _charPetGroup(ai), gb = _charPetGroup(bi);
-            if(ga !== gb) return ga - gb;
-            const [a1,a2] = _charPetNums(ai), [b1,b2] = _charPetNums(bi);
-            if(b1 !== a1) return b1 - a1;
-            if(b2 !== a2) return b2 - a2;
-            return String(ai.nm||'').localeCompare(String(bi.nm||''), 'ko');
-        });
-        const petSlotsHtml = _sortedDisplayPets.map(pid => {
-            const pItem = (db.avt||[]).find(a=>a.id===pid);
-            if(!pItem) return '';
-            const isMain = mainPetId === pid;
-            return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;margin-top:8px;">
-                ${isMain ? `<div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#FF9800;color:white;font-size:9px;border-radius:4px;padding:1px 5px;z-index:2;white-space:nowrap;">⭐메인</div>` : ''}
-                <div onclick="showPetMenu('${pid}')" style="width:64px;height:64px;border:2px solid ${isMain?'#FF9F43':'#DDD'};border-radius:14px;background:${isMain?'#FFF8E1':'white'};display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;">
-                    ${pItem.img ? `<img src="${pItem.img}" style="width:56px;height:56px;object-fit:contain;image-rendering:pixelated;">` : '<div style="font-size:32px;">🐾</div>'}
-                </div>
-                <div style="font-size:10px;color:${isMain?'#FF9800':'#888'};text-align:center;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${isMain?'bold':'normal'};">${pItem.nm}</div>
-            </div>`;
-        }).join('') + `<div onclick="openAddPetPicker()" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;margin-top:8px;">
-            <div style="width:64px;height:64px;border:2px dashed #FFCC80;border-radius:14px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;">
-                <div style="font-size:28px;color:#FFAB40;">+</div>
-            </div>
-            <div style="font-size:11px;color:#FFAB40;">펫 추가</div>
+        const petSlotsHtml = `<div style="display:flex;gap:12px;justify-content:flex-start;margin-top:4px;">
+            ${_mkPetSlot(0,'왼쪽','#FF9800')}
+            ${_mkPetSlot(1,'오른쪽','#42A5F5')}
         </div>`;
 
         // 뱃지 슬롯
@@ -16163,7 +16415,7 @@ window.addCharRow = function() {
                 <!-- 좌측: 캐릭터 패널 -->
                 <div style="background:white;border-radius:20px;padding:6px 20px 8px;text-align:center;min-width:200px;display:flex;flex-direction:column;align-items:center;">
                     <div style="margin-bottom:6px;">${titBarHtml}</div>
-                    ${renderAvatar(me.eq, 487, me.displayPets)}
+                    ${renderAvatar(me.eq, 487, me.displayPets, me.displayProps)}
                     <div class="char-name-banner-lg" style="margin-top:6px;">
                         <span class="cnb-star">✦</span>
                         <span class="cnb-lv">Lv.${lv}</span>
@@ -16177,14 +16429,15 @@ window.addCharRow = function() {
                         <div style="margin-bottom:10px;">
                             <div style="font-size:13px;font-weight:bold;color:#5D4037;">🎨 아이템</div>
                         </div>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;">${itemSlotsHtml}</div>
+                        <!-- 아이템 슬롯 (등 장식 + 소품 포함, 한 줄 정렬) -->
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;">${itemSlotsHtml}${_mkPropSlot(0)}${_mkPropSlot(1)}</div>
                     </div>
                     <div style="background:white;border:2px solid #EEE;border-radius:16px;padding:14px;">
                         <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:10px;">🐾 펫</div>
-                        <div style="display:flex;flex-wrap:wrap;gap:8px;">${petSlotsHtml}</div>
+                        ${petSlotsHtml}
                     </div>
                     <div style="background:white;border:2px solid #EEE;border-radius:16px;padding:14px;">
-                        <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:10px;">📛 펫 스킬</div>
+                        <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:10px;">✨펫 스킬</div>
                         <div style="display:flex;flex-wrap:wrap;gap:8px;">${badgeSlotsHtml}</div>
                     </div>
                 </div>
@@ -18178,6 +18431,30 @@ window.addCharRow = function() {
                 return def && def.id===id && (i.st==='ok'||i.st==='used'||i.st==='usd');
             });
         if(!isOwned) return alert('이 아이템을 먼저 구매해야 합니다.');
+        // 소품(prop)은 다중 착용 (최대 5개)
+        if(item.cat === 'prop') {
+            if(!me.displayProps) me.displayProps = getEqId(me.eq?.prop) ? [getEqId(me.eq.prop)].filter(Boolean) : [];
+            else if(!Array.isArray(me.displayProps)) me.displayProps = Object.values(me.displayProps).filter(Boolean);
+            if(me.displayProps.includes(id)) {
+                // 이미 착용 중 → 해제
+                me.displayProps = me.displayProps.filter(p=>p!==id);
+                me.eq.prop = me.displayProps[0] || '';
+            } else {
+                // 빈 슬롯 자동 배정 (L→R)
+                const _targetSlot = me.displayProps[0] ? 'R' : 'L';
+                if(me.displayProps.filter(Boolean).length >= 2) return alert('소품은 최대 2개까지 착용할 수 있습니다.\n다른 소품을 먼저 해제해주세요.');
+                window.addDisplayProp(id, _targetSlot);
+                return;
+            }
+            me.eq.prop = me.displayProps[0] || '';
+            upMe(); rChar();
+            if(window._plzActive && window.plzMyRef && me.eq) {
+                try { window._plzScheduleEqBroadcast && window._plzScheduleEqBroadcast(); } catch(_){}
+            }
+            if(bgTab === 'avt' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
+            else rChar();
+            return;
+        }
         // 펫은 다중 장착
         if(item.cat === 'pet') {
             if(!me.displayPets) {
@@ -18185,8 +18462,11 @@ window.addCharRow = function() {
             } else if(!Array.isArray(me.displayPets)) {
                 me.displayPets = Object.values(me.displayPets).filter(Boolean);
             }
-            if(!me.displayPets.includes(id)) me.displayPets.push(id);
-            me.eq.pet = id; // 새로 추가한 펫을 메인으로
+            if(!me.displayPets.includes(id)) {
+                if(me.displayPets.length >= 2) return alert('펫은 최대 2개까지 착용할 수 있습니다.\n다른 펫을 먼저 해제해주세요.');
+                me.displayPets.push(id);
+            }
+            me.eq.pet = me.displayPets[0] || id; // 왼쪽 슬롯이 eq.pet
             upMe(); rChar();
             if(window._plzActive && window.plzMyRef && me.eq) {
                 try { window._plzScheduleEqBroadcast && window._plzScheduleEqBroadcast(); } catch(_){}
@@ -18276,18 +18556,19 @@ window.addCharRow = function() {
         if(existing) existing.remove();
         const pItem = (db.avt||[]).find(a=>a.id===pid);
         if(!pItem) return;
-        const isMain = getEqId(me.eq?.pet) === pid;
+        const _dp = Array.isArray(me.displayPets) ? me.displayPets : [];
+        const curSlot = _dp[0] === pid ? 'L' : _dp[1] === pid ? 'R' : null;
+        const slotLabel = curSlot === 'L' ? '왼쪽' : curSlot === 'R' ? '오른쪽' : '미배정';
         const overlay = document.createElement('div');
         overlay.id = 'petMenuOverlay';
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;';
         overlay.innerHTML = `<div style="background:white;border-radius:18px;padding:20px 24px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,0.22);text-align:center;position:relative;">
             <button onclick="document.getElementById('petMenuOverlay').remove()" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:#999;">✕</button>
-            <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:14px;">🐾 ${pItem.nm}</div>
+            <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:4px;">🐾 ${pItem.nm}</div>
+            <div style="font-size:11px;color:#888;margin-bottom:12px;">현재: ${slotLabel} 슬롯</div>
             <div style="display:flex;flex-direction:column;gap:8px;">
-                ${!isMain
-                    ? `<button class="btn btn-yellow" onclick="setMainDisplayPet('${pid}');document.getElementById('petMenuOverlay').remove();">⭐메인펫 설정</button>`
-                    : `<button class="btn btn-gray" onclick="setMainDisplayPet('');document.getElementById('petMenuOverlay').remove();">⭐메인펫 설정 해제</button>`}
-                <button class="btn btn-blue" onclick="document.getElementById('petMenuOverlay').remove();swapDisplayPet('${pid}');">교체</button>
+                ${curSlot !== 'L' ? `<button class="btn btn-yellow" onclick="movePetToSlot('${pid}','L');">← 왼쪽 슬롯에 배치</button>` : ''}
+                ${curSlot !== 'R' ? `<button class="btn" style="background:#42A5F5;color:white;" onclick="movePetToSlot('${pid}','R');">→ 오른쪽 슬롯에 배치</button>` : ''}
                 <button class="btn btn-red" onclick="removeDisplayPet('${pid}');document.getElementById('petMenuOverlay').remove();">해제</button>
             </div>
         </div>`;
@@ -18295,44 +18576,88 @@ window.addCharRow = function() {
         document.body.appendChild(overlay);
     };
 
-    window.openAddPetPicker = function() {
+    // 펫을 특정 슬롯(L/R)으로 이동 또는 배치
+    window.movePetToSlot = function(pid, slot) {
+        if(!me) return;
+        if(!Array.isArray(me.displayPets)) me.displayPets = me.displayPets ? Object.values(me.displayPets).filter(Boolean) : [];
+        const idx = slot === 'R' ? 1 : 0;
+        const otherIdx = 1 - idx;
+        // 현재 위치 찾기
+        const curIdx = me.displayPets.indexOf(pid);
+        // 대상 슬롯에 있는 다른 펫
+        const displaced = me.displayPets[idx] && me.displayPets[idx] !== pid ? me.displayPets[idx] : null;
+        // 새 배열 재구성
+        const newDp = [...me.displayPets];
+        // 현재 위치에서 제거
+        if(curIdx !== -1) newDp[curIdx] = null;
+        // 대상 슬롯에 배치 (배열 확장 필요 시)
+        while(newDp.length <= idx) newDp.push(null);
+        newDp[idx] = pid;
+        // displaced 펫을 원래 자리(curIdx)에 넣기, 없으면 그냥 null
+        if(displaced && curIdx !== -1 && curIdx !== idx) newDp[curIdx] = displaced;
+        me.displayPets = newDp.filter(Boolean);
+        if(!me.eq) me.eq = {};
+        me.eq.pet = me.displayPets[0] || '';
+        upMe(); rChar();
+        document.getElementById('petMenuOverlay')?.remove();
+        if(bgTab === 'pet' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
+    };
+
+    window.openAddPetPicker = function(slot) {
         if(!me) return;
         if(!me.displayPets) me.displayPets = [];
         else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
+        const _slot = slot || (me.displayPets[0] ? 'R' : 'L');
+        const _slotLabel = _slot === 'R' ? '오른쪽' : '왼쪽';
+        const _slotIdx = _slot === 'R' ? 1 : 0;
+        const currentPetId = me.displayPets[_slotIdx] || null;
         const avt = db.avt || [];
         const ownedIds = new Set();
         (me.avtOwned||[]).forEach(id=>ownedIds.add(id));
         avt.filter(a=>a.price===0).forEach(a=>ownedIds.add(a.id));
         (me.inv||[]).forEach(i=>{const d=avt.find(a=>a.nm===i.n);if(d&&(i.st==='ok'||i.st==='used'||i.st==='usd'))ownedIds.add(d.id);});
-        // 이미 등록된 펫은 제외
-        const alreadyIn = new Set(me.displayPets);
-        const petItems = avt.filter(a=>a.cat==='pet' && ownedIds.has(a.id) && !alreadyIn.has(a.id));
+        const otherSlotPet = _slot === 'L' ? me.displayPets[1] : me.displayPets[0];
+        const petItems = avt.filter(a=>a.cat==='pet' && ownedIds.has(a.id) && a.id !== otherSlotPet);
         const slotsHtml = petItems.length
-            ? petItems.map(item=>`<div onclick="addDisplayPet('${item.id}')" style="width:72px;height:72px;border:2px solid #EEE;border-radius:12px;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:2px;padding:4px;box-sizing:border-box;">
-                ${item.img?`<img src="${item.img}" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;">`:'<div style="font-size:28px;">🐾</div>'}
-                <div style="font-size:10px;color:#5D4037;text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.nm}</div>
-              </div>`).join('')
+            ? petItems.map(item=>{
+                const isCurrent = item.id === currentPetId;
+                return `<div onclick="addDisplayPet('${item.id}','${_slot}')" style="width:72px;height:72px;border:2px solid ${isCurrent?'#FFB300':'#EEE'};border-radius:12px;background:${isCurrent?'#FFF8E1':'white'};display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:2px;padding:4px;box-sizing:border-box;position:relative;">
+                    ${isCurrent?`<div style="position:absolute;top:2px;left:2px;background:#FFB300;color:white;font-size:8px;border-radius:4px;padding:1px 4px;font-family:'Jua';">착용중</div>`:''}
+                    ${item.img?`<img src="${item.img}" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;${_slot==='R'?'transform:scaleX(-1);':''}">`:'<div style="font-size:28px;">🐾</div>'}
+                    <div style="font-size:10px;color:#5D4037;text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.nm}</div>
+                  </div>`;
+              }).join('')
             : `<div style="color:#aaa;padding:16px;font-size:13px;">추가할 수 있는 펫이 없습니다.</div>`;
+        const removeBtn = currentPetId ? `<button onclick="removeDisplayPet('${currentPetId}');document.getElementById('addPetOverlay').remove();" style="width:100%;padding:10px;background:white;border:2px solid #EF9A9A;border-radius:12px;color:#E53935;font-family:'Jua';font-size:14px;cursor:pointer;margin-top:12px;">✕ 해제</button>` : '';
         const overlay = document.createElement('div');
         overlay.id = 'addPetOverlay';
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999;';
         overlay.innerHTML = `<div style="background:white;border-radius:20px;padding:20px;min-width:260px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.25);position:relative;">
-            <div style="font-size:15px;font-weight:bold;color:#5D4037;margin-bottom:12px;">🐾 펫 추가</div>
+            <div style="font-size:15px;font-weight:bold;color:#5D4037;margin-bottom:4px;">🐾 펫 선택 — ${_slotLabel}</div>
+            <div style="font-size:11px;color:#888;margin-bottom:12px;">${_slotLabel} 슬롯에 장착할 펫을 선택하세요</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px;">${slotsHtml}</div>
+            ${removeBtn}
             <button onclick="document.getElementById('addPetOverlay').remove()" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>
         </div>`;
         overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
         document.body.appendChild(overlay);
     };
 
-    window.addDisplayPet = function(id) {
+    window.addDisplayPet = function(id, slot) {
         if(!me) return;
         if(!me.displayPets) me.displayPets = [];
         else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
-        if(me.displayPets.includes(id)) return;
-        me.displayPets = [...me.displayPets, id];   // 새 배열로 명시적 생성
+        const _slot = slot || (me.displayPets[0] ? 'R' : 'L');
+        const idx = _slot === 'R' ? 1 : 0;
+        // 다른 슬롯에 같은 펫이 있으면 거기서 제거
+        const otherIdx = 1 - idx;
+        if(me.displayPets[otherIdx] === id) me.displayPets.splice(otherIdx, 1);
+        // 대상 슬롯에 배치
+        while(me.displayPets.length <= idx) me.displayPets.push('');
+        me.displayPets[idx] = id;
+        me.displayPets = me.displayPets.filter(Boolean);
         if(!me.eq) me.eq = {};
-        if(!me.eq.pet) me.eq.pet = id;              // 첫 펫이면 메인 설정
+        me.eq.pet = me.displayPets[0] || id;
         upMe();
         document.getElementById('addPetOverlay')?.remove();
         rChar();
@@ -18376,6 +18701,125 @@ window.addCharRow = function() {
         upMe(); rChar();
         document.getElementById('swapPetOverlay')?.remove();
         if(bgTab === 'pet' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
+    };
+
+    // ── 소품(prop) 2슬롯 전용 함수 ──
+    window.showPropMenu = function(pid) {
+        const existing = document.getElementById('propMenuOverlay');
+        if(existing) existing.remove();
+        const pItem = (db.avt||[]).find(a=>a.id===pid);
+        if(!pItem) return;
+        const _dp = Array.isArray(me.displayProps) ? me.displayProps : [];
+        const curSlot = _dp[0] === pid ? 'L' : _dp[1] === pid ? 'R' : null;
+        const slotLabel = curSlot === 'L' ? '왼쪽' : curSlot === 'R' ? '오른쪽' : '미배정';
+        const overlay = document.createElement('div');
+        overlay.id = 'propMenuOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;z-index:9999;';
+        overlay.innerHTML = `<div style="background:white;border-radius:18px;padding:20px 24px;min-width:200px;box-shadow:0 8px 32px rgba(0,0,0,0.22);text-align:center;position:relative;">
+            <button onclick="document.getElementById('propMenuOverlay').remove()" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:#999;">✕</button>
+            <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:4px;">🎭 ${pItem.nm}</div>
+            <div style="font-size:11px;color:#888;margin-bottom:12px;">현재: ${slotLabel} 슬롯</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+                ${curSlot !== 'L' ? `<button class="btn btn-green" onclick="movePropToSlot('${pid}','L');">← 왼쪽 슬롯에 배치</button>` : ''}
+                ${curSlot !== 'R' ? `<button class="btn" style="background:#42A5F5;color:white;" onclick="movePropToSlot('${pid}','R');">→ 오른쪽 슬롯에 배치</button>` : ''}
+                <button class="btn btn-red" onclick="removeDisplayProp('${pid}');document.getElementById('propMenuOverlay').remove();">해제</button>
+            </div>
+        </div>`;
+        overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+    };
+
+    // 소품 추가: slot='L'(index 0) 또는 'R'(index 1)
+    window.openAddPropPicker = function(slot) {
+        if(!me) return;
+        if(!me.displayProps) me.displayProps = [];
+        else if(!Array.isArray(me.displayProps)) me.displayProps = Object.values(me.displayProps).filter(Boolean);
+        const _slot = slot || (me.displayProps[0] ? 'R' : 'L');
+        const _slotLabel = _slot === 'R' ? '오른쪽' : '왼쪽';
+        const _slotIdx = _slot === 'R' ? 1 : 0;
+        const currentPropId = me.displayProps[_slotIdx] || null;
+        const avt = db.avt || [];
+        const ownedIds = new Set();
+        (me.avtOwned||[]).forEach(id=>ownedIds.add(id));
+        avt.filter(a=>a.price===0).forEach(a=>ownedIds.add(a.id));
+        (me.inv||[]).forEach(i=>{const d=avt.find(a=>a.nm===i.n);if(d&&(i.st==='ok'||i.st==='used'||i.st==='usd'))ownedIds.add(d.id);});
+        const otherSlotProp = _slot === 'L' ? me.displayProps[1] : me.displayProps[0];
+        const propItems = avt.filter(a=>a.cat==='prop' && ownedIds.has(a.id) && a.id !== otherSlotProp);
+        const slotsHtml = propItems.length
+            ? propItems.map(item=>{
+                const isCurrent = item.id === currentPropId;
+                return `<div onclick="addDisplayProp('${item.id}','${_slot}')" style="width:72px;height:72px;border:2px solid ${isCurrent?'#FFB300':'#EEE'};border-radius:12px;background:${isCurrent?'#FFF8E1':'white'};display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:2px;padding:4px;box-sizing:border-box;position:relative;">
+                    ${isCurrent?`<div style="position:absolute;top:2px;left:2px;background:#FFB300;color:white;font-size:8px;border-radius:4px;padding:1px 4px;font-family:'Jua';">착용중</div>`:''}
+                    ${item.img?`<img src="${item.img}" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;${_slot==='R'?'transform:scaleX(-1);':''}">`:'<div style="font-size:28px;">🎭</div>'}
+                    <div style="font-size:10px;color:#5D4037;text-align:center;max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.nm}</div>
+                  </div>`;
+              }).join('')
+            : `<div style="color:#aaa;padding:16px;font-size:13px;">추가할 수 있는 소품이 없습니다.</div>`;
+        const removeBtn = currentPropId ? `<button onclick="removeDisplayProp('${currentPropId}');document.getElementById('addPropOverlay').remove();" style="width:100%;padding:10px;background:white;border:2px solid #EF9A9A;border-radius:12px;color:#E53935;font-family:'Jua';font-size:14px;cursor:pointer;margin-top:12px;">✕ 해제</button>` : '';
+        const overlay = document.createElement('div');
+        overlay.id = 'addPropOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:9999;';
+        overlay.innerHTML = `<div style="background:white;border-radius:20px;padding:20px;min-width:260px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.25);position:relative;">
+            <div style="font-size:15px;font-weight:bold;color:#5D4037;margin-bottom:4px;">🎭 소품 선택 — ${_slotLabel}</div>
+            <div style="font-size:11px;color:#888;margin-bottom:12px;">${_slotLabel} 슬롯에 장착할 소품을 선택하세요</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">${slotsHtml}</div>
+            ${removeBtn}
+            <button onclick="document.getElementById('addPropOverlay').remove()" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>
+        </div>`;
+        overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+        document.body.appendChild(overlay);
+    };
+
+    window.addDisplayProp = function(id, slot) {
+        if(!me) return;
+        if(!me.displayProps) me.displayProps = [];
+        else if(!Array.isArray(me.displayProps)) me.displayProps = Object.values(me.displayProps).filter(Boolean);
+        const _slot = slot || (me.displayProps[0] ? 'R' : 'L');
+        const idx = _slot === 'R' ? 1 : 0;
+        const otherIdx = 1 - idx;
+        // 다른 슬롯에 같은 소품이 있으면 제거
+        if(me.displayProps[otherIdx] === id) me.displayProps.splice(otherIdx, 1);
+        // 대상 슬롯에 배치
+        while(me.displayProps.length <= idx) me.displayProps.push('');
+        me.displayProps[idx] = id;
+        me.displayProps = me.displayProps.filter(Boolean);
+        if(!me.eq) me.eq = {};
+        me.eq.prop = me.displayProps[0] || '';
+        upMe();
+        document.getElementById('addPropOverlay')?.remove();
+        rChar();
+        if(bgTab === 'avt' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
+    };
+
+    // 소품 슬롯 이동 (showPropMenu에서 사용)
+    window.movePropToSlot = function(pid, slot) {
+        if(!me) return;
+        if(!Array.isArray(me.displayProps)) me.displayProps = me.displayProps ? Object.values(me.displayProps).filter(Boolean) : [];
+        const idx = slot === 'R' ? 1 : 0;
+        const otherIdx = 1 - idx;
+        const curIdx = me.displayProps.indexOf(pid);
+        const displaced = me.displayProps[idx] && me.displayProps[idx] !== pid ? me.displayProps[idx] : null;
+        const newDp = [...me.displayProps];
+        if(curIdx !== -1) newDp[curIdx] = null;
+        while(newDp.length <= idx) newDp.push(null);
+        newDp[idx] = pid;
+        if(displaced && curIdx !== -1 && curIdx !== idx) newDp[curIdx] = displaced;
+        me.displayProps = newDp.filter(Boolean);
+        if(!me.eq) me.eq = {};
+        me.eq.prop = me.displayProps[0] || '';
+        upMe(); rChar();
+        document.getElementById('propMenuOverlay')?.remove();
+        if(bgTab === 'avt' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
+    };
+
+    window.removeDisplayProp = function(id) {
+        if(!me) return;
+        const _dp = Array.isArray(me.displayProps) ? me.displayProps : Object.values(me.displayProps||{}).filter(Boolean);
+        me.displayProps = _dp.filter(p => p !== id);
+        if(!me.eq) me.eq = {};
+        me.eq.prop = me.displayProps[0] || '';
+        upMe(); rChar();
+        if(bgTab === 'avt' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
     };
 
     window.removeDisplayPet = function(id) {
@@ -22028,7 +22472,7 @@ window.addCharRow = function() {
             const _avtCatLb = {back:'등 장식',outfit:'의상',shoes:'신발',face:'얼굴',hair:'머리',hat:'모자',acc:'얼굴 장식',face_deco:'얼굴 장식',hair_deco:'머리 장식',prop:'소품',pet:'펫'};
             const _catStr = (_avtCatLb[item.cat]||item.cat||'');
             const _catPfx = _catStr ? `${_catStr} ` : '';
-            window._plzBroadcastPurchase({ sys: true, nm: '🛒', msg: `${me.nm}이(가) ${_catPfx}[${item.nm}]을(를) 구입했어요!`, ts: Date.now() });
+            window._plzBroadcastPurchase({ sys: true, nm: '🛒', msg: `${_escHtml(me.nm)}이(가) ${_escHtml(_catPfx)}[${_escHtml(item.nm)}]을(를) 구입했어요!`, ts: Date.now() });
         } catch(_) {}
 
         const buyHtml = `<div id="avtBuyModal" class="modal-overlay" onclick="this.remove()">
@@ -22036,9 +22480,9 @@ window.addCharRow = function() {
             <div class="modal-window" onclick="event.stopPropagation()">
                 <div class="modal-inner" style="background:linear-gradient(135deg,#FFF3E0,#FFF9C4);border:3px solid #FFB300;border-radius:24px;padding:30px;">
                     <div style="font-size:50px;margin-bottom:10px;">🎉</div>
-                    <div style="margin-bottom:16px;">${item.img?`<img src="${item.img}" style="width:90px;height:90px;object-fit:contain;image-rendering:pixelated;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">`:''}</div>
+                    <div style="margin-bottom:16px;">${item.img?`<img src="${_escHtml(item.img)}" style="width:90px;height:90px;object-fit:contain;image-rendering:pixelated;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">`:''}</div>
                     <h2 style="color:#E65100;margin:0 0 8px;">아이템 획득!</h2>
-                    <div style="font-size:20px;font-weight:bold;color:#5D4037;margin-bottom:6px;">${item.nm}</div>
+                    <div style="font-size:20px;font-weight:bold;color:#5D4037;margin-bottom:6px;">${_escHtml(item.nm)}</div>
                     <div style="font-size:14px;color:#888;margin-bottom:20px;">가방 → 꾸미기 탭에서 착용해보세요!</div>
                     <button class="btn btn-org" style="width:60%;font-size:18px;padding:12px;" onclick="document.getElementById('avtBuyModal').remove()">확인!</button>
                 </div>
@@ -22198,12 +22642,8 @@ window.addCharRow = function() {
         // 라이어/마피아/캐치마인드/폭탄게임 진행 중에는 위치 동기화 차단 (정적 게임 — 트래픽 절감)
         const _liG = window._liarState, _mafG = window._mafiaState, _cmG = window._catchMindState, _bgG = window._bombGameState;
         if((_liG && _liG.on) || (_mafG && _mafG.on) || (_cmG && _cmG.on) || (_bgG && _bgG.on)) {
-            _plzLastMoveTime = Date.now();
             return;
         }
-        _plzLastMoveTime = Date.now();
-        window._plzIdleWarned = false;
-        document.getElementById('_plzIdleWarn')?.remove();
         // 숨바꼭질: 리듬 위반 시 잠깐 보이게 (이동 2s → 정지 3s 사이클)
         const _g = window._hideSeekState;
         if(_g && Date.now() >= _g.playStartAt && Date.now() < _g.endAt) {
@@ -22261,7 +22701,7 @@ window.addCharRow = function() {
     // 방별 데이터: 배경/장애물/공지/얼음땡 설정 등
     const _PLZ_CFG_FIELDS = ['plz','plzIceTag','plzMaxUser'];
     // 전역 설정: 모든 광장에 동일 적용
-    const _PLZ_GLOBAL_FIELDS = ['plzHours','plzIdle','plzMaxTime','plzRate','plzSwitchCd'];
+    const _PLZ_GLOBAL_FIELDS = ['plzHours','plzMaxTime','plzRate','plzSwitchCd'];
 
     // 설정 저장 헬퍼 — 전역 필드는 db.cfg에만, 방별 필드는 양쪽 동기화
     window._plzSetCfg = function(field, value) {
@@ -22760,7 +23200,7 @@ window.addCharRow = function() {
         const myVoteCount = Object.keys(myVotes).length;
         const voteOpen = _isFashionVoteOpen(cfg);
         let myCharHtml = '';
-        try { myCharHtml = (typeof renderAvatar === 'function') ? renderAvatar(me.eq, 140, me.displayPets || []) : ''; }
+        try { myCharHtml = (typeof renderAvatar === 'function') ? renderAvatar(me.eq, 140, me.displayPets || [], me.displayProps || []) : ''; }
         catch(_){ myCharHtml = '<div style="width:140px;height:140px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;">캐릭터</div>'; }
         const submitSection = `
             <div class="card" style="padding:14px;margin-bottom:14px;">
@@ -22791,7 +23231,7 @@ window.addCharRow = function() {
                         const [cd, e] = entry;
                         const voted = !!myVotes[cd];
                         let charHtml='';
-                        try { charHtml = (typeof renderAvatar === 'function') ? renderAvatar(e.eq||{}, 110, e.displayPets || []) : ''; }
+                        try { charHtml = (typeof renderAvatar === 'function') ? renderAvatar(e.eq||{}, 110, e.displayPets || [], e.displayProps || []) : ''; }
                         catch(_){ charHtml = '<div style="width:110px;height:110px;background:#f5f5f5;"></div>'; }
                         const disabled = !voteOpen || (!voted && myVoteCount >= 3);
                         return `<div onclick="${disabled?'':`_castFashionVote('${cd}',${voted})`}" style="border:3px solid ${voted?'#FF6B6B':'#E0E0E0'};border-radius:12px;padding:8px;text-align:center;cursor:${disabled?'not-allowed':'pointer'};background:${voted?'#FFF0F0':'white'};${disabled?'opacity:0.6;':''}">
@@ -22887,7 +23327,7 @@ window.addCharRow = function() {
         ranked.map((r,i) => {
             const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}위`;
             let charHtml='';
-            try { charHtml = (typeof renderAvatar === 'function') ? renderAvatar(r.eq||{}, 140, r.displayPets||[]) : ''; }
+            try { charHtml = (typeof renderAvatar === 'function') ? renderAvatar(r.eq||{}, 140, r.displayPets||[], r.displayProps||[]) : ''; }
             catch(_){ charHtml = ''; }
             const isMe = me && r.cd === me.cd;
             return `<div style="background:${i<3?'linear-gradient(135deg,#FFF59D,#FFE082)':'white'};border:2px solid ${i===0?'#FF8F00':i===1?'#90A4AE':i===2?'#A1887F':'#E0E0E0'};border-radius:14px;padding:14px;text-align:center;${isMe?'box-shadow:0 0 0 3px #4CAF50;':''}">
@@ -23152,14 +23592,6 @@ window.addCharRow = function() {
         if(muCnEl) muCnEl.value = plzMaxUser.count || 30;
         if(muStEl) muStEl.textContent = plzMaxUser.enabled ? `✅ 최대 ${plzMaxUser.count||30}명으로 제한` : '';
 
-        // 비활성 자동 퇴장 설정 반영
-        const plzIdle = (db.cfg && db.cfg.plzIdle) || {};
-        const idEnEl = document.getElementById('plz_idle_enabled');
-        const idMnEl = document.getElementById('plz_idle_minutes');
-        const idStEl = document.getElementById('plz_idle_status');
-        if(idEnEl) idEnEl.checked = !!plzIdle.enabled;
-        if(idMnEl) idMnEl.value = plzIdle.minutes || 5;
-        if(idStEl) idStEl.textContent = plzIdle.enabled ? `✅ ${plzIdle.minutes||5}분 무움직임 시 자동 퇴장` : '';
 
         // 오목 랭킹 주기 반영
         const omokPeriodEl = document.getElementById('omok_rank_period');
@@ -23272,14 +23704,6 @@ window.addCharRow = function() {
         if(statusEl) statusEl.textContent = enabled ? `✅ ${windowSec}초 내 ${attempts}회 → ${cooldownSec}초 쿨다운` : '비활성';
     };
 
-    window.savePlzIdle = function() {
-        const enabled = document.getElementById('plz_idle_enabled').checked;
-        const minutes = parseInt(document.getElementById('plz_idle_minutes').value) || 5;
-        _plzSetCfg('plzIdle', { enabled, minutes });
-        sv();
-        const statusEl = document.getElementById('plz_idle_status');
-        if(statusEl) statusEl.textContent = enabled ? `✅ ${minutes}분 무움직임 시 자동 퇴장` : '비활성';
-    };
 
     window.togglePlzChat = function() {
         const ov = document.getElementById('plzChatOverlay');
@@ -24091,10 +24515,10 @@ window.addCharRow = function() {
             const rows = entries.length === 0
                 ? '<div style="color:#BDBDBD;font-size:12px;padding:6px 8px;text-align:center;">채팅 없음</div>'
                 : entries.map(([k,c]) =>
-                    `<div class="plz-chat-row" style="display:flex;align-items:baseline;gap:4px;padding:2px 4px;"><span style="flex-shrink:0;color:#1565C0;font-weight:bold;">${c.nm}</span><span style="flex-shrink:0;color:#aaa;font-size:10px;">${_fmtTime(c.ts)}</span><span style="color:#333;flex:1;word-break:break-all;">${c.msg}</span><button onclick="deletePlzChatMsgRoom('${rid}','${k}')" style="flex-shrink:0;background:none;border:none;color:#E53935;cursor:pointer;font-size:12px;padding:0 2px;opacity:0.6;">✕</button></div>`
+                    `<div class="plz-chat-row" style="display:flex;align-items:baseline;gap:4px;padding:2px 4px;"><span style="flex-shrink:0;color:#1565C0;font-weight:bold;">${_escHtml(c.nm)}</span><span style="flex-shrink:0;color:#aaa;font-size:10px;">${_escHtml(_fmtTime(c.ts))}</span><span style="color:#333;flex:1;word-break:break-all;">${_escHtml(c.msg)}</span><button onclick="deletePlzChatMsgRoom('${_escHtml(rid)}','${_escHtml(k)}')" style="flex-shrink:0;background:none;border:none;color:#E53935;cursor:pointer;font-size:12px;padding:0 2px;opacity:0.6;">✕</button></div>`
                 ).join('');
             return `<div style="flex:1;min-width:0;display:flex;flex-direction:column;background:white;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;max-height:100%;">
-                <div style="font-size:12px;font-weight:bold;color:white;background:${roomColors(rid)};padding:5px 10px;flex-shrink:0;">${_roomLabel(rid)} <span style="opacity:0.85;font-size:11px;">(${entries.length})</span></div>
+                <div style="font-size:12px;font-weight:bold;color:white;background:${roomColors(rid)};padding:5px 10px;flex-shrink:0;">${_escHtml(_roomLabel(rid))} <span style="opacity:0.85;font-size:11px;">(${entries.length})</span></div>
                 <div style="flex:1;overflow-y:auto;padding:4px;min-height:0;" id="_chatColScroll_${rid}">${rows}</div>
             </div>`;
         }).join('');
@@ -24995,6 +25419,11 @@ window.addCharRow = function() {
 
     // 학생: 구매 처리
     window.kioskStudentBuy = function(itemId, itemName, priceValue) {
+        // [SEC] 음수 가격 차단 — DevTools 조작으로 priceValue<0 들어오면 거부
+        priceValue = Number(priceValue);
+        if (!Number.isFinite(priceValue) || priceValue < 0) {
+            return alert('잘못된 가격입니다.');
+        }
         var k = (db.cfg && db.cfg.kiosk) || {};
         var _sr = k.sura_rate || 5;
         var myBal = (me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0);
@@ -25144,11 +25573,18 @@ window.addCharRow = function() {
     // 구매 확인 실행
     window._kbsConfirm = async function() {
         var s = window._kbs; if (!s) return;
+        // [SEC] 중복 클릭/연타 가드 — 비동기 update 중 재진입 차단
+        if (window._kbsBuying) return;
+        window._kbsBuying = true;
         var btn = document.querySelector('#_kioskBuyModal button:last-child');
 
-        var priceValue = s.priceValue;
-        var qty = s.qty || 1;
-        var useSura = s.useSura, useKwon = s.useKwon;
+        var priceValue = Number(s.priceValue);
+        if (!Number.isFinite(priceValue)) priceValue = 0;
+        var qty = parseInt(s.qty, 10);
+        if (!Number.isFinite(qty) || qty < 1) qty = 1;
+        if (qty > 9999) { qty = 9999; try { alert('한 번에 최대 9999개까지만 구매할 수 있어요.'); } catch(_){} }
+        var useSura = Math.max(0, parseInt(s.useSura, 10) || 0);
+        var useKwon = Math.max(0, parseInt(s.useKwon, 10) || 0);
         var totalBase = qty * priceValue;
         var effectiveCost = priceValue < 0 ? 0 : Math.max(0, totalBase - useSura * s.sr - useKwon);
 
@@ -25160,6 +25596,7 @@ window.addCharRow = function() {
                 if (detEl) detEl.textContent = '필요 ' + effectiveCost + '🍪 / 보유 ' + s.myBal + '🍪 — 왕의 수라상 또는 상점 이용권을 사용해보세요.';
                 errEl.style.display = 'block';
             }
+            window._kbsBuying = false;
             return;
         }
 
@@ -25212,6 +25649,7 @@ window.addCharRow = function() {
                 + '</div></div>';
             document.body.insertAdjacentHTML('beforeend', doneHtml);
             window.rKioskS();
+            window._kbsBuying = false;
         } catch(e) {
             // 예쁜 실패 모달
             var failHtml = ''
@@ -25228,6 +25666,7 @@ window.addCharRow = function() {
             if (priceValue > 0) me.shopUsed = Math.max(0, (me.shopUsed||0) - effectiveCost);
             if (passKeys.length && me.inv) passKeys.forEach(function(pk){ if(me.inv[pk]) me.inv[pk].st='active'; });
             if (btn) { btn.disabled = false; btn.textContent = '구매하기'; }
+            window._kbsBuying = false;
         }
     };
 
@@ -25416,8 +25855,10 @@ window.addCharRow = function() {
             const _todayMidISO = new Date(NOW).toLocaleDateString('sv-SE');
             s.inv.forEach(it => {
                 if(!it) return;
-                if(it.st === 'req' && it.reqApproved && it.useEndDate && !it.reqDone
-                    && !(it.n && it.n.includes('성장의 불꽃'))) {
+                // N일권(currentDay/totalDays/usageDurationDays>1) 및 성장의 불꽃은 자동 만료 제외 — 교사가 수동 완료해야 함
+                const _isNDayTicket = (it.currentDay || it.totalDays || (it.usageDurationDays > 1))
+                    || (it.n && it.n.includes('성장의 불꽃'));
+                if(it.st === 'req' && it.reqApproved && it.useEndDate && !it.reqDone && !_isNDayTicket) {
                     const endMid = new Date(it.useEndDate + 'T23:59:59').getTime();
                     if(endMid < NOW) {
                         it.st = 'used';
@@ -25943,6 +26384,7 @@ window.addCharRow = function() {
             });
         });
     }
+    window._showPlzRoomPicker = showPlzRoomPicker;
 
     // 학생 광장 나가기 (방 선택 화면으로 복귀)
     window._studentExitPlaza = function() {
@@ -30743,8 +31185,6 @@ window.addCharRow = function() {
         const now = Date.now();
         if(now - window._omokLastMoveTs < 300) return;
         window._omokLastMoveTs = now;
-        // 착수도 광장 활동으로 간주 — idle 자동 퇴장 방지
-        try { if(typeof _plzLastMoveTime !== 'undefined') _plzLastMoveTime = now; } catch(_){}
         const _moveCount = g.moves ? (Array.isArray(g.moves) ? g.moves.length : Object.keys(g.moves).length) : 0;
         const update = {};
         update['moves/'+_moveCount] = idx;
@@ -30994,15 +31434,15 @@ window.addCharRow = function() {
             });
         }
         const dirRef = getPlzRef().child('omokDir');
-        // 진입 시 stale 방 정리: 호스트가 광장에 없거나 1시간 이상 된 방 제거
+        // 진입 시 stale 방 정리: 1시간 이상 된 방만 제거
+        // (hostGone 판정은 _plzUserCache가 아직 비어 있을 수 있어 오탐 위험 — presence 수신 후 별도 정리)
         dirRef.once('value', snap => {
             const all = snap.val() || {};
             const now = Date.now();
             Object.entries(all).forEach(([gid, d]) => {
                 if(!d) return;
                 const stale = d.startedAt && (now - d.startedAt > 60*60*1000);
-                const hostGone = d.hostUid && !_plzUserCache[d.hostUid];
-                if(stale || hostGone){
+                if(stale){
                     try { _omokGameRef(gid).remove(); _omokDirRef(gid).remove(); } catch(_){}
                 }
             });
@@ -35892,31 +36332,28 @@ window.addCharRow = function() {
 
         // 접속 가능 시간 확인
         const plzHours = (db.cfg && db.cfg.plzHours) || {};
-        if(plzHours.enabled && plzHours.start && plzHours.end) {
-            const now = new Date();
-            const nowMin = now.getHours() * 60 + now.getMinutes();
-            const [sH, sM] = plzHours.start.split(':').map(Number);
-            const [eH, eM] = plzHours.end.split(':').map(Number);
-            const startMin = sH * 60 + sM, endMin = eH * 60 + eM;
-            const dow = now.getDay(); // 0=일, 6=토
-            const isWeekend = (dow === 0 || dow === 6);
-            const blocked = (nowMin < startMin || nowMin >= endMin) || (plzHours.noWeekend && isWeekend);
-            if(blocked) {
-                const container = document.getElementById('s_plz');
-                container.style.flexDirection = 'column';
-                let reason = `<b style="color:#FF9800;">${plzHours.start} ~ ${plzHours.end}</b> 사이에 접속해 주세요.`;
-                if(plzHours.noWeekend && isWeekend) reason = '주말에는 광장이 닫혀 있어요.';
-                container.innerHTML = `<div onclick="window._studentExitPlaza()" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;cursor:pointer;">
+        if(_isPlzHoursBlocked(plzHours)) {
+            const container = document.getElementById('s_plz');
+            container.style.flexDirection = 'column';
+            const _now = new Date();
+            const _dow = _now.getDay();
+            const _isWeekend = (_dow === 0 || _dow === 6);
+            let reason = `<b style="color:#FF9800;">${plzHours.start} ~ ${plzHours.end}</b> 사이에 접속해 주세요.`;
+            if(plzHours.noWeekend && _isWeekend) reason = '주말에는 광장이 닫혀 있어요.';
+            container.innerHTML = `<div onclick="window._studentExitPlaza()" style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;cursor:pointer;">
                     <div style="font-size:60px;">⏰</div>
                     <div style="font-size:18px;color:#888;text-align:center;">광장 접속 가능 시간이 아닙니다.<br>${reason}<br><span style="font-size:14px;color:#bbb;">화면을 누르면 광장 선택창으로 돌아가요</span></div>
                 </div>`;
-                return;
-            }
+            // 차단 화면에서도 plzHours 라이브 수신 — 교사가 해제 시 자동으로 방 선택 화면 복원
+            if(window._attachPlzCfgLive) try { window._attachPlzCfgLive(); } catch(_){}
+            return;
         }
 
         window._plzActive = true;
         // 광장 cfg 키 라이브 부착 (학생만 — 광장 안에 있을 때만 변경 즉시 수신)
         if(window._attachPlzCfgLive) try { window._attachPlzCfgLive(); } catch(_){}
+        // plzHours 종료 시각 자동퇴장 타이머
+        try { window._setPlzHoursExitTimer && window._setPlzHoursExitTimer(); } catch(_){}
 
         const container = document.getElementById('s_plz');
         container.style.flexDirection = 'column';
@@ -36504,33 +36941,21 @@ window.addCharRow = function() {
     }
 
     let _plzIdleTimer = null;
-    let _plzLastMoveTime = Date.now();
     let _plzEnteredAt = Date.now();
 
     function _plzStartIdleTimer() {
-        _plzLastMoveTime = Date.now();
         _plzEnteredAt = Date.now();
         clearInterval(_plzIdleTimer);
-        const idleCfg = (db.cfg && db.cfg.plzIdle) || {};
-        const maxCfg  = (db.cfg && db.cfg.plzMaxTime) || {};
-        if((!idleCfg.enabled || !idleCfg.minutes) && (!maxCfg.enabled || !maxCfg.minutes)) return;
-        const idleLimitMs = (idleCfg.enabled && idleCfg.minutes) ? idleCfg.minutes * 60 * 1000 : 0;
-        const idleWarnMs  = idleLimitMs ? Math.max(30000, idleLimitMs - 60000) : 0;
-        const maxLimitMs  = (maxCfg.enabled && maxCfg.minutes) ? maxCfg.minutes * 60 * 1000 : 0;
-        const maxWarnMs   = maxLimitMs ? Math.max(30000, maxLimitMs - 60000) : 0;
-        const isTeacher   = me && me.cd === 'teacher_main';
+        const maxCfg = (db.cfg && db.cfg.plzMaxTime) || {};
+        if(!maxCfg.enabled || !maxCfg.minutes) return;
+        const maxLimitMs = maxCfg.minutes * 60 * 1000;
+        const maxWarnMs  = Math.max(30000, maxLimitMs - 60000);
+        const isTeacher  = me && me.cd === 'teacher_main';
         _plzIdleTimer = setInterval(() => {
             if(!window._plzActive) { clearInterval(_plzIdleTimer); return; }
-            if(isTeacher) return; // 교사는 자동 퇴장 제외
-            // 오목 진행 중인 학생은 자동 퇴장 + 경고 모두 스킵 (착수만 하고 광장 이동 없는 동안 튕기는 문제 방지)
-            if(window._imInOmokGame && window._imInOmokGame()) {
-                _plzLastMoveTime = Date.now(); // 게임 중엔 idle 카운터도 리셋
-                return;
-            }
-            const idle = Date.now() - _plzLastMoveTime;
+            if(isTeacher) return;
             const total = Date.now() - _plzEnteredAt;
-            // 최대 접속 시간 초과 우선 처리
-            if(maxLimitMs && total >= maxLimitMs) {
+            if(total >= maxLimitMs) {
                 clearInterval(_plzIdleTimer);
                 exitPlaza();
                 const cont = document.getElementById('s_plz') || document.getElementById('_tchPlzCont');
@@ -36540,30 +36965,12 @@ window.addCharRow = function() {
                 </div>`;
                 return;
             }
-            if(idleLimitMs && idle >= idleLimitMs) {
-                clearInterval(_plzIdleTimer);
-                exitPlaza();
-                const cont = document.getElementById('s_plz') || document.getElementById('_tchPlzCont');
-                if(cont) cont.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#f9f9f9;">
-                    <div style="font-size:60px;">💤</div>
-                    <div style="font-size:18px;color:#888;text-align:center;">${idleCfg.minutes}분간 움직임이 없어<br>광장에서 퇴장되었습니다.</div>
-                    <button onclick="enterPlaza?enterPlaza():null" style="padding:10px 24px;border-radius:20px;border:none;background:#FF9800;color:white;font-family:'Jua';font-size:15px;cursor:pointer;">다시 입장</button>
-                </div>`;
-                return;
-            }
-            // 경고 표시
-            let warnTxt = '';
-            if(maxLimitMs && total >= maxWarnMs) {
-                warnTxt = `⏱️ ${Math.ceil((maxLimitMs-total)/1000)}초 후 접속 시간 종료`;
-            } else if(idleLimitMs && idle >= idleWarnMs) {
-                warnTxt = `⚠️ ${Math.ceil((idleLimitMs-idle)/1000)}초 후 비활성 자동 퇴장`;
-            }
-            if(warnTxt && !window._plzIdleWarned) {
+            if(total >= maxWarnMs && !window._plzIdleWarned) {
                 window._plzIdleWarned = true;
                 const warn = document.createElement('div');
                 warn.id = '_plzIdleWarn';
                 warn.style.cssText = 'position:absolute;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#FFD54F;padding:8px 18px;border-radius:20px;font-family:\'Jua\';font-size:13px;z-index:30;white-space:nowrap;';
-                warn.textContent = warnTxt;
+                warn.textContent = `⏱️ ${Math.ceil((maxLimitMs-total)/1000)}초 후 접속 시간 종료`;
                 document.getElementById('plzMap')?.appendChild(warn);
                 setTimeout(() => { warn.remove(); window._plzIdleWarned = false; }, 10000);
             }
@@ -37032,7 +37439,8 @@ window.addCharRow = function() {
             if(el.dataset.avthash !== eqStr) {
                 el.dataset.avthash = eqStr;
                 const _dispPets = isTeacher ? (u.displayPets||[]) : (u.displayPets || stu?.displayPets || []);
-                const avtHtml = renderAvatar(displayEq, 98, _dispPets);
+                const _dispProps = isTeacher ? (u.displayProps||[]) : (u.displayProps || stu?.displayProps || []);
+                const avtHtml = renderAvatar(displayEq, 98, _dispPets, _dispProps);
                 el.innerHTML = `<div data-s="tit"></div><div class="plz-avatar-body">${avtHtml}</div><div data-s="nm"></div>`;
             }
 
@@ -39599,6 +40007,9 @@ window.addCharRow = function() {
         } catch(_){}
         // 광장 cfg 키 라이브 해제
         if(window._detachPlzCfgLive) try { window._detachPlzCfgLive(); } catch(_){}
+        if(window._plzHoursExitTimer) { clearTimeout(window._plzHoursExitTimer); window._plzHoursExitTimer = null; }
+        if(window._plzHoursKickWatcher) { clearInterval(window._plzHoursKickWatcher); window._plzHoursKickWatcher = null; }
+        window._plzHoursKickPending = false;
         window._plzObsViewOn = false;
         // 장애물 편집·OX 잔재 강제 정리 (드래그 stuck 방지)
         if(typeof _plzDetachObsEditHandlers === 'function') try { _plzDetachObsEditHandlers(); } catch(_) {}
