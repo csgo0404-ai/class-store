@@ -7726,6 +7726,7 @@ let _renderLock = false; // 재진입 방지
             const idxs = [...(window._stuSelSet||new Set())];
             const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
             const _delCds = idxs.map(i => stuList[i] && stuList[i].cd).filter(Boolean);
+            const _oldLen = stuList.length;
             db.stu = stuList.filter((_,i) => !idxs.includes(i));
             window._stuSelSet.clear();
             sv();
@@ -7734,6 +7735,28 @@ let _renderLock = false; // 재진입 방지
                 const _tombs = {};
                 _delCds.forEach(cd => { _tombs['stuDel/' + cd] = _ts; });
                 if(Object.keys(_tombs).length) dbRef.update(_tombs);
+            } catch(_){}
+            // [FIX 2026-05-21] splice 후 잔여 reqCnt 정리 + 범위 밖 stu 슬롯 null — 학생별섹션 유령카드 방지
+            try {
+                const cleanup = {};
+                for(let j = db.stu.length; j < _oldLen; j++) {
+                    cleanup['stu/' + j] = null;
+                    cleanup['reqCnt/' + j] = null;
+                }
+                if(window._computeReqCnt) {
+                    for(let j = 0; j < db.stu.length; j++) {
+                        if(db.stu[j]) cleanup['reqCnt/' + j] = window._computeReqCnt(db.stu[j]);
+                    }
+                }
+                if(Object.keys(cleanup).length) dbRef.update(cleanup);
+                if(window._reqCntMap) {
+                    for(let j = db.stu.length; j < _oldLen; j++) delete window._reqCntMap[j];
+                    if(window._computeReqCnt) {
+                        for(let j = 0; j < db.stu.length; j++) {
+                            if(db.stu[j]) window._reqCntMap[j] = window._computeReqCnt(db.stu[j]);
+                        }
+                    }
+                }
             } catch(_){}
             rTb();
         }, {icon:'🗑️', okLabel:'삭제', okClass:'btn-red', cancelLabel:'취소'});
@@ -7984,6 +8007,29 @@ let _renderLock = false; // 재진입 방지
         // splice 후 범위 밖이 된 마지막 슬롯 명시적 삭제 — Ghost 학생 방지
         try { dbRef.child('stu/' + (_oldLen - 1)).set(null); } catch(_){}
         try { dbRef.child('reqCnt/' + (_oldLen - 1)).remove(); } catch(_){}
+        // [FIX 2026-05-21] 중간 인덱스 삭제 시 잔여 reqCnt 재계산 — 인덱스 어긋남으로 인한 학생별섹션 유령카드 방지
+        if(window._computeReqCnt && i < _oldLen - 1) {
+            try {
+                const reqUpdates = {};
+                for(let j = i; j < db.stu.length; j++) {
+                    if(db.stu[j]) reqUpdates['reqCnt/' + j] = window._computeReqCnt(db.stu[j]);
+                }
+                if(Object.keys(reqUpdates).length) dbRef.update(reqUpdates);
+            } catch(_){}
+        }
+        // 메모리의 잔여 reqCntMap 도 즉시 정리 (listener 도착 전 UI 잔상 방지)
+        try {
+            if(window._reqCntMap) {
+                delete window._reqCntMap[_oldLen - 1];
+                if(i < _oldLen - 1) {
+                    for(let j = i; j < db.stu.length; j++) {
+                        if(db.stu[j] && window._computeReqCnt) {
+                            window._reqCntMap[j] = window._computeReqCnt(db.stu[j]);
+                        }
+                    }
+                }
+            }
+        } catch(_){}
         rTb();
     }
     // 콘솔에서 호출: window._restoreDeletedStu('학생코드') — localStorage 백업에서 복구
@@ -8753,23 +8799,29 @@ let _renderLock = false; // 재진입 방지
         ag.style.padding = '4px 0';
 
         // 이름 수집: reqCntMap + db.stu 합산 (reqCntMap에 없는 학생도 표시)
+        // [FIX 2026-05-21] cd 기반 dedup + 삭제된 학생(stu[idx]=null/cd없음) 필터링 — 유령 카드 방지
         const map = window._reqCntMap || {};
         const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
-        const _seenIdx = new Set();
+        const _seenCd = new Set();
         const entries = [];
-        // 1) reqCntMap 기반
+        // 1) reqCntMap 기반 — db.stu[idx] 가 살아있는 경우만 (잔여 reqCnt 엔트리는 스킵)
         Object.entries(map).forEach(([key, c]) => {
             const idx = parseInt(key);
             if(isNaN(idx)) return;
-            const nm = c.nm || stuArr[idx]?.nm || '';
-            const no = c.no ?? stuArr[idx]?.no ?? '';
+            const s = stuArr[idx];
+            if(!s || !s.cd) return; // 삭제된 학생 자리 — 카드 안 만듦
+            if(_seenCd.has(s.cd)) return; // cd 중복 스킵
+            _seenCd.add(s.cd);
+            const nm = s.nm || c.nm || '';
+            const no = s.no ?? c.no ?? '';
             if(!nm) return;
-            _seenIdx.add(idx);
             entries.push({ idx, nm, no });
         });
-        // 2) db.stu에서 reqCntMap에 없는 학생 보완
+        // 2) db.stu에서 reqCntMap에 없는 학생 보완 (cd 기준)
         stuArr.forEach((s, idx) => {
-            if(!s || !s.nm || _seenIdx.has(idx)) return;
+            if(!s || !s.cd || !s.nm) return;
+            if(_seenCd.has(s.cd)) return;
+            _seenCd.add(s.cd);
             entries.push({ idx, nm: s.nm, no: s.no ?? '' });
         });
         entries.sort((a,b) => (a.no??999)-(b.no??999));
@@ -9605,23 +9657,33 @@ let _renderLock = false; // 재진입 방지
             const _ibx = Array.isArray(s.ibx) ? s.ibx : Object.values(s.ibx||{}).filter(Boolean);
             _inv.forEach((t,k)=>{ l.push({y:'c',si,k,t,sn:s.nm,no:s.no}); });
             _ibx.forEach((t,k)=>{ if(t.y==='sys') return; l.push({y:'l',si,k,t,sn:s.nm,no:s.no}); });
+            // [FIX 2026-05-21] 카탈로그 lookup 실패한 dangling reference 는 표시 안 함 + 동일 id 중복 제거
             // 아바타 보유 항목 (inv에 이미 shop_req/active 항목이 있으면 중복 방지)
+            const _seenAvt = new Set();
             (s.avtOwned||[]).forEach(id=>{
+                if(!id || _seenAvt.has(id)) return; _seenAvt.add(id);
                 const item=(db.avt||[]).find(a=>a.id===id);
+                if(!item) return; // 카탈로그에 없는 아바타 ID 는 표시 안 함
                 // 꾸미기 탭 선택 시 기본 배포 아이템 숨김, 학생별 모드에서는 표시
-                if(item?.isDefault && !(asort === 'stu')) return;
+                if(item.isDefault && !(asort === 'stu')) return;
                 if((s.inv||[]).some(e => e.avtId === id)) return; // inv 경로로 이미 표시됨
-                l.push({y:'avt',si,k:id,t:{n:item?.nm||id,i:'avt',img:item?.img||'',st:'owned'},cat:item?.cat||'',sn:s.nm,no:s.no});
+                l.push({y:'avt',si,k:id,t:{n:item.nm,i:'avt',img:item.img||'',st:'owned'},cat:item.cat||'',sn:s.nm,no:s.no});
             });
             // 뱃지 보유 항목
+            const _seenBdg = new Set();
             (s.earnedBdg||[]).forEach((bId,bi)=>{
+                if(!bId || _seenBdg.has(bId)) return; _seenBdg.add(bId);
                 const bdg=(db.bdg||[]).find(b=>b.id===bId);
-                l.push({y:'bdg',si,k:bId,ki:bi,t:{n:bdg?.name||bId,i:'bdg',img:bdg?.img||'',icon:bdg?.icon||'📛',st:'owned'},sn:s.nm,no:s.no});
+                if(!bdg) return; // 카탈로그에 없는 뱃지 ID 는 표시 안 함
+                l.push({y:'bdg',si,k:bId,ki:bi,t:{n:bdg.name,i:'bdg',img:bdg.img||'',icon:bdg.icon||'📛',st:'owned'},sn:s.nm,no:s.no});
             });
             // 칭호 보유 항목
+            const _seenTit = new Set();
             (Array.isArray(s.earnedTit) ? s.earnedTit : Object.values(s.earnedTit||{})).forEach((tId,ti)=>{
+                if(!tId || _seenTit.has(tId)) return; _seenTit.add(tId);
                 const tit=(db.tit||[]).find(t=>t.id===tId);
-                l.push({y:'tit',si,k:tId,ki:ti,t:{n:tit?.name||tId,i:'tit',img:tit?.img||'',st:'owned'},sn:s.nm,no:s.no,cd:s.cd});
+                if(!tit) return; // 카탈로그에 없는 칭호 ID 는 표시 안 함 (dangling reference)
+                l.push({y:'tit',si,k:tId,ki:ti,t:{n:tit.name,i:'tit',img:tit.img||'',st:'owned'},sn:s.nm,no:s.no,cd:s.cd});
             });
         });
 
