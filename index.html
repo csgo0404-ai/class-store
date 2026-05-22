@@ -3276,7 +3276,8 @@ let _renderLock = false; // 재진입 방지
             if(!Array.isArray(db.stu)) db.stu = [];
             const localIdx = db.stu.findIndex(s => s && String(s.cd).trim() === target);
             if(localIdx >= 0) db.stu[localIdx] = v;
-            else db.stu.push(v);
+            // 🔒 [FIX] push 금지 — Firebase 의 실제 idx 위치에 정확히 배치 (인덱스 불일치 → 중복 슬롯 발생 차단)
+            else db.stu[idx] = v;
             if(me && String(me.cd).trim() === target) {
                 Object.keys(v).forEach(k => { me[k] = v[k]; });
                 if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
@@ -7675,7 +7676,8 @@ let _renderLock = false; // 재진입 방지
     async function bulk(){
         const l=document.getElementById('bk').value.split('\n');
         if(!db.stu) db.stu = [];
-        let added = 0;
+        // 파싱
+        const _rows = [];
         for(let r of l){
             const p=r.trim().split(/[\s,]+/);
             if(p.length>=3){
@@ -7683,27 +7685,73 @@ let _renderLock = false; // 재진입 방지
                 if(p.length>=4 && ['남','여','m','f'].includes(p[2])){
                     gdr = (p[2]==='남'||p[2]==='m') ? 'm' : 'f';
                     cd = p[3];
-                } else {
-                    cd = p[2];
-                }
-                let s=db.stu.find(x=>x.cd===cd);
-                if(!s){
-                    const defInv = _newStuDefaultInv();
-                    const newS={no, nm, cd, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv, ibx:[], col:[], rd:{}, rb:0, updatedAt:Date.now()};
-                    if(gdr) newS.gdr=gdr;
-                    db.stu.push(newS);
-                    added++;
-                } else {
-                    s.no=no; s.nm=nm;
-                    if(gdr) s.gdr=gdr;
-                }
+                } else { cd = p[2]; }
+                _rows.push({no, nm, gdr, cd});
             }
         }
-        // sort 제거 — db.stu는 push 순서(Firebase 인덱스) 유지, 표시 정렬은 rTb()가 담당
-        try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); localStorage.setItem('_teacherStuCacheTs', String(Date.now())); } catch(_){}
-        sv(); rTb();
-        const defCnt = _newStuDefaultInv().length;
-        alert(`등록 완료 (신규 ${added}명${defCnt && added ? `, 자동 지급 아이템 ${defCnt}개씩 포함` : ''})`);
+        // 🔒 [FIX] 단일 트랜잭션으로 stu 전체를 원자적으로 갱신 — 다중 탭 race + 빈 슬롯 재사용 + 기존 학생 정보 업데이트 일괄 처리
+        let _added = 0, _updated = 0, _skipped = 0;
+        const _newSlots = []; // 부수 path 업데이트용
+        const defInv = _newStuDefaultInv();
+        await new Promise(resolve => {
+            dbRef.child('stu').transaction(curStu => {
+                let arr;
+                if(Array.isArray(curStu)) arr = curStu.slice();
+                else if(curStu && typeof curStu === 'object'){
+                    arr = [];
+                    Object.entries(curStu).forEach(([k,v])=>{ const i=parseInt(k); if(!isNaN(i)) arr[i] = (v && typeof v==='object') ? v : null; });
+                } else arr = [];
+                _added = 0; _updated = 0; _skipped = 0; _newSlots.length = 0;
+                _rows.forEach(row => {
+                    if(!row.cd) { _skipped++; return; }
+                    const existingIdx = arr.findIndex(s => s && s.cd === row.cd);
+                    if(existingIdx >= 0){
+                        // 기존 학생 — 번호/이름/성별만 업데이트 (inv 등 보존)
+                        arr[existingIdx].no = row.no;
+                        arr[existingIdx].nm = row.nm;
+                        if(row.gdr) arr[existingIdx].gdr = row.gdr;
+                        arr[existingIdx].updatedAt = Date.now();
+                        _updated++;
+                    } else {
+                        const newS = {no:row.no, nm:row.nm, cd:row.cd, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv.slice(), ibx:[], col:[], rd:{}, rb:0, updatedAt:Date.now()};
+                        if(row.gdr) newS.gdr = row.gdr;
+                        let idx = arr.findIndex(s => !s);
+                        if(idx < 0) idx = arr.length;
+                        arr[idx] = newS;
+                        _newSlots.push({idx, cd:row.cd, stu:newS});
+                        _added++;
+                    }
+                });
+                return arr;
+            }, (err, committed, snap) => {
+                if(err) { console.error('[bulk-tx] 트랜잭션 실패:', err); alert('일괄 등록 실패: '+err.message); resolve(); return; }
+                if(!committed) { alert('⚠️ 일괄 등록 충돌이 감지되어 취소되었습니다. 다시 시도해주세요.'); resolve(); return; }
+                // 로컬 동기화
+                const newArr = snap && snap.val ? snap.val() : null;
+                if(Array.isArray(newArr)) db.stu = newArr.map(s => (s && typeof s==='object') ? s : null);
+                else if(newArr && typeof newArr === 'object'){
+                    db.stu = [];
+                    Object.entries(newArr).forEach(([k,v])=>{ const i=parseInt(k); if(!isNaN(i)) db.stu[i] = (v && typeof v==='object') ? v : null; });
+                }
+                // 부수 path: reqCnt + tombstone 해제 + hash 캐시 무효화
+                const upd = { lastWriteTs: firebase.database.ServerValue.TIMESTAMP };
+                _newSlots.forEach(({idx, cd, stu}) => {
+                    upd['reqCnt/'+idx] = window._computeReqCnt ? window._computeReqCnt(stu) : {};
+                    upd['stuDel/'+cd] = null;
+                    if(window._stuSentHash) delete window._stuSentHash[idx];
+                    if(window._stuPerHash) delete window._stuPerHash[idx];
+                    if(!window._remoteStuTs) window._remoteStuTs = {};
+                    window._remoteStuTs[idx] = stu.updatedAt;
+                });
+                try { if(Object.keys(upd).length > 1) dbRef.update(upd); } catch(_){}
+                try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); localStorage.setItem('_teacherStuCacheTs', String(Date.now())); } catch(_){}
+                rTb();
+                const defCnt = defInv.length;
+                const msg = `등록 완료 — 신규 ${_added}명, 기존 갱신 ${_updated}명` + (_skipped ? `, 무효 ${_skipped}건` : '') + (defCnt && _added ? `\n(자동 지급 아이템 ${defCnt}개씩 포함)` : '');
+                alert(msg);
+                resolve();
+            }, /* applyLocally */ false);
+        });
     }
     
     window.backupDB = function() {
@@ -8219,22 +8267,48 @@ let _renderLock = false; // 재진입 방지
             const data = JSON.parse(raw);
             if(!confirm(`복구할 학생: ${data.stu.no}번 ${data.stu.nm} (${cd})\n\n복구하시겠습니까?`)) return;
             if(!Array.isArray(db.stu)) db.stu = [];
-            // 중복 cd 체크
+            // 1차(로컬) 중복 cd 체크
             if(db.stu.find(x => x && x.cd === cd)) { alert('이미 존재하는 cd예요.'); return; }
             data.stu.updatedAt = Date.now();
-            db.stu.push(data.stu);
-            // ⚠️ sort 금지: db.stu[i]는 Firebase stu/i와 1:1 대응 — 순서 변경 시 write 경로 오염
-            // 복구된 학생은 배열 맨 끝 슬롯(새 Firebase path)에 저장됨
-            const _restoreIdx = db.stu.length - 1;
-            if(!window._remoteStuTs) window._remoteStuTs = {};
-            window._remoteStuTs[_restoreIdx] = data.stu.updatedAt;
-            if(window._stuSentHash) delete window._stuSentHash[_restoreIdx];
-            if(window._stuPerHash) delete window._stuPerHash[_restoreIdx];
-            window._svStu([_restoreIdx]);
-            // tombstone 제거
-            try { dbRef.child('stuDel/' + cd).remove(); } catch(_){}
-            rTb();
-            alert('✅ 복구 완료: ' + data.stu.nm);
+            // 🔒 [FIX] 트랜잭션으로 원자적 슬롯 선점 — 다른 탭의 add1/bulk/restore 와의 race 차단
+            let _txIdx = -1;
+            dbRef.child('stu').transaction(curStu => {
+                let arr;
+                if(Array.isArray(curStu)) arr = curStu.slice();
+                else if(curStu && typeof curStu === 'object'){
+                    arr = [];
+                    Object.entries(curStu).forEach(([k,v])=>{ const i=parseInt(k); if(!isNaN(i)) arr[i] = (v && typeof v==='object') ? v : null; });
+                } else arr = [];
+                // 2차(원격) 중복 cd 재확인
+                if(arr.some(s => s && s.cd === cd)){ _txIdx = -2; return; }
+                // 빈 슬롯 우선 재사용
+                let idx = arr.findIndex(s => !s);
+                if(idx < 0) idx = arr.length;
+                arr[idx] = data.stu;
+                _txIdx = idx;
+                return arr;
+            }, (err, committed) => {
+                if(err) { console.error('[restore-tx] 트랜잭션 실패:', err); alert('복구 실패: '+err.message); return; }
+                if(_txIdx === -2) { alert('⚠️ 이미 다른 곳에서 등록된 cd입니다. 복구 취소.'); return; }
+                if(!committed || _txIdx < 0) { alert('⚠️ 복구 충돌이 감지되어 취소되었습니다.'); return; }
+                // 로컬 동기화
+                db.stu[_txIdx] = data.stu;
+                if(!window._remoteStuTs) window._remoteStuTs = {};
+                window._remoteStuTs[_txIdx] = data.stu.updatedAt;
+                if(window._stuSentHash) delete window._stuSentHash[_txIdx];
+                if(window._stuPerHash) delete window._stuPerHash[_txIdx];
+                // tombstone 제거 + reqCnt
+                try {
+                    dbRef.update({
+                        ['stuDel/'+cd]: null,
+                        ['reqCnt/'+_txIdx]: window._computeReqCnt ? window._computeReqCnt(data.stu) : {},
+                        lastWriteTs: firebase.database.ServerValue.TIMESTAMP
+                    });
+                } catch(_){}
+                try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); localStorage.setItem('_teacherStuCacheTs', String(Date.now())); } catch(_){}
+                rTb();
+                alert('✅ 복구 완료: ' + data.stu.nm + ' (slot ' + _txIdx + ')');
+            }, /* applyLocally */ false);
         } catch(e){ alert('복구 실패: '+e.message); }
     };
     
