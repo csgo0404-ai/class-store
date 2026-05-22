@@ -642,7 +642,7 @@
 }
 
 /* [수정] 그리드 레이아웃 통일 (교사/학생 공통) */
-#t_auc_req, #t_auc_act, #t_auc_done, #shop-auc-sec .auc-grid {
+#t_auc_all, #shop-auc-sec .auc-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
     gap: 20px;
@@ -1116,6 +1116,19 @@
                 <div id="il" class="grid" style="margin-top:15px;"></div>
             </div>
 
+            <!-- 요청 마감 시각 -->
+            <div class="card" style="margin-bottom:16px;">
+                <h3>🕗 사용 신청 마감 시각</h3>
+                <div style="font-size:13px;color:#888;margin-bottom:10px;">학생이 <b>당일 사용</b> 신청을 보낼 수 있는 마감 시각입니다. 이 시각 이후엔 내일 이후 날짜로만 신청 가능합니다.<br><span style="font-size:12px;color:#aaa;">예) 08:40 → 등교 시간 전까지만 당일 신청 가능</span></div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;">
+                        <input type="time" id="reqCutoffTime" style="padding:4px 8px;border:1px solid #DDD;border-radius:6px;font-family:'Jua';font-size:14px;" onchange="window._saveReqCutoff()">
+                    </label>
+                    <button class="btn btn-gray" style="font-size:12px;padding:4px 10px;" onclick="document.getElementById('reqCutoffTime').value=''; window._saveReqCutoff();">제한 없음</button>
+                    <span id="reqCutoffStatus" style="font-size:12px;color:#888;"></span>
+                </div>
+            </div>
+
             <!-- 교환권 쿠폰 풀 -->
             <div class="card" style="margin-bottom:16px;">
                 <h3>🎫 교환권 쿠폰 풀</h3>
@@ -1185,25 +1198,14 @@
                 </div>
                 <div id="_reqDateBody" style="margin-top:10px;"></div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <h2 style="margin:0;">🔨 경매 관리</h2>
-                <button class="btn btn-org" onclick="showAucRegModal()">+ 경매 등록</button>
-            </div>
-            
-            <h3 style="color:#FF9800; border-bottom:2px dashed #FFCC80; padding-bottom:5px;">🚨 학생 요청 (대기중)</h3>
-            <div id="t_auc_req" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px;"></div>
-            
-            <h3 style="color:#E53935; border-bottom:2px dashed #EF9A9A; padding-bottom:5px;">🔴 진행 중</h3>
-            <div id="t_auc_act" style="margin-bottom:30px;"></div>
-            
-           <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px dashed #BDBDBD; padding-bottom:5px; margin-bottom:15px;">
-                <h3 style="color:#757575; margin:0;">✅ 종료됨</h3>
-                <div style="display:flex;gap:8px;">
-                    <span style="color:#9E9E9E;font-size:12px;align-self:center;">7일 후 자동 삭제</span>
-                    <button class="btn btn-gray" style="padding:6px 12px; font-size:14px;" onclick="delAllDoneAuc()">모두 삭제</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px dashed #FFCC80; padding-bottom:8px; margin-bottom:15px; flex-wrap:wrap; gap:8px;">
+                <h3 style="margin:0;color:#5D4037;">🔨 경매 목록 <span id="t_auc_summary" style="font-size:12px;color:#888;font-weight:normal;"></span></h3>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="btn btn-gray" style="padding:6px 12px; font-size:14px;" onclick="delAllDoneAuc()">종료된 경매 모두 삭제</button>
+                    <button class="btn btn-org" style="padding:6px 12px; font-size:14px;" onclick="showAucRegModal()">+ 경매 등록</button>
                 </div>
             </div>
-            <div id="t_auc_done" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px;"></div>
+            <div id="t_auc_all" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); margin-bottom:30px;"></div>
             <div style="display:flex;align-items:center;gap:10px;border-bottom:2px dashed #CE93D8;padding-bottom:5px;margin-top:10px;margin-bottom:10px;">
                 <h3 style="color:#7B1FA2;margin:0;flex-shrink:0;">🧸 인형뽑기 대기열</h3>
                 <div id="t_auc_gac_stats" style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;"></div>
@@ -3419,7 +3421,7 @@ let _renderLock = false; // 재진입 방지
                 if(_splitInitialDone) _splitFire();
                 return;
             }
-            if(db.stu[i] !== undefined) db.stu[i] = null;
+            if(db.stu[i] !== undefined) delete db.stu[i]; // sparse hole (null 대신) — find/forEach 자동 skip
             if(_splitInitialDone) _splitFire();
             window._saveStuCache && window._saveStuCache();
         };
@@ -3458,7 +3460,7 @@ let _renderLock = false; // 재진입 방지
                     window._setStuLastSyncTs(ts);
                     return;
                 }
-                db.stu[idx] = null;
+                delete db.stu[idx]; // sparse hole (null 대신)
                 if(_splitInitialDone) _splitFire();
                 window._saveStuCache && window._saveStuCache();
             }
@@ -5055,13 +5057,19 @@ let _renderLock = false; // 재진입 방지
             // ⚠️ 모든 배열 path의 null/sparse 슬롯을 filter(Boolean)로 제거 — null entry로 인한 cascade 에러 차단
             const _normArr = v => Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
             // 🔒 db.stu 는 인덱스 보존 정규화 (Firebase stu/i 1:1 매핑 깨짐 방지)
-            // - 배열: 객체가 아닌 슬롯만 null 로 표시 (길이 유지)
-            // - 객체(Firebase sparse): 숫자 키를 인덱스로 매핑하여 sparse array 재구성
-            db.stu = Array.isArray(db.stu)
-                ? db.stu.map(s => (s && typeof s === 'object') ? s : null)
-                : (db.stu && typeof db.stu === 'object'
-                    ? Object.entries(db.stu).reduce((arr,[k,v])=>{ const i=parseInt(k); if(!isNaN(i)) arr[i] = (v && typeof v==='object') ? v : null; return arr; }, [])
-                    : []);
+            // ⚠️ 빈 슬롯은 sparse hole (delete) 로 표현 — find/forEach 등이 자동 skip → null.cd 접근 에러 차단
+            if(Array.isArray(db.stu)) {
+                for(let _i=0; _i<db.stu.length; _i++) {
+                    const _s = db.stu[_i];
+                    if(!_s || typeof _s !== 'object') delete db.stu[_i];
+                }
+            } else if(db.stu && typeof db.stu === 'object') {
+                const _arr = [];
+                Object.entries(db.stu).forEach(([k,v])=>{ const i=parseInt(k); if(!isNaN(i) && v && typeof v==='object') _arr[i] = v; });
+                db.stu = _arr;
+            } else {
+                db.stu = [];
+            }
             // 🛡️ 로드 시점 중복 cd 자동 정리 — 같은 cd가 여러 슬롯에 있으면 첫 번째만 유지
             // 🔒 [FIX] 중복 슬롯은 splice/filter 가 아니라 null 로 표시 — 뒤쪽 인덱스 시프트로 인한
             //         Firebase stu/i 매핑 깨짐(다른 학생 덮어쓰기/wipe) 사고 차단
@@ -5073,7 +5081,7 @@ let _renderLock = false; // 재진입 방지
                     if(!s || !s.cd) return;
                     if(_seenCds.has(s.cd)){
                         _dups.push({ idx: i, cd: s.cd, nm: s.nm, stu: s });
-                        db.stu[i] = null; // 인덱스 유지 — splice/filter 금지
+                        delete db.stu[i]; // 인덱스 유지 (sparse hole) — splice/filter 금지, null 대신 delete 로 안전
                     } else {
                         _seenCds.add(s.cd);
                     }
@@ -6692,6 +6700,25 @@ let _renderLock = false; // 재진입 방지
             prettyConfirm('사용 날짜는 오늘로부터<br><b>7일 이내</b>로만 지정할 수 있어요! 📅', ()=>{}, {icon:'📅', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
             return;
         }
+        // 🔒 [Feature 1] 유효기간 지난 아이템 요청 차단 — 보유 중인 해당 이름 아이템의 expireAt 확인
+        const _useDateEndMs = new Date(useDate + 'T23:59:59').getTime();
+        const _hasUnexpired = me.inv.some(i => i && i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo && (!i.expireAt || i.expireAt >= _useDateEndMs));
+        if(!_hasUnexpired) {
+            const _earliest = me.inv.filter(i => i && i.n.trim()===itemName.trim() && i.st==='active' && i.expireAt).map(i=>i.expireAt).sort((a,b)=>b-a)[0];
+            const _expDate = _earliest ? new Date(_earliest).toLocaleDateString('sv-SE') : '';
+            prettyConfirm(`<b>${itemName}</b>의 유효기간이 만료되었어요!<br>${_expDate ? `만료일: <b>${_expDate}</b><br>` : ''}<span style="font-size:13px;color:#888;">유효기간 안의 날짜로만 사용 신청할 수 있어요 ⏳</span>`, ()=>{}, {icon:'⏳', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
+            return;
+        }
+        // 🔒 [Feature 2] 교사가 설정한 요청 마감 시각 확인 (당일 요청에만 적용)
+        const _reqCutoff = db.cfg && db.cfg.reqCutoffTime; // "HH:MM" 형식
+        if(_reqCutoff && useDate === _today) {
+            const _now = new Date();
+            const _curHM = String(_now.getHours()).padStart(2,'0') + ':' + String(_now.getMinutes()).padStart(2,'0');
+            if(_curHM > _reqCutoff) {
+                prettyConfirm(`당일 사용 신청은 <b>${_reqCutoff}</b>까지만 가능해요!<br><span style="font-size:13px;color:#888;">현재 시각: ${_curHM}<br>내일 날짜로 신청해주세요 🕗</span>`, ()=>{}, {icon:'🕗', okLabel:'확인', okClass:'btn-blue', cancelLabel:''});
+                return;
+            }
+        }
         const _itmListU = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
         const itDef = _itmListU.find(it => (it?.n||'').trim() === itemName.trim());
         const needsApprove = !!(itDef && (itDef.needApprove === true || itDef.needApprove === 'true' || itDef.needApprove === 1));
@@ -7986,9 +8013,9 @@ let _renderLock = false; // 재진입 방지
             const idxs = [...(window._stuSelSet||new Set())];
             const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
             const _delCds = idxs.map(i => stuList[i] && stuList[i].cd).filter(Boolean);
-            // 🔒 [FIX] filter 금지 — 인덱스 보존 위해 해당 슬롯만 null 처리 (Firebase 매핑 깨짐 방지)
+            // 🔒 [FIX] filter 금지 — 인덱스 보존 위해 해당 슬롯만 sparse hole 처리 (Firebase 매핑 깨짐 방지)
             if(!Array.isArray(db.stu)) db.stu = stuList;
-            idxs.forEach(i => { db.stu[i] = null; });
+            idxs.forEach(i => { delete db.stu[i]; });
             window._stuSelSet.clear();
             try {
                 const _ts = Date.now();
@@ -8250,8 +8277,8 @@ let _renderLock = false; // 재진입 방지
             console.log('[delS] 삭제된 학생 백업 → localStorage["'+key+'"]');
         } catch(_){}
         const _delCd = s.cd;
-        // 🔒 [FIX] splice 금지 — 인덱스 보존 위해 슬롯을 null 로 표시 (Firebase 매핑 깨짐 방지)
-        db.stu[i] = null;
+        // 🔒 [FIX] splice 금지 — 인덱스 보존 위해 슬롯을 sparse hole 로 (Firebase 매핑 깨짐 방지)
+        delete db.stu[i];
         try { dbRef.child('stu/' + i).set(null); } catch(_){}
         try { dbRef.child('reqCnt/' + i).remove(); } catch(_){}
         if(window._reqCntMap) { try { delete window._reqCntMap[i]; } catch(_){} }
@@ -9277,12 +9304,19 @@ let _renderLock = false; // 재진입 방지
         </div>`;
         document.body.appendChild(el);
         // 클로저 보존을 위해 직접 핸들러 부착 (toString 직렬화 안 함)
-        document.getElementById('_pconfirmOk').onclick = function() {
+        // 🔒 [FIX] idempotency 가드 — 더블클릭/Enter 연타 등으로 onOk 가 여러 번 호출되어
+        //         voucher 같은 inv 항목이 추가 차감되는 사고 방지
+        let _fired = false;
+        const _okBtn = document.getElementById('_pconfirmOk');
+        _okBtn.onclick = function() {
+            if(_fired) return;
+            _fired = true;
+            try { _okBtn.disabled = true; } catch(_){}
             document.getElementById('_pconfirm')?.remove();
             try { onOk && onOk(); } catch(e) { console.error(e); }
         };
         const _c = document.getElementById('_pconfirmCancel');
-        if(_c) _c.onclick = function() { document.getElementById('_pconfirm')?.remove(); };
+        if(_c) _c.onclick = function() { if(_fired) return; _fired = true; document.getElementById('_pconfirm')?.remove(); };
     }
     
     function _renderReqDate() {
@@ -9314,11 +9348,30 @@ let _renderLock = false; // 재진입 방지
         }
         items.sort((a,b)=>(a.it.useDate||'9999').localeCompare(b.it.useDate||'9999'));
         const byDate = {};
-        items.forEach(x => { const key=x.it.useDate||'(날짜 미정)'; if(!byDate[key])byDate[key]=[]; byDate[key].push(x); });
-        body.innerHTML = Object.entries(byDate).map(([dt,list]) =>
-            `<div style="margin-bottom:12px;">
-                <div style="font-size:12px;font-weight:bold;color:#1565C0;margin-bottom:6px;">${dt==='(날짜 미정)'?'📋 날짜 미정':'📅 '+dt}</div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;">
+        items.forEach(x => {
+            const key=x.it.useDate||'(날짜 미정)';
+            // 🔒 당일 항목은 이 목록에서 제외 — 다른 영역(예: ✅ 오늘 사용 예정)에서 별도 표시
+            if(key === _today) return;
+            if(!byDate[key])byDate[key]=[];
+            byDate[key].push(x);
+        });
+        const _entries = Object.entries(byDate);
+        if(!_entries.length) {
+            body.innerHTML = `<div style="color:#aaa;font-size:13px;padding:16px 0;text-align:center;">오늘 이후 예정된 요청이 없습니다</div>`;
+            return;
+        }
+        // 🔒 [Feature] 날짜별 접기/펼치기 — 기본 접힘 상태, 헤더 클릭 시 토글
+        if(!window._reqDateExpanded) window._reqDateExpanded = {};
+        body.innerHTML = _entries.map(([dt,list]) => {
+            const _expanded = !!window._reqDateExpanded[dt];
+            const _arrow = _expanded ? '▼' : '▶';
+            const _safeDt = String(dt).replace(/'/g,"\\'");
+            return `<div style="margin-bottom:8px;border:1px solid #BBDEFB;border-radius:8px;overflow:hidden;">
+                <div onclick="window._toggleReqDate('${_safeDt}')" style="font-size:12px;font-weight:bold;color:#1565C0;padding:8px 10px;background:#E3F2FD;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;">
+                    <span>${dt==='(날짜 미정)'?'📋 날짜 미정':'📅 '+dt} <span style="background:#1976D2;color:white;border-radius:8px;padding:1px 7px;font-size:11px;margin-left:4px;">${list.length}</span></span>
+                    <span style="font-size:10px;color:#1976D2;">${_arrow}</span>
+                </div>
+                <div style="display:${_expanded?'grid':'none'};grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:10px;">
                 ${list.map(({s,it,k,ks,cd,count}) => {
                     const isApproved = !!it.reqApproved;
                     const itmDef = (db.itm||[]).find(d=>d.n===it.n)||(db.avt||[]).find(d=>d.nm===it.n)||(db.bdg||[]).find(d=>d.name===it.n);
@@ -9350,9 +9403,16 @@ let _renderLock = false; // 재진입 방지
                     </div>`;
                 }).join('')}
                 </div>
-            </div>`
-        ).join('');
+            </div>`;
+        }).join('');
     }
+
+    // 🔒 날짜별 접기/펼치기 토글
+    window._toggleReqDate = function(dt) {
+        if(!window._reqDateExpanded) window._reqDateExpanded = {};
+        window._reqDateExpanded[dt] = !window._reqDateExpanded[dt];
+        _renderReqDate();
+    };
 
     window._reqDateDone = function(cd, k) {
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
@@ -9456,17 +9516,34 @@ let _renderLock = false; // 재진입 방지
                 return;
             } else if((action === 'done' || action === 'instant') && !window._xpBoostConfirmed) {
                 // 정산 확인 팝업
-                const xbBase = inv[ks[0]]?.baseCookie ?? (s.cookie || 0);
+                // 🔒 [FIX] base 계산 보강 — baseCookie 누락 / 직전 완료 reset / 일일 정산 이력 대응
+                //   우선순위: inv.baseCookie (학생 사용 시 설정) → xb.lastSettledCookie (일일 정산 기준점) → 0
+                //   추가: 정산 이력(xb.history) 합산도 함께 표시
+                const _xb = s.xpBoost || {};
+                const _invBase = inv[ks[0]]?.baseCookie;
+                const _hasInvBase = (_invBase != null);
+                const _lastSettled = _xb.lastSettledCookie;
+                const xbBase = _hasInvBase ? _invBase
+                              : (_lastSettled != null ? _lastSettled : 0);
                 const xbDelta = Math.max(0, (s.cookie || 0) - xbBase);
+                const _settledSum = (Array.isArray(_xb.history) ? _xb.history : []).reduce((a,h)=>a+(h.delta||0), 0);
+                const _totalEarned = xbDelta + _settledSum;
                 const xbDayOf = inv[ks[0]]?.currentDay || '';
                 const xbTotal = inv[ks[0]]?.totalDays || '';
                 const dayLabel = xbDayOf ? `${xbDayOf}/${xbTotal}일차 · ` : '';
+                const _historyHtml = _settledSum > 0
+                    ? `<div style="font-size:11px;color:#888;margin-top:8px;line-height:1.5;">📊 이미 정산됨: <b style="color:#1976D2;">+${_settledSum}🍪</b> (${_xb.history.length}회)<br>🌟 부스트 기간 총 누적: <b style="color:#E65100;">+${_totalEarned}🍪</b></div>`
+                    : '';
+                const _baseHint = !_hasInvBase ? `<div style="font-size:10px;color:#FFA000;margin-top:4px;">⚠️ baseCookie 누락 — ${_lastSettled != null ? '마지막 정산 시점' : '0'} 기준으로 계산</div>` : '';
                 window.prettyConfirm(
                     `<div style="font-size:13px;color:#7B5E57;margin-bottom:6px;">🔥 성장의 불꽃 정산</div>
                      <div style="font-size:17px;color:#3E2723;font-weight:bold;margin-bottom:12px;">${s.nm} 학생</div>
                      <div style="background:white;border:2px dashed #FFB74D;border-radius:14px;padding:12px 10px;">
                         <div style="font-size:12px;color:#888;margin-bottom:4px;">${dayLabel}${_todayISO}</div>
-                        <div style="font-size:28px;font-weight:bold;color:${xbDelta>0?'#E65100':'#BDBDBD'};line-height:1.2;">${xbDelta>0?'+'+xbDelta+'🍪':'아직 0🍪'}</div>
+                        <div style="font-size:11px;color:#aaa;margin-bottom:4px;">기준 ${xbBase}🍪 → 현재 ${s.cookie||0}🍪</div>
+                        <div style="font-size:28px;font-weight:bold;color:${xbDelta>0?'#E65100':'#BDBDBD'};line-height:1.2;">${xbDelta>0?'+'+xbDelta+'🍪':'미정산분 0🍪'}</div>
+                        ${_baseHint}
+                        ${_historyHtml}
                      </div>`,
                     () => { window._xpBoostConfirmed=true; try{window._reqGroupAction(cd,ks,action);}finally{window._xpBoostConfirmed=false;} },
                     {icon:'🔥', okLabel:'정산 완료', okClass:'btn-blue', cancelLabel:'취소'}
@@ -11901,6 +11978,7 @@ window.appU = function(y, si, k) {
         rBdgMgrList();
         rTitMgrList();
         rVoucherPoolList();
+        if(window._loadReqCutoff) window._loadReqCutoff();
         _renderColOpenUI();
     }
 
@@ -11910,6 +11988,27 @@ window.appU = function(y, si, k) {
         const amt = Math.max(1, parseInt(document.getElementById('voucherBasketAmt')?.value)||2);
         db.cfg.voucherBasket = { enabled: en, amount: amt };
         sv();
+    };
+
+    // 🔒 [Feature 2] 요청 마감 시각 설정 저장/로드
+    window._saveReqCutoff = function() {
+        if(!db.cfg) db.cfg = {};
+        const v = document.getElementById('reqCutoffTime')?.value || '';
+        // "HH:MM" 형식 검증
+        if(v && !/^\d{2}:\d{2}$/.test(v)) { alert('시간 형식 오류'); return; }
+        if(v) db.cfg.reqCutoffTime = v;
+        else delete db.cfg.reqCutoffTime;
+        const _st = document.getElementById('reqCutoffStatus');
+        if(_st) _st.textContent = v ? `당일 신청은 ${v} 까지만 허용` : '제한 없음 (언제든 당일 신청 가능)';
+        sv();
+    };
+    window._loadReqCutoff = function() {
+        const el = document.getElementById('reqCutoffTime');
+        if(!el) return;
+        const v = db.cfg && db.cfg.reqCutoffTime;
+        if(v) el.value = v;
+        const _st = document.getElementById('reqCutoffStatus');
+        if(_st) _st.textContent = v ? `당일 신청은 ${v} 까지만 허용` : '제한 없음 (언제든 당일 신청 가능)';
     };
 
     function rVoucherPoolList() {
@@ -14993,21 +15092,19 @@ window.appU = function(y, si, k) {
         const tieList = db.auc.filter(a => a && a.st === 'tie');
         const archivedList = (db.aucArc || []).slice().sort((a,b)=>(b.id||0)-(a.id||0));
         const doneList = [...tieList, ...archivedList];
-        
-        document.getElementById('t_auc_req').style.gridTemplateColumns = "repeat(auto-fill, minmax(320px, 1fr))";
-        
-        document.getElementById('t_auc_req').innerHTML = reqList.map(a => `
+
+        // 🔒 통합 렌더 — 단일 grid 에 req → active → tie → done 순서로 출력
+        // 각 카드는 색상 배지로 상태 구분 (요청됨 / 진행중 / 동점 / 종료됨)
+        const _reqCardsHtml = reqList.map(a => `
             <div style="background:#FFFDF2; border:2px solid #FFB366; border-radius:15px; padding:15px; position:relative; display:flex; flex-direction:column; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
                 <div style="position:absolute; top:15px; right:15px; background:#FF9F43; color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">요청됨</div>
-                <div style="font-weight:bold; font-size:18px; color:#5D4037; padding-right:50px;">${a.n}</div>
+                <div style="font-weight:bold; font-size:18px; color:#5D4037; padding-right:60px;">${a.n}</div>
                 <div style="font-size:13px; color:#555; margin:5px 0;">${a.desc||'-'}</div>
                 <div style="font-size:13px; color:#E65100;">요청자: ${a.reqNm}</div>
-                
                 <div style="background:white; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; margin:10px 0;">
                     <span style="font-size:14px; font-weight:bold; color:#5D4037;">희망 시작가</span>
                     <span style="font-size:18px; font-weight:bold; color:#E65100;">${a.sp} ${curEmoji[a.cur]}</span>
                 </div>
-                
                 <div style="display:flex; align-items:center; gap:5px; margin-top:auto;">
                     <div style="display:flex; align-items:center; background:white; border:2px solid #FFE0B2; border-radius:8px; padding:4px 8px;">
                         <input type="number" id="ar_m_${a.id}" value="3" style="width:35px; border:none; background:transparent; font-size:18px; font-weight:bold; text-align:right; padding:0; margin:0; outline:none;">
@@ -15019,9 +15116,9 @@ window.appU = function(y, si, k) {
                     </div>
                 </div>
             </div>
-        `).join('') || '<div style="color:#888; grid-column: 1/-1;">대기 중인 요청이 없습니다.</div>';
+        `).join('');
 
-        document.getElementById('t_auc_act').innerHTML = actList.map(a => {
+        const _actCardsHtml = actList.map(a => {
             const topBid = a.bids && a.bids.length > 0 ? Math.max(...a.bids.map(b=>b.amt)) : 0;
             const topBidders = a.bids ? a.bids.filter(b=>b.amt === topBid) : [];
             const topName = topBidders.length > 0 ? Array.from(new Set(topBidders.map(b=>b.nm))).join(', ') : '-';
@@ -15041,9 +15138,9 @@ window.appU = function(y, si, k) {
                 </div>
                 <button class="btn btn-red" style="margin-top:10px;" onclick="forceEndAuc(${a.id})">강제 종료</button>
             </div>`;
-        }).join('') || '<div style="color:#888;">진행 중인 경매가 없습니다.</div>';
+        }).join('');
 
-        document.getElementById('t_auc_done').innerHTML = doneList.map(a => {
+        const _doneCardsHtml = doneList.map(a => {
             if(a.st === 'tie') {
                 return `
                 <div style="background:#FFF3E0; border:2px solid #FFB74D; border-radius:15px; padding:15px; position:relative; display:flex; flex-direction:column; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
@@ -15061,7 +15158,6 @@ window.appU = function(y, si, k) {
                 <div style="background:#F5F5F5; border:2px solid #BDBDBD; border-radius:15px; padding:15px; position:relative; display:flex; flex-direction:column; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
                     <div style="position:absolute; top:-10px; left:15px; background:#757575; color:white; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:bold;">종료됨</div>
                     <div style="font-weight:bold; font-size:18px; color:#424242; text-decoration:line-through; margin-top:5px;">${a.n}</div>
-                    
                     <div style="background:white; border-radius:10px; padding:10px; display:flex; justify-content:space-between; align-items:center; margin:10px 0; border:1px solid #E0E0E0;">
                         <span style="font-size:14px; color:#555;">낙찰자: <b style="color:#2E7D32;">${winNm}</b></span>
                         <span style="font-size:14px; color:#555;">낙찰가: <b style="color:#D84315;">${a.cp} ${curEmoji[a.cur]}</b></span>
@@ -15072,8 +15168,22 @@ window.appU = function(y, si, k) {
                     </div>
                 </div>`;
             }
-        }).join('') || '<div style="color:#888; grid-column: 1/-1;">종료된 경매가 없습니다.</div>';
-        
+        }).join('');
+
+        const _allHtml = _reqCardsHtml + _actCardsHtml + _doneCardsHtml;
+        const _container = document.getElementById('t_auc_all');
+        if(_container) {
+            _container.innerHTML = _allHtml || '<div style="color:#888; grid-column: 1/-1; text-align:center; padding:20px;">경매가 없습니다.</div>';
+        }
+        const _summary = document.getElementById('t_auc_summary');
+        if(_summary) {
+            const _parts = [];
+            if(reqList.length) _parts.push(`<span style="color:#FF9F43;">요청 ${reqList.length}</span>`);
+            if(actList.length) _parts.push(`<span style="color:#D32F2F;">진행 ${actList.length}</span>`);
+            if(doneList.length) _parts.push(`<span style="color:#757575;">종료 ${doneList.length}</span>`);
+            _summary.innerHTML = _parts.length ? '· ' + _parts.join(' · ') : '';
+        }
+
         updateAucTimersUI();
     }
 
@@ -19447,11 +19557,9 @@ window.addCharRow = function() {
             _mAuc.querySelector('.menu-badge-auc')?.remove();
             const _today = new Date().toLocaleDateString('sv-SE');
             const _aucReqCnt = (db.auc||[]).filter(a=>a.st==='req').length;
+            // 🔒 [Feature 3] 배지는 "승인 안 된 요청"만 카운트 (이미 승인된 항목은 제외)
             const _todayReqCnt = Object.values(window._reqCntMap||{}).reduce((sum,c)=>{
-                // 오늘 포함 과거 날짜의 미완료 항목 모두 포함 (성장의 불꽃 N일권 등 교사 완료 전까지 유지)
-                let _apprSum = 0;
-                if(c.invAppr) Object.keys(c.invAppr).forEach(d => { if(d <= _today) _apprSum += (c.invAppr[d]||0); });
-                return sum + (c.invReq||0) + _apprSum;
+                return sum + (c.invReq||0);
             },0);
             const _gacWaitCnt = Object.values(db.gacQueue||{}).reduce((s,arr)=>{
                 const a=Array.isArray(arr)?arr:Object.values(arr); return s+a.filter(e=>e.st==='wait').length;
@@ -19485,12 +19593,10 @@ window.addCharRow = function() {
         // 홈 화면 요청사항 배지 동기화
         const _hbAuc = document.getElementById('home_badge_auc');
         if(_hbAuc) {
-            const _today2 = new Date().toLocaleDateString('sv-SE');
             const _ar = (db.auc||[]).filter(a=>a.st==='req').length;
+            // 🔒 [Feature 3] 배지는 "승인 안 된 요청"만 카운트
             const _tr = Object.values(window._reqCntMap||{}).reduce((sum,c)=>{
-                let _apprSum = 0;
-                if(c.invAppr) Object.keys(c.invAppr).forEach(d => { if(d <= _today2) _apprSum += (c.invAppr[d]||0); });
-                return sum + (c.invReq||0) + _apprSum;
+                return sum + (c.invReq||0);
             },0);
             const _gw = Object.values(db.gacQueue||{}).reduce((s,arr)=>{
                 const a=Array.isArray(arr)?arr:Object.values(arr); return s+a.filter(e=>e.st==='wait').length;
@@ -21216,7 +21322,7 @@ window.addCharRow = function() {
             }
             // 해제된 학생 → 해당 달 자식 칭호만 제거
             (rec.uids||[]).filter(u=>!selectedUids.includes(String(u))).forEach(uid=>{
-                const stu = (db.stu||[]).find(s=>String(s.cd)===String(uid));
+                const stu = (db.stu||[]).find(s=>s && String(s.cd)===String(uid));
                 if(!stu) return;
                 const arr = Array.isArray(stu.earnedTit) ? stu.earnedTit : Object.values(stu.earnedTit||{});
                 stu.earnedTit = arr.filter(t=>t!==childTitId);
@@ -21245,7 +21351,7 @@ window.addCharRow = function() {
         const childDef = db.tit.find(t=>t.id===childTitId);
         let _skippedOwned = 0;
         selectedUids.forEach(uid=>{
-            const stu = (db.stu||[]).find(s=>String(s.cd)===String(uid));
+            const stu = (db.stu||[]).find(s=>s && String(s.cd)===String(uid));
             if(!stu) return;
             if(!Array.isArray(stu.earnedTit)) stu.earnedTit = Object.values(stu.earnedTit||{});
             // 🛑 월간 분배: 이미 같은 자식 칭호 보유 시 스킵 (월별 1회 분배가 본질이므로 force 옵션 없음)
@@ -25993,7 +26099,18 @@ window.addCharRow = function() {
                     }
                     return true;
                 }
-                if(it.expireAt && it.expireAt < NOW) return false;
+                if(it.expireAt && it.expireAt < NOW) {
+                    // 🔒 [FIX] 승인된 미래 사용 예약이 있으면 만료 유예 — useDate 23:59 까지는 살려둠
+                    if(it.reqApproved && it.useDate) {
+                        const _useEnd = new Date(it.useDate + 'T23:59:59').getTime();
+                        if(_useEnd >= NOW) return true; // 사용 예정일까지 보존
+                    }
+                    if(it.reqApproved && it.useEndDate) {
+                        const _useEnd2 = new Date(it.useEndDate + 'T23:59:59').getTime();
+                        if(_useEnd2 >= NOW) return true;
+                    }
+                    return false;
+                }
                 return true;
             });
             if(s.inv.length !== before) changed = true;
@@ -28618,7 +28735,7 @@ window.addCharRow = function() {
         const _getNm = uid => {
             const cached = (_plzUserCache[uid]||{}).nm;
             if(cached) return cached;
-            const stu = (db.stu||[]).find(s => s.cd === uid);
+            const stu = (db.stu||[]).find(s => s && s.cd === uid);
             return stu ? (stu.nm || stu.no || '') : '';
         };
         for(const uid of candidates){
@@ -28719,8 +28836,8 @@ window.addCharRow = function() {
             let cands = allAlive.filter(u => myRole === 'doctor' ? true : u !== me.cd);
             if(myRole === 'doctor') cands = cands.slice().sort((a,b) => (a===me.cd?-1:b===me.cd?1:0));
             const candBtns = cands.map(uid => {
-                const nm = (_plzUserCache[uid]||{}).nm || (db.stu||[]).find(s=>s.cd===uid)?.nm || uid;
-                return `<button onclick="window._mafiaPickNightTarget('${uid}','${nm.replace(/'/g, "\\'")}')" style="padding:12px 18px;border:3px solid #B39DDB;border-radius:14px;background:white;color:#5E35B1;font-family:Jua;font-size:16px;cursor:pointer;font-weight:bold;">${nm}</button>`;
+                const nm = (_plzUserCache[uid]||{}).nm || (db.stu||[]).find(s=>s && s.cd===uid)?.nm || uid;
+                return `<button onclick="window._mafiaPickNightTarget('${uid}','${nm.replace(/'/g, "\\'")}')"style="padding:12px 18px;border:3px solid #B39DDB;border-radius:14px;background:white;color:#5E35B1;font-family:Jua;font-size:16px;cursor:pointer;font-weight:bold;">${nm}</button>`;
             }).join('');
             // 투표 입력은 화면 중앙에 크게 표시
             panel.style.cssText = 'position:fixed !important;top:50% !important;left:50% !important;transform:translate(-50%,-50%) !important;bottom:auto !important;z-index:99800;display:block;';
@@ -28880,7 +28997,7 @@ window.addCharRow = function() {
         const myRole = g.roles && g.roles[me.cd];
         const round = g.round;
         getPlzRef().child(`mafia/acts/${round}/${me.cd}`).set(targetUid);
-        const targetNm = (_plzUserCache[targetUid]||{}).nm || (db.stu||[]).find(s=>s.cd===targetUid)?.nm || targetUid;
+        const targetNm = (_plzUserCache[targetUid]||{}).nm || (db.stu||[]).find(s=>s && s.cd===targetUid)?.nm || targetUid;
         const label = myRole==='mafia' ? `🔪 ${targetNm} 살해 지목` :
                       myRole==='doctor' ? `💊 ${targetNm} 보호` :
                       myRole==='police' ? `🔍 ${targetNm} 조사` :
@@ -29955,7 +30072,7 @@ window.addCharRow = function() {
         const _getNm = uid => {
             const cached = (_plzUserCache[uid]||{}).nm;
             if(cached) return cached;
-            const stu = (db.stu||[]).find(s => s.cd === uid);
+            const stu = (db.stu||[]).find(s => s && s.cd === uid);
             return stu ? (stu.nm || '') : '';
         };
         for(const uid of players){
@@ -36748,7 +36865,7 @@ window.addCharRow = function() {
         if(uid !== 'teacher_main'){
             // 1단계: 일단 빈 자리 좌표(0,0 대신 학생 본인 번호 기반 추정)에 임시 위치로 presence 작성
             // 본인 학생 데이터에서 no 가져오기
-            const myNo = (db.stu||[]).find(s => s.cd === uid)?.no || 999;
+            const myNo = (db.stu||[]).find(s => s && s.cd === uid)?.no || 999;
             const _doSeatAssign = () => {
                 getPlzRef().child('lmSeats').once('value', sSnap => {
                     const sraw = sSnap.val();
@@ -38825,7 +38942,7 @@ window.addCharRow = function() {
                         entries.push({ uid: c.key, no: i.no || v.no || 999 });
                     });
                     if(!entries.find(e => e.uid === me.cd)){
-                        const myNo = (db.stu||[]).find(s => s.cd === me.cd)?.no || 999;
+                        const myNo = (db.stu||[]).find(s => s && s.cd === me.cd)?.no || 999;
                         entries.push({ uid: me.cd, no: myNo });
                     }
                     entries.sort((a,b) => a.no - b.no || a.uid.localeCompare(b.uid));
