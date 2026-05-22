@@ -5053,26 +5053,42 @@ let _renderLock = false; // 재진입 방지
             // 🌟 파이어베이스 배열 깨짐 원천 차단 (등록/도감 버그 픽스)
             // ⚠️ 모든 배열 path의 null/sparse 슬롯을 filter(Boolean)로 제거 — null entry로 인한 cascade 에러 차단
             const _normArr = v => Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
-            db.stu = _normArr(db.stu);
+            // 🔒 db.stu 는 인덱스 보존 정규화 (Firebase stu/i 1:1 매핑 깨짐 방지)
+            // - 배열: 객체가 아닌 슬롯만 null 로 표시 (길이 유지)
+            // - 객체(Firebase sparse): 숫자 키를 인덱스로 매핑하여 sparse array 재구성
+            db.stu = Array.isArray(db.stu)
+                ? db.stu.map(s => (s && typeof s === 'object') ? s : null)
+                : (db.stu && typeof db.stu === 'object'
+                    ? Object.entries(db.stu).reduce((arr,[k,v])=>{ const i=parseInt(k); if(!isNaN(i)) arr[i] = (v && typeof v==='object') ? v : null; return arr; }, [])
+                    : []);
             // 🛡️ 로드 시점 중복 cd 자동 정리 — 같은 cd가 여러 슬롯에 있으면 첫 번째만 유지
+            // 🔒 [FIX] 중복 슬롯은 splice/filter 가 아니라 null 로 표시 — 뒤쪽 인덱스 시프트로 인한
+            //         Firebase stu/i 매핑 깨짐(다른 학생 덮어쓰기/wipe) 사고 차단
             (function _dedupStuByCd(){
                 if(!Array.isArray(db.stu)) return;
                 const _seenCds = new Set();
                 const _dups = [];
-                const _kept = [];
                 db.stu.forEach((s, i) => {
-                    if(!s || !s.cd) { if(s) _kept.push(s); return; }
+                    if(!s || !s.cd) return;
                     if(_seenCds.has(s.cd)){
-                        _dups.push({ idx: i, cd: s.cd, nm: s.nm });
+                        _dups.push({ idx: i, cd: s.cd, nm: s.nm, stu: s });
+                        db.stu[i] = null; // 인덱스 유지 — splice/filter 금지
                     } else {
                         _seenCds.add(s.cd);
-                        _kept.push(s);
                     }
                 });
                 if(_dups.length){
-                    console.error('[load] 중복 cd 자동 정리:', _dups);
-                    db.stu = _kept;
+                    console.error('[load] 중복 cd null 처리 (인덱스 보존):', _dups);
                     try { localStorage.setItem('_dedupStu_'+Date.now(), JSON.stringify(_dups)); } catch(_){}
+                    // Firebase 측 중복 슬롯도 명시적 제거 (인덱스는 유지, 값만 null)
+                    // 🛡️ 교사 세션에서만 write — 학생은 다른 슬롯 write 권한 없을 수 있음 (rules 거부 → 무한 루프 위험 차단)
+                    try {
+                        if(typeof dbRef !== 'undefined' && localStorage.getItem('teacherLogged') === '1') {
+                            const _upd = {};
+                            _dups.forEach(d => { _upd['stu/'+d.idx] = null; _upd['reqCnt/'+d.idx] = null; });
+                            dbRef.update(_upd);
+                        }
+                    } catch(_){}
                 }
             })();
             db.itm = _normArr(db.itm);
@@ -5381,6 +5397,15 @@ let _renderLock = false; // 재진입 방지
 
                     // 자신의 데이터 또는 설정/아이템(도감 등록 변경)이 변경된 경우에만 학생 화면 재렌더
                     if(meChanged || cfgChanged || itmChanged) {
+                        // 🔒 [FIX] stale echo 차단 — 원격 updatedAt 이 로컬보다 오래되면 원격 me 데이터 무시
+                        //         (아이템 추가 직후 깜빡임 = stale echo 가 잠깐 덮어쓰고 race-guard 가 복원하는 흐름 차단)
+                        //         cfg/itm 변경은 그대로 적용해야 하므로 me 자체는 유지, 화면 재렌더만 진행
+                        const _remoteMeTs = updatedMe.updatedAt || 0;
+                        const _localMeTs = me.updatedAt || 0;
+                        const _staleEcho = _remoteMeTs > 0 && _localMeTs > 0 && _remoteMeTs < _localMeTs;
+                        if(_staleEcho){
+                            console.warn('[stale-echo] 원격 me.updatedAt < 로컬 — 원격 me 무시', {remote:_remoteMeTs, local:_localMeTs});
+                        }
                         // ⚠️ race 가드: 방금 로컬에서 push 한 inv/col/shopLog 가 stale echo 로 손실되는 것 방지
                         const _localInv = Array.isArray(me.inv) ? me.inv.slice() : null;
                         const _localCol = Array.isArray(me.col) ? me.col.slice() : null;
@@ -5388,7 +5413,7 @@ let _renderLock = false; // 재진입 방지
                         const _localInvLen = _localInv ? _localInv.length : 0;
                         const _localColLen = _localCol ? _localCol.length : 0;
                         const _localShopLogLen = _localShopLog ? _localShopLog.length : 0;
-                        me = updatedMe;
+                        if(!_staleEcho) me = updatedMe;
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                         if(!me.col) me.col = [];
@@ -7594,29 +7619,57 @@ let _renderLock = false; // 재진입 방지
         const n=document.getElementById('an').value, nm=document.getElementById('am').value, c=document.getElementById('ac').value;
         const gdrRaw=document.getElementById('agdr').value.trim();
         const gdr = gdrRaw==='남'||gdrRaw==='m' ? 'm' : gdrRaw==='여'||gdrRaw==='f' ? 'f' : '';
-        if(n&&nm&&c){
-            if(!db.stu) db.stu = [];
-            // 🛡️ 중복 cd 체크 — 같은 학번 이중 등록 방지 (나중에 dedup이 신규 학생 제거하는 사고 예방)
-            if(db.stu.some(s => s && s.cd === c)) {
-                alert(`⚠️ 학번 "${c}"는 이미 등록된 학생과 중복됩니다.\n다른 학번을 입력해주세요.`);
-                return;
-            }
-            const defInv = _newStuDefaultInv();
-            const newS={no:n, nm:nm, cd:c, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv, ibx:[], col:[], rd:{}, rb:0};
-            if(gdr) newS.gdr=gdr;
-            newS.updatedAt = Date.now();
-            const newIdx = db.stu.length;
-            db.stu.push(newS);
+        if(!(n&&nm&&c)) return;
+        if(!db.stu) db.stu = [];
+        // 🛡️ 1차(로컬) 중복 cd 체크
+        if(db.stu.some(s => s && s.cd === c)) {
+            alert(`⚠️ 학번 "${c}"는 이미 등록된 학생과 중복됩니다.\n다른 학번을 입력해주세요.`);
+            return;
+        }
+        const defInv = _newStuDefaultInv();
+        const newS={no:n, nm:nm, cd:c, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv, ibx:[], col:[], rd:{}, rb:0};
+        if(gdr) newS.gdr=gdr;
+        newS.updatedAt = Date.now();
+
+        // 🔒 [FIX] 트랜잭션 기반 원자적 슬롯 선점 — 다른 탭/기기와의 race로 인한 중복 슬롯(같은 cd가 두 슬롯에 저장) 방지
+        let _txIdx = -1;
+        dbRef.child('stu').transaction(curStu => {
+            let arr;
+            if(Array.isArray(curStu)) arr = curStu.slice();
+            else if(curStu && typeof curStu === 'object') {
+                arr = [];
+                Object.entries(curStu).forEach(([k,v]) => { const i=parseInt(k); if(!isNaN(i)) arr[i] = (v && typeof v==='object') ? v : null; });
+            } else arr = [];
+            // 2차(원격) 중복 cd 재확인 — 다른 탭이 먼저 등록했으면 abort
+            if(arr.some(s => s && s.cd === c)) { _txIdx = -2; return; }
+            // 빈 슬롯 우선 재사용, 없으면 끝에 추가
+            let idx = arr.findIndex(s => !s);
+            if(idx < 0) idx = arr.length;
+            arr[idx] = newS;
+            _txIdx = idx;
+            return arr;
+        }, (err, committed) => {
+            if(err) { console.error('[add1-tx] 트랜잭션 실패:', err); alert('등록 실패: '+err.message); return; }
+            if(_txIdx === -2) { alert(`⚠️ 학번 "${c}"는 이미 다른 곳에서 등록되었습니다.\n새로고침 후 다시 확인해주세요.`); return; }
+            if(!committed || _txIdx < 0) { alert('⚠️ 등록 충돌이 감지되어 취소되었습니다. 다시 시도해주세요.'); return; }
+            // 로컬 동기화 + hash 캐시 무효화 (이전 점유자의 잔존 hash 제거)
+            db.stu[_txIdx] = newS;
             if(!window._remoteStuTs) window._remoteStuTs = {};
-            window._remoteStuTs[newIdx] = newS.updatedAt;
-            // 캐시 즉시 저장 (디바운스 대기 중 새로고침해도 복원)
+            window._remoteStuTs[_txIdx] = newS.updatedAt;
+            if(window._stuSentHash) delete window._stuSentHash[_txIdx];
+            if(window._stuPerHash) delete window._stuPerHash[_txIdx];
+            // 부수 path 업데이트 (reqCnt, tombstone 해제) — stu는 트랜잭션이 이미 씀
+            try {
+                dbRef.update({
+                    ['reqCnt/'+_txIdx]: window._computeReqCnt ? window._computeReqCnt(newS) : {},
+                    ['stuDel/'+c]: null,
+                    lastWriteTs: firebase.database.ServerValue.TIMESTAMP
+                });
+            } catch(_){}
             try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); localStorage.setItem('_teacherStuCacheTs', String(Date.now())); } catch(_){}
-            // 즉시 Firebase 전송 — 디바운스 없이 바로 씀
-            // 🛡️ stuDel/c: null — 이전에 삭제된 적 있는 cd면 tombstone 제거 (재등록 허용)
-            try { dbRef.update({ ['stu/'+newIdx]: newS, ['reqCnt/'+newIdx]: window._computeReqCnt ? window._computeReqCnt(newS) : {}, ['stuDel/'+c]: null, lastWriteTs: firebase.database.ServerValue.TIMESTAMP }); } catch(e){ console.error('[add1] Firebase write 실패', e); sv(); }
             rTb();
             alert("추가됨" + (defInv.length ? ` (자동 지급 아이템 ${defInv.length}개 포함)` : ''));
-        }
+        }, /* applyLocally */ false);
     }
 
     async function bulk(){
@@ -7879,38 +7932,27 @@ let _renderLock = false; // 재진입 방지
             const idxs = [...(window._stuSelSet||new Set())];
             const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
             const _delCds = idxs.map(i => stuList[i] && stuList[i].cd).filter(Boolean);
-            const _oldLen = stuList.length;
-            db.stu = stuList.filter((_,i) => !idxs.includes(i));
+            // 🔒 [FIX] filter 금지 — 인덱스 보존 위해 해당 슬롯만 null 처리 (Firebase 매핑 깨짐 방지)
+            if(!Array.isArray(db.stu)) db.stu = stuList;
+            idxs.forEach(i => { db.stu[i] = null; });
             window._stuSelSet.clear();
-            sv();
             try {
                 const _ts = Date.now();
-                const _tombs = {};
-                _delCds.forEach(cd => { _tombs['stuDel/' + cd] = _ts; });
-                if(Object.keys(_tombs).length) dbRef.update(_tombs);
-            } catch(_){}
-            // [FIX 2026-05-21] splice 후 잔여 reqCnt 정리 + 범위 밖 stu 슬롯 null — 학생별섹션 유령카드 방지
-            try {
                 const cleanup = {};
-                for(let j = db.stu.length; j < _oldLen; j++) {
-                    cleanup['stu/' + j] = null;
-                    cleanup['reqCnt/' + j] = null;
-                }
-                if(window._computeReqCnt) {
-                    for(let j = 0; j < db.stu.length; j++) {
-                        if(db.stu[j]) cleanup['reqCnt/' + j] = window._computeReqCnt(db.stu[j]);
-                    }
-                }
+                idxs.forEach(i => { cleanup['stu/' + i] = null; cleanup['reqCnt/' + i] = null; });
+                _delCds.forEach(cd => { cleanup['stuDel/' + cd] = _ts; });
                 if(Object.keys(cleanup).length) dbRef.update(cleanup);
-                if(window._reqCntMap) {
-                    for(let j = db.stu.length; j < _oldLen; j++) delete window._reqCntMap[j];
-                    if(window._computeReqCnt) {
-                        for(let j = 0; j < db.stu.length; j++) {
-                            if(db.stu[j]) window._reqCntMap[j] = window._computeReqCnt(db.stu[j]);
-                        }
-                    }
-                }
+                if(window._reqCntMap) { idxs.forEach(i => { try { delete window._reqCntMap[i]; } catch(_){} }); }
+                // hash 캐시 정리 — 동일 슬롯 재사용 시 잔존 hash 로 인한 오작동 방지
+                idxs.forEach(i => {
+                    if(window._stuSentHash) delete window._stuSentHash[i];
+                    if(window._stuPerHash) delete window._stuPerHash[i];
+                    if(window._remoteStuTs) delete window._remoteStuTs[i];
+                });
             } catch(_){}
+            // localStorage 캐시 즉시 갱신 + _lastKnownStuCount 동기화
+            try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); localStorage.setItem('_teacherStuCacheTs', String(Date.now())); } catch(_){}
+            sv();
             rTb();
         }, {icon:'🗑️', okLabel:'삭제', okClass:'btn-red', cancelLabel:'취소'});
     };
@@ -8154,35 +8196,19 @@ let _renderLock = false; // 재진입 방지
             console.log('[delS] 삭제된 학생 백업 → localStorage["'+key+'"]');
         } catch(_){}
         const _delCd = s.cd;
-        const _oldLen = db.stu.length; // splice 전 길이
-        db.stu.splice(i,1); sv();
+        // 🔒 [FIX] splice 금지 — 인덱스 보존 위해 슬롯을 null 로 표시 (Firebase 매핑 깨짐 방지)
+        db.stu[i] = null;
+        try { dbRef.child('stu/' + i).set(null); } catch(_){}
+        try { dbRef.child('reqCnt/' + i).remove(); } catch(_){}
+        if(window._reqCntMap) { try { delete window._reqCntMap[i]; } catch(_){} }
+        // hash 캐시 정리 — 동일 슬롯 재사용 시 잔존 hash 로 인한 오작동 방지
+        if(window._stuSentHash) delete window._stuSentHash[i];
+        if(window._stuPerHash) delete window._stuPerHash[i];
+        if(window._remoteStuTs) delete window._remoteStuTs[i];
         try { if(_delCd) dbRef.child('stuDel/' + _delCd).set(Date.now()); } catch(_){}
-        // splice 후 범위 밖이 된 마지막 슬롯 명시적 삭제 — Ghost 학생 방지
-        try { dbRef.child('stu/' + (_oldLen - 1)).set(null); } catch(_){}
-        try { dbRef.child('reqCnt/' + (_oldLen - 1)).remove(); } catch(_){}
-        // [FIX 2026-05-21] 중간 인덱스 삭제 시 잔여 reqCnt 재계산 — 인덱스 어긋남으로 인한 학생별섹션 유령카드 방지
-        if(window._computeReqCnt && i < _oldLen - 1) {
-            try {
-                const reqUpdates = {};
-                for(let j = i; j < db.stu.length; j++) {
-                    if(db.stu[j]) reqUpdates['reqCnt/' + j] = window._computeReqCnt(db.stu[j]);
-                }
-                if(Object.keys(reqUpdates).length) dbRef.update(reqUpdates);
-            } catch(_){}
-        }
-        // 메모리의 잔여 reqCntMap 도 즉시 정리 (listener 도착 전 UI 잔상 방지)
-        try {
-            if(window._reqCntMap) {
-                delete window._reqCntMap[_oldLen - 1];
-                if(i < _oldLen - 1) {
-                    for(let j = i; j < db.stu.length; j++) {
-                        if(db.stu[j] && window._computeReqCnt) {
-                            window._reqCntMap[j] = window._computeReqCnt(db.stu[j]);
-                        }
-                    }
-                }
-            }
-        } catch(_){}
+        // localStorage 캐시 즉시 갱신 + _lastKnownStuCount 동기화 (housekeeping)
+        try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); localStorage.setItem('_teacherStuCacheTs', String(Date.now())); } catch(_){}
+        sv();
         rTb();
     }
     // 콘솔에서 호출: window._restoreDeletedStu('학생코드') — localStorage 백업에서 복구
