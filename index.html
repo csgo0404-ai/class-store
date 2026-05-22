@@ -7693,6 +7693,7 @@ let _renderLock = false; // 재진입 방지
         let _added = 0, _updated = 0, _skipped = 0;
         const _newSlots = []; // 부수 path 업데이트용
         const defInv = _newStuDefaultInv();
+        let _committedArr = null; // 트랜잭션 함수가 최종 commit 한 값 — snap.val() 호환성 문제 회피
         await new Promise(resolve => {
             dbRef.child('stu').transaction(curStu => {
                 let arr;
@@ -7707,10 +7708,14 @@ let _renderLock = false; // 재진입 방지
                     const existingIdx = arr.findIndex(s => s && s.cd === row.cd);
                     if(existingIdx >= 0){
                         // 기존 학생 — 번호/이름/성별만 업데이트 (inv 등 보존)
-                        arr[existingIdx].no = row.no;
-                        arr[existingIdx].nm = row.nm;
-                        if(row.gdr) arr[existingIdx].gdr = row.gdr;
-                        arr[existingIdx].updatedAt = Date.now();
+                        // 🛡️ 원본 snapshot mutate 금지 (retry 누적 위험) → 깊은 복사 후 갱신
+                        let _copy;
+                        try { _copy = JSON.parse(JSON.stringify(arr[existingIdx])); } catch(_) { _copy = Object.assign({}, arr[existingIdx]); }
+                        _copy.no = row.no;
+                        _copy.nm = row.nm;
+                        if(row.gdr) _copy.gdr = row.gdr;
+                        _copy.updatedAt = Date.now();
+                        arr[existingIdx] = _copy;
                         _updated++;
                     } else {
                         const newS = {no:row.no, nm:row.nm, cd:row.cd, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv.slice(), ibx:[], col:[], rd:{}, rb:0, updatedAt:Date.now()};
@@ -7722,12 +7727,13 @@ let _renderLock = false; // 재진입 방지
                         _added++;
                     }
                 });
+                _committedArr = arr; // 최종 retry 의 값 보존
                 return arr;
             }, (err, committed, snap) => {
                 if(err) { console.error('[bulk-tx] 트랜잭션 실패:', err); alert('일괄 등록 실패: '+err.message); resolve(); return; }
                 if(!committed) { alert('⚠️ 일괄 등록 충돌이 감지되어 취소되었습니다. 다시 시도해주세요.'); resolve(); return; }
-                // 로컬 동기화
-                const newArr = snap && snap.val ? snap.val() : null;
+                // 로컬 동기화 — snap.val() 가 가능하면 우선 사용, 안 되면 트랜잭션 return 값 fallback
+                const newArr = (snap && typeof snap.val === 'function') ? snap.val() : _committedArr;
                 if(Array.isArray(newArr)) db.stu = newArr.map(s => (s && typeof s==='object') ? s : null);
                 else if(newArr && typeof newArr === 'object'){
                     db.stu = [];
