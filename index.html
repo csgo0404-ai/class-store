@@ -5740,7 +5740,7 @@ let _renderLock = false; // 재진입 방지
                     const _focused = document.activeElement;
                     const _tStu = document.getElementById('t_stu');
                     const _inputFocused = _focused && (_focused.tagName==='INPUT'||_focused.tagName==='TEXTAREA'||_focused.contentEditable==='true') && _tStu && _tStu.contains(_focused);
-                    if(!_renderLock && !_inputFocused) {
+                    if(!_renderLock && !_inputFocused && !_localSaving) {
                         rTb();
                         _renderLock = true;
                         setTimeout(() => { _renderLock = false; }, 300);
@@ -6364,6 +6364,9 @@ let _renderLock = false; // 재진입 방지
     // indices: 배열 인덱스 목록
     window._svStu = function(indices) {
         if(!Array.isArray(db.stu) || !indices || !indices.length) { sv(); return; }
+        _localSaving = true;
+        clearTimeout(_localSavingTimer);
+        _localSavingTimer = setTimeout(() => { _localSaving = false; }, 3000);
         // 🛡️ A안: 초기 fetch 완료 전 stu write 차단
         if(!window._stuListenerReady) {
             if(!window._pendingSvQueue) window._pendingSvQueue = [];
