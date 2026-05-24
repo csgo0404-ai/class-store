@@ -2606,7 +2606,7 @@ let _renderLock = false; // 재진입 방지
     window._tabLazyPaths = {
         't_mgr': ['avt','bdg','tit'],
         't_set': ['avt','bdg','tit','petDef'],
-        't_avt': ['avt'],
+        't_avt': ['avt', 'tit'],
         't_col': ['avt','bdg','tit'],
         't_plz': ['avt'],
         's_char': ['avt'],
@@ -3947,8 +3947,10 @@ let _renderLock = false; // 재진입 방지
     window._computeRank = function(s){
         if(!s) return null;
         const out = { nm:s.nm||s.name||'', cd:s.cd||'', no:s.no||0, cookie:s.cookie||0, rb:s.rb||0 };
-        if(s.eq) out.eq = s.eq; // 아바타 표시 — 작은 id 객체
+        if(s.eq) out.eq = s.eq;
         if(s.equippedTit) out.equippedTit = s.equippedTit;
+        if(s.displayPets && s.displayPets.length) out.displayPets = s.displayPets;
+        if(s.displayProps && s.displayProps.length) out.displayProps = s.displayProps;
         return out;
     };
     window._attachReqCntListener = function(){
@@ -5791,9 +5793,10 @@ let _renderLock = false; // 재진입 방지
                     const diff = a.et - now;
                     
                     // 시간 종료 처리
-                    if(diff <= 0) {
+                    if(diff <= 0 && !a._resolving) {
                         // 교사 페이지가 열려 있거나, 경매를 올린 학생 본인일 때만 마감 처리를 진행해 중복 차감을 방지합니다.
                         if (!document.getElementById('appT').classList.contains('hidden') || (me && me.cd === a.reqBy)) {
+                            a._resolving = true; // 동일 tick 내 중복 실행 방지
                             resolveAuctionTimer(a);
                             needSave = true;
                         }
@@ -16181,6 +16184,7 @@ window.appU = function(y, si, k) {
         if(!a || a.st !== 'tie') return;
 
         const winnerData = a.tied.find(t => t.cd === winnerCd);
+        if(!winnerData) return;
         a.winner = winnerData;
         a.st = 'done';
         processAuctionWin(a, winnerData);
@@ -16939,7 +16943,7 @@ let isScratchDone = false;
             fireConfetti('confetti');
         }
 
-        giveReward(Object.assign({}, item, {_qty: bonus}), bonus);
+        giveReward(Object.assign({}, item, {_qty: bonus}));
 
         const popup = document.getElementById('scrWinPopup');
         if (popup) {
@@ -17255,9 +17259,11 @@ window.addCharRow = function() {
             if(item.img2) html += `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img2}" style="${mkStyle2(isLeft?(100-(item.px2??px)-(item.ps2??ps)):(px2), isLeft, rot2)}">`;
             return html;
         };
-        // 소품(prop) 다중 렌더 — displayPropsArr 우선, 없으면 eq.prop 단일
-        const _propIds = Array.isArray(displayPropsArr) && displayPropsArr.length
-            ? displayPropsArr
+        // 소품(prop) 다중 렌더 — displayPropsArr 우선, 없으면 eq.prop 단일 (Firebase 역직렬화: object→array 정규화)
+        const _propsNorm = Array.isArray(displayPropsArr) ? displayPropsArr
+            : (displayPropsArr && typeof displayPropsArr==='object' ? Object.values(displayPropsArr).filter(Boolean) : null);
+        const _propIds = (_propsNorm && _propsNorm.length)
+            ? _propsNorm
             : (getEqId(eq.prop) ? [getEqId(eq.prop)] : []);
         // 펫·소품 공통 렌더 헬퍼 (isRight=true이면 scaleX 반전 + x 미러)
         const _renderItemById = (pid, zi, isRight) => {
@@ -17282,8 +17288,11 @@ window.addCharRow = function() {
         const backLayer  = renderLyr('back', 0);
         const baseEl     = `<img class="avt-base" loading="lazy" decoding="async" src="${baseUrl}" style="position:relative;z-index:1;width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;">`;
         // 펫: [0]=왼쪽, [1]=오른쪽 / 소품: [0]=왼쪽, [1]=오른쪽 — index 1은 scaleX 반전
-        const _petLayers = Array.isArray(displayPetsArr)
-            ? displayPetsArr.map((pid,i)=>_renderItemById(pid,3,i===1)).join('')
+        // 펫: Firebase 역직렬화 object→array 정규화
+        const _petsNorm = Array.isArray(displayPetsArr) ? displayPetsArr
+            : (displayPetsArr && typeof displayPetsArr==='object' ? Object.values(displayPetsArr).filter(Boolean) : null);
+        const _petLayers = (_petsNorm && _petsNorm.length)
+            ? _petsNorm.map((pid,i)=>_renderItemById(pid,3,i===1)).join('')
             : '';
         const frontLayers = AVT_Z.filter(c=>c!=='back'&&c!=='prop'&&c!=='pet').map(c=>renderLyr(c,2)).join('')
             + _propIds.map((pid,i)=>_renderItemById(pid,2,i===1)).join('')
@@ -17382,15 +17391,24 @@ window.addCharRow = function() {
                 ? window._rankCache
                 : (_hasStuData ? _rawStu2 : (Array.isArray(window._rankCache) && window._rankCache.length ? window._rankCache : _rawStu2));
             const _rankMap2 = new Map();
+            const _stuArr2 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
             _rankSrc2.forEach(s => {
                 if (!s || (!s.cd && !s.nm)) return;
                 const key = s.cd || s.nm;
                 const prev = _rankMap2.get(key);
-                if (!prev || (s.cookie||0) > (prev.cookie||0)) _rankMap2.set(key, s);
+                // _rankCache 항목에 displayPets/Props 없으면 db.stu에서 보완
+                let merged = s;
+                if (s.cd && (!s.displayPets && !s.displayProps)) {
+                    const stuMatch = _stuArr2.find(x => x && String(x.cd) === String(s.cd));
+                    if (stuMatch && (stuMatch.displayPets || stuMatch.displayProps)) {
+                        merged = Object.assign({}, s, { displayPets: stuMatch.displayPets, displayProps: stuMatch.displayProps });
+                    }
+                }
+                if (!prev || (merged.cookie||0) > (prev.cookie||0)) _rankMap2.set(key, merged);
             });
             // me 항상 포함
             if (me && me.cd && !_rankMap2.has(me.cd)) {
-                _rankMap2.set(me.cd, { nm:me.nm||me.name||'', cd:me.cd, no:me.no||0, cookie:me.cookie||0, rb:me.rb||0, eq:me.eq, equippedTit:me.equippedTit });
+                _rankMap2.set(me.cd, { nm:me.nm||me.name||'', cd:me.cd, no:me.no||0, cookie:me.cookie||0, rb:me.rb||0, eq:me.eq, equippedTit:me.equippedTit, displayPets:me.displayPets, displayProps:me.displayProps });
             }
             const _allRankStus = [..._rankMap2.values()].sort((a,b)=>{
                 const d = (b.cookie||0)-(a.cookie||0);
@@ -17408,7 +17426,7 @@ window.addCharRow = function() {
                     const rankEl2 = rank<=3 ? `<div class="rank-num medal">${medals2[rank-1]}</div>` : `<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
                     const rowClass2 = `rank-row${isMe2?' me':rank===1?' top1':rank===2?' top2':rank===3?' top3':''}`;
                     const avtSize = rank<=3 ? 110 : 75;
-                    return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;">${s.nm||s.name||''}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}경험치 ${s.cookie||0}</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
+                    return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize,s.displayPets,s.displayProps)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;">${s.nm||s.name||''}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}경험치 ${s.cookie||0}</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
                 }).join('');
             } else {
                 // 접힌 상태 — 순위 번호 표시
@@ -17417,7 +17435,7 @@ window.addCharRow = function() {
                 const rankNumEl = myRank2 > 0 && myRank2 <= 3
                     ? `<div class="rank-num medal">${medals2[myRank2-1]}</div>`
                     : `<div class="rank-num" style="color:#BDBDBD;">${myRank2 > 0 ? myRank2 : '?'}</div>`;
-                myRankRowHtml = `<div class="rank-row me" style="padding:10px 14px;gap:14px;">${rankNumEl}${renderAvatar(me.eq||{},90)}<div class="rank-info"><div class="rank-nm" style="font-size:16px;">${me.nm} <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span></div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}경험치 ${me.cookie||0}</div></div><div class="rank-lv">Lv.${lv}</div></div>`;
+                myRankRowHtml = `<div class="rank-row me" style="padding:10px 14px;gap:14px;">${rankNumEl}${renderAvatar(me.eq||{},90,me.displayPets,me.displayProps)}<div class="rank-info"><div class="rank-nm" style="font-size:16px;">${me.nm} <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span></div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}경험치 ${me.cookie||0}</div></div><div class="rank-lv">Lv.${lv}</div></div>`;
             }
         }
 
@@ -20769,7 +20787,7 @@ window.addCharRow = function() {
                     ${reqBadge}
                     <div style="display:flex;flex-direction:column;align-items:center;padding-top:4px;">
                         ${titBar}
-                        ${renderAvatar(s.eq, 200)}
+                        ${renderAvatar(s.eq, 200, s.displayPets, s.displayProps)}
                         <div class="char-name-banner" style="margin-top:8px;min-width:0;padding:6px 14px;gap:6px;">
                             <span class="cnb-star">✦</span>
                             <span class="cnb-lv" style="font-size:13px;">Lv.${lv}</span>
@@ -20964,7 +20982,7 @@ window.addCharRow = function() {
                 <button class="modal-close-btn" onclick="document.getElementById('stuAvtModal').remove()">X</button>
                 <div class="modal-inner" style="text-align:center;">
                     <div style="font-size:22px;font-weight:bold;margin-bottom:12px;">${s.nm} 아바타</div>
-                    ${renderAvatar(s.eq, 150)}
+                    ${renderAvatar(s.eq, 150, s.displayPets, s.displayProps)}
                     <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">
                         ${AVT_CATS.map(c=>{
                             const id = s.eq&&s.eq[c.k];
@@ -20993,10 +21011,23 @@ window.addCharRow = function() {
             const X_OFF = Math.round((SIZE - CHAR_SIZE) / 2);
             const Y_OFF = TOTAL_H - CHAR_SIZE - 60;
             const blobToData = blob => new Promise(res => { const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=()=>res(null); r.readAsDataURL(blob); });
+            // fetch 실패 시 crossOrigin img로 폴백 — CORS 허용 서버라면 대부분 성공
             const toDataSrc = async src => {
                 if(!src) return null;
                 if(src.startsWith('data:')) return src;
-                try { const resp=await fetch(src,{mode:src.startsWith('http')?'cors':'same-origin'}); if(!resp.ok) throw 0; return await blobToData(await resp.blob()); } catch(_){return null;}
+                // 1차: fetch blob → data URL (Canvas taint 방지)
+                try {
+                    const resp = await fetch(src, {mode: src.startsWith('http') ? 'cors' : 'same-origin'});
+                    if(resp.ok) return await blobToData(await resp.blob());
+                } catch(_){}
+                // 2차: crossOrigin img 직접 로드 (fetch 안 될 때 폴백)
+                return await new Promise(res => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => { try { const c=document.createElement('canvas'); c.width=img.naturalWidth; c.height=img.naturalHeight; c.getContext('2d').drawImage(img,0,0); res(c.toDataURL('image/png')); } catch(_){ res(null); } };
+                    img.onerror = () => res(null);
+                    img.src = src + (src.includes('?') ? '&' : '?') + '_cb=' + Date.now();
+                });
             };
             const loadDataImg = async src => { const d=await toDataSrc(src); if(!d) return null; return new Promise(res=>{const img=new Image();img.onload=()=>res(img);img.onerror=()=>res(null);img.src=d;}); };
             const baseImg = await loadDataImg(baseUrl);
@@ -21010,22 +21041,26 @@ window.addCharRow = function() {
                 ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(0, 0, SIZE, TOTAL_H);
                 const eq = s.eq || {};
+                // img2(2번째 레이어)도 함께 그림
                 const drawLayer = async (item, flipVal='right') => {
                     if(!item||!item.img) return;
-                    const lImg=await loadDataImg(item.img); if(!lImg) return;
-                    const px=X_OFF+(item.px||0)/100*CHAR_SIZE, py=Y_OFF+(item.py||0)/100*CHAR_SIZE, ps=(item.ps||100)/100*CHAR_SIZE;
-                    const liw=lImg.naturalWidth||ps, lih=lImg.naturalHeight||ps;
-                    const lsc=Math.min(ps/liw,ps/lih);
-                    const dw=liw*lsc, dh=lih*lsc;
-                    const drawOne = (flipX) => {
+                    const drawOne = async (imgSrc, px_, py_, ps_, rot_) => {
+                        const lImg = await loadDataImg(imgSrc); if(!lImg) return;
+                        const px=X_OFF+(px_||0)/100*CHAR_SIZE, py=Y_OFF+(py_||0)/100*CHAR_SIZE, ps=(ps_||100)/100*CHAR_SIZE;
+                        const liw=lImg.naturalWidth||ps, lih=lImg.naturalHeight||ps;
+                        const lsc=Math.min(ps/liw,ps/lih);
+                        const dw=liw*lsc, dh=lih*lsc;
+                        const flipX = flipVal==='left';
                         const dx = flipX ? SIZE-(px+(ps-dw)/2)-dw : px+(ps-dw)/2;
                         const dy = py+(ps-dh)/2;
-                        if(flipX) { ctx.save(); ctx.scale(-1,1); ctx.translate(-SIZE,0); }
+                        ctx.save();
+                        if(rot_) { ctx.translate(dx+dw/2, dy+dh/2); ctx.rotate(rot_*Math.PI/180); ctx.translate(-(dx+dw/2), -(dy+dh/2)); }
+                        if(flipX) { ctx.translate(SIZE, 0); ctx.scale(-1,1); }
                         ctx.drawImage(lImg, dx, dy, dw, dh);
-                        if(flipX) ctx.restore();
+                        ctx.restore();
                     };
-                    if(flipVal==='left') { drawOne(true); }
-                    else                { drawOne(false); }
+                    await drawOne(item.img, item.px, item.py, item.ps, item.rot||0);
+                    if(item.img2) await drawOne(item.img2, item.px2??item.px, item.py2??item.py, item.ps2??item.ps, item.rot2??item.rot??0);
                 };
                 await drawLayer((db.avt||[]).find(a=>a.id===getEqId(eq['back'])));
                 if(baseImg) {
@@ -21034,10 +21069,51 @@ window.addCharRow = function() {
                     ctx.drawImage(baseImg,X_OFF+(CHAR_SIZE-iw*sc)/2,Y_OFF+(CHAR_SIZE-ih*sc)/2,iw*sc,ih*sc);
                 }
                 for(const cat of AVT_Z) {
-                    if(cat==='back') continue;
+                    if(cat==='back' || cat==='prop' || cat==='pet') continue;
                     const eqVal = eq[cat];
                     const item = (db.avt||[]).find(a=>a.id===getEqId(eqVal));
                     await drawLayer(item, item?.flippable ? getEqFlip(eqVal) : 'right');
+                }
+                // 슬롯 위치 반전 전용 함수 — 오른쪽 슬롯은 위치+내용 모두 미러
+                // drawLayer의 dx 공식(방향전환용: 같은 위치, 내용만 반전)과 다름
+                const drawLayerSlot = async (item, isRightSlot) => {
+                    if(!item||!item.img) return;
+                    const drawOneSlot = async (imgSrc, px_, py_, ps_, rot_) => {
+                        const lImg = await loadDataImg(imgSrc); if(!lImg) return;
+                        const px=X_OFF+(px_||0)/100*CHAR_SIZE, py=Y_OFF+(py_||0)/100*CHAR_SIZE, ps=(ps_||100)/100*CHAR_SIZE;
+                        const liw=lImg.naturalWidth||ps, lih=lImg.naturalHeight||ps;
+                        const lsc=Math.min(ps/liw,ps/lih);
+                        const dw=liw*lsc, dh=lih*lsc;
+                        // 오른쪽 슬롯: dx = 왼쪽과 동일 공식 + CTM scale(-1,1) → 위치+내용 모두 미러
+                        // (왼쪽 슬롯과 다른 화면 x: SIZE - dx - dw = SIZE - px - (ps+dw)/2)
+                        const dx = px+(ps-dw)/2;
+                        const dy = py+(ps-dh)/2;
+                        ctx.save();
+                        if(rot_) { ctx.translate(dx+dw/2, dy+dh/2); ctx.rotate(rot_*Math.PI/180); ctx.translate(-(dx+dw/2), -(dy+dh/2)); }
+                        if(isRightSlot) { ctx.translate(SIZE, 0); ctx.scale(-1,1); }
+                        ctx.drawImage(lImg, dx, dy, dw, dh);
+                        ctx.restore();
+                    };
+                    await drawOneSlot(item.img, item.px, item.py, item.ps, item.rot||0);
+                    if(item.img2) await drawOneSlot(item.img2, item.px2??item.px, item.py2??item.py, item.ps2??item.ps, item.rot2??item.rot??0);
+                };
+                // 소품(prop) 다중 렌더 — displayProps(Firebase 역직렬화 대응) 우선, 없으면 eq.prop 단일
+                const _rawDlProps = s.displayProps;
+                const _dlPropIds = Array.isArray(_rawDlProps) && _rawDlProps.length ? _rawDlProps
+                    : (_rawDlProps && typeof _rawDlProps==='object' ? Object.values(_rawDlProps).filter(Boolean) : null)
+                    || (getEqId(eq.prop) ? [getEqId(eq.prop)] : []);
+                for(let _pi=0; _pi<_dlPropIds.length; _pi++) {
+                    const _pid = _dlPropIds[_pi]; if(!_pid) continue;
+                    await drawLayerSlot((db.avt||[]).find(a=>a.id===_pid), _pi===1);
+                }
+                // 펫(pet) 다중 렌더 — displayPets(Firebase 역직렬화 대응) 우선, 없으면 eq.pet 단일
+                const _rawDlPets = s.displayPets;
+                const _dlPetIds = Array.isArray(_rawDlPets) && _rawDlPets.length ? _rawDlPets
+                    : (_rawDlPets && typeof _rawDlPets==='object' ? Object.values(_rawDlPets).filter(Boolean) : null)
+                    || (getEqId(eq.pet) ? [getEqId(eq.pet)] : []);
+                for(let _pi=0; _pi<_dlPetIds.length; _pi++) {
+                    const _pid = _dlPetIds[_pi]; if(!_pid) continue;
+                    await drawLayerSlot((db.avt||[]).find(a=>a.id===_pid), _pi===1);
                 }
 
                 // 칭호 그리기
@@ -23207,7 +23283,7 @@ window.addCharRow = function() {
                 ? `<div class="rank-num medal">${medals[rank-1]}</div>`
                 : `<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
             const rowClass = `rank-row${isMe?' me':rank===1?' top1':rank===2?' top2':rank===3?' top3':''}`;
-            const avt = renderAvatar(s.eq||{}, 40);
+            const avt = renderAvatar(s.eq||{}, 40, s.displayPets, s.displayProps);
             return `<div class="${rowClass}">
                 ${rankEl}
                 ${avt}
@@ -23777,7 +23853,7 @@ window.addCharRow = function() {
         document.getElementById('s_bdg').innerHTML = `
         <div class="bdg-page">
             <div class="bdg-profile">
-                ${renderAvatar(me.eq||{}, 72)}
+                ${renderAvatar(me.eq||{}, 72, me.displayPets, me.displayProps)}
                 <div>
                     <div style="font-size:22px;font-weight:bold;color:#4E342E;">${'★'.repeat(rb)||''}${me.nm}</div>
                     <div style="font-size:14px;color:#888;margin-top:4px;">Lv.${lv} &nbsp;·&nbsp; 쿠키 ${totalCookie}개 &nbsp;·&nbsp; 진화 ${rb}회</div>
@@ -43812,6 +43888,7 @@ window.addCharRow = function() {
         }
         function buyEquip(id) {
             const it = SHOP_EQUIP.find(x=>x.id===id);
+            if(!it) return;
             const lv = G.equip[id]||0;
             const cost = it.base + lv*40;
             if(G.gold<cost) return;
