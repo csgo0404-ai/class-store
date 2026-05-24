@@ -32079,6 +32079,7 @@ window.addCharRow = function() {
         const _prevScore = g.score || {};
         document.getElementById('_omokEndModal_'+gid)?.remove();
         _omokDirRef(gid).child('nextChallenger').remove();
+        const _acceptNow = Date.now();
         const _newGame = {
             on: true, phase: 'playing',
             hostUid: me.cd,
@@ -32086,7 +32087,9 @@ window.addCharRow = function() {
             white: { uid: _chal.uid, nm: _chal.nm || '' },
             moves: [], turn: 'b',
             score: _prevScore,
-            startedAt: Date.now()
+            startedAt: _acceptNow,
+            playStartedAt: _acceptNow,
+            turnStartedAt: _acceptNow
         };
         _omokGameRef(gid).set(_newGame);
         const _dirUpdate = {
