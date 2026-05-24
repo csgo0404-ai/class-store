@@ -437,12 +437,18 @@
         .col-chip img { width: 30px; height: 30px; object-fit: contain; }
 
         /* === 학생 페이지 인벤토리 (RPG 탭 스타일 & 큰 이미지) === */
-        .stardew-tabs { display: flex; gap: 5px; padding-left: 15px; margin-bottom: -4px; position: relative; z-index: 10; }
+        .stardew-tabs { display: flex; gap: 5px; padding-left: 15px; margin-bottom: -4px; position: sticky; top: 0; z-index: 20; background: #FAFAFA; padding-top: 4px; }
         .sd-tab { background: #E6C280; border: 4px solid #C4803D; border-bottom: none; padding: 10px 20px; border-radius: 12px 12px 0 0; cursor: pointer; font-weight: bold; color: #5D4037; font-size: 18px; transition: 0.2s; box-shadow: inset 0 2px 5px rgba(255,255,255,0.4); }
         .sd-tab:hover { background: #FAD69E; }
         .sd-tab.active { background: #F5F5F5; padding-top: 14px; margin-top: -4px; border-bottom: 4px solid #F5F5F5; z-index: 11; }
 
        /* 가방 슬롯 크기 2배 확대 및 꽉 찬 정사각형 고정 */
+        /* 가방 컨테이너 — 스크롤 허용, flex:1로 남은 공간 채움 */
+        #s_bg { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; }
+        #s_bg::-webkit-scrollbar { width: 14px; }
+        #s_bg::-webkit-scrollbar-track { background: #FFF3E0; border-radius: 10px; margin: 6px 0; }
+        #s_bg::-webkit-scrollbar-thumb { background: linear-gradient(to bottom, #FFB74D, #FF9800); border-radius: 10px; border: 3px solid #FFF3E0; box-shadow: inset 0 1px 2px rgba(255,255,255,0.5); }
+        #s_bg::-webkit-scrollbar-thumb:hover { background: linear-gradient(to bottom, #FFA726, #F57C00); }
         #s_iv { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; background: #F5F5F5; padding: 25px; border-radius: 0 15px 15px 15px; border: 4px solid #C4803D; box-shadow: inset 0 0 15px rgba(0,0,0,0.1); position: relative; z-index: 5; }
         
         .inventory-slot { width: 100%; aspect-ratio: 1 / 1; background: #E0D5C1; border: 3px solid #BCAAA4; border-radius: 12px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1); transition: 0.2s; cursor: pointer; padding: 10px; overflow: hidden; }
@@ -730,6 +736,7 @@
             #shop-gacha-sec .shop-card .shop-title { top: 55px !important; font-size: 22px !important; }
 
             /* 2. 가방: 슬롯 및 아이콘 크기 축소 */
+            #s_bg::-webkit-scrollbar { width: 8px !important; }
             #s_iv { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
             .inventory-slot { padding: 5px !important; border-radius: 10px !important; }
             .inventory-slot img { width: 70px !important; height: 70px !important; }
@@ -11652,18 +11659,34 @@ window.appU = function(y, si, k) {
         const pop = document.getElementById('givStuPop');
         if(!pop) { window._givMultiRunning = false; return; }
         const _cdMigGiv = !!(db.cfg && db.cfg.stuKeyCdMigrated);
-        if(!Array.isArray(db.stu)) db.stu = [];
+        if(!Array.isArray(db.stu)) db.stu = Object.values(db.stu||{}).filter(Boolean);
         // data-cd 우선 사용 (정렬 후 si가 db.stu 인덱스와 다를 수 있으므로)
+        const _cbs = [...pop.querySelectorAll('input[type=checkbox]:checked')];
+        const _cds = _cbs.map(cb => cb.dataset.cd).filter(Boolean);
+        const _resolve = cd => db.stu.findIndex(s => s && String(s.cd) === String(cd));
         let checked;
-        {
-            const _cbs = [...pop.querySelectorAll('input[type=checkbox]:checked')];
-            const _cds = _cbs.map(cb => cb.dataset.cd).filter(Boolean);
-            if(_cds.length > 0) {
-                checked = _cds.map(cd => db.stu.findIndex(s => s && String(s.cd) === String(cd))).filter(i => i >= 0);
-            } else {
-                // fallback: data-cd 없는 구형 팝업 — data-si 사용
-                checked = _cbs.map(cb=>parseInt(cb.dataset.si)).filter(si=>!isNaN(si));
+        if(_cds.length > 0) {
+            // 1) db.stu에서 찾기
+            let _missing = _cds.filter(cd => _resolve(cd) < 0);
+            // 2) rankCache에서 스텁 주입
+            _missing.forEach(cd => {
+                const stub = (window._rankCache||[]).find(s => s && String(s.cd) === String(cd));
+                if(stub) db.stu.push(stub);
+            });
+            // 3) 여전히 없으면 Firebase에서 직접 fetch (cd 키 모드)
+            _missing = _missing.filter(cd => _resolve(cd) < 0);
+            if(_missing.length > 0 && _cdMigGiv) {
+                try {
+                    await Promise.all(_missing.map(async cd => {
+                        const snap = await dbRef.child('stu/' + cd).once('value');
+                        const v = snap.val(); if(v) db.stu.push(v);
+                    }));
+                } catch(e) { console.warn('[givMulti] 학생 직접 fetch 실패', e); }
             }
+            checked = _cds.map(cd => _resolve(cd)).filter(i => i >= 0);
+        } else {
+            // fallback: data-cd 없는 구형 팝업 — data-si 사용
+            checked = _cbs.map(cb=>parseInt(cb.dataset.si)).filter(si=>!isNaN(si));
         }
         if(checked.length===0) { window._givMultiRunning = false; return alert('학생을 선택해주세요.'); }
         try {
@@ -11817,13 +11840,7 @@ window.appU = function(y, si, k) {
                     if(!s.avtOwned) s.avtOwned=[];
                     if(!s.avtOwned.includes(a.id)) s.avtOwned.push(a.id);
                     if(_iSet.expireAt) { if(!s.avtExpire) s.avtExpire={}; s.avtExpire[a.id] = _iSet.expireAt; }
-                    if(a.cat==='prop') {
-                        // 소품 자동 착용 (최대 5개)
-                        if(!s.eq) s.eq = {};
-                        if(!Array.isArray(s.displayProps)) s.displayProps = s.eq.prop ? [s.eq.prop] : [];
-                        if(!s.displayProps.includes(a.id) && s.displayProps.length < 5) s.displayProps.push(a.id);
-                        s.eq.prop = s.displayProps[0] || a.id;
-                    } else if(a.cat==='pet') {
+                    if(a.cat==='pet') {
                         // 짝 스킬 함께 지급
                         if(a.setSkillId) {
                             if(!s.earnedBdg) s.earnedBdg=[];
@@ -11835,12 +11852,9 @@ window.appU = function(y, si, k) {
                         if(!s.ownedPets.some(p => p && p.defId === a.id)) {
                             s.ownedPets.push({defId: a.id, isSpecial: false, skin: null, skill: null, gotAt: Date.now()});
                         }
-                        // 자동 착용 — 왼쪽 슬롯(index 0) 우선, 이미 2개면 index 0 교체
-                        if(!s.eq) s.eq = {};
-                        if(!Array.isArray(s.displayPets)) s.displayPets = [];
-                        if(!s.displayPets.includes(a.id) && s.displayPets.length < 2) s.displayPets.push(a.id);
-                        s.eq.pet = s.displayPets[0] || a.id;
                     }
+                    // 자동 착용: prop/pet은 최대 2개까지, 일반 카테고리는 비어있을 때만 (여러 개 지급 시 첫 번째만)
+                    _autoEquipAvt(s, a, /*onlyIfEmpty=*/true);
                 } else if(type==='bdg'){
                     const b=(db.bdg||[])[idx]; if(!b) return;
                     if(!s.earnedBdg) s.earnedBdg=[];
@@ -12179,21 +12193,11 @@ window.appU = function(y, si, k) {
                 const a = (db.avt||[])[idx]; if(!a) return;
                 if(!s.avtOwned) s.avtOwned=[];
                 if(!s.avtOwned.includes(a.id)) s.avtOwned.push(a.id);
-                if(a.cat==='prop') {
-                    if(!s.eq) s.eq = {};
-                    if(!Array.isArray(s.displayProps)) s.displayProps = s.eq.prop ? [s.eq.prop] : [];
-                    if(!s.displayProps.includes(a.id) && s.displayProps.length < 5) s.displayProps.push(a.id);
-                    s.eq.prop = s.displayProps[0] || a.id;
-                } else if(a.cat==='pet') {
-                    if(a.setSkillId) {
-                        if(!s.earnedBdg) s.earnedBdg=[];
-                        if(!s.earnedBdg.includes(a.setSkillId)) s.earnedBdg.push(a.setSkillId);
-                    }
-                    if(!s.eq) s.eq = {};
-                    s.eq.pet = a.id;
-                    if(!Array.isArray(s.displayPets)) s.displayPets = [];
-                    if(!s.displayPets.includes(a.id) && s.displayPets.length < 2) s.displayPets.push(a.id);
+                if(a.cat==='pet' && a.setSkillId) {
+                    if(!s.earnedBdg) s.earnedBdg=[];
+                    if(!s.earnedBdg.includes(a.setSkillId)) s.earnedBdg.push(a.setSkillId);
                 }
+                _autoEquipAvt(s, a, /*onlyIfEmpty=*/true);
             } else if(type==='bdg'){
                 const b = (db.bdg||[])[idx]; if(!b) return;
                 if(!s.earnedBdg) s.earnedBdg=[];
@@ -13962,6 +13966,13 @@ window.appU = function(y, si, k) {
         if(!_hasPetTab && bgTab === 'pet') bgTab = 'coupon';
         // 받은 달고나 events에 그림이 있는지 (쿠폰 탭에 함께 표시되도록 그림 선물 별도 탭은 제거)
         const _dalInv = (me.inv||[]).find(i => i && i.special === 'dalgona');
+        // 빈 슬롯 수 계산: 최소 21칸, 그 이상이면 다음 행을 완성할 만큼만 추가
+        const _ivEmptyCount = (itemCount) => {
+            const COLS = 6;
+            const MIN = 24;
+            const total = itemCount <= MIN ? MIN : Math.ceil(itemCount / COLS) * COLS;
+            return total - itemCount;
+        };
         const tabsHtml = `
             <div class="stardew-tabs">
                 <div class="sd-tab ${bgTab==='coupon'?'active':''}" onclick="setBgTab('coupon')">🎒 아이템</div>
@@ -13990,7 +14001,7 @@ window.appU = function(y, si, k) {
                     ${_rb}
                 </div>`;
             }).join('');
-            const avtEmpty = Math.max(0, 21 - ownedItems.length);
+            const avtEmpty = _ivEmptyCount(ownedItems.length);
             for(let i=0;i<avtEmpty;i++) avtHtml += `<div class="inventory-slot"></div>`;
             document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv">${avtHtml}</div>`;
             return;
@@ -14064,7 +14075,7 @@ window.appU = function(y, si, k) {
                 }).join('');
             }
             const petItemCount = ownedPets.length + ownedBadges.length;
-            const petEmptyCount = Math.max(0, 21 - petItemCount);
+            const petEmptyCount = _ivEmptyCount(petItemCount);
             let petEmptyHtml = '';
             for(let i = 0; i < petEmptyCount; i++) {
                 petEmptyHtml += `<div class="inventory-slot"></div>`;
@@ -14098,9 +14109,9 @@ window.appU = function(y, si, k) {
             }).join('');
             if(ownedTitles.length === 0) {
                 titHtml = '';
-                for(let i = 0; i < 21; i++) titHtml += `<div class="inventory-slot"></div>`;
+                for(let i = 0; i < 24; i++) titHtml += `<div class="inventory-slot"></div>`;
             } else {
-                const titEmptyCount = Math.max(0, 21 - ownedTitles.length);
+                const titEmptyCount = _ivEmptyCount(ownedTitles.length);
                 for(let i = 0; i < titEmptyCount; i++) titHtml += `<div class="inventory-slot"></div>`;
             }
             document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv">${titHtml}</div>`;
@@ -14289,7 +14300,7 @@ window.appU = function(y, si, k) {
             </div>`;
         });
         
-        const emptySlots = Math.max(0, 21 - itemList.length - pseudoItems.length - specialItems.length);
+        const emptySlots = _ivEmptyCount(itemList.length + pseudoItems.length + specialItems.length);
         for(let i=0; i<emptySlots; i++) {
             html += `<div class="inventory-slot"></div>`;
         }
@@ -17257,7 +17268,15 @@ window.addCharRow = function() {
             const left = isRight ? Math.max(0, 100-px-ps) : px;
             const tParts = [isRight?'scaleX(-1)':'', rot?`rotate(${rot}deg)`:''].filter(Boolean);
             const t = tParts.length ? `transform:${tParts.join(' ')};` : '';
-            return `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img}" style="position:absolute;left:${left}%;top:${py}%;width:${ps}%;height:${ps}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t}">`;
+            let html = `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img}" style="position:absolute;left:${left}%;top:${py}%;width:${ps}%;height:${ps}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t}">`;
+            if(item.img2) {
+                const px2=item.px2??px, py2=item.py2??py, ps2=item.ps2??ps, rot2=item.rot2??rot;
+                const left2 = isRight ? Math.max(0, 100-px2-ps2) : px2;
+                const t2Parts = [isRight?'scaleX(-1)':'', rot2?`rotate(${rot2}deg)`:''].filter(Boolean);
+                const t2 = t2Parts.length ? `transform:${t2Parts.join(' ')};` : '';
+                html += `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img2}" style="position:absolute;left:${left2}%;top:${py2}%;width:${ps2}%;height:${ps2}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t2}">`;
+            }
+            return html;
         };
         // 등 장식(back)은 기본 캐릭터 뒤(z-index:0), 나머지는 앞(z-index:2)
         const backLayer  = renderLyr('back', 0);
@@ -17435,7 +17454,8 @@ window.addCharRow = function() {
         // 소품(prop) 슬롯 — 왼쪽(index 0) / 오른쪽(index 1), 아이템 슬롯과 동일 스타일
         if(!me.displayProps) me.displayProps = getEqId(me.eq?.prop) ? [getEqId(me.eq.prop)].filter(Boolean) : [];
         if(!Array.isArray(me.displayProps)) me.displayProps = Object.values(me.displayProps).filter(Boolean);
-        if(me.eq) me.eq.prop = me.displayProps[0] || '';
+        // eq.prop은 첫 번째로 착용된 소품 (빈 슬롯 건너뜀) — 광장·멀티 렌더에서 eq.prop이 사용되므로 유효한 값 유지
+        if(me.eq) me.eq.prop = me.displayProps.find(Boolean) || '';
         const _mkPropSlot = (slotIdx) => {
             const pid = me.displayProps[slotIdx];
             const pItem = pid ? (db.avt||[]).find(a=>a.id===pid) : null;
@@ -19569,6 +19589,31 @@ window.addCharRow = function() {
 
     const REQUIRED_CATS = ['face', 'hair', 'outfit'];
 
+    // 꾸미기 아이템 자동 착용 헬퍼 — 구입/지급 시 공통 사용
+    // onlyIfEmpty=true: 이미 착용된 카테고리면 건드리지 않음 (여러 개 지급 시 첫 번째만 착용)
+    function _autoEquipAvt(target, item, onlyIfEmpty) {
+        if(!target.eq) target.eq = {};
+        if(item.cat === 'prop') {
+            if(!Array.isArray(target.displayProps)) target.displayProps = target.eq.prop ? [target.eq.prop] : [];
+            if(!target.displayProps.includes(item.id) && target.displayProps.filter(Boolean).length < 2) {
+                const slot = target.displayProps[0] ? 1 : 0;
+                while(target.displayProps.length <= slot) target.displayProps.push('');
+                target.displayProps[slot] = item.id;
+                while(target.displayProps.length > 0 && !target.displayProps[target.displayProps.length-1]) target.displayProps.pop();
+            }
+            target.eq.prop = target.displayProps.find(Boolean) || item.id;
+        } else if(item.cat === 'pet') {
+            if(!Array.isArray(target.displayPets)) target.displayPets = target.eq.pet ? [target.eq.pet] : [];
+            if(!target.displayPets.includes(item.id) && target.displayPets.filter(Boolean).length < 2) {
+                target.displayPets.push(item.id);
+            }
+            target.eq.pet = target.displayPets.find(Boolean) || item.id;
+        } else {
+            if(onlyIfEmpty && target.eq[item.cat]) return; // 이미 착용 중이면 덮어쓰지 않음
+            target.eq[item.cat] = item.flippable ? { id: item.id, flip: 'right' } : item.id;
+        }
+    }
+
     window.equipItem = function(id) {
         if(!me) return;
         if(!me.eq) me.eq = {};
@@ -19740,15 +19785,16 @@ window.addCharRow = function() {
         // 새 배열 재구성
         const newDp = [...me.displayPets];
         // 현재 위치에서 제거
-        if(curIdx !== -1) newDp[curIdx] = null;
+        if(curIdx !== -1) newDp[curIdx] = '';
         // 대상 슬롯에 배치 (배열 확장 필요 시)
-        while(newDp.length <= idx) newDp.push(null);
+        while(newDp.length <= idx) newDp.push('');
         newDp[idx] = pid;
-        // displaced 펫을 원래 자리(curIdx)에 넣기, 없으면 그냥 null
+        // displaced 펫을 원래 자리(curIdx)에 넣기
         if(displaced && curIdx !== -1 && curIdx !== idx) newDp[curIdx] = displaced;
-        me.displayPets = newDp.filter(Boolean);
+        while(newDp.length > 0 && !newDp[newDp.length-1]) newDp.pop();
+        me.displayPets = newDp;
         if(!me.eq) me.eq = {};
-        me.eq.pet = me.displayPets[0] || '';
+        me.eq.pet = me.displayPets.find(Boolean) || '';
         upMe(); rChar();
         document.getElementById('petMenuOverlay')?.remove();
         if(bgTab === 'pet' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
@@ -19806,9 +19852,9 @@ window.addCharRow = function() {
         // 대상 슬롯에 배치
         while(me.displayPets.length <= idx) me.displayPets.push('');
         me.displayPets[idx] = id;
-        me.displayPets = me.displayPets.filter(Boolean);
+        while(me.displayPets.length > 0 && !me.displayPets[me.displayPets.length-1]) me.displayPets.pop();
         if(!me.eq) me.eq = {};
-        me.eq.pet = me.displayPets[0] || id;
+        me.eq.pet = me.displayPets.find(Boolean) || id;
         upMe();
         document.getElementById('addPetOverlay')?.remove();
         rChar();
@@ -19933,9 +19979,9 @@ window.addCharRow = function() {
         // 대상 슬롯에 배치
         while(me.displayProps.length <= idx) me.displayProps.push('');
         me.displayProps[idx] = id;
-        me.displayProps = me.displayProps.filter(Boolean);
+        while(me.displayProps.length > 0 && !me.displayProps[me.displayProps.length-1]) me.displayProps.pop();
         if(!me.eq) me.eq = {};
-        me.eq.prop = me.displayProps[0] || '';
+        me.eq.prop = me.displayProps.find(Boolean) || '';
         upMe();
         document.getElementById('addPropOverlay')?.remove();
         rChar();
@@ -19951,13 +19997,14 @@ window.addCharRow = function() {
         const curIdx = me.displayProps.indexOf(pid);
         const displaced = me.displayProps[idx] && me.displayProps[idx] !== pid ? me.displayProps[idx] : null;
         const newDp = [...me.displayProps];
-        if(curIdx !== -1) newDp[curIdx] = null;
-        while(newDp.length <= idx) newDp.push(null);
+        if(curIdx !== -1) newDp[curIdx] = '';
+        while(newDp.length <= idx) newDp.push('');
         newDp[idx] = pid;
         if(displaced && curIdx !== -1 && curIdx !== idx) newDp[curIdx] = displaced;
-        me.displayProps = newDp.filter(Boolean);
+        while(newDp.length > 0 && !newDp[newDp.length-1]) newDp.pop();
+        me.displayProps = newDp;
         if(!me.eq) me.eq = {};
-        me.eq.prop = me.displayProps[0] || '';
+        me.eq.prop = me.displayProps.find(Boolean) || '';
         upMe(); rChar();
         document.getElementById('propMenuOverlay')?.remove();
         if(bgTab === 'avt' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
@@ -19965,20 +20012,32 @@ window.addCharRow = function() {
 
     window.removeDisplayProp = function(id) {
         if(!me) return;
-        const _dp = Array.isArray(me.displayProps) ? me.displayProps : Object.values(me.displayProps||{}).filter(Boolean);
-        me.displayProps = _dp.filter(p => p !== id);
+        const _dp = Array.isArray(me.displayProps) ? [...me.displayProps] : Object.values(me.displayProps||{}).filter(Boolean);
+        // 슬롯 위치 보존: 해당 슬롯을 ''로 설정 (오른쪽 소품이 왼쪽으로 이동하지 않도록)
+        // ''(빈 문자열)은 Firebase에서 보존되어 배열 인덱스가 유지됨 (null은 Firebase에서 키 삭제됨)
+        const idx = _dp.indexOf(id);
+        if(idx !== -1) _dp[idx] = '';
+        // 뒤쪽 빈 슬롯 제거 (앞쪽 ''는 유지해서 오른쪽 소품이 오른쪽에 렌더되도록)
+        while(_dp.length > 0 && !_dp[_dp.length-1]) _dp.pop();
+        me.displayProps = _dp;
         if(!me.eq) me.eq = {};
-        me.eq.prop = me.displayProps[0] || '';
+        // eq.prop은 남은 소품 중 첫 번째로 설정 (광장·멀티 렌더링용)
+        me.eq.prop = me.displayProps.find(Boolean) || '';
         upMe(); rChar();
         if(bgTab === 'avt' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
     };
 
     window.removeDisplayPet = function(id) {
         if(!me) return;
-        const _dp = Array.isArray(me.displayPets) ? me.displayPets : Object.values(me.displayPets||{}).filter(Boolean);
-        me.displayPets = _dp.filter(p => p !== id);
+        const _dp = Array.isArray(me.displayPets) ? [...me.displayPets] : Object.values(me.displayPets||{}).filter(Boolean);
+        // 슬롯 위치 보존: 해당 슬롯을 빈칸으로 설정 (오른쪽 펫이 왼쪽으로 이동하지 않도록)
+        const idx = _dp.indexOf(id);
+        if(idx !== -1) _dp[idx] = '';
+        // 뒤쪽 빈 슬롯 제거
+        while(_dp.length > 0 && !_dp[_dp.length-1]) _dp.pop();
+        me.displayPets = _dp;
         if(getEqId(me.eq?.pet) === id) {
-            me.eq.pet = me.displayPets[0] || '';
+            me.eq.pet = me.displayPets.find(Boolean) || '';
         }
         upMe(); rChar();
         if(bgTab === 'pet' && !document.getElementById('s_bg').classList.contains('hidden')) rBg();
@@ -21573,7 +21632,7 @@ window.addCharRow = function() {
         const ps2 = parseFloat(document.getElementById('avt_ps2')?.value)||100;
         const rot2 = parseFloat(document.getElementById('avt_rot2')?.value)||0;
         const item = { id: editIdx>=0 ? db.avt[editIdx].id : `avt_${Date.now()}`, nm, cat, price, px, py, ps, img };
-        if(img2) { item.img2 = img2; item.px2=px2; item.py2=py2; item.ps2=ps2; if(rot2) item.rot2=rot2; }
+        if(img2) { item.img2 = img2; item.px2=px2; item.py2=py2; item.ps2=ps2; item.rot2=rot2; }
         if(rot) item.rot = rot;
         if(hidden) item.hidden = true;
         if(flippable) item.flippable = true;
@@ -23423,14 +23482,13 @@ window.addCharRow = function() {
                 me.shopUsed=(me.shopUsed||0)+item.price;
                 _pushShopLog({type:'아바타 구입', name:item.nm||item.id, cost:item.price, ts:Date.now()});
             }
-            if(!me.eq) me.eq={};
-            me.eq[item.cat]=item.id;
+            _autoEquipAvt(me, item, /*onlyIfEmpty=*/false);
             window._avtCart.delete(item.id);
         });
         upMe();
         document.querySelectorAll('.avtCartModal').forEach(m=>m.remove());
         updateCartBadge();
-        rSh();
+        rChar(); rSh(); rBg();
         alert(`${toBuy.length}개 아이템을 구매하고 착용했습니다! 🎉`);
     }
 
@@ -23634,9 +23692,8 @@ window.addCharRow = function() {
         }
         _pushShopLog({type:'꾸미기 구입', name:item.nm||itemId, cost:effectiveCost, cur:'kc', passUsed:avtPassUsed, ts:Date.now()});
         me.avtOwned.push(itemId);
-        if(!me.eq) me.eq = {};
-        me.eq[item.cat] = itemId;
-        upMe(); updateNameTag(); rSh(); rBg(); snd('f');
+        _autoEquipAvt(me, item, /*onlyIfEmpty=*/false);
+        upMe(); updateNameTag(); rChar(); rSh(); rBg(); snd('f');
         try {
             const _avtCatLb = {back:'등 장식',outfit:'의상',shoes:'신발',face:'얼굴',hair:'머리',hat:'모자',acc:'얼굴 장식',face_deco:'얼굴 장식',hair_deco:'머리 장식',prop:'소품',pet:'펫'};
             const _catStr = (_avtCatLb[item.cat]||item.cat||'');
