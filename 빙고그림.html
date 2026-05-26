@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>빙고 그림 그리기</title>
+<link href="https://fonts.googleapis.com/css2?family=Dongle:wght@400;700&family=Nanum+Pen+Script&family=Black+Han+Sans&family=Gaegu:wght@400;700&family=Single+Day&family=Jua&family=Sunflower:wght@500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:linear-gradient(135deg,#E6F1FB 0%,#FBEAF0 100%); }
+body { display:flex; flex-direction:column; }
+
+/* ── 타이틀 ── */
+#titleBar { display:none; }
+
+/* ── 메인 레이아웃 ── */
+#mainWrap { flex:1; display:flex; flex-direction:column; min-height:0; padding:6px; gap:6px; }
+
+.cover-main-row {
+    display:grid;
+    grid-template-columns:auto auto auto;
+    grid-template-rows:auto auto;
+    gap:6px 8px;
+    justify-content:center;
+    flex:1; min-height:0;
+}
+
+/* ── 좌측 툴바 ── */
+.cover-side-tools {
+    display:flex; flex-direction:column; gap:4px;
+    background:white; padding:6px 8px; border-radius:10px;
+    flex-shrink:0; align-self:flex-start;
+}
+.cover-side-tools .cover-tool-btn { width:100%; text-align:left; }
+.cover-side-tools .sticker-popover { top:0; left:100%; margin-top:0; margin-left:4px; }
+
+/* ── 우측 툴바 ── */
+.cover-right-tools {
+    display:flex; flex-direction:column; gap:4px;
+    background:white; padding:6px 8px; border-radius:10px;
+    flex-shrink:0; align-self:flex-start;
+}
+.cover-right-tools .sticker-popover { top:0; right:100%; left:auto; margin-top:0; margin-right:4px; }
+.cover-right-tools .color-dot { flex-shrink:0; }
+.cover-right-divider { border:none; border-top:1px solid #eee; margin:2px 0; }
+
+/* ── 공통 도구 버튼 ── */
+.cover-tool-btn {
+    padding:5px 10px; border-radius:8px;
+    border:2px solid #ddd; background:white;
+    font-size:13px; cursor:pointer; transition:0.15s;
+    min-width:unset; flex:0 0 auto; white-space:nowrap;
+}
+.cover-tool-btn:hover { border-color:#aaa; }
+.cover-tool-btn.active {
+    background:linear-gradient(135deg,#FFCA28,#F9A825);
+    color:white; border-color:#F9A825;
+}
+
+/* ── 색상 점 ── */
+.color-dot {
+    width:24px; height:24px; border-radius:50%;
+    cursor:pointer; border:3px solid transparent;
+    transition:0.15s; flex-shrink:0;
+}
+.color-dot.active { border-color:#333; transform:scale(1.15); }
+
+/* ── 최근 색상 ── */
+.recent-color-dot {
+    width:24px; height:24px; border-radius:50%;
+    cursor:pointer; border:2px dashed #ccc;
+    transition:0.15s; flex-shrink:0;
+}
+.recent-color-dot.has-color { border-style:solid; border-color:#aaa; }
+
+/* ── 커스텀 컬러 ── */
+.color-picker-btn {
+    position:relative; display:inline-flex; align-items:center;
+    font-size:22px; cursor:pointer; flex-shrink:0; padding:0 4px;
+}
+.color-picker-btn:hover { transform:scale(1.15); }
+#coverCustomColor { position:absolute; opacity:0; pointer-events:none; width:1px; height:1px; }
+
+/* ── 스티커 팝오버 ── */
+.sticker-popover {
+    position:absolute; top:100%; left:0; margin-top:6px;
+    background:white; border:2px solid #FFC1D9;
+    border-radius:12px; padding:10px; box-shadow:0 4px 14px rgba(0,0,0,0.15);
+    display:none; z-index:100; width:280px;
+}
+.sticker-popover.show { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; }
+.sticker-popover .sticker-item {
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; padding:6px;
+    cursor:pointer; border-radius:6px;
+}
+.sticker-popover .sticker-item:hover { background:#FFF6E5; }
+.sticker-popover .sticker-item.active { background:#FFE5B4; box-shadow:0 0 0 2px #EF9F27; }
+
+/* 세로 팝오버 (연필/도형/대칭 등) */
+.sticker-popover.v-pop { width:auto; min-width:90px; }
+.sticker-popover.v-pop.show { grid-template-columns:1fr !important; }
+.sticker-popover.v-pop .sticker-item { font-size:14px; display:block; }
+
+/* ── 캔버스 래퍼 ── */
+.cover-canvas-wrap {
+    position:relative; overflow:hidden;
+    touch-action:none;
+    width:min(calc(100svh - 160px), calc(100vw - 210px));
+    aspect-ratio:1/1;
+    flex-shrink:0;
+    background:white; border-radius:0; font-size:0; line-height:0;
+    box-shadow:0 0 0 2px #FFD6E0;
+}
+#coverCanvas, #coverPreviewCanvas, #coverTopCanvas {
+    display:block; position:absolute; inset:0;
+    width:100%; height:100%;
+    touch-action:none; cursor:crosshair;
+    transform-origin:0 0;
+}
+#coverCanvas { background:transparent; z-index:1; pointer-events:none; }
+#coverPreviewCanvas { pointer-events:none; background:transparent; z-index:2; }
+#coverTopCanvas { background:transparent; z-index:3; }
+#coverGridOverlay { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none; background-image:linear-gradient(#7F77DD22 1px,transparent 1px),linear-gradient(90deg,#7F77DD22 1px,transparent 1px); background-size:5% 5%; }
+
+/* ── 텍스트 color swatch ── */
+.text-color-swatch[data-off="1"] .swatch-x { background:linear-gradient(to top right,transparent calc(50% - 1.5px),#888 calc(50% - 1.5px),#888 calc(50% + 1.5px),transparent calc(50% + 1.5px)); border-radius:50%; }
+.text-color-swatch[data-off="1"] { background:white !important; }
+
+/* ── 우측 상단 X버튼 ── */
+#topBtns { position:fixed; top:6px; right:8px; display:flex; gap:6px; z-index:200; }
+#btnCancel { border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px; padding:5px 10px; background:transparent; color:#aaa; }
+#btnSubmit:disabled { opacity:.6; cursor:not-allowed; }
+</style>
+</head>
+<body>
+
+<div id="titleBar"></div>
+<div id="topBtns">
+  <button id="btnCancel" onclick="doCancel()">✕</button>
+</div>
+
+<div id="mainWrap">
+  <div class="cover-main-row">
+
+    <!-- ── 좌측 툴바 ── -->
+    <div class="cover-side-tools" style="grid-column:1;grid-row:2;">
+      <div style="position:relative;">
+        <button class="cover-tool-btn active" id="coverPencilBtn" onclick="togglePencilPopover()" title="연필">✏️ <span id="coverPencilLabel">연필</span></button>
+        <div class="sticker-popover v-pop" id="coverPencilPopover">
+          <span class="sticker-item" data-style="round" onclick="selectBrushStyle('round','연필')">연필</span>
+          <span class="sticker-item" data-style="pastel" onclick="selectBrushStyle('pastel','파스텔')">파스텔</span>
+          <span class="sticker-item" data-style="spray" onclick="selectBrushStyle('spray','스프레이')">스프레이</span>
+          <span class="sticker-item" data-style="crayon" onclick="selectBrushStyle('crayon','크레용')">크레용</span>
+        </div>
+      </div>
+      <button class="cover-tool-btn" id="coverEraserBtn" onclick="setCoverTool('eraser')" title="지우개">🧽 지우개</button>
+      <button class="cover-tool-btn" id="coverBucketBtn" onclick="setCoverTool('bucket')" title="채우기">🖌 채우기</button>
+      <button class="cover-tool-btn" id="coverTextBtn" onclick="openTextEditorAtButton()" title="글자">🅰️ 글자</button>
+      <button class="cover-tool-btn" id="coverSelectBtn" onclick="setCoverTool('select')" title="선택">👆 선택</button>
+      <div style="position:relative;">
+        <button class="cover-tool-btn" id="coverSymBtn" onclick="toggleSymPopover()" title="대칭">🪞 대칭</button>
+        <div class="sticker-popover v-pop" id="coverSymPopover">
+          <span class="sticker-item" onclick="setSymmetry('h','좌우')">좌우</span>
+          <span class="sticker-item" onclick="setSymmetry('v','상하')">상하</span>
+          <span class="sticker-item" onclick="setSymmetry('4','4방향')">4방향</span>
+          <span class="sticker-item" onclick="setSymmetry('none','끔')">끄기</span>
+        </div>
+      </div>
+      <button class="cover-tool-btn" id="coverGridBtn" onclick="toggleGrid()" title="그리드">⊞ 그리드</button>
+      <div style="position:relative;">
+        <button class="cover-tool-btn" id="coverShapeBtn" onclick="toggleShapePopover()" title="도형">📐 도형</button>
+        <div class="sticker-popover v-pop" id="coverShapePopover">
+          <span class="sticker-item" data-tool="line" onclick="selectShape('line')">직선</span>
+          <span class="sticker-item" data-tool="circle" onclick="selectShape('circle')">원</span>
+          <span class="sticker-item" data-tool="rect" onclick="selectShape('rect')">사각형</span>
+        </div>
+      </div>
+      <div style="position:relative;">
+        <button class="cover-tool-btn" id="coverStickerBtn" onclick="toggleStickerPopover()" title="스티커">🏷️ 스티커</button>
+        <div class="sticker-popover" id="coverStickerPopover"></div>
+      </div>
+      <button class="cover-tool-btn" onclick="document.getElementById('coverImageInput').click()" title="이미지 삽입">🖼️ 이미지</button>
+      <input type="file" id="coverImageInput" accept="image/*" style="display:none" onchange="handleImageInsert(this)">
+    </div>
+
+    <!-- ── 상단바 ── -->
+    <div style="grid-column:2;grid-row:1;display:flex;justify-content:flex-end;align-items:center;">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:white;padding:5px 8px;border-radius:10px;flex-wrap:nowrap;">
+        <span style="font-size:11px;color:#aaa;white-space:nowrap;">굵기</span>
+        <input type="range" id="coverBrushSize" min="1" max="40" value="4" style="width:70px;flex-shrink:0;" title="굵기">
+        <span style="font-size:11px;color:#aaa;white-space:nowrap;">줌</span>
+        <input type="range" id="coverZoomSlider" min="100" max="400" value="100" style="width:70px;flex-shrink:0;" oninput="setCoverZoomPercent(this.value)" title="줌">
+        <span id="coverZoomLabel" style="font-size:11px;color:#888;min-width:30px;white-space:nowrap;">100%</span>
+        <button class="cover-tool-btn" id="coverPanBtn" onclick="setCoverTool('pan')" title="이동">🖐</button>
+        <button class="cover-tool-btn" onclick="undoCover()" title="실행 취소">↶</button>
+        <button class="cover-tool-btn" onclick="redoCover()" title="다시 실행">↷</button>
+        <button class="cover-tool-btn" onclick="clearCover()" title="전체 지우기">🗑️</button>
+        <button id="btnSubmit" class="cover-tool-btn" onclick="doSubmit()" title="제출하기">📤</button>
+      </div>
+    </div>
+
+    <!-- ── 캔버스 ── -->
+    <div class="cover-canvas-wrap" id="coverCanvasWrap" style="grid-column:2;grid-row:2;">
+      <canvas id="coverCanvas" width="1200" height="1200"></canvas>
+      <canvas id="coverPreviewCanvas" width="1200" height="1200"></canvas>
+      <canvas id="coverTopCanvas" width="1200" height="1200"></canvas>
+      <div id="coverGridOverlay"></div>
+    </div>
+
+    <!-- ── 우측 툴바 ── -->
+    <div class="cover-right-tools" style="grid-column:3;grid-row:2;">
+      <div class="color-dot active" style="background:#333" data-color="#333" onclick="setCoverColor('#333',this)"></div>
+      <div class="color-dot" style="background:#FF5252" data-color="#FF5252" onclick="setCoverColor('#FF5252',this)"></div>
+      <div class="color-dot" style="background:#FF9800" data-color="#FF9800" onclick="setCoverColor('#FF9800',this)"></div>
+      <div class="color-dot" style="background:#FFD740" data-color="#FFD740" onclick="setCoverColor('#FFD740',this)"></div>
+      <div class="color-dot" style="background:#4CAF50" data-color="#4CAF50" onclick="setCoverColor('#4CAF50',this)"></div>
+      <div class="color-dot" style="background:#2196F3" data-color="#2196F3" onclick="setCoverColor('#2196F3',this)"></div>
+      <div class="color-dot" style="background:#9C27B0" data-color="#9C27B0" onclick="setCoverColor('#9C27B0',this)"></div>
+      <div class="color-dot" style="background:#795548" data-color="#795548" onclick="setCoverColor('#795548',this)"></div>
+      <hr class="cover-right-divider">
+      <div id="coverRecentColors" style="display:flex;flex-direction:column;gap:4px;"></div>
+      <hr class="cover-right-divider">
+      <label class="color-picker-btn" title="직접 색 선택" style="display:flex;justify-content:center;line-height:1;cursor:pointer;">🎨<input type="color" id="coverCustomColor" value="#333333" oninput="setCoverColor(this.value)"></label>
+      <span id="coverEyedropperBtn" onclick="setCoverTool('eyedropper')" title="스포이드" style="display:flex;justify-content:center;font-size:20px;cursor:pointer;">💧</span>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ── 인라인 텍스트 편집 ── -->
+<div id="coverTextEditor" style="display:none;position:fixed;z-index:10050;background:white;border:2px solid #7F77DD;border-radius:10px;padding:12px;box-shadow:0 4px 14px rgba(0,0,0,0.2);min-width:340px;">
+  <textarea id="coverTextEditorInput" placeholder="텍스트 입력" rows="3" style="width:100%;border:1.5px solid #D3D1C7;outline:none;font-size:24px;padding:8px;border-radius:8px;resize:vertical;box-sizing:border-box;text-align:center;"></textarea>
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:#5F5E5A;">
+    <select id="coverTextEditorFont" style="font-size:12px;padding:3px 6px;" onchange="applyTextEditorPreview()">
+      <option value="Dongle">Dongle</option>
+      <option value="Nanum Pen Script">손글씨</option>
+      <option value="Black Han Sans">굵은</option>
+      <option value="Gaegu">개구</option>
+      <option value="Single Day">필기</option>
+      <option value="Jua">주아</option>
+      <option value="Sunflower">선플라워</option>
+    </select>
+    <input type="hidden" id="coverTextEditorSize" value="60">
+    <label style="display:inline-flex;align-items:center;gap:3px;">글씨
+      <input type="color" id="coverTextEditorColor" value="#333333" style="width:28px;height:24px;border:1px solid #ccc;border-radius:4px;padding:0;" oninput="applyTextEditorPreview()">
+    </label>
+    <span style="display:inline-flex;align-items:center;gap:4px;">그림자
+      <span class="text-color-swatch" id="coverShadowSwatch" data-off="1" onclick="toggleColorSwatch('shadow',event)" oncontextmenu="event.preventDefault();offColorSwatch('shadow');applyTextEditorPreview();" style="position:relative;display:inline-block;width:24px;height:24px;border-radius:50%;border:2px solid #ccc;background:#ddd;cursor:pointer;"><span class="swatch-x" style="position:absolute;inset:0;pointer-events:none;"></span></span>
+    </span>
+    <input type="hidden" id="coverTextEditorShadow" value="#000000">
+    <span style="display:inline-flex;align-items:center;gap:4px;">음영
+      <span class="text-color-swatch" id="coverBgSwatch" data-off="1" onclick="toggleColorSwatch('bg',event)" oncontextmenu="event.preventDefault();offColorSwatch('bg');applyTextEditorPreview();" style="position:relative;display:inline-block;width:24px;height:24px;border-radius:50%;border:2px solid #ccc;background:#ddd;cursor:pointer;"><span class="swatch-x" style="position:absolute;inset:0;pointer-events:none;"></span></span>
+    </span>
+    <input type="hidden" id="coverTextEditorBg" value="#FFD740">
+  </div>
+  <div style="display:flex;gap:6px;margin-top:10px;justify-content:flex-end;">
+    <button onclick="closeInlineText()" style="padding:5px 12px;font-size:13px;background:#fff;border:1.5px solid #ccc;border-radius:6px;cursor:pointer;min-width:unset;">취소</button>
+    <button onclick="commitInlineTextFromButton()" style="padding:5px 12px;font-size:13px;background:linear-gradient(135deg,#7F77DD,#D4537E);color:white;border:none;border-radius:6px;cursor:pointer;min-width:unset;">✓ 확인</button>
+  </div>
+</div>
+
+<script>
+/* ── Cloudinary ── */
+const CLOUDINARY_CLOUD = 'dtzknm7gz';
+const CLOUDINARY_PRESET = 'csgo0404';
+
+/* ── 스티커 세트 ── */
+const STICKER_SET = ['⭐','🌸','🌈','🌟','🎈','🎀','🌙','☀️','🍀','🐰','🐱','🐶','🦄','💖','🌺','🍎','🦋','🐢','🍓','🍰'];
+
+/* ── 상태 변수 (동화책 제작과 동일한 이름) ── */
+let _coverCanvas = null, _coverCtx = null;
+let _coverBase = null, _coverBaseCtx = null;
+let _coverPreview = null, _coverPreviewCtx = null;
+let _coverWrap = null;
+let _coverDrawing = false;
+let _coverTool = 'pencil';
+let _coverColor = '#333';
+let _coverRecent = [];
+let _coverHistory = [], _coverHistIdx = -1;
+let _coverShapeStart = null;
+let _coverCurrentSticker = '⭐';
+let _coverZoom = 1, _coverPanX = 0, _coverPanY = 0;
+let _pinchDist = 0, _pinchCenter = null, _panStart = null;
+let _coverStickers = [];
+let _selectedStickerIdx = -1;
+let _stickerDragMode = null, _stickerDragOffset = null;
+let _coverSymmetry = 'none';
+let _coverGridOn = false;
+let _pendingTextPos = null;
+let _lastDrawPoint = null;
+let _brushStyle = 'round';
+let _editingTextIdx = -1;
+let _imageCache = {};
+let _selectMarquee = null;
+let _moveStroke = null, _moveBg = null, _moveStart = null;
+
+/* ── 초기화 ── */
+function initCoverCanvas() {
+    _coverBase = document.getElementById('coverCanvas');
+    _coverBaseCtx = _coverBase.getContext('2d', { willReadFrequently:true });
+    _coverCanvas = document.getElementById('coverTopCanvas');
+    _coverCtx = _coverCanvas.getContext('2d', { willReadFrequently:true });
+    _coverPreview = document.getElementById('coverPreviewCanvas');
+    _coverPreviewCtx = _coverPreview.getContext('2d');
+    _coverWrap = document.getElementById('coverCanvasWrap');
+
+    syncWrapToInteger();
+    if (!window._coverWrapResizeBound) {
+        window.addEventListener('resize', syncWrapToInteger);
+        if (typeof ResizeObserver !== 'undefined' && _coverWrap.parentElement) {
+            try { const ro = new ResizeObserver(()=>syncWrapToInteger()); ro.observe(_coverWrap.parentElement); } catch(e){}
+        }
+        window._coverWrapResizeBound = true;
+    }
+    clearCoverNoSave();
+    _coverCtx.lineCap = 'round'; _coverCtx.lineJoin = 'round';
+    saveCoverState();
+    loadRecentColors(); renderRecentColors();
+    initStickerPopover();
+
+    const applyTransform = () => {
+        const t = `translate(${_coverPanX}px,${_coverPanY}px) scale(${_coverZoom})`;
+        _coverBase.style.transform = t;
+        _coverCanvas.style.transform = t;
+        _coverPreview.style.transform = t;
+    };
+    window._coverApplyTransform = applyTransform;
+
+    const getPos = (clientX, clientY) => {
+        const r = _coverCanvas.getBoundingClientRect();
+        return { x:(clientX-r.left)*(_coverCanvas.width/r.width), y:(clientY-r.top)*(_coverCanvas.height/r.height) };
+    };
+    const getSize = () => parseInt(document.getElementById('coverBrushSize').value)||4;
+
+    const startDraw = (cx, cy) => {
+        if (_coverTool === 'pan') { _panStart={panX:_coverPanX,panY:_coverPanY,px:cx,py:cy}; updateCoverCursor(); return; }
+        const p = getPos(cx, cy);
+        if (_coverTool === 'sticker' || _coverTool === 'select') {
+            const hit = hitTestSticker(p.x, p.y);
+            if (hit.handle === 'delete') { _coverStickers.splice(hit.idx,1); _selectedStickerIdx=-1; renderStickerLayer(); saveCoverState(); return; }
+            if (hit.idx >= 0) {
+                _selectedStickerIdx = hit.idx; _stickerDragMode = hit.handle||'move';
+                const s = _coverStickers[hit.idx];
+                _stickerDragOffset = { dx:p.x-s.x, dy:p.y-s.y, startSize:s.size, startDist:Math.hypot(p.x-s.x,p.y-s.y), startRot:s.rotation||0, startAngle:Math.atan2(p.y-s.y,p.x-s.x) };
+            } else if (_coverTool === 'sticker') {
+                const size = getSize()*4+30;
+                bakeTopToBase();
+                _coverStickers.push({emoji:_coverCurrentSticker,x:p.x,y:p.y,size});
+                _selectedStickerIdx = _coverStickers.length-1; _stickerDragMode='move'; _stickerDragOffset={dx:0,dy:0};
+                saveCoverState();
+            } else if (_coverTool === 'select') {
+                _selectMarquee={start:p,end:p}; _selectedStickerIdx=-1; renderStickerLayer();
+            }
+            renderStickerLayer(); return;
+        }
+        if (_coverTool === 'bucket') { floodFill(Math.round(p.x),Math.round(p.y)); return; }
+        if (_coverTool === 'eyedropper') { eyedropAt(Math.round(p.x),Math.round(p.y)); return; }
+        if (_coverTool === 'text') { _pendingTextPos=p; openCoverTextModal(); return; }
+        if (_coverTool==='line'||_coverTool==='circle'||_coverTool==='rect') { _coverShapeStart=p; _coverDrawing=true; return; }
+        _coverDrawing=true; _lastDrawPoint=p;
+    };
+    const moveDraw = (cx, cy) => {
+        if (_panStart) { _coverPanX=_panStart.panX+(cx-_panStart.px); _coverPanY=_panStart.panY+(cy-_panStart.py); applyTransform(); return; }
+        if (_coverTool==='select'&&_selectMarquee) { _selectMarquee.end=getPos(cx,cy); drawMarquee(_selectMarquee); return; }
+        if ((_coverTool==='sticker'||_coverTool==='select')&&_stickerDragMode&&_selectedStickerIdx>=0) {
+            const p=getPos(cx,cy); const s=_coverStickers[_selectedStickerIdx];
+            if (_stickerDragMode==='move') { s.x=p.x-_stickerDragOffset.dx; s.y=p.y-_stickerDragOffset.dy; }
+            else if (_stickerDragMode==='resize') { const nd=Math.hypot(p.x-s.x,p.y-s.y); s.size=Math.max(20,Math.min(3000,_stickerDragOffset.startSize*(nd/Math.max(1,_stickerDragOffset.startDist)))); }
+            else if (_stickerDragMode==='rotate') { const na=Math.atan2(p.y-s.y,p.x-s.x); s.rotation=(_stickerDragOffset.startRot||0)+(na-_stickerDragOffset.startAngle); }
+            renderStickerLayer(); return;
+        }
+        if (!_coverDrawing) return;
+        const p = getPos(cx, cy);
+        if (_coverTool==='line'||_coverTool==='circle'||_coverTool==='rect') { drawShapePreview(_coverShapeStart,p,_coverTool); return; }
+        const sz = (_coverTool==='eraser')?getSize()*3:getSize();
+        const col = (_coverTool==='eraser')?'white':_coverColor;
+        if (_lastDrawPoint) brushSegment(_lastDrawPoint,p,col,sz);
+        _lastDrawPoint=p;
+    };
+    const endDraw = (cx, cy) => {
+        if (_panStart) { _panStart=null; updateCoverCursor(); return; }
+        if (_coverTool==='select'&&_selectMarquee) {
+            const m=_selectMarquee; _selectMarquee=null; clearPreview(); renderStickerLayer();
+            const x1=Math.min(m.start.x,m.end.x),y1=Math.min(m.start.y,m.end.y),x2=Math.max(m.start.x,m.end.x),y2=Math.max(m.start.y,m.end.y);
+            liftCanvasRegion(x1,y1,x2-x1,y2-y1); return;
+        }
+        if (_coverTool==='sticker'||_coverTool==='select') { if(_stickerDragMode){_stickerDragMode=null;saveCoverState();} return; }
+        if (!_coverDrawing) return;
+        if ((_coverTool==='line'||_coverTool==='circle'||_coverTool==='rect')&&_coverShapeStart) {
+            const p=(cx!=null)?getPos(cx,cy):null;
+            if(p) drawShapeFinal(_coverShapeStart,p,_coverTool);
+            renderStickerLayer(); _coverShapeStart=null;
+        }
+        _coverDrawing=false; _lastDrawPoint=null; saveCoverState();
+    };
+
+    // 마우스
+    _coverCanvas.addEventListener('dblclick', e => {
+        e.preventDefault();
+        const p=getPos(e.clientX,e.clientY); const hit=hitTestSticker(p.x,p.y);
+        if(hit.idx>=0&&_coverStickers[hit.idx].type==='text') editTextSticker(hit.idx);
+    });
+    _coverCanvas.addEventListener('mousedown', e => {
+        e.preventDefault(); startDraw(e.clientX,e.clientY);
+        const wm=(ev)=>moveDraw(ev.clientX,ev.clientY);
+        const wu=(ev)=>{endDraw(ev.clientX,ev.clientY); window.removeEventListener('mousemove',wm); window.removeEventListener('mouseup',wu);};
+        window.addEventListener('mousemove',wm); window.addEventListener('mouseup',wu);
+    });
+
+    // 마우스 휠 줌
+    _coverWrap.addEventListener('wheel', e => {
+        e.preventDefault();
+        const delta=e.deltaY<0?1.1:0.9;
+        const r=_coverWrap.getBoundingClientRect();
+        zoomAt(delta,e.clientX-r.left,e.clientY-r.top);
+    }, { passive:false });
+
+    // 터치
+    _coverCanvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        if(e.touches.length===2) {
+            _coverDrawing=false;
+            const t1=e.touches[0],t2=e.touches[1];
+            _pinchDist=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+            const r=_coverWrap.getBoundingClientRect();
+            _pinchCenter={x:(t1.clientX+t2.clientX)/2-r.left,y:(t1.clientY+t2.clientY)/2-r.top};
+            _panStart={panX:_coverPanX,panY:_coverPanY,cx:_pinchCenter.x,cy:_pinchCenter.y};
+        } else if(e.touches.length===1) { startDraw(e.touches[0].clientX,e.touches[0].clientY); }
+    }, { passive:false });
+    _coverCanvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if(e.touches.length===2) {
+            const t1=e.touches[0],t2=e.touches[1];
+            const nd=Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+            const ratio=nd/_pinchDist;
+            const r=_coverWrap.getBoundingClientRect();
+            const nc={x:(t1.clientX+t2.clientX)/2-r.left,y:(t1.clientY+t2.clientY)/2-r.top};
+            zoomAt(ratio,_pinchCenter.x,_pinchCenter.y);
+            _coverPanX+=nc.x-_pinchCenter.x; _coverPanY+=nc.y-_pinchCenter.y;
+            applyTransform(); _pinchDist=nd; _pinchCenter=nc;
+        } else if(e.touches.length===1&&_coverDrawing) { moveDraw(e.touches[0].clientX,e.touches[0].clientY); }
+    }, { passive:false });
+    _coverCanvas.addEventListener('touchend', e => {
+        _panStart=null;
+        if(e.touches.length===0) endDraw(e.changedTouches[0]?.clientX,e.changedTouches[0]?.clientY);
+    });
+
+    applyTransform();
+    document.getElementById('coverBrushSize')?.addEventListener('input',updateCoverCursor);
+    updateCoverCursor();
+}
+
+function syncWrapToInteger() {
+    const wrap=document.getElementById('coverCanvasWrap'); if(!wrap) return;
+    wrap.style.width=''; wrap.style.height='';
+    const w=Math.floor(wrap.getBoundingClientRect().width); if(w<=0) return;
+    wrap.style.width=w+'px'; wrap.style.height=w+'px';
+    wrap.querySelectorAll('canvas').forEach(c=>{c.style.width=w+'px';c.style.height=w+'px';});
+}
+
+/* ── 줌 ── */
+function zoomAt(factor,cx,cy) {
+    const nz=Math.max(1,Math.min(4,_coverZoom*factor)); const rf=nz/_coverZoom;
+    _coverPanX=cx-(cx-_coverPanX)*rf; _coverPanY=cy-(cy-_coverPanY)*rf;
+    _coverZoom=nz; if(window._coverApplyTransform) window._coverApplyTransform(); syncZoomUI(); updateCoverCursor();
+}
+function resetCoverZoom() { _coverZoom=1;_coverPanX=0;_coverPanY=0; if(window._coverApplyTransform)window._coverApplyTransform(); syncZoomUI(); }
+function setCoverZoomPercent(pct) {
+    const z=Math.max(1,Number(pct)/100); const wrap=document.getElementById('coverCanvasWrap'); if(!wrap) return;
+    const r=wrap.getBoundingClientRect(); const cx=r.width/2,cy=r.height/2;
+    const factor=z/_coverZoom; _coverPanX=cx-(cx-_coverPanX)*factor; _coverPanY=cy-(cy-_coverPanY)*factor;
+    _coverZoom=z; if(window._coverApplyTransform)window._coverApplyTransform(); syncZoomUI();
+    if(z>1) setCoverTool('pan'); else updateCoverCursor();
+}
+function syncZoomUI() {
+    const slider=document.getElementById('coverZoomSlider'); const label=document.getElementById('coverZoomLabel');
+    const pct=Math.round(_coverZoom*100);
+    if(slider) slider.value=Math.max(100,pct); if(label) label.textContent=pct+'%';
+}
+
+/* ── 커서 ── */
+function _makeCircleCursor(size,color,isEraser) {
+    const d=Math.max(8,Math.min(64,size+4));
+    const stroke=isEraser?'#888':(color||'#333'); const fill=isEraser?'white':'transparent';
+    if(isEraser){const r=Math.round(d*.25);const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${d}' height='${d}' viewBox='0 0 ${d} ${d}'><rect x='1' y='1' width='${d-2}' height='${d-2}' rx='${r}' ry='${r}' stroke='${stroke}' stroke-width='1.5' fill='${fill}'/></svg>`;return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${d/2} ${d/2}, crosshair`;}
+    const svg=`<svg xmlns='http://www.w3.org/2000/svg' width='${d}' height='${d}' viewBox='0 0 ${d} ${d}'><circle cx='${d/2}' cy='${d/2}' r='${d/2-1}' stroke='${stroke}' stroke-width='1.5' fill='${fill}'/></svg>`;
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${d/2} ${d/2}, crosshair`;
+}
+function updateCoverCursor() {
+    if(!_coverCanvas) return;
+    const sizeRaw=parseInt(document.getElementById('coverBrushSize')?.value)||4;
+    const sizeScaled=Math.max(6,sizeRaw*(_coverCanvas.getBoundingClientRect().width/_coverCanvas.width));
+    let cursor='crosshair';
+    if(_coverTool==='pencil') cursor=_makeCircleCursor(sizeScaled,_coverColor,false);
+    else if(_coverTool==='eraser') cursor=_makeCircleCursor(sizeScaled*3,'#888',true);
+    else if(_coverTool==='sticker') cursor='pointer';
+    else if(_coverTool==='pan') cursor=(_panStart?'grabbing':'grab');
+    _coverCanvas.style.cursor=cursor;
+    if(_coverPreview) _coverPreview.style.cursor=cursor;
+}
+
+/* ── 대칭 ── */
+function symmetryPoints(x,y) {
+    const w=_coverCanvas.width,h=_coverCanvas.height;
+    const out=[{x,y}];
+    if(_coverSymmetry==='h'||_coverSymmetry==='4') out.push({x:w-x,y});
+    if(_coverSymmetry==='v'||_coverSymmetry==='4') out.push({x,y:h-y});
+    if(_coverSymmetry==='4') out.push({x:w-x,y:h-y});
+    return out;
+}
+
+/* ── 붓 스타일 ── */
+function brushStyleNow() { return _brushStyle; }
+function brushSegment(prev,cur,color,size) {
+    const ctx=_coverCtx; const style=brushStyleNow();
+    const allPrev=symmetryPoints(prev.x,prev.y); const allCur=symmetryPoints(cur.x,cur.y);
+    for(let i=0;i<allCur.length;i++) {
+        const a=allPrev[i],b=allCur[i];
+        if(style==='spray') {
+            const r=size*1.5,dist=Math.hypot(b.x-a.x,b.y-a.y),steps=Math.max(1,Math.ceil(dist/2));
+            ctx.fillStyle=color; ctx.globalAlpha=0.25;
+            for(let s=0;s<=steps;s++){const t=s/steps,cx2=a.x+(b.x-a.x)*t,cy2=a.y+(b.y-a.y)*t;for(let k=0;k<6;k++){const ag=Math.random()*Math.PI*2,d2=Math.random()*r;ctx.fillRect(cx2+Math.cos(ag)*d2,cy2+Math.sin(ag)*d2,1.5,1.5);}}
+            ctx.globalAlpha=1;
+        } else if(style==='pastel') {
+            ctx.strokeStyle=color;ctx.lineWidth=size*2;ctx.globalAlpha=0.3;ctx.lineCap='round';ctx.lineJoin='round';
+            ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.globalAlpha=1;
+        } else if(style==='crayon') {
+            ctx.lineWidth=size;ctx.lineCap='round';ctx.lineJoin='round';
+            for(let k=0;k<3;k++){ctx.strokeStyle=color;ctx.globalAlpha=0.3+Math.random()*0.3;const ox=(Math.random()-.5)*size*.4,oy=(Math.random()-.5)*size*.4;ctx.beginPath();ctx.moveTo(a.x+ox,a.y+oy);ctx.lineTo(b.x+ox,b.y+oy);ctx.stroke();}
+            ctx.globalAlpha=1;
+        } else {
+            ctx.strokeStyle=color;ctx.lineWidth=size;ctx.lineCap='round';ctx.lineJoin='round';
+            ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+        }
+    }
+}
+
+/* ── 도형 ── */
+function drawShapePreview(s,e,kind) {
+    renderStickerLayer();
+    const ctx=_coverPreviewCtx; const size=parseInt(document.getElementById('coverBrushSize').value)||4;
+    ctx.strokeStyle=_coverColor; ctx.lineWidth=size; ctx.lineCap='round';
+    if(kind==='line'){ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(e.x,e.y);ctx.stroke();}
+    else if(kind==='circle'){const cx=(s.x+e.x)/2,cy=(s.y+e.y)/2,rx=Math.abs(e.x-s.x)/2,ry=Math.abs(e.y-s.y)/2;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();}
+    else if(kind==='rect'){ctx.strokeRect(Math.min(s.x,e.x),Math.min(s.y,e.y),Math.abs(e.x-s.x),Math.abs(e.y-s.y));}
+}
+function drawShapeFinal(s,e,kind) {
+    const ctx=_coverCtx; const size=parseInt(document.getElementById('coverBrushSize').value)||4;
+    ctx.strokeStyle=_coverColor; ctx.lineWidth=size; ctx.lineCap='round';
+    if(kind==='line'){ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(e.x,e.y);ctx.stroke();}
+    else if(kind==='circle'){const cx=(s.x+e.x)/2,cy=(s.y+e.y)/2,rx=Math.abs(e.x-s.x)/2,ry=Math.abs(e.y-s.y)/2;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();}
+    else if(kind==='rect'){ctx.strokeRect(Math.min(s.x,e.x),Math.min(s.y,e.y),Math.abs(e.x-s.x),Math.abs(e.y-s.y));}
+}
+
+/* ── 스티커 ── */
+function renderStickerLayer() {
+    if(!_coverPreviewCtx) return;
+    clearPreview();
+    _coverStickers.forEach((s,i)=>{
+        if(s.type==='image'){
+            const w=s.size,h=s.size/(s.aspect||1);
+            let img=_imageCache[s.src];
+            if(!img){img=new Image();img.onload=()=>renderStickerLayer();img.src=s.src;_imageCache[s.src]=img;}
+            else if(img.complete){_coverPreviewCtx.save();if(s.rotation){_coverPreviewCtx.translate(s.x,s.y);_coverPreviewCtx.rotate(s.rotation);_coverPreviewCtx.drawImage(img,-w/2,-h/2,w,h);}else{_coverPreviewCtx.drawImage(img,s.x-w/2,s.y-h/2,w,h);}_coverPreviewCtx.restore();}
+        } else if(s.type==='text'){
+            _coverPreviewCtx.save();_coverPreviewCtx.translate(s.x,s.y);if(s.rotation)_coverPreviewCtx.rotate(s.rotation);
+            _coverPreviewCtx.font=`${s.size}px '${s.font||'Dongle'}',sans-serif`;_coverPreviewCtx.textAlign='center';_coverPreviewCtx.textBaseline='middle';
+            const lines=String(s.text).split('\n'),lh=s.size*1.1,startY=-(lines.length-1)*lh/2;
+            if(s.bg){let mw=0;lines.forEach(ln=>{mw=Math.max(mw,_coverPreviewCtx.measureText(ln).width);});const px=s.size*.2,py=s.size*.1,th=lines.length*lh;_coverPreviewCtx.fillStyle=s.bg;_coverPreviewCtx.fillRect(-mw/2-px,startY-lh/2-py,mw+px*2,th+py*2);}
+            if(s.shadow){_coverPreviewCtx.fillStyle=s.shadow;lines.forEach((ln,i)=>_coverPreviewCtx.fillText(ln,2,startY+i*lh+2));}
+            _coverPreviewCtx.fillStyle=s.color||'#333';lines.forEach((ln,i)=>_coverPreviewCtx.fillText(ln,0,startY+i*lh));
+            _coverPreviewCtx.restore();
+        } else {
+            _coverPreviewCtx.save();_coverPreviewCtx.translate(s.x,s.y);if(s.rotation)_coverPreviewCtx.rotate(s.rotation);
+            _coverPreviewCtx.font=`${s.size}px serif`;_coverPreviewCtx.textAlign='center';_coverPreviewCtx.textBaseline='middle';
+            _coverPreviewCtx.fillText(s.emoji,0,0);_coverPreviewCtx.restore();
+        }
+        if(i===_selectedStickerIdx&&(_coverTool==='sticker'||_coverTool==='select')){
+            const halfW=s.size/2,halfH=(s.type==='image'?s.size/(s.aspect||1):s.size)/2;
+            _coverPreviewCtx.save();_coverPreviewCtx.translate(s.x,s.y);if(s.rotation)_coverPreviewCtx.rotate(s.rotation);
+            _coverPreviewCtx.strokeStyle='#7F77DD';_coverPreviewCtx.setLineDash([4,3]);_coverPreviewCtx.lineWidth=2;_coverPreviewCtx.strokeRect(-halfW,-halfH,halfW*2,halfH*2);_coverPreviewCtx.setLineDash([]);
+            _coverPreviewCtx.fillStyle='#7F77DD';_coverPreviewCtx.fillRect(halfW-8,halfH-8,14,14);
+            _coverPreviewCtx.beginPath();_coverPreviewCtx.moveTo(0,-halfH);_coverPreviewCtx.lineTo(0,-halfH-24);_coverPreviewCtx.stroke();
+            _coverPreviewCtx.fillStyle='#1D9E75';_coverPreviewCtx.beginPath();_coverPreviewCtx.arc(0,-halfH-24,8,0,Math.PI*2);_coverPreviewCtx.fill();
+            const xCx=halfW+4,xCy=-halfH-4;
+            _coverPreviewCtx.fillStyle='rgba(255,255,255,0.95)';_coverPreviewCtx.beginPath();_coverPreviewCtx.arc(xCx,xCy,12,0,Math.PI*2);_coverPreviewCtx.fill();
+            _coverPreviewCtx.strokeStyle='#E24B4A';_coverPreviewCtx.lineWidth=1.5;_coverPreviewCtx.stroke();
+            _coverPreviewCtx.lineWidth=3;_coverPreviewCtx.lineCap='round';
+            _coverPreviewCtx.beginPath();_coverPreviewCtx.moveTo(xCx-5,xCy-5);_coverPreviewCtx.lineTo(xCx+5,xCy+5);_coverPreviewCtx.moveTo(xCx+5,xCy-5);_coverPreviewCtx.lineTo(xCx-5,xCy+5);_coverPreviewCtx.stroke();
+            _coverPreviewCtx.restore();
+        }
+    });
+}
+function hitTestSticker(x,y) {
+    for(let i=_coverStickers.length-1;i>=0;i--){
+        const s=_coverStickers[i],halfW=s.size/2,halfH=(s.type==='image'?s.size/(s.aspect||1):s.size)/2;
+        const cos=Math.cos(-(s.rotation||0)),sin=Math.sin(-(s.rotation||0));
+        const dx=x-s.x,dy=y-s.y,lx=dx*cos-dy*sin,ly=dx*sin+dy*cos;
+        if(i===_selectedStickerIdx){
+            if(Math.hypot(lx-(halfW+4),ly-(-halfH-4))<=14) return{idx:i,handle:'delete'};
+            if(Math.hypot(lx-0,ly-(-halfH-24))<=12) return{idx:i,handle:'rotate'};
+            if(lx>=halfW-10&&lx<=halfW+10&&ly>=halfH-10&&ly<=halfH+10) return{idx:i,handle:'resize'};
+        }
+        if(lx>=-halfW&&lx<=halfW&&ly>=-halfH&&ly<=halfH) return{idx:i,handle:false};
+    }
+    return{idx:-1};
+}
+function liftCanvasRegion(x,y,w,h) {
+    if(w<5||h<5) return;
+    const cw=_coverCanvas.width,ch=_coverCanvas.height;
+    x=Math.max(0,Math.floor(x));y=Math.max(0,Math.floor(y));w=Math.min(cw-x,Math.ceil(w));h=Math.min(ch-y,Math.ceil(h));
+    const data=_coverCtx.getImageData(x,y,w,h).data;let has=false;
+    for(let i=3;i<data.length;i+=4)if(data[i]>5){has=true;break;}
+    if(!has)return;
+    const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;tmp.getContext('2d').drawImage(_coverCanvas,x,y,w,h,0,0,w,h);
+    const dataUrl=tmp.toDataURL();_coverCtx.clearRect(x,y,w,h);
+    const tmpImg=new Image();tmpImg.onload=()=>{_imageCache[dataUrl]=tmpImg;bakeTopToBase();_coverStickers.push({type:'image',src:dataUrl,aspect:w/h,x:x+w/2,y:y+h/2,size:w});_selectedStickerIdx=_coverStickers.length-1;renderStickerLayer();saveCoverState();};tmpImg.src=dataUrl;
+}
+function drawMarquee(m) {
+    if(!_coverPreviewCtx)return;clearPreview();renderStickerLayer();
+    const x1=Math.min(m.start.x,m.end.x),y1=Math.min(m.start.y,m.end.y),x2=Math.max(m.start.x,m.end.x),y2=Math.max(m.start.y,m.end.y);
+    _coverPreviewCtx.save();_coverPreviewCtx.strokeStyle='#7F77DD';_coverPreviewCtx.fillStyle='rgba(127,119,221,0.1)';_coverPreviewCtx.lineWidth=2;_coverPreviewCtx.setLineDash([6,4]);_coverPreviewCtx.fillRect(x1,y1,x2-x1,y2-y1);_coverPreviewCtx.strokeRect(x1,y1,x2-x1,y2-y1);_coverPreviewCtx.restore();
+}
+function clearPreview() { if(_coverPreviewCtx)_coverPreviewCtx.clearRect(0,0,_coverPreview.width,_coverPreview.height); }
+function bakeTopToBase() { if(!_coverCtx||!_coverBaseCtx)return;_coverBaseCtx.drawImage(_coverCanvas,0,0);_coverCtx.clearRect(0,0,_coverCanvas.width,_coverCanvas.height); }
+
+/* ── 채우기 ── */
+function floodFill(x,y) {
+    if(!_coverCtx||x<0||y<0||x>=_coverCanvas.width||y>=_coverCanvas.height)return;
+    const w=_coverCanvas.width,h=_coverCanvas.height;
+    const compose=document.createElement('canvas');compose.width=w;compose.height=h;
+    const cctx=compose.getContext('2d',{willReadFrequently:true});
+    cctx.fillStyle='white';cctx.fillRect(0,0,w,h);if(_coverBase)cctx.drawImage(_coverBase,0,0);cctx.drawImage(_coverCanvas,0,0);
+    const img=cctx.getImageData(0,0,w,h);const data=img.data;
+    const eff=i=>data[i+3]<50?[255,255,255]:[data[i],data[i+1],data[i+2]];
+    const [tr,tg,tb]=eff((y*w+x)*4);
+    const fillRgb=hexToRgb(_coverColor);const TOL_STRICT=30;
+    const matchStrict=i=>{const[r,g,b]=eff(i);return Math.abs(r-tr)<=TOL_STRICT&&Math.abs(g-tg)<=TOL_STRICT&&Math.abs(b-tb)<=TOL_STRICT;};
+    const mask=new Uint8Array(w*h);const stack=[[x,y]];
+    while(stack.length){const[cx,cy]=stack.pop();if(cx<0||cy<0||cx>=w||cy>=h)continue;const idx=cy*w+cx;if(mask[idx])continue;if(!matchStrict(idx*4))continue;mask[idx]=1;stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);}
+    const expand=new Uint8Array(w*h);
+    for(let py=0;py<h;py++)for(let px=0;px<w;px++){const idx=py*w+px;if(mask[idx])continue;if((px>0&&mask[idx-1])||(px<w-1&&mask[idx+1])||(py>0&&mask[idx-w])||(py<h-1&&mask[idx+w]))expand[idx]=1;}
+    for(let i=0;i<expand.length;i++)if(expand[i])mask[i]=1;
+    const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tc=tmp.getContext('2d');const td=tc.createImageData(w,h);
+    for(let i=0;i<mask.length;i++)if(mask[i]){const p=i*4;td.data[p]=fillRgb.r;td.data[p+1]=fillRgb.g;td.data[p+2]=fillRgb.b;td.data[p+3]=255;}
+    tc.putImageData(td,0,0);_coverCtx.drawImage(tmp,0,0);saveCoverState();
+}
+
+/* ── 스포이드 ── */
+function eyedropAt(x,y) {
+    if(!_coverCtx)return;
+    x=Math.max(0,Math.min(_coverCanvas.width-1,Math.round(x)));y=Math.max(0,Math.min(_coverCanvas.height-1,Math.round(y)));
+    let r=255,g=255,b=255,found=false;
+    try{const d=_coverCtx.getImageData(x,y,1,1).data;if(d[3]>5){r=d[0];g=d[1];b=d[2];found=true;}}catch(e){}
+    if(!found&&_coverBaseCtx){try{const d=_coverBaseCtx.getImageData(x,y,1,1).data;if(d[3]>5){r=d[0];g=d[1];b=d[2];}}catch(e){}}
+    const hex='#'+[r,g,b].map(n=>n.toString(16).padStart(2,'0')).join('');
+    setCoverColor(hex);setCoverTool('pencil');
+}
+
+/* ── 색상 ── */
+function setCoverColor(c,el) {
+    _coverColor=c;if(_coverTool==='eraser')_coverTool='pencil';
+    document.querySelectorAll('.color-dot').forEach(d=>d.classList.toggle('active',d.getAttribute('data-color')===c));
+    document.querySelectorAll('.recent-color-dot').forEach(d=>d.classList.toggle('active',d.getAttribute('data-color')===c));
+    if(el) el.classList.add('active');
+    const cc=document.getElementById('coverCustomColor');if(cc&&/^#[0-9a-f]{6}$/i.test(c))cc.value=c;
+    pushRecentColor(c);updateToolButtons();updateCoverCursor();
+}
+function pushRecentColor(c) {
+    const presets=['#333','#FF5252','#FF9800','#FFD740','#4CAF50','#2196F3','#9C27B0','#795548'];
+    if(presets.includes(c))return;
+    _coverRecent=_coverRecent.filter(x=>x!==c);_coverRecent.unshift(c);
+    if(_coverRecent.length>4)_coverRecent.length=4;
+    try{localStorage.setItem('coverRecentColors',JSON.stringify(_coverRecent));}catch(e){}
+    renderRecentColors();
+}
+function loadRecentColors(){try{_coverRecent=JSON.parse(localStorage.getItem('coverRecentColors')||'[]');}catch(e){_coverRecent=[];}}
+function renderRecentColors(){
+    const el=document.getElementById('coverRecentColors');if(!el)return;el.innerHTML='';
+    for(let i=0;i<4;i++){const c=_coverRecent[i];const d=document.createElement('div');d.className='recent-color-dot'+(c?' has-color':'');
+    if(c){d.style.background=c;d.setAttribute('data-color',c);d.onclick=()=>setCoverColor(c,d);}el.appendChild(d);}
+}
+
+/* ── 도구 선택 ── */
+function setCoverTool(tool) {
+    const wasSticker=_coverTool==='sticker';_coverTool=tool;
+    if(wasSticker&&tool!=='sticker'){_selectedStickerIdx=-1;renderStickerLayer();}
+    updateToolButtons();
+    const pop=document.getElementById('coverStickerPopover');
+    if(tool==='sticker'){if(pop)pop.classList.add('show');renderStickerLayer();}else{if(pop)pop.classList.remove('show');}
+    updateCoverCursor();
+}
+function updateToolButtons() {
+    const map={pencil:'coverPencilBtn',eraser:'coverEraserBtn',bucket:'coverBucketBtn',eyedropper:'coverEyedropperBtn',text:'coverTextBtn',select:'coverSelectBtn',line:'coverShapeBtn',circle:'coverShapeBtn',rect:'coverShapeBtn',sticker:'coverStickerBtn',pan:'coverPanBtn'};
+    Object.entries(map).forEach(([k,id])=>document.getElementById(id)?.classList.toggle('active',_coverTool===k));
+}
+
+/* ── 팝오버 ── */
+function togglePencilPopover(){const pop=document.getElementById('coverPencilPopover');if(_coverTool==='pencil'){pop?.classList.toggle('show');}else{setCoverTool('pencil');pop?.classList.add('show');}}
+function selectBrushStyle(style,label){_brushStyle=style;document.getElementById('coverPencilLabel').textContent=label;document.querySelectorAll('#coverPencilPopover .sticker-item').forEach(el=>el.classList.toggle('active',el.getAttribute('data-style')===style));document.getElementById('coverPencilPopover')?.classList.remove('show');setCoverTool('pencil');}
+function toggleSymPopover(){document.getElementById('coverSymPopover')?.classList.toggle('show');}
+function setSymmetry(mode,label){_coverSymmetry=mode;const lbl=document.getElementById('coverSymLabel');if(lbl)lbl.textContent=label;document.getElementById('coverSymBtn')?.classList.toggle('active',mode!=='none');document.getElementById('coverSymPopover')?.classList.remove('show');if(typeof setCoverTool==='function')setCoverTool('pencil');}
+function toggleGrid(){_coverGridOn=!_coverGridOn;document.getElementById('coverGridOverlay').style.display=_coverGridOn?'block':'none';document.getElementById('coverGridBtn')?.classList.toggle('active',_coverGridOn);}
+function toggleShapePopover(){const pop=document.getElementById('coverShapePopover');if(['line','circle','rect'].includes(_coverTool)){pop?.classList.toggle('show');}else{pop?.classList.add('show');}}
+function selectShape(kind){setCoverTool(kind);document.getElementById('coverShapePopover')?.classList.remove('show');const labels={line:'📐 직선',circle:'📐 원',rect:'📐 사각형'};const btn=document.getElementById('coverShapeBtn');if(btn)btn.textContent=labels[kind]||'📐 도형';}
+function toggleStickerPopover(){const pop=document.getElementById('coverStickerPopover');if(_coverTool==='sticker'){setCoverTool('pencil');}else{setCoverTool('sticker');}}
+function initStickerPopover(){const pop=document.getElementById('coverStickerPopover');if(!pop)return;pop.innerHTML=STICKER_SET.map(s=>`<span class="sticker-item${s===_coverCurrentSticker?' active':''}" data-emoji="${s}" onclick="selectSticker('${s}')">${s}</span>`).join('');}
+function selectSticker(s){_coverCurrentSticker=s;document.querySelectorAll('#coverStickerPopover .sticker-item').forEach(el=>el.classList.toggle('active',el.getAttribute('data-emoji')===s));document.getElementById('coverStickerPopover')?.classList.remove('show');if(!_coverCanvas)return;const size=(parseInt(document.getElementById('coverBrushSize').value)||4)*4+30;const cx=_coverCanvas.width/2,cy=_coverCanvas.height/2;bakeTopToBase();_coverStickers.push({emoji:s,x:cx,y:cy,size});_selectedStickerIdx=_coverStickers.length-1;renderStickerLayer();saveCoverState();}
+
+/* ── 이미지 삽입 ── */
+function handleImageInsert(input){
+    const file=input.files&&input.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(e)=>{const src=e.target.result;const img=new Image();img.onload=()=>{const aspect=img.width/img.height;const size=Math.min(_coverCanvas.width*.6,240);_imageCache[src]=img;bakeTopToBase();_coverStickers.push({type:'image',src,aspect,x:_coverCanvas.width/2,y:_coverCanvas.height/2,size});_selectedStickerIdx=_coverStickers.length-1;setCoverTool('select');renderStickerLayer();saveCoverState();};img.src=src;};
+    reader.readAsDataURL(file);input.value='';
+}
+
+/* ── 텍스트 ── */
+function openCoverTextModal(){if(!_pendingTextPos)_pendingTextPos={x:_coverCanvas.width/2,y:_coverCanvas.height/2};showInlineTextEditor(_pendingTextPos);}
+function openTextEditorAtButton(){setCoverTool('text');const canvasPos={x:_coverCanvas.width/2,y:_coverCanvas.height/2};_pendingTextPos=canvasPos;const btn=document.getElementById('coverTextBtn');const editor=document.getElementById('coverTextEditor');if(!btn||!editor)return;const btnR=btn.getBoundingClientRect();editor.style.left=btnR.left+'px';editor.style.top=(btnR.bottom+4)+'px';editor.style.display='block';const input=document.getElementById('coverTextEditorInput');input.value='';input.style.fontFamily=`'${document.getElementById('coverTextEditorFont').value}',sans-serif`;offColorSwatch('shadow');offColorSwatch('bg');applyTextEditorPreview();setTimeout(()=>input.focus(),30);input.onkeydown=(e)=>{if(e.key==='Escape')closeInlineText();};}
+function showInlineTextEditor(canvasPos){const editor=document.getElementById('coverTextEditor');if(!editor)return;const r=_coverCanvas.getBoundingClientRect();const dispScale=r.width/_coverCanvas.width;editor.style.left=(r.left+canvasPos.x*dispScale)+'px';editor.style.top=(r.top+canvasPos.y*dispScale)+'px';editor.style.display='block';const input=document.getElementById('coverTextEditorInput');input.value='';input.style.fontFamily=`'${document.getElementById('coverTextEditorFont').value}',sans-serif`;offColorSwatch('shadow');offColorSwatch('bg');applyTextEditorPreview();setTimeout(()=>input.focus(),30);input.onkeydown=(e)=>{if(e.key==='Escape')closeInlineText();};}
+function applyTextEditorPreview(){const input=document.getElementById('coverTextEditorInput');if(!input)return;const font=document.getElementById('coverTextEditorFont').value;const color=document.getElementById('coverTextEditorColor').value||'#333';const shadowSw=document.getElementById('coverShadowSwatch');const bgSw=document.getElementById('coverBgSwatch');const shadow=(shadowSw.dataset.off==='0')?document.getElementById('coverTextEditorShadow').value:null;const bg=(bgSw.dataset.off==='0')?document.getElementById('coverTextEditorBg').value:null;input.style.fontFamily=`'${font}',sans-serif`;input.style.fontSize='24px';input.style.lineHeight='1.3';input.style.color=color;input.style.textShadow=shadow?`2px 2px 0 ${shadow}`:'none';input.style.background=bg||'white';}
+function commitInlineText(pos){const editor=document.getElementById('coverTextEditor');const input=document.getElementById('coverTextEditorInput');const font=document.getElementById('coverTextEditorFont').value;const size=parseInt(document.getElementById('coverTextEditorSize').value)||60;const color=document.getElementById('coverTextEditorColor').value||'#333';const shadowSw=document.getElementById('coverShadowSwatch');const shadow=(shadowSw.dataset.off==='0')?document.getElementById('coverTextEditorShadow').value:null;const bgSw=document.getElementById('coverBgSwatch');const bg=(bgSw.dataset.off==='0')?document.getElementById('coverTextEditorBg').value:null;const text=(input.value||'').trim();editor.style.display='none';input.onblur=null;if(!text){_pendingTextPos=null;setCoverTool('select');return;}bakeTopToBase();_coverStickers.push({type:'text',text,font,color,shadow,bg,x:pos.x,y:pos.y,size});_selectedStickerIdx=_coverStickers.length-1;setCoverTool('select');renderStickerLayer();saveCoverState();_pendingTextPos=null;}
+function commitInlineTextFromButton(){if(_editingTextIdx>=0){const s=_coverStickers[_editingTextIdx];if(!s){_editingTextIdx=-1;return;}const input=document.getElementById('coverTextEditorInput');const text=(input.value||'').trim();if(!text){_editingTextIdx=-1;closeInlineText();return;}s.text=text;s.font=document.getElementById('coverTextEditorFont').value;s.size=parseInt(document.getElementById('coverTextEditorSize').value)||60;s.color=document.getElementById('coverTextEditorColor').value||'#333';s.shadow=(document.getElementById('coverShadowSwatch').dataset.off==='0')?document.getElementById('coverTextEditorShadow').value:null;s.bg=(document.getElementById('coverBgSwatch').dataset.off==='0')?document.getElementById('coverTextEditorBg').value:null;document.getElementById('coverTextEditor').style.display='none';_editingTextIdx=-1;renderStickerLayer();saveCoverState();return;}const pos=_pendingTextPos||{x:_coverCanvas.width/2,y:_coverCanvas.height/2};commitInlineText(pos);}
+function editTextSticker(idx){const s=_coverStickers[idx];if(!s||s.type!=='text')return;_editingTextIdx=idx;_selectedStickerIdx=idx;const editor=document.getElementById('coverTextEditor');const r=_coverCanvas.getBoundingClientRect();const dispScale=r.width/_coverCanvas.width;editor.style.left=(r.left+s.x*dispScale-170)+'px';editor.style.top=(r.top+s.y*dispScale+20)+'px';editor.style.display='block';document.getElementById('coverTextEditorInput').value=s.text;document.getElementById('coverTextEditorFont').value=s.font||'Dongle';document.getElementById('coverTextEditorSize').value=s.size||60;document.getElementById('coverTextEditorColor').value=s.color||'#333333';if(s.shadow){document.getElementById('coverTextEditorShadow').value=s.shadow;updateColorSwatch('shadow',s.shadow);}else offColorSwatch('shadow');if(s.bg){document.getElementById('coverTextEditorBg').value=s.bg;updateColorSwatch('bg',s.bg);}else offColorSwatch('bg');applyTextEditorPreview();setTimeout(()=>document.getElementById('coverTextEditorInput').focus(),30);}
+function closeInlineText(){document.getElementById('coverTextEditor').style.display='none';document.getElementById('coverTextEditorInput').onblur=null;_pendingTextPos=null;_editingTextIdx=-1;setCoverTool('select');}
+const PALETTE_COLORS=['#000000','#FF5252','#FF9800','#FFD740','#4CAF50','#2196F3','#9C27B0','#795548','#FFFFFF','#888888','#FFC1D9','#7F77DD'];
+function toggleColorSwatch(kind,ev){const sw=document.getElementById(kind==='shadow'?'coverShadowSwatch':'coverBgSwatch');showColorPalettePopover(kind,sw);}
+function showColorPalettePopover(kind,anchor){let pop=document.getElementById('colorPalettePopover');if(!pop){pop=document.createElement('div');pop.id='colorPalettePopover';document.body.appendChild(pop);document.addEventListener('mousedown',(e)=>{if(pop.style.display==='none')return;if(pop.contains(e.target))return;const sw=e.target.closest&&e.target.closest('.text-color-swatch');if(sw)return;pop.style.display='none';});}pop.setAttribute('style','position:fixed !important;z-index:10001;background:white;border:2px solid #7F77DD;border-radius:10px;padding:8px;box-shadow:0 4px 14px rgba(0,0,0,0.2);display:grid;grid-template-columns:repeat(6,1fr);gap:4px;');pop.innerHTML='';pop.style.gridTemplateColumns='repeat(6,1fr)';const offRow=document.createElement('div');offRow.style.cssText='grid-column:1/-1;display:flex;align-items:center;gap:8px;padding:4px 6px;cursor:pointer;border-radius:6px;background:#f4ece1;';offRow.innerHTML=`<span style="display:inline-block;width:22px;height:22px;border-radius:50%;border:2px solid #ccc;background:white;position:relative;"><span style="position:absolute;inset:0;background:linear-gradient(to top right,transparent calc(50% - 1.5px),#888 calc(50% - 1.5px),#888 calc(50% + 1.5px),transparent calc(50% + 1.5px));border-radius:50%;"></span></span><span style="font-size:12px;color:#5F5E5A;font-weight:600;">투명 (끄기)</span>`;offRow.onclick=()=>{offColorSwatch(kind);pop.style.display='none';applyTextEditorPreview();};pop.appendChild(offRow);PALETTE_COLORS.forEach(c=>{const cell=document.createElement('div');cell.style.cssText=`width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid ${c==='#FFFFFF'?'#ccc':'transparent'};background:${c};`;cell.onclick=()=>{const input=document.getElementById(kind==='shadow'?'coverTextEditorShadow':'coverTextEditorBg');input.value=c;updateColorSwatch(kind,c);pop.style.display='none';applyTextEditorPreview();};pop.appendChild(cell);});const r=anchor.getBoundingClientRect();pop.style.left=Math.max(8,r.left)+'px';pop.style.top=(r.bottom+6)+'px';}
+function offColorSwatch(kind){const sw=document.getElementById(kind==='shadow'?'coverShadowSwatch':'coverBgSwatch');sw.dataset.off='1';sw.style.background='white';}
+function updateColorSwatch(kind,color){const sw=document.getElementById(kind==='shadow'?'coverShadowSwatch':'coverBgSwatch');sw.dataset.off='0';sw.style.background=color;}
+
+/* ── 히스토리 ── */
+function saveCoverState(){if(!_coverCanvas)return;_coverHistory=_coverHistory.slice(0,_coverHistIdx+1);_coverHistory.push(_coverCanvas.toDataURL());if(_coverHistory.length>30)_coverHistory.shift();_coverHistIdx=_coverHistory.length-1;}
+function _restoreFromHistory(){const url=_coverHistory[_coverHistIdx];if(!url)return;const img=new Image();img.onload=()=>{clearCoverNoSave();_coverCtx.drawImage(img,0,0);};img.src=url;}
+function undoCover(){if(_coverHistIdx>0){_coverHistIdx--;_restoreFromHistory();}}
+function redoCover(){if(_coverHistIdx<_coverHistory.length-1){_coverHistIdx++;_restoreFromHistory();}}
+function clearCoverNoSave(){if(!_coverCtx)return;_coverCtx.clearRect(0,0,_coverCanvas.width,_coverCanvas.height);if(_coverBaseCtx)_coverBaseCtx.clearRect(0,0,_coverBase.width,_coverBase.height);}
+function clearCover(){if(!confirm('그림을 모두 지울까요?'))return;clearCoverNoSave();_coverStickers=[];_selectedStickerIdx=-1;renderStickerLayer();saveCoverState();}
+
+/* ── 유틸 ── */
+function hexToRgb(hex){const h=hex.replace('#','');const v=h.length===3?h.split('').map(c=>c+c).join(''):h;return{r:parseInt(v.slice(0,2),16),g:parseInt(v.slice(2,4),16),b:parseInt(v.slice(4,6),16)};}
+function isCoverBlank(){if(!_coverCanvas||!_coverCtx)return true;if(_coverStickers&&_coverStickers.length)return false;const d=_coverCtx.getImageData(0,0,_coverCanvas.width,_coverCanvas.height).data;for(let i=3;i<d.length;i+=4)if(d[i]>5)return false;if(_coverBaseCtx){const d2=_coverBaseCtx.getImageData(0,0,_coverBase.width,_coverBase.height).data;for(let i=3;i<d2.length;i+=4)if(d2[i]>5)return false;}return true;}
+function getCoverDataUrl(){if(!_coverCanvas)return'';const tmp=document.createElement('canvas');tmp.width=_coverCanvas.width;tmp.height=_coverCanvas.height;const tctx=tmp.getContext('2d');tctx.fillStyle='white';tctx.fillRect(0,0,tmp.width,tmp.height);if(_coverBase)tctx.drawImage(_coverBase,0,0);_coverStickers.forEach(s=>{if(s.type==='image'){const w=s.size,h=s.size/(s.aspect||1);const img=_imageCache[s.src];if(img&&img.complete){tctx.save();tctx.translate(s.x,s.y);if(s.rotation)tctx.rotate(s.rotation);tctx.drawImage(img,-w/2,-h/2,w,h);tctx.restore();}}else if(s.type==='text'){tctx.save();tctx.translate(s.x,s.y);if(s.rotation)tctx.rotate(s.rotation);tctx.font=`${s.size}px '${s.font||'Dongle'}',sans-serif`;tctx.textAlign='center';tctx.textBaseline='middle';const lines=String(s.text).split('\n'),lh=s.size*1.1,startY=-(lines.length-1)*lh/2;if(s.bg){let mw=0;lines.forEach(ln=>{mw=Math.max(mw,tctx.measureText(ln).width);});tctx.fillStyle=s.bg;tctx.fillRect(-mw/2-s.size*.2,startY-lh/2-s.size*.1,mw+s.size*.4,lines.length*lh+s.size*.2);}if(s.shadow){tctx.fillStyle=s.shadow;lines.forEach((ln,i)=>tctx.fillText(ln,2,startY+i*lh+2));}tctx.fillStyle=s.color||'#333';lines.forEach((ln,i)=>tctx.fillText(ln,0,startY+i*lh));tctx.restore();}else{tctx.save();tctx.translate(s.x,s.y);if(s.rotation)tctx.rotate(s.rotation);tctx.font=`${s.size}px serif`;tctx.textAlign='center';tctx.textBaseline='middle';tctx.fillText(s.emoji,0,0);tctx.restore();}});if(_coverCanvas)tctx.drawImage(_coverCanvas,0,0);return tmp.toDataURL('image/jpeg',0.88);}
+
+/* ── 제출 / 취소 ── */
+function doSubmit(){
+    if(isCoverBlank()){alert('그림을 그려주세요!');return;}
+    const btn=document.getElementById('btnSubmit');btn.textContent='⏳ 처리 중...';btn.disabled=true;
+    try{
+        const dataUrl=getCoverDataUrl();
+        window.parent.postMessage({type:'bingoDrawDone',dataUrl,note:''},'*');
+    }catch(e){btn.textContent='🎨 제출하기';btn.disabled=false;alert('오류: '+e.message);}
+}
+function doCancel(){window.parent.postMessage({type:'bingoDrawCancel'},'*');}
+
+/* ── postMessage ── */
+window.addEventListener('message',e=>{
+    if(e.data?.type==='bingoDrawInit'){
+        const label=e.data.cellLabel||'';
+        document.getElementById('titleBar').textContent=label?`🎨 ${label} — 그림 그리기`:'🎨 그림 그리기';
+        clearCoverNoSave();_coverStickers=[];_selectedStickerIdx=-1;_coverHistory=[];_coverHistIdx=-1;
+        renderStickerLayer();saveCoverState();
+    }
+});
+
+/* ── 키보드 ── */
+document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key==='z'){e.preventDefault();undoCover();}
+    if((e.ctrlKey||e.metaKey)&&(e.shiftKey&&e.key==='Z'||e.key==='y')){e.preventDefault();redoCover();}
+});
+
+window.addEventListener('load',initCoverCanvas);
+</script>
+</body>
+</html>
