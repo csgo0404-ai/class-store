@@ -4153,7 +4153,10 @@ let _renderLock = false; // 재진입 방지
                 const arr = [];
                 Object.entries(v).forEach(([k, item]) => {
                     const i = parseInt(k);
-                    if(!isNaN(i)) arr[i] = item; else arr.push(item);
+                    // 🛡️ cd 키 충돌 방지: 순수 정수 문자열("0","1"...)만 인덱스로 사용.
+                    // cd가 숫자로 시작하면(예: "4MF20VLOZ"→parseInt=4) 같은 인덱스끼리 덮어써
+                    // 학생이 사라지는 버그 → cd 키는 push 처리.
+                    if(!isNaN(i) && String(i) === k) arr[i] = item; else arr.push(item);
                 });
                 db.stu = arr.filter(Boolean);
             } else if(Array.isArray(v)) {
@@ -4186,7 +4189,8 @@ let _renderLock = false; // 재진입 방지
                 const arr = [];
                 Object.entries(v).forEach(([k, item]) => {
                     const i = parseInt(k);
-                    if(!isNaN(i)) arr[i] = item; else arr.push(item);
+                    // 🛡️ cd 키 충돌 방지: 순수 정수 문자열만 인덱스로 사용 (cd 키는 push)
+                    if(!isNaN(i) && String(i) === k) arr[i] = item; else arr.push(item);
                 });
                 db.stu = arr.filter(Boolean);
             }
