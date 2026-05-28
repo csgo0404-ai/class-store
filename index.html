@@ -2627,7 +2627,7 @@ let _renderLock = false; // 재진입 방지
     const _useSplit = localStorage.getItem('rpgUseSplitListeners') !== '0';
     // 라이브 구독: 변경 자주 일어나는 경로 (stu/auc 제외 — 학생은 탭 진입 시에만 fetch)
     // 🛡️ gac 추가: 페이지 재로드 시 기본값({랜덤})이 sv()로 Firebase를 덮어쓰는 데이터 손실 버그 수정
-    const _splitLivePaths = ['cfg','itm','gacQueue','gac','petSkins','spPetDef'];
+    const _splitLivePaths = ['cfg','itm','gacQueue','gac','petSkins'];
     // 탭 진입 시 lazy fetch — tit는 가방 칭호 탭 진입 시에만 fetch
     const _splitOncePaths = [];
     const _splitPaths = [..._splitLivePaths, ..._splitOncePaths];
@@ -2726,9 +2726,9 @@ let _renderLock = false; // 재진입 방지
     // 탭별 필요 lazy 경로 매핑
     window._tabLazyPaths = {
         't_mgr': ['avt','bdg','tit'],
-        't_set': ['avt','bdg','tit','petDef'],
+        't_set': ['avt','bdg','tit','petDef','spPetDef'],
         't_avt': ['avt', 'tit'],
-        't_col': ['avt','bdg','tit'],
+        't_col': ['avt','bdg','tit','spPetDef'],
         't_plz': ['avt'],
         's_char': ['avt','bdg'],
         's_bg':  ['tit','bdg'],
@@ -3006,6 +3006,16 @@ let _renderLock = false; // 재진입 방지
                 }
                 if(_splitInitialDone) _splitFire();
             });
+        }).catch(err => {
+            // 🛡️ 단일 경로 읽기 실패가 _splitFire(로그인/초기화)를 영구 차단하지 않게 방어.
+            // (보안규칙 미허용·네트워크 오류 등으로 한 경로가 막혀도 나머지로 진행)
+            console.error('[splitListener] 경로 fetch 실패 — 초기화 차단 방지:', p, err);
+            if(db && typeof db === 'object' && !(p in db)) db[p] = ((p==='cfg'||p==='gacQueue') ? {} : []);
+            _splitInitialReceived[p] = true;
+            if(!_splitInitialDone && _splitPaths.every(k => _splitInitialReceived[k])) {
+                _splitInitialDone = true;
+                _splitFire();
+            }
         });
     }
     // 학생 광장 입장 시점에만 광장 cfg 키를 라이브 부착 (퇴장 시 detach) — 광장 밖 학생 트래픽 0
@@ -7511,7 +7521,7 @@ let _renderLock = false; // 재진입 방지
                 // 트래픽 절감: 직전 송신 hash와 비교 — 실제로 바뀐 키만 payload에 포함
                 if(!window._lastSentHash) window._lastSentHash = {};
                 // 🛡️ lazy path 미로드 시 write 차단 — 빈 배열로 Firebase 덮어쓰기 방지
-                const LAZY_PATHS = new Set(['avt','bdg','tit','petDef']);
+                const LAZY_PATHS = new Set(['avt','bdg','tit','petDef','spPetDef']);
                 for(const k of keys) {
                     if(!(k in db)) continue;
                     if(LAZY_PATHS.has(k) && !(window._lazyLoaded && window._lazyLoaded.has(k))) {
