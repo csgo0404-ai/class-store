@@ -6738,6 +6738,7 @@ let _renderLock = false; // 재진입 방지
                     setTimeout(() => window._migrateStudentsTocdKeys && window._migrateStudentsTocdKeys(), 1500);
                 }
                 setTimeout(() => window._autoCleanupDb && window._autoCleanupDb(), 6000);
+                setTimeout(() => window._cleanupJunkStuKeys && window._cleanupJunkStuKeys(), 7000);
                 if(!window._mondayCookieChecked) {
                     window._mondayCookieChecked = true;
                     setTimeout(() => { try { window._checkMondayCookie && window._checkMondayCookie(); } catch(_){} }, 1200);
@@ -7741,6 +7742,32 @@ let _renderLock = false; // 재진입 방지
         }
     };
     // ────────────────────────────────────────────────────────────────────────────
+
+    // 🧹 정크 stu 키 자동 청소 — nm·cd 둘 다 없는 빈 레코드만 제거 (내용 기준, 키 이름 무관).
+    //    숫자 cd("1" 테스트 등) 정상 학생은 nm/cd가 있어 절대 삭제되지 않음.
+    window._cleanupJunkStuKeys = async function() {
+        if(localStorage.getItem('teacherLogged') !== '1') return;
+        // 트래픽 절감: raw stu 전체 읽기는 비용이 있으므로 기기당 하루 1회만 수행.
+        // (증분 로드는 updatedAt 없는 정크를 못 받아오므로 메모리 기준 단락은 부정확 → 시간 throttle 사용)
+        try {
+            const _last = parseInt(localStorage.getItem('_junkSweepTs') || '0') || 0;
+            if(Date.now() - _last < 86400000) return; // 24시간 이내 이미 수행했으면 skip
+        } catch(_){}
+        try {
+            const snap = await dbRef.child('stu').once('value');
+            const v = snap.val() || {};
+            // 내용 기준: nm·cd 둘 다 없는 빈 레코드만 정크 (숫자 cd "1" 등 정상 학생은 nm/cd 있어 보존)
+            const junk = Object.entries(v).filter(([k, x]) => !x || (!x.nm && !x.cd)).map(([k]) => k);
+            try { localStorage.setItem('_junkSweepTs', String(Date.now())); } catch(_){}
+            if(!junk.length) return;
+            console.warn('[정크청소] 빈 stu 레코드 제거:', junk);
+            try { localStorage.setItem('_junkStu_'+Date.now(), JSON.stringify(junk.map(k => ({k, v: v[k]})))); } catch(_){}
+            const updates = {};
+            junk.forEach(k => { updates['stu/' + k] = null; });
+            await dbRef.update(updates);
+            console.warn('[정크청소] ✅ 완료:', junk.length, '건');
+        } catch(e) { console.warn('[정크청소] 실패:', e); }
+    };
 
     window._migrateInvBasketToTk = function() {
         const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
@@ -8840,6 +8867,15 @@ let _renderLock = false; // 재진입 방지
     // 공통 write 코어 (key: 정수 인덱스 또는 cd 문자열)
     function _upMeWriteCore(key, _safe){
         if (!me || !me.cd) return;
+        // 🛡️ 정크 키 방지: undefined/빈 키 차단 + 마이그레이션 후엔 키가 실제 학생 cd여야 함.
+        //   (숫자 cd "1"(테스트) 등 정상 cd는 실제 목록에 있으므로 통과 — 키 이름이 숫자인지로 판단하지 않음)
+        if (key === undefined || key === null || key === '' || String(key) === 'undefined') {
+            console.error('[정크키차단] _upMeWriteCore: 무효 키 —', key); return;
+        }
+        if (db.cfg && db.cfg.stuKeyCdMigrated) {
+            const _exists = (Array.isArray(db.stu) ? db.stu : []).some(s => s && String(s.cd) === String(key));
+            if (!_exists) { console.error('[정크키차단] _upMeWriteCore: 실제 cd 아님 —', key); return; }
+        }
         try {
             // shopLog는 별도 경로(shopLog/{cd})에 쓰고, stu 노드에서는 제외 (트래픽 절감)
             let _shopLogToWrite = null;
