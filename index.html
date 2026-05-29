@@ -1148,6 +1148,18 @@
                     <button class="btn btn-gray" style="font-size:12px;padding:4px 10px;" onclick="document.getElementById('reqCutoffTime').value=''; window._saveReqCutoff();">제한 없음</button>
                     <span id="reqCutoffStatus" style="font-size:12px;color:#888;"></span>
                 </div>
+                <!-- 마감 시각 예외 아이템 -->
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid #EEE;">
+                    <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:6px;">⚡ 마감 시각 예외 아이템 <span style="font-size:11px;font-weight:normal;color:#888;">(당일 신청 항상 허용)</span></div>
+                    <div style="font-size:12px;color:#aaa;margin-bottom:8px;">여기 등록된 아이템은 마감 시각이 지나도 당일 신청 가능해요.</div>
+                    <div id="reqCutoffExemptChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <select id="reqCutoffExemptSelect" style="padding:4px 8px;border:1px solid #DDD;border-radius:6px;font-family:'Jua';font-size:13px;flex:1;max-width:220px;">
+                            <option value="">-- 아이템 선택 --</option>
+                        </select>
+                        <button class="btn btn-blue" style="font-size:12px;padding:4px 10px;" onclick="window._addReqCutoffExempt()">추가</button>
+                    </div>
+                </div>
             </div>
 
             <!-- 교환권 쿠폰 풀 -->
@@ -1334,6 +1346,12 @@
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 토픽 추가" oncontextmenu="event.preventDefault();window._bombTopicsEditor&&window._bombTopicsEditor();return false;"><input type="checkbox" id="plz_room_bombgame_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">💣 폭탄게임 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                             </div>
                         </div>
+                    </div>
+                    <!-- 게임 관찰 패널 — 교사가 진행 중인 게임 상태를 경량 구독으로 모니터링 -->
+                    <div class="card" id="_teacherGameObserverCard" style="padding:10px 12px;">
+                        <h4 style="margin:0 0 7px;font-size:13px;">👁 게임 관찰</h4>
+                        <div id="_tgoGameBtns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+                        <div id="_tgoStatus" style="font-size:12px;color:#888;line-height:1.5;">관찰할 게임을 선택하세요.</div>
                     </div>
                     <div class="card" style="padding:0;overflow:hidden;">
                         <div onclick="window._toggleBgCard()" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;">
@@ -2135,7 +2153,7 @@ const firebaseConfig = {
 let _prevDbHash = ''; // 변경 감지용 해시
 let _renderLock = false; // 재진입 방지
 
-    let db = {stu:[], itm:[{n:'기본 간식',p:10,c:'cn',i:'🍩',s:true}], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], avt:[], bdg:[], tit:[], ak:'', cfg: {baseChar:'', gh:{token:'',owner:'',repo:''}}};
+    let db = {stu:[], itm:[], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], avt:[], bdg:[], tit:[], ak:'', cfg: {baseChar:'', gh:{token:'',owner:'',repo:''}}};
     window._pageLoadTime = Date.now();
 
     // 교사-학생프리뷰 탭 간 즉시 동기화 (같은 기기 내 탭 전용)
@@ -2624,7 +2642,7 @@ let _renderLock = false; // 재진입 방지
 
     // ===== 부분 구독 (path별 listener) — 학생/교사 모두 적용. log는 교사만. =====
     // 롤백: localStorage.setItem('rpgUseSplitListeners','0') 하고 새로고침
-    const _useSplit = localStorage.getItem('rpgUseSplitListeners') !== '0';
+    const _useSplit = true; // 항상 분할 구독 사용 (legacy: localStorage 'rpgUseSplitListeners'='0' 옵션 제거)
     // 라이브 구독: 변경 자주 일어나는 경로 (stu/auc 제외 — 학생은 탭 진입 시에만 fetch)
     // 🛡️ gac 추가: 페이지 재로드 시 기본값({랜덤})이 sv()로 Firebase를 덮어쓰는 데이터 손실 버그 수정
     const _splitLivePaths = ['cfg','itm','gacQueue','gac','petSkins'];
@@ -3544,7 +3562,8 @@ let _renderLock = false; // 재진입 방지
                 if(me && String(me.cd).trim() === target) {
                     const _prevAucWin = me.aucWin;
                     const _prevPetSkinSale = me.petSkinSale;
-                    const _prevMondayPending = me.mondayCookiePending || 0;
+                    const _prevInvArr = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
+                    const _prevCookieReqCount = _prevInvArr.filter(it => it && it.type === 'cookie_req' && it.locked).length;
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
                     if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
                     if(v.aucWin && (!_prevAucWin || _prevAucWin.id !== v.aucWin.id)) {
@@ -3554,9 +3573,11 @@ let _renderLock = false; // 재진입 방지
                     if(v.petSkinSale && (!_prevPetSkinSale || _prevPetSkinSale.ts !== v.petSkinSale.ts)) {
                         try { window._showPetSkinSaleModal && window._showPetSkinSaleModal(v.petSkinSale); } catch(_){}
                     }
-                    // 월요 쿠키가 새로 적립됐을 때 배너 표시
-                    if((me.mondayCookiePending || 0) > _prevMondayPending) {
-                        try { _showMondayCookieBanner && _showMondayCookieBanner(); } catch(_){}
+                    // 월요 쿠키 잠금 아이템이 새로 추가됐을 때 배너 표시
+                    const _newInvArr = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
+                    const _newCookieReqCount = _newInvArr.filter(it => it && it.type === 'cookie_req' && it.locked).length;
+                    if(_newCookieReqCount > _prevCookieReqCount) {
+                        // try { _showMondayCookieBanner && _showMondayCookieBanner(); } catch(_){} // 배너 비활성화
                     }
                 }
                 try { localStorage.setItem('rpgMyStu_' + target, JSON.stringify({ ts: Date.now(), stu: v })); } catch(_){}
@@ -3607,12 +3628,16 @@ let _renderLock = false; // 재진입 방지
                 if(localIdx >= 0) db.stu[localIdx] = v;
                 else db.stu[idx] = v;
                 if(me && String(me.cd).trim() === target) {
-                    const _prevMondayPending2 = me.mondayCookiePending || 0;
+                    const _prevInvArr2 = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
+                    const _prevCookieReqCount2 = _prevInvArr2.filter(it => it && it.type === 'cookie_req' && it.locked).length;
                     const _prevPetSkinSale2 = me.petSkinSale;
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
                     if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
-                    if((me.mondayCookiePending || 0) > _prevMondayPending2) {
-                        try { _showMondayCookieBanner && _showMondayCookieBanner(); } catch(_){}
+                    // 월요 쿠키 잠금 아이템이 새로 추가됐을 때 배너 표시
+                    const _newInvArr2 = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
+                    const _newCookieReqCount2 = _newInvArr2.filter(it => it && it.type === 'cookie_req' && it.locked).length;
+                    if(_newCookieReqCount2 > _prevCookieReqCount2) {
+                        // try { _showMondayCookieBanner && _showMondayCookieBanner(); } catch(_){} // 배너 비활성화
                     }
                     if(v.petSkinSale && (!_prevPetSkinSale2 || _prevPetSkinSale2.ts !== v.petSkinSale.ts)) {
                         try { window._showPetSkinSaleModal && window._showPetSkinSaleModal(v.petSkinSale); } catch(_){}
@@ -4036,6 +4061,13 @@ let _renderLock = false; // 재진입 방지
                     Object.entries(delMap).forEach(([cd, ts]) => {
                         const idx = db.stu.findIndex(s => s && s.cd === cd);
                         if(idx >= 0) {
+                            const _existingTs = db.stu[idx]?.updatedAt || 0;
+                            // 🛡️ 신규 학생(updatedAt > tombstone ts)은 삭제 안 함 — _delH live listener와 동일 보호
+                            if(typeof ts === 'number' && _existingTs > ts) {
+                                console.warn('[tombstone] ensureStu: 신규 학생 보호 — 삭제 스킵:', cd, 'stuTs:', _existingTs, '> tombstoneTs:', ts);
+                                if(typeof ts === 'number' && ts > maxTs) maxTs = ts;
+                                return;
+                            }
                             if(_cdMig3) db.stu.splice(idx, 1);
                             else db.stu[idx] = null;
                         }
@@ -4254,7 +4286,6 @@ let _renderLock = false; // 재진입 방지
         });
         out.invReq = newKeys.size;
         const invAppr = {};
-        const _todayStr = new Date().toLocaleDateString('sv-SE');
         Object.keys(apprByDate).forEach(d => { invAppr[d] = apprByDate[d].size; }); // 완료 안 된 항목은 날짜 지나도 유지
         if(Object.keys(invAppr).length) out.invAppr = invAppr;
         if(s.updatedAt) out.updatedAt = s.updatedAt; // 교사 fetch 캐시 비교용
@@ -4393,11 +4424,11 @@ let _renderLock = false; // 재진입 방지
         // ※ stu/log는 lazy — 해당 탭/모달 진입 시에만 fetch
         console.log('[startup] teacherLogged=', _teacherLogged, ', _useSplit=', _useSplit);
         if(_teacherLogged) {
-            // auc 라이브 listener는 t_auc 진입 시 attach. 시작 시엔 배지용 1회 시드만.
+            // auc 라이브 listener는 t_auc 진입 시 attach. 배지용으로는 aucReqCnt(< 20B)만 읽어 절감.
             try {
-                dbRef.child('auc').once('value').then(snap => {
-                    const v = snap.val();
-                    if(v) db.auc = Array.isArray(v) ? v : Object.values(v).filter(Boolean);
+                dbRef.child('cfg/aucReqCnt').once('value').then(snap => {
+                    if(!db.cfg) db.cfg = {};
+                    db.cfg.aucReqCnt = snap.val() || 0;
                     try { updateMenuBadges(); } catch(_){}
                 }).catch(()=>{});
             } catch(_){}
@@ -4412,11 +4443,9 @@ let _renderLock = false; // 재진입 방지
             }).catch(()=>{});
         } catch(_){}
     } else {
-        dbRef.on('value', (snapshot) => {
-
-            if(_dbDebounceTimer) clearTimeout(_dbDebounceTimer);
-            _dbDebounceTimer = setTimeout(() => _handleDbUpdate(snapshot), 350);
-        });
+        // _useSplit=true 로 고정되어 이 분기는 도달하지 않음 (레거시 fallback — 전체 DB 리스너 제거됨)
+        console.warn('[DB] _useSplit=false 분기 도달 — split listener로 강제 전환');
+        _attachSplitListeners();
     }
 
     const _preloadCache = new Set();
@@ -5395,6 +5424,18 @@ let _renderLock = false; // 재진입 방지
 
     /* ===== 🍪 쿠키 알림 시스템 (레벨업 쿠키 + 월요 쿠키) ===== */
 
+    // reqCnt write 디바운서 — 짧은 시간 내 중복 write 방지 (200ms)
+    let _reqCntWriteTimer = null;
+    function _debouncedReqCntWrite(fbKey) {
+        clearTimeout(_reqCntWriteTimer);
+        _reqCntWriteTimer = setTimeout(() => {
+            try {
+                if(fbKey != null && fbKey !== -1 && typeof window._computeReqCnt === 'function')
+                    dbRef.child('reqCnt/' + fbKey).set(window._computeReqCnt(me));
+            } catch(_){}
+        }, 200);
+    }
+
     // Firebase 특정 필드 직접 write (upMe 디바운스 우회 — 알림 기록용)
     function _writeMeField(field, value) {
         if(!me || !me.cd || me.cd === 'teacher_main') return;
@@ -5411,11 +5452,13 @@ let _renderLock = false; // 재진입 방지
     window._checkLevelupCookie = async function(prevCookie) {
         if(!me || me.cd === 'teacher_main') return;
         const newCookie = me.cookie || 0;
-        // 최초 실행: 현재 쿠키로 기준선 초기화 (소급 알림 방지)
+        // 최초 실행: prevCookie를 기준선으로 설정 후 레벨업 계산 진행 (null+prevCookie 케이스에서 누락 방지)
         if(me.lastLevelupCookie == null) {
-            me.lastLevelupCookie = newCookie;
-            _writeMeField('lastLevelupCookie', newCookie);
-            return;
+            me.lastLevelupCookie = (prevCookie != null) ? prevCookie : newCookie;
+            // 항상 즉시 write — await 중 Firebase onValue가 null로 덮어쓰는 것을 방지
+            _writeMeField('lastLevelupCookie', me.lastLevelupCookie);
+            if(prevCookie == null) return;
+            // prevCookie 있으면 계속 레벨업 계산 진행
         }
         // lastLevelupCookie가 현재 쿠키보다 크면 기준선을 현재로 내림 (쿠키 소비 등으로 감소한 경우)
         if((me.lastLevelupCookie || 0) > newCookie) {
@@ -5442,43 +5485,92 @@ let _renderLock = false; // 재진입 방지
             return;
         }
         me.lastLevelupCookie = newCookie;
-        me.levelupCookiePending = (me.levelupCookiePending || 0) + gained;
         _writeMeField('lastLevelupCookie', newCookie);
-        _writeMeField('levelupCookiePending', me.levelupCookiePending);
+        // 레벨업 쿠키 아이템을 gained개 push → 교사 요청사항에서 ×N 그룹으로 표시됨
+        if(!Array.isArray(me.inv)) me.inv = me.inv ? Object.values(me.inv).filter(Boolean) : [];
+        const _lvUseDate = new Date().toLocaleDateString('sv-SE');
+        for(let _i = 0; _i < gained; _i++) {
+            me.inv.push({ n: '레벨업 쿠키', i: '🍪', st: 'req', needApprove: true,
+                useDate: _lvUseDate, type: 'levelup_cookie' });
+        }
+        _writeMeField('inv', me.inv);
+        try {
+            const _lvFbKey = typeof _getMyFbKey === 'function' ? _getMyFbKey() : null;
+            _debouncedReqCntWrite(_lvFbKey);
+        } catch(_){}
         _showLevelupCookieBanner(gained, newLv);
     };
 
     // ── 월요 쿠키 체크 (교사 측) ──────────────────────────────────────────────
-    // "월요쿠키" 펫 스킬을 가진 학생을 교사 접속 시 자동 감지 → mondayCookiePending 적립
+    // "월요쿠키" 펫 스킬 보유 학생에게 월요일마다 잠금 아이템 지급 → 주중 미션 후 자동 요청
     window._checkMondayCookie = async function() {
-        if(localStorage.getItem('teacherLogged') !== '1') return;
+        console.log('[월요쿠키] 함수 진입 — teacherLogged:', localStorage.getItem('teacherLogged'), '요일:', new Date().getDay());
+        if(localStorage.getItem('teacherLogged') !== '1') { console.log('[월요쿠키] 교사 아님 → 종료'); return; }
         const today = new Date();
-        if(today.getDay() !== 1) return; // 월요일만
+        if(today.getDay() !== 1) { console.log('[월요쿠키] 월요일 아님('+today.getDay()+') → 종료'); return; }
         const monday = today.toLocaleDateString('sv-SE');
         // db.bdg 미로드 시 lazy fetch
         if((!db.bdg || !db.bdg.length) && window._ensureLazyPaths) {
             try { await window._ensureLazyPaths(['bdg']); } catch(_){}
         }
         const bdgList = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg || {});
+        console.log('[월요쿠키] bdg 목록:', bdgList.map(b=>b&&b.name));
         const mondayBdg = bdgList.find(b => b && b.name && b.name.replace(/\s/g,'') === '월요쿠키');
+        console.log('[월요쿠키] mondayBdg:', mondayBdg ? mondayBdg.id+' / '+mondayBdg.name : '없음 → 종료');
         if(!mondayBdg) return; // "월요 쿠키" 스킬 미등록
+        // 학생 데이터 미로드 시 강제 로드
+        const _stuArr0 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        if(!window._stuLoaded || _stuArr0.filter(Boolean).length === 0) {
+            console.log('[월요쿠키] 학생 데이터 없음 → _ensureStuLoaded 호출');
+            try { await window._ensureStuLoaded(); } catch(_){}
+        }
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        // 월→금 5영업일 종료일 계산 (월요일 기준)
+        const _calcWeekdayEnd = (startStr, n) => {
+            const d = new Date(startStr + 'T12:00:00');
+            let count = 0;
+            while(count < n - 1) { d.setDate(d.getDate() + 1); if(d.getDay() >= 1 && d.getDay() <= 5) count++; }
+            return d.toISOString().slice(0, 10);
+        };
+        const _periodEnd = _calcWeekdayEnd(monday, 1); // 테스트: 1일 (원복 시 1→5)
+        console.log('[월요쿠키] 오늘:', monday, '/ periodEnd:', _periodEnd, '/ 학생수:', stuList.filter(Boolean).length);
         let changed = false;
         stuList.forEach((s, i) => {
             if(!s) return;
             const earned = Array.isArray(s.earnedBdg) ? s.earnedBdg : Object.values(s.earnedBdg || {});
+            console.log('[월요쿠키]', s.nm||s.cd, '— earnedBdg:', earned, '/ lastMondayCookie:', s.lastMondayCookie, '/ 스킬보유:', earned.includes(mondayBdg.id));
             if(!earned.includes(mondayBdg.id)) return; // 월요쿠키 스킬 없음
-            if(s.lastMondayCookie === monday) return; // 이번 주 이미 적립됨 (지급 전/후 모두 skip)
+            if(s.lastMondayCookie === monday) { console.log('[월요쿠키]', s.nm||s.cd, '→ 오늘 이미 지급됨'); return; } // 이번 주 이미 지급됨
+            if(!Array.isArray(s.inv)) s.inv = s.inv ? Object.values(s.inv).filter(Boolean) : [];
+            const _newItem = {
+                id: _genItmId(),
+                n: '월요 쿠키',
+                i: '🍪',
+                st: 'active',
+                g: 'C',
+                locked: true,
+                type: 'cookie_req',
+                periodStart: monday,
+                periodEnd: _periodEnd,
+                lockDays: 1, // 테스트: 1일 (원복 시 1→4)
+                checkedDates: [],
+                failedFlag: false,
+                skillId: mondayBdg.id,
+                needApprove: true,
+                ts: Date.now()
+            };
+            s.inv.push(_newItem);
             s.lastMondayCookie = monday;
-            s.mondayCookiePending = (s.mondayCookiePending || 0) + 1;
             const fbKey = _cdMig ? s.cd : i;
             try {
                 dbRef.child(`stu/${fbKey}/lastMondayCookie`).set(monday);
-                dbRef.child(`stu/${fbKey}/mondayCookiePending`).transaction(cur => (cur || 0) + 1);
+                dbRef.child(`stu/${fbKey}/inv`).set(s.inv);
             } catch(e){}
+            console.log('[월요쿠키]', s.nm||s.cd, '→ 아이템 지급 완료');
             changed = true;
         });
+        console.log('[월요쿠키] 완료 — changed:', changed);
         if(changed) try { window._renderCookiePending && window._renderCookiePending(); } catch(_){}
     };
 
@@ -5498,6 +5590,7 @@ let _renderLock = false; // 재진입 방지
         document.body.appendChild(el);
     }
 
+    // 잠금 중 안내 배너 (월요일에 아이템 지급됐을 때)
     function _showMondayCookieBanner() {
         if(!me || me.cd === 'teacher_main') return;
         if(document.getElementById('_mondayCookieBanner')) return;
@@ -5508,20 +5601,37 @@ let _renderLock = false; // 재진입 방지
         el.id = '_mondayCookieBanner';
         el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99996;display:flex;align-items:center;justify-content:center;';
         el.innerHTML = `<div style="background:#E8F5E9;border-radius:20px;padding:28px 24px 20px;width:min(320px,88vw);text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.3);border:3px solid #66BB6A;animation:popUp 0.25s ease;">
-            <div style="font-size:52px;margin-bottom:8px;">🍪</div>
-            <div style="font-size:19px;font-family:'Jua';color:#1B5E20;margin-bottom:6px;">월요 쿠키 +1개!</div>
-            <div style="font-size:14px;color:#2E7D32;margin-bottom:4px;">새로운 한 주가 시작됐어요!</div>
-            <div style="font-size:12px;color:#558B2F;margin-bottom:18px;">선생님이 곧 쿠키를 지급해 드릴 거예요. 🗓️</div>
+            <div style="font-size:52px;margin-bottom:8px;">🔒</div>
+            <div style="font-size:19px;font-family:'Jua';color:#1B5E20;margin-bottom:6px;">월요 쿠키가 잠겨있어요!</div>
+            <div style="font-size:14px;color:#2E7D32;margin-bottom:4px;">이번 주 미션을 완료하면 금요일에 해금돼요 🗓️</div>
+            <div style="font-size:12px;color:#558B2F;margin-bottom:18px;">가방에서 캘린더를 눌러 매일 체크해 보세요!</div>
             <button class="btn" style="background:#43A047;color:white;padding:10px 32px;font-size:15px;" onclick="document.getElementById('_mondayCookieBanner').remove()">확인</button>
         </div>`;
         document.body.appendChild(el);
     }
-    // 학생 세션에서 주기적으로 mondayCookiePending 체크 → 배너 표시
+    // 해금 완료 후 학생에게 보여주는 예쁜 배너
+    window._showMondayCookieUnlockBanner = function() {
+        if(!me || me.cd === 'teacher_main') return;
+        if(document.getElementById('_mondayCookieUnlockBanner')) return;
+        const el = document.createElement('div');
+        el.id = '_mondayCookieUnlockBanner';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99998;display:flex;align-items:center;justify-content:center;';
+        el.innerHTML = `<div style="background:linear-gradient(145deg,#FFFDE7,#F9FBE7);border-radius:24px;padding:32px 28px 24px;width:min(340px,90vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.35);border:3px solid #FDD835;animation:popUp 0.3s ease;">
+            <div style="font-size:64px;margin-bottom:6px;animation:_cookieSpin 1.5s ease-in-out infinite;">🍪</div>
+            <div style="font-size:22px;font-family:'Jua';color:#E65100;margin-bottom:8px;text-shadow:1px 1px 0 rgba(0,0,0,0.08);">🎉 월요 쿠키 해금!</div>
+            <div style="font-size:15px;color:#5D4037;margin-bottom:6px;">이번 주 미션을 모두 완료했어요!</div>
+            <div style="font-size:13px;color:#8D6E63;margin-bottom:20px;">선생님께 쿠키 지급 요청을 보냈어요.<br>선생님이 곧 쿠키를 보내드릴 거예요 🍀</div>
+            <button class="btn" style="background:linear-gradient(135deg,#F9A825,#F57F17);color:white;padding:11px 36px;font-size:16px;box-shadow:0 4px 0 #E65100;" onclick="document.getElementById('_mondayCookieUnlockBanner').remove()">✨ 확인</button>
+        </div>`;
+        document.body.appendChild(el);
+    };
+    // 학생 세션에서 주기적으로 잠긴 월요쿠키 아이템 체크 → 배너 표시
     setInterval(() => {
         if(!me || me.cd === 'teacher_main') return;
         const _appS = document.getElementById('appS');
         if(!_appS || _appS.classList.contains('hidden')) return;
-        if((me.mondayCookiePending || 0) > 0) _showMondayCookieBanner();
+        const _hasMondayLocked = Array.isArray(me.inv) && me.inv.some(it => it && it.type === 'cookie_req' && it.locked);
+        // if(_hasMondayLocked) _showMondayCookieBanner(); // 배너 비활성화
     }, 15000);
 
     // ── 교사: 쿠키 지급 대기 패널 ────────────────────────────────────────────
@@ -5529,39 +5639,27 @@ let _renderLock = false; // 재진입 방지
         const wrap = document.getElementById('cookiePendingPanel');
         if(!wrap) return;
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
-        const rows = stuList.filter(s => s && ((s.levelupCookiePending||0) > 0 || (s.mondayCookiePending||0) > 0));
-        if(!rows.length) { wrap.innerHTML = ''; return; }
-        const cardCss = 'background:linear-gradient(135deg,#FFFDE7,#FFF8E1);border:2px solid #FDD835;border-radius:14px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;';
-        const total = rows.reduce((a,s)=>(a+(s.levelupCookiePending||0)+(s.mondayCookiePending||0)),0);
-        wrap.innerHTML = `<div style="font-size:14px;font-weight:bold;color:#F57F17;margin-bottom:6px;">🍪 쿠키 지급 대기 (${total}개 / ${rows.length}명)</div>`
-            + rows.map(s => {
-                const lv = s.levelupCookiePending||0;
-                const mo = s.mondayCookiePending||0;
-                const tags = [lv>0?`레벨업 ${lv}개`:'', mo>0?`월요 ${mo}개`:''].filter(Boolean).join(' + ');
-                return `<div style="${cardCss}">
-                    <span style="font-size:13px;color:#5D4037;"><b>${(s.nm||'').replace(/</g,'&lt;')}</b> · 🍪×${lv+mo} <span style="font-size:11px;color:#A1887F;">(${tags})</span></span>
-                    <button class="btn" style="background:#F9A825;color:white;padding:4px 12px;font-size:12px;" onclick="_markCookieGranted('${String(s.cd).replace(/'/g,"\\'")}')">✅ 지급 완료</button>
-                </div>`;
-            }).join('');
+        const cardCss = 'border-radius:14px;padding:10px 14px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;';
+        let html = '';
+
+        // 레벨업 쿠키는 이제 교사 요청사항(inv st:'req')에 아이템 형태로 표시됨 — 여기서는 표시 없음
+
+        wrap.innerHTML = html;
     };
+
 
     window._markCookieGranted = function(stuCd) {
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         const s = stuList.find(x => String(x.cd) === String(stuCd));
         if(!s) return;
         const lv = s.levelupCookiePending || 0;
-        const mo = s.mondayCookiePending || 0;
         s.levelupCookiePending = 0;
-        s.mondayCookiePending = 0;
         const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
         const fbKey = _cdMig ? stuCd : stuList.indexOf(s);
         if(fbKey !== -1) {
-            try {
-                dbRef.child(`stu/${fbKey}/levelupCookiePending`).set(0);
-                dbRef.child(`stu/${fbKey}/mondayCookiePending`).set(0);
-            } catch(e){}
+            try { dbRef.child(`stu/${fbKey}/levelupCookiePending`).set(0); } catch(e){}
         }
-        showToast(`🍪 ${s.nm} — 레벨업 ${lv}개 + 월요 ${mo}개 지급 완료 처리`);
+        showToast(`🍪 ${s.nm} — 레벨업 ${lv}개 지급 완료 처리`);
         window._renderCookiePending();
         if(typeof rTb === 'function') rTb();
     };
@@ -5581,7 +5679,7 @@ let _renderLock = false; // 재진입 방지
             const fbKey = _cdMig ? cd : stuList.indexOf(s);
             if(fbKey !== -1) try { dbRef.child(`stu/${fbKey}/${field}`).set(0); } catch(e){}
         });
-        if(nms.length) showToast(`🍪 ${nms.join(', ')} — ${field==='mondayCookiePending'?'월요':'레벨업'} 쿠키 지급 완료`);
+        if(nms.length) showToast(`🍪 ${nms.join(', ')} — 레벨업 쿠키 지급 완료`);
         window._renderCookiePending();
     };
 
@@ -5749,8 +5847,9 @@ let _renderLock = false; // 재진입 방지
         });
         console.log(`[펫스킬복구] 완료: ${repairCount}명 복구됨`);
 
-        // 쿠폰 설정된 배지가 있는지 확인
-        const configured = bdgList.filter(b => b && b.coupon && b.coupon.item);
+        // 쿠폰 설정된 배지가 있는지 확인 (월요 쿠키는 item 없어도 lockMission 모드면 허용)
+        const _isMondayCookieName = b => b && b.name && b.name.replace(/\s/g,'') === '월요쿠키';
+        const configured = bdgList.filter(b => b && b.coupon && (b.coupon.item || (_isMondayCookieName(b) && b.coupon.mode === 'lockMission')));
         console.log('[펫스킬] configured 배지:', configured.length, '개', configured.map(b=>b.name||b.id));
         if(!configured.length) { showToast('쿠폰이 설정된 펫 스킬이 없습니다. 스킬을 클릭해 쿠폰을 설정해주세요.'); return; }
 
@@ -5758,15 +5857,21 @@ let _renderLock = false; // 재진입 방지
         const skippedByDay = [];
         const diagLog = [];
         bdgList.forEach((b, bi) => {
-            if(!b || !b.coupon || !b.coupon.item) return;
+            const _isMondayCookieBdg = _isMondayCookieName(b);
+            if(!b || !b.coupon) return;
+            if(!b.coupon.item && !_isMondayCookieBdg) return; // 월요 쿠키는 item 없어도 허용
             const c = b.coupon;
-            const isRightDay = today.getDay() === (c.dayOfWeek != null ? c.dayOfWeek : 1);
+            const _effectiveDow = c.dayOfWeek != null ? c.dayOfWeek : 1;
+            const isRightDay = today.getDay() === _effectiveDow;
             const periodOk = !c.lastGrantDate || (() => {
                 const diffDays = Math.floor((today - new Date(c.lastGrantDate)) / 86400000);
                 const minDays = c.period==='biweekly'?14:c.period==='triweekly'?21:c.period==='quadweekly'?28:c.period==='monthly'?28:7;
                 return diffDays >= minDays;
             })();
-            const couponDef = itmList.find(it => it && it.n === c.item);
+            // 월요 쿠키는 pseudo-item이므로 hardcoded fallback 사용
+            const couponDef = _isMondayCookieBdg
+                ? { n: '월요 쿠키', i: '🍪', g: 'C' }
+                : itmList.find(it => it && it.n === c.item);
             diagLog.push(`[배지 ${b.name||b.id}] 아이템="${c.item}" 찾음=${!!couponDef} 요일ok=${isRightDay} 주기ok=${periodOk} dayOfWeek=${c.dayOfWeek} 오늘=${today.getDay()}`);
             if(!couponDef) { console.warn('[펫스킬] 아이템 못 찾음:', c.item, '→ itmList 이름들:', itmList.map(i=>i?.n)); return; }
             if(!force && (!isRightDay || !periodOk)) { skippedByDay.push(b.name||b.id); return; }
@@ -5818,6 +5923,7 @@ let _renderLock = false; // 재진입 방지
             const _coup = _bdgItem && _bdgItem.coupon;
             // mode 필드 누락 시 lockDays/weeks 존재 여부로 fallback 감지
             const _isLock = _coup && (_coup.mode === 'lockMission' || _coup.lockDays || _coup.weeks);
+            const _isMondayCookie = !!((_bdgItem?.name || '').replace(/\s/g,'') === '월요쿠키' && _bdgItem?.name);
             console.log(`[펫스킬-락체크] bi=${bi} 배지="${_bdgItem?.name||_bdgItem?.id}" _bdgItem존재=${!!_bdgItem} _coup존재=${!!_coup} mode="${_coup?.mode}" lockDays=${_coup?.lockDays} weeks=${_coup?.weeks} _isLock=${_isLock}`);
             console.log(`[펫스킬-락체크] _coup 전체:`, JSON.stringify(_coup));
             if(_isLock) {
@@ -5841,7 +5947,8 @@ let _renderLock = false; // 재진입 방지
                     ...(_lockDays ? {lockDays: _lockDays} : {weeks: _weeks}),
                     checkedDates: [],
                     failedFlag: false,
-                    skillId: _bdgItem.id
+                    skillId: _bdgItem.id,
+                    ...(_isMondayCookie ? { type: 'cookie_req', needApprove: true } : {})
                 };
                 console.log(`[펫스킬-락체크] ✅ 잠금 아이템 push:`, JSON.stringify(_newItem));
                 s.inv.push(_newItem);
@@ -5849,8 +5956,11 @@ let _renderLock = false; // 재진입 방지
                 console.warn(`[펫스킬-락체크] ⚠️ 일반 아이템 push — _coup:`, JSON.stringify(_coup));
                 s.inv.push({ n: couponDef.n, i: couponDef.i||'', st: 'active', g: couponDef.g||'C' });
             }
-            if(!Array.isArray(s.col)) s.col = s.col ? Object.values(s.col).filter(Boolean) : [];
-            if(!s.col.includes(couponDef.n)) s.col.push(couponDef.n);
+            // 월요 쿠키는 pseudo-item이므로 col에 추가하지 않음
+            if(!_isMondayCookie) {
+                if(!Array.isArray(s.col)) s.col = s.col ? Object.values(s.col).filter(Boolean) : [];
+                if(!s.col.includes(couponDef.n)) s.col.push(couponDef.n);
+            }
             const fbKey = _cdMig ? s.cd : stuList.indexOf(s);
             console.log('[펫스킬] 지급:', s.name||s.cd, '→ fbKey:', fbKey, '아이템:', couponDef.n);
             if(fbKey !== -1 && fbKey !== undefined) {
@@ -6045,30 +6155,39 @@ let _renderLock = false; // 재진입 방지
         const _vacList = (db.cfg && db.cfg.vacationPeriods) || [];
         const _curVac = _vacList.find(v => v.start <= _todayStr && v.end >= _todayStr);
         if(_curVac) return;
-        // 지급 대상 배지가 하나라도 있는지 확인 (isRightDay + periodOk)
-        const _bdgList = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg||{});
-        const _today = new Date();
-        const _hasTarget = _bdgList.some(b => {
-            const c = b && b.coupon;
-            if(!c || !(c.mode === 'lockMission' || c.lockDays || c.weeks)) return false;
-            const isRightDay = _today.getDay() === (c.dayOfWeek != null ? c.dayOfWeek : 1);
-            if(!isRightDay) return false;
-            if(!c.lastGrantDate) return true;
-            const diff = Math.round((new Date(_todayStr) - new Date(c.lastGrantDate)) / 86400000);
-            const need = c.period === 'biweekly' ? 14 : c.period === 'triweekly' ? 21 : c.period === 'quadweekly' ? 28 : 7;
-            return diff >= need;
-        });
-        if(_hasTarget) {
-            // 오늘 지급 실행 (silent) — grantedWeeks는 executePetSkillCouponGrant 내부에서 기록됨
-            executePetSkillCouponGrant('auto');
+        // db.bdg가 lazy path라 아직 로드 안 됐을 수 있음 — 먼저 확보 후 진행
+        const _runAfterBdgLoad = function() {
+            const _bdgList = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg||{});
+            const _today = new Date();
+            const _hasTarget = _bdgList.some(b => {
+                const c = b && b.coupon;
+                if(!c || !(c.mode === 'lockMission' || c.lockDays || c.weeks)) return false;
+                const isRightDay = _today.getDay() === (c.dayOfWeek != null ? c.dayOfWeek : 1);
+                if(!isRightDay) return false;
+                if(!c.lastGrantDate) return true;
+                const diff = Math.round((new Date(_todayStr) - new Date(c.lastGrantDate)) / 86400000);
+                const need = c.period === 'biweekly' ? 14 : c.period === 'triweekly' ? 21 : c.period === 'quadweekly' ? 28 : 7;
+                return diff >= need;
+            });
+            if(_hasTarget) {
+                // 오늘 지급 실행 (silent) — grantedWeeks는 executePetSkillCouponGrant 내부에서 기록됨
+                executePetSkillCouponGrant('auto');
+            }
+            // 오늘 날짜 기록 (중복 방지) — bdg 로드 완료 후에만 기록
+            if(!db.cfg) db.cfg = {};
+            db.cfg._autoGrantLastRun = _todayStr;
+            try { dbRef.child('cfg/_autoGrantLastRun').set(_todayStr); } catch(e){}
+            // 오늘 지급 여부와 무관하게 누락 체크 (과거 미지급 주 감지)
+            // _hasTarget=true면 지급 완료 후 잠시 대기 (grantedWeeks write 반영 시간)
+            setTimeout(_checkMissedGrants, _hasTarget ? 2000 : 500);
+        };
+        if(window._lazyLoaded && window._lazyLoaded.has('bdg')) {
+            _runAfterBdgLoad();
+        } else if(window._ensureLazyPaths) {
+            window._ensureLazyPaths(['bdg']).then(_runAfterBdgLoad).catch(_runAfterBdgLoad);
+        } else {
+            _runAfterBdgLoad();
         }
-        // 오늘 날짜 기록 (중복 방지)
-        if(!db.cfg) db.cfg = {};
-        db.cfg._autoGrantLastRun = _todayStr;
-        try { dbRef.child('cfg/_autoGrantLastRun').set(_todayStr); } catch(e){}
-        // 오늘 지급 여부와 무관하게 누락 체크 (과거 미지급 주 감지)
-        // _hasTarget=true면 지급 완료 후 잠시 대기 (grantedWeeks write 반영 시간)
-        setTimeout(_checkMissedGrants, _hasTarget ? 2000 : 500);
     }
 
     // ===== 교사: 골든티켓 사용 승인 (지정 머신 자동 실행) =====
@@ -6148,20 +6267,71 @@ let _renderLock = false; // 재진입 방지
     /* ===== 🔒 잠금 미션 — 학생측 해금/체크/실패 로직 ===== */
 
     // 학생 inv 순회 → periodEnd 지났고 failedFlag=false면 자동 해금
+    // 마지막 날 경고 배너 (세션 중 아이템당 1회)
+    if(!window._lastDayWarnShown) window._lastDayWarnShown = new Set();
+    window._showLockMissionLastDayBanner = function(item) {
+        const _key = `${item.n}_${item.periodStart||''}`;
+        if(window._lastDayWarnShown.has(_key)) return;
+        window._lastDayWarnShown.add(_key);
+        if(document.getElementById('_lockLastDayBanner')) return;
+        const el = document.createElement('div');
+        el.id = '_lockLastDayBanner';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px;';
+        el.innerHTML = `<div style="background:linear-gradient(145deg,#FFF3E0,#FFF8E1);border-radius:24px;padding:32px 28px 24px;width:min(340px,90vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);border:3px solid #FFB300;font-family:'Jua';">
+            <div style="font-size:56px;margin-bottom:8px;">⏰</div>
+            <div style="font-size:20px;color:#E65100;font-weight:bold;margin-bottom:8px;">오늘이 마지막 날이에요!</div>
+            <div style="font-size:14px;color:#5D4037;line-height:1.7;margin-bottom:6px;"><b style="color:#BF360C;">"${(item.n||'').replace(/</g,'&lt;')}"</b> 잠금 미션의<br>종료일이 <b>오늘</b>이에요.</div>
+            <div style="font-size:13px;color:#6D4C41;background:#FFECB3;border-radius:12px;padding:10px 14px;margin:12px 0 20px;">✅ 아직 통과 체크를 안 했다면<br>지금 바로 미션 카드를 눌러 확인해주세요!</div>
+            <button style="background:linear-gradient(135deg,#FB8C00,#F57F17);color:white;border:none;padding:12px 36px;border-radius:14px;font-size:15px;font-family:'Jua';cursor:pointer;box-shadow:0 4px 0 #E65100;" onclick="document.getElementById('_lockLastDayBanner').remove()">✨ 확인</button>
+        </div>`;
+        document.body.appendChild(el);
+    };
+
     window._checkLockMissionUnlock = function() {
         if(!me || !Array.isArray(me.inv)) return;
         const today = new Date().toLocaleDateString('sv-SE');
         let changed = false;
-        me.inv.forEach((it, idx) => {
+        me.inv.forEach((it) => {
             if(!it || !it.locked || it.failedFlag) return;
-            if(it.periodEnd && today > it.periodEnd) {
+            if(!it.periodEnd || today < it.periodEnd) return;
+            if(it.type === 'cookie_req') {
+                // 통과 횟수 확인 (lockDays 이상 체크해야 해금)
+                const _checked = Array.isArray(it.checkedDates) ? it.checkedDates.length : 0;
+                const _required = it.lockDays || 1;
+                if(_checked < _required) {
+                    // 마지막 날: 아직 미체크 → 경고 배너
+                    if(today === it.periodEnd) try { window._showLockMissionLastDayBanner(it); } catch(_){}
+                    return;
+                }
+                // 월요 쿠키: 해금 시 자동으로 교사에게 사용요청 전송
+                it.locked = false;
+                it.st = 'req';
+                it.useDate = today;
+                it.unlockedAt = Date.now();
+                changed = true;
+                try { window._showMondayCookieUnlockBanner && window._showMondayCookieUnlockBanner(); } catch(_){}
+            } else {
+                // 일반 잠금 미션: 통과 횟수 확인 후 해금
+                const _checked = Array.isArray(it.checkedDates) ? it.checkedDates.length : 0;
+                const _required = it.lockDays || (it.weeks ? it.weeks * 5 : 1);
+                if(_checked < _required) {
+                    if(today === it.periodEnd) try { window._showLockMissionLastDayBanner(it); } catch(_){}
+                    return;
+                }
                 it.locked = false;
                 it.unlockedAt = Date.now();
                 changed = true;
                 try { showToast && showToast(`🔓 "${it.n}" 잠금이 해제됐어요! 가방에서 사용해보세요.`); } catch(_){}
             }
         });
-        if(changed && typeof upMe === 'function') upMe();
+        if(changed) {
+            if(typeof upMe === 'function') upMe();
+            // reqCnt 갱신 → 교사 측 실시간 알림
+            try {
+                const _fbKey = typeof _getMyFbKey === 'function' ? _getMyFbKey() : null;
+                _debouncedReqCntWrite(_fbKey);
+            } catch(_){}
+        }
     };
 
     // 잠금 미션 캘린더 모달
@@ -6345,19 +6515,37 @@ let _renderLock = false; // 재진입 방지
         if(_allDone) {
             item.locked = false;
             item.unlockedAt = Date.now();
+            // cookie_req 아이템: 모두 통과 즉시 교사 요청 상태로 전환
+            // (locked:false만 세팅하면 _checkLockMissionUnlock이 스킵해 일반 아이템으로 노출되는 버그 방지)
+            if(item.type === 'cookie_req') {
+                item.st = 'req';
+                item.useDate = new Date().toLocaleDateString('sv-SE');
+            }
         }
-        // 학생 own — full inv 저장 (단일 path 저장 시 Firebase 리스너 race condition 방지)
+        // 학생 own — 미완료: checkedDates만 write / 완료: full inv write
         try {
             const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
             const _stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
             const fbKey = _cdMig ? me.cd : _stuArr.findIndex(s => s && String(s.cd) === String(me.cd));
             if(fbKey !== -1 && fbKey !== undefined) {
-                dbRef.child(`stu/${fbKey}/inv`).set(me.inv);
+                if(_allDone) {
+                    // 완료: locked/st/useDate 등 여러 필드 변경 → full inv write
+                    dbRef.child(`stu/${fbKey}/inv`).set(me.inv);
+                    // cookie_req 완료 시 reqCnt 갱신 → 교사 알림 뱃지 업데이트
+                    if(item.type === 'cookie_req') _debouncedReqCntWrite(fbKey);
+                } else {
+                    // 미완료: checkedDates만 업데이트 (full inv 10KB → 수백 bytes 절감)
+                    dbRef.child(`stu/${fbKey}/inv/${invIdx}/checkedDates`).set(item.checkedDates);
+                }
             } else if(typeof upMe === 'function') upMe();
         } catch(e) { if(typeof upMe === 'function') upMe(); }
         if(_allDone) {
             document.getElementById('_lockMissionModal')?.remove();
-            try { showToast && showToast('🎉 모든 미션 완료! 아이템 잠금이 해제됐어요!'); } catch(_){}
+            if(item.type === 'cookie_req') {
+                try { window._showMondayCookieUnlockBanner && window._showMondayCookieUnlockBanner(); } catch(_){}
+            } else {
+                try { showToast && showToast('🎉 모든 미션 완료! 아이템 잠금이 해제됐어요!'); } catch(_){}
+            }
         } else {
             try { showToast && showToast('✅ 미션 통과! 잘했어요 💪'); } catch(_){}
             const _open = document.getElementById('_lockMissionModal');
@@ -6462,14 +6650,16 @@ let _renderLock = false; // 재진입 방지
     function _ensureRecordCoupons() {
         if(!db.itm) db.itm = [];
         if(!Array.isArray(db.itm)) db.itm = Object.values(db.itm);
-        // [중복 정리] id 우선, 없으면 (special, n) 기준으로 첫 항목만 유지
+        // 기본 간식 제거 (더 이상 사용 안 함)
+        db.itm = db.itm.filter(it => it && it.n !== '기본 간식');
+        // [중복 정리] special 우선, 없으면 n, 그 다음 id — special 아이템은 id가 달라도 중복 감지
         {
             const _seen = new Set();
             const _dupRemoved = [];
             const _before = db.itm.length;
             db.itm = db.itm.filter(it => {
                 if(!it) return false;
-                const k = it.id || `${it.special||''}::${it.n||''}`;
+                const k = it.special ? `sp::${it.special}` : (it.n ? `n::${it.n}` : `id::${it.id||Math.random()}`);
                 if(_seen.has(k)) { _dupRemoved.push(it.n); return false; }
                 _seen.add(k); return true;
             });
@@ -6518,9 +6708,11 @@ let _renderLock = false; // 재진입 방지
                 }
             }
         }
-        // special 필드로 식별 — 이름·아이콘 변경된 경우에도 중복 생성 안 함
+        // special 필드로 식별 — 없으면 이름으로 fallback 후 special 필드 backfill (기존 항목 중복 방지)
         const ensure = (specialKey, def) => {
-            if(!db.itm.some(it => it && it.special === specialKey)) db.itm.push({...def, id: _genItmId()});
+            const _ex = db.itm.find(it => it && (it.special === specialKey || it.n === def.n));
+            if(!_ex) { db.itm.push({...def, id: _genItmId()}); }
+            else if(!_ex.special) { _ex.special = specialKey; if(!_ex.id) _ex.id = _genItmId(); }
         };
         ensure('goldenTicket', {n:'골든 티켓', i:'🎫', g:'L', p:0, c:'cn', d:'방어자/유망주 추천으로 받는 티켓. 모아서 뽑기 가능!', special:'goldenTicket', needApprove:true, excludeFromCol:true});
         ensure('dalgona', {n:'달고나', i:'🍯', g:'L', p:0, c:'cn', d:'친구가 보낸 따뜻한 마음. 간식 달고나는 사용 가능!', special:'dalgona', needApprove:true, excludeFromCol:true});
@@ -6741,7 +6933,8 @@ let _renderLock = false; // 재진입 방지
                 setTimeout(() => window._cleanupJunkStuKeys && window._cleanupJunkStuKeys(), 7000);
                 if(!window._mondayCookieChecked) {
                     window._mondayCookieChecked = true;
-                    setTimeout(() => { try { window._checkMondayCookie && window._checkMondayCookie(); } catch(_){} }, 1200);
+                    // _checkMondayCookie 비활성화 — 쿠폰 일괄 지급으로 통합
+                    // setTimeout(() => { try { window._checkMondayCookie && window._checkMondayCookie(); } catch(_){} }, 1200);
                 }
             }
 
@@ -7548,6 +7741,30 @@ let _renderLock = false; // 재진입 방지
                     payload[k] = toSend;
                     if(curHash != null) window._lastSentHash[k] = curHash;
                 }
+                // auc 변경 시 aucReqCnt 경량 카운터 동기화 — 교사 로그인 배지용 (전체 auc 다운로드 대체)
+                if('auc' in payload) {
+                    const _aucReqCnt = (db.auc||[]).filter(a => a && a.st === 'req').length;
+                    if(!db.cfg) db.cfg = {};
+                    db.cfg.aucReqCnt = _aucReqCnt;
+                    if('cfg' in payload) {
+                        payload.cfg = { ...payload.cfg, aucReqCnt: _aucReqCnt };
+                        // payload.cfg가 aucReqCnt 포함된 새 객체이므로 hash도 동기화
+                        try {
+                            const _h = JSON.stringify(payload.cfg);
+                            if(window._lastSentHash) window._lastSentHash['cfg'] = _h;
+                            if(window._lastSavedHash) window._lastSavedHash['cfg'] = _h;
+                        } catch(_){}
+                    } else {
+                        payload['cfg/aucReqCnt'] = _aucReqCnt;
+                        // db.cfg에 aucReqCnt 추가됐으므로 cfg hash 갱신 (다음 sv()에서 불필요한 cfg 재전송 방지)
+                        try {
+                            const _cfgSnap = { ...db.cfg }; delete _cfgSnap.plz;
+                            const _h = JSON.stringify(_cfgSnap);
+                            if(window._lastSentHash) window._lastSentHash['cfg'] = _h;
+                            if(window._lastSavedHash) window._lastSavedHash['cfg'] = _h;
+                        } catch(_){}
+                    }
+                }
                 // itm per-item write — race 방지: 각 아이템을 itm/{id} 독립 경로로 write
                 if(!window._itmSentHash) window._itmSentHash = {};
                 if(!window._deletedItmIds) window._deletedItmIds = new Set();
@@ -8175,7 +8392,8 @@ let _renderLock = false; // 재진입 방지
             setTimeout(updateNotifBell, 100);
             setTimeout(updateMenuBadges, 150);
             window._mondayCookieChecked = true;
-            setTimeout(() => { try { window._checkMondayCookie && window._checkMondayCookie(); } catch(_){} }, 800);
+            // _checkMondayCookie 비활성화 — 쿠폰 일괄 지급으로 통합
+            // setTimeout(() => { try { window._checkMondayCookie && window._checkMondayCookie(); } catch(_){} }, 800);
             setTimeout(() => { try { _autoGrantOnLogin && _autoGrantOnLogin(); } catch(_){} }, 1500);
         }else alert("비밀번호 오류");
     }
@@ -8556,7 +8774,9 @@ let _renderLock = false; // 재진입 방지
         }
         // 🔒 [Feature 2] 교사가 설정한 요청 마감 시각 확인 (당일 요청에만 적용)
         const _reqCutoff = db.cfg && db.cfg.reqCutoffTime; // "HH:MM" 형식
-        if(_reqCutoff && useDate === _today) {
+        const _exemptItems = (db.cfg && Array.isArray(db.cfg.reqCutoffExemptItems)) ? db.cfg.reqCutoffExemptItems : [];
+        const _isExempt = _exemptItems.some(n => n.trim() === itemName.trim());
+        if(_reqCutoff && useDate === _today && !_isExempt) {
             const _now = new Date();
             const _curHM = String(_now.getHours()).padStart(2,'0') + ':' + String(_now.getMinutes()).padStart(2,'0');
             if(_curHM > _reqCutoff) {
@@ -8636,8 +8856,8 @@ let _renderLock = false; // 재진입 방지
         // 학생 요청 시 교사 배지 즉시 갱신
         try {
             const _fbKey2 = _getMyFbKey();
-            if(_fbKey2 != null && _fbKey2 !== -1 && typeof window._computeReqCnt==='function' && typeof dbRef!=='undefined') {
-                dbRef.child('reqCnt/'+_fbKey2).set(window._computeReqCnt(me));
+            if(_fbKey2 != null && _fbKey2 !== -1 && typeof dbRef !== 'undefined') {
+                _debouncedReqCntWrite(_fbKey2);
             } else {
                 console.warn('[useQ] reqCnt 키 산출 실패 — 교사 배지 미갱신 (요청 자체는 upMe로 저장됨)', { me_cd: me?.cd, _fbKey2 });
             }
@@ -8756,8 +8976,11 @@ let _renderLock = false; // 재진입 방지
             const refund = it.paid || itDef?.p || 0;
             const cur = it.cur || itDef?.c || 'kc';
             if(refund > 0) {
-                if(cur === 'kc') me.shopUsed = Math.max(0, (me.shopUsed||0) - refund);
-                else me[cur] = (me[cur]||0) + refund;
+                if(cur === 'kc') {
+                    me.shopUsed = Math.max(0, (me.shopUsed||0) - refund);
+                    // pending delta에서 환불분 차감 (buy와 cancel이 같은 300ms 안에 있을 때 increment 과다 방지)
+                    window._shopUsedAtomicDelta = Math.max(0, (window._shopUsedAtomicDelta||0) - refund);
+                } else me[cur] = (me[cur]||0) + refund;
             }
             me.inv.splice(idx, 1);
         });
@@ -8771,8 +8994,10 @@ let _renderLock = false; // 재진입 방지
         const refund = it.paid || itDef?.p || 0;
         const cur = it.cur || itDef?.c || 'kc';
         if(refund > 0) {
-            if(cur === 'kc') me.shopUsed = Math.max(0, (me.shopUsed||0) - refund);
-            else me[cur] = (me[cur]||0) + refund;
+            if(cur === 'kc') {
+                me.shopUsed = Math.max(0, (me.shopUsed||0) - refund);
+                window._shopUsedAtomicDelta = Math.max(0, (window._shopUsedAtomicDelta||0) - refund);
+            } else me[cur] = (me[cur]||0) + refund;
         }
         me.inv.splice(idx, 1);
         upMe(); rBg();
@@ -8898,10 +9123,16 @@ let _renderLock = false; // 재진입 방지
             // 절대 null로 쓰면 안 되는 핵심 필드 — 부분 로드된 me가 이 필드를 빠뜨려도 삭제하지 않음
             const _noNullFields = new Set(['cd','nm','no','gdr','cookie','usedCookie','shopUsed','co','cn','tk','updatedAt']);
             Object.keys(lastHash).forEach(k => { if(!(k in _safeWithoutShopLog) && !_noNullFields.has(k)) updates[k] = null; });
+            // shopUsed race 방지: pending delta는 write 여부와 무관하게 소비 (avt-direct 이후 중복 방지)
+            const _pendingDelta = window._shopUsedAtomicDelta || 0;
+            window._shopUsedAtomicDelta = 0;
             if(Object.keys(updates).length > 0) {
                 const _ts = Date.now();
                 _safeWithoutShopLog.updatedAt = _ts;
                 updates.updatedAt = _ts;
+                if('shopUsed' in updates && _pendingDelta > 0) {
+                    updates.shopUsed = firebase.database.ServerValue.increment(_pendingDelta);
+                }
                 dbRef.child('stu/' + key).update(updates);
             }
             // shopLog는 변경된 경우에만 별도 경로에 쓰기
@@ -8981,6 +9212,10 @@ let _renderLock = false; // 재진입 방지
             try { window._attachSplitAucFullListener && window._attachSplitAucFullListener(); } catch(_){}
         } else {
             try { window._detachSplitAucFullListener && window._detachSplitAucFullListener(); } catch(_){}
+        }
+        // 교사 게임 관찰 구독 — t_plz 이탈 시 cleanup
+        if(id !== 't_plz') {
+            try { window._detachTeacherGameObserver && window._detachTeacherGameObserver(); } catch(_){}
         }
         if(_stuDepTabs.includes(id) && window._ensureStuLoaded) {
             try {
@@ -9558,19 +9793,20 @@ let _renderLock = false; // 재진입 방지
                     alert(`⚠️ 학번 "${c}"는 이미 Firebase에 등록되어 있습니다.\n새로고침 후 확인해주세요.`);
                     return;
                 }
-                dbRef.child('stu/' + c).set(newS).then(() => {
+                // 🛡️ 원자적 처리: stu set + stuDel null + reqCnt를 단일 update로 — race window 차단
+                // (이전: set().then(update) 분리 → 사이에 새로고침 시 tombstone이 신규 학생 삭제하는 버그)
+                const _atomicPayload = {
+                    ['stu/'+c]: newS,
+                    ['reqCnt/'+c]: window._computeReqCnt ? window._computeReqCnt(newS) : {},
+                    ['stuDel/'+c]: null,
+                    lastWriteTs: firebase.database.ServerValue.TIMESTAMP
+                };
+                dbRef.update(_atomicPayload).then(() => {
                     db.stu.push(newS);
                     if(!window._remoteStuTs) window._remoteStuTs = {};
                     window._remoteStuTs[c] = newS.updatedAt;
                     if(window._stuSentHash) delete window._stuSentHash[c];
                     if(window._stuPerHash) delete window._stuPerHash[c];
-                    try {
-                        dbRef.update({
-                            ['reqCnt/'+c]: window._computeReqCnt ? window._computeReqCnt(newS) : {},
-                            ['stuDel/'+c]: null,
-                            lastWriteTs: firebase.database.ServerValue.TIMESTAMP
-                        });
-                    } catch(_){}
                     try { localStorage.setItem('_teacherStuCache', JSON.stringify(db.stu)); localStorage.setItem('_teacherStuCacheTs', String(Date.now())); } catch(_){}
                     rTb();
                     alert("추가됨" + (defInv.length ? ` (자동 지급 아이템 ${defInv.length}개 포함)` : ''));
@@ -12081,46 +12317,16 @@ let _renderLock = false; // 재진입 방지
                     </div>`;
                 }).join('')}
             </div>` : '';
-        const _stuList4Cnt = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
-        const _cookieCnt = _stuList4Cnt.reduce((s,st)=>s+(st?(st.mondayCookiePending||0)+(st.levelupCookiePending||0):0),0);
-        const totalCnt = reqItems.length + approvedItems.length + aucReqs.length + gacWaits.length + _cookieCnt;
+        const totalCnt = reqItems.length + approvedItems.length + aucReqs.length + gacWaits.length;
         const _approvedHtml = approvedItems.length ? `
             <div style="padding:8px 12px;background:#E8F5E9;border-top:2px solid #A5D6A7;">
                 <div style="font-size:12px;font-weight:bold;color:#2E7D32;margin-bottom:6px;">✅ 오늘 사용 예정 (${approvedItems.length}건)</div>
                 ${approvedItems.map(_itmCard).join('')}
             </div>` : '';
 
-        // 쿠키 지급 대기 — 타입별 묶음, 팝업 최상단
+        // 쿠키 지급 대기 섹션 제거 — 월요/레벨업 쿠키 모두 일반 요청사항(invReq)에 아이템 형태로 표시됨
         const _cookiePopupHtml = (function() {
-            const stuList2 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
-            const moList = stuList2.filter(s=>s&&(s.mondayCookiePending||0)>0);
-            const lvList = stuList2.filter(s=>s&&(s.levelupCookiePending||0)>0);
-            if(!moList.length && !lvList.length) return '';
-            const _safeNm = s => (s.nm||'').replace(/</g,'&lt;');
-            const _markAll = (list, field) => {
-                const cdArr = list.map(s=>`'${String(s.cd).replace(/'/g,"\\'")}'`).join(',');
-                return `window._markCookieGrantedGroup([${cdArr}],'${field}')`;
-            };
-            let html = '<div style="padding:8px 12px;background:#FFFDE7;border-bottom:2px solid #FDD835;">';
-            html += '<div style="font-size:12px;font-weight:bold;color:#F57F17;margin-bottom:6px;">🍪 쿠키 지급 대기</div>';
-            if(moList.length) {
-                const total = moList.reduce((a,s)=>a+(s.mondayCookiePending||0),0);
-                const nms = moList.map(_safeNm).join(', ');
-                html += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #FFF9C4;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:0;font-size:12px;color:#5D4037;">🌙 월요 쿠키 ×${total} &nbsp;<span style="color:#A1887F;">${nms}</span></div>
-                    <button onclick="${_markAll(moList,'mondayCookiePending')};window._showReqMiniPopup();" style="font-size:10px;padding:2px 8px;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:5px;cursor:pointer;color:#2E7D32;font-weight:bold;white-space:nowrap;">✔ 지급 완료</button>
-                </div>`;
-            }
-            if(lvList.length) {
-                const total = lvList.reduce((a,s)=>a+(s.levelupCookiePending||0),0);
-                const nms = lvList.map(_safeNm).join(', ');
-                html += `<div style="display:flex;align-items:center;gap:6px;padding:4px 0;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:0;font-size:12px;color:#5D4037;">⭐ 레벨업 쿠키 ×${total} &nbsp;<span style="color:#A1887F;">${nms}</span></div>
-                    <button onclick="${_markAll(lvList,'levelupCookiePending')};window._showReqMiniPopup();" style="font-size:10px;padding:2px 8px;background:#E8F5E9;border:1px solid #A5D6A7;border-radius:5px;cursor:pointer;color:#2E7D32;font-weight:bold;white-space:nowrap;">✔ 지급 완료</button>
-                </div>`;
-            }
-            html += '</div>';
-            return html;
+            return '';
         })();
 
         popup.innerHTML = `<div style="background:white;border-radius:16px;width:min(480px,95vw);max-height:80dvh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,0.3);overflow:hidden;">
@@ -13769,7 +13975,7 @@ window.appU = function(y, si, k) {
             return `giv-item-card" data-gtype="${type}" data-gidx="${idx}" style="background:${sel?'#FFF8E1':'white'};border:2px solid ${sel?'#FF9F43':'#E0E0E0'};border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:0.15s;outline:${sel?'2px solid #FF9F43':'none'};`;
         };
 
-        itmGrid.innerHTML = (db.itm||[]).map((it,i)=>(!it||it.n==='바구니'||it.n==='누구나 바구니')?'':`
+        itmGrid.innerHTML = (db.itm||[]).map((it,i)=>(!it||it.n==='바구니'||it.n==='누구나 바구니'||it.special)?'':`
             <div class="${_givCardStyle('itm',i)}">
                 <div style="font-size:28px;line-height:1.2;">${(it.i&&(it.i.startsWith('http')||it.i.startsWith('data:')))?`<img src="${it.i}" style="width:40px;height:40px;object-fit:contain;" onerror="this.style.display='none'">`:(it.i||'🎁')}</div>
                 <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-top:4px;word-break:keep-all;line-height:1.3;">${it.n}</div>
@@ -13961,6 +14167,54 @@ window.appU = function(y, si, k) {
                 if(!Array.isArray(s.earnedBdg)) s.earnedBdg = s.earnedBdg ? Object.values(s.earnedBdg) : [];
                 if(!s.earnedBdg.includes(b.id)) s.earnedBdg.push(b.id);
                 dbRef.child(`stu/${fbKey}/earnedBdg`).set(s.earnedBdg, e => { if(e) console.error('[doGiv] bdg write 실패', fbKey, e); });
+                // 잠금 쿠폰이 설정된 펫 스킬이면 즉시 잠금 아이템 지급
+                if(b.coupon && (b.coupon.mode === 'lockMission' || b.coupon.lockDays || b.coupon.weeks)) {
+                    const _bc = b.coupon;
+                    const _itmAll = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
+                    const _isMC = b.name && b.name.replace(/\s/g,'') === '월요쿠키';
+                    const _cDef = _isMC ? { n: '월요 쿠키', i: '🍪', g: 'C' } : _itmAll.find(it => it && it.n === _bc.item);
+                    if(_cDef) {
+                        if(!Array.isArray(s.inv)) s.inv = s.inv ? Object.values(s.inv).filter(Boolean) : [];
+                        const _alreadyLocked = s.inv.some(it => it && it.locked && it.skillId === b.id && it.st === 'active');
+                        if(!_alreadyLocked) {
+                            const _gTodayStr = new Date().toLocaleDateString('sv-SE');
+                            const _lkDays = _bc.lockDays || null;
+                            const _lkWeeks = _bc.weeks || 1;
+                            const _addWkN = (start, n) => {
+                                const _d = new Date(start+'T12:00:00'); let _ct=0;
+                                while(_ct<n-1){_d.setDate(_d.getDate()+1);if(_d.getDay()>=1&&_d.getDay()<=5)_ct++;}
+                                return _d.toISOString().slice(0,10);
+                            };
+                            const _addBW = (start, wks) => {
+                                const _d = new Date(start+'T12:00:00');
+                                _d.setDate(_d.getDate()+(wks*7-1));
+                                return _d.toISOString().slice(0,10);
+                            };
+                            const _pe = _lkDays ? _addWkN(_gTodayStr, _lkDays) : _addBW(_gTodayStr, _lkWeeks);
+                            s.inv.push({
+                                n: _cDef.n, i: _cDef.i||'', st: 'active', g: _cDef.g||'C',
+                                locked: true, periodStart: _gTodayStr, periodEnd: _pe,
+                                ...(_lkDays ? {lockDays: _lkDays} : {weeks: _lkWeeks}),
+                                checkedDates: [], failedFlag: false, skillId: b.id,
+                                ...(_isMC ? {type:'cookie_req', needApprove:true} : {})
+                            });
+                            if(!_isMC) {
+                                if(!Array.isArray(s.col)) s.col = s.col ? Object.values(s.col).filter(Boolean) : [];
+                                if(!s.col.includes(_cDef.n)) s.col.push(_cDef.n);
+                            }
+                            try {
+                                dbRef.child(`stu/${fbKey}/inv`).set(s.inv);
+                                if(!_isMC) dbRef.child(`stu/${fbKey}/col`).set(s.col);
+                            } catch(e){ console.error('[doGiv] bdg-lock write 실패', fbKey, e); }
+                            // lastGrantDate 업데이트 (다음 자동지급 중복 방지)
+                            const _bIdx = (db.bdg||[]).indexOf(b);
+                            if(_bIdx !== -1) {
+                                b.coupon.lastGrantDate = _gTodayStr;
+                                try { dbRef.child(`bdg/${_bIdx}/coupon/lastGrantDate`).set(_gTodayStr); } catch(e){}
+                            }
+                        }
+                    }
+                }
             } else if(type==='tit'){
                 const t = (db.tit||[])[idx]; if(!t) return;
                 if(!s.earnedTit) s.earnedTit=[];
@@ -14469,6 +14723,43 @@ window.appU = function(y, si, k) {
         if(v) el.value = v;
         const _st = document.getElementById('reqCutoffStatus');
         if(_st) _st.textContent = v ? `당일 신청은 ${v} 까지만 허용` : '제한 없음 (언제든 당일 신청 가능)';
+        window._renderReqCutoffExempt();
+    };
+    window._renderReqCutoffExempt = function() {
+        const chipsEl = document.getElementById('reqCutoffExemptChips');
+        const selEl = document.getElementById('reqCutoffExemptSelect');
+        if(!chipsEl || !selEl) return;
+        const exempt = (db.cfg && Array.isArray(db.cfg.reqCutoffExemptItems)) ? db.cfg.reqCutoffExemptItems : [];
+        // 칩 렌더링
+        chipsEl.innerHTML = exempt.map(nm =>
+            `<span style="display:inline-flex;align-items:center;gap:5px;background:#E3F2FD;border:1.5px solid #90CAF9;border-radius:14px;padding:4px 10px;font-size:13px;color:#1565C0;">
+                ${nm.replace(/</g,'&lt;')}
+                <b data-exempt-rm="${nm.replace(/"/g,'&quot;')}" style="cursor:pointer;color:#E53935;font-size:14px;line-height:1;">×</b>
+            </span>`
+        ).join('');
+        chipsEl.querySelectorAll('[data-exempt-rm]').forEach(b => {
+            b.onclick = () => window._removeReqCutoffExempt(b.getAttribute('data-exempt-rm'));
+        });
+        // 셀렉트 옵션: 등록된 아이템 중 아직 예외 아닌 것만
+        const itmList = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
+        const opts = itmList.filter(it => it && it.n && !exempt.includes(it.n));
+        selEl.innerHTML = '<option value="">-- 아이템 선택 --</option>' +
+            opts.map(it => `<option value="${(it.n||'').replace(/"/g,'&quot;')}">${(it.n||'').replace(/</g,'&lt;')}</option>`).join('');
+    };
+    window._addReqCutoffExempt = function() {
+        const selEl = document.getElementById('reqCutoffExemptSelect');
+        const nm = selEl?.value; if(!nm) return;
+        if(!db.cfg) db.cfg = {};
+        if(!Array.isArray(db.cfg.reqCutoffExemptItems)) db.cfg.reqCutoffExemptItems = [];
+        if(!db.cfg.reqCutoffExemptItems.includes(nm)) db.cfg.reqCutoffExemptItems.push(nm);
+        window._renderReqCutoffExempt();
+        try { dbRef.child('cfg/reqCutoffExemptItems').set(db.cfg.reqCutoffExemptItems); } catch(e){}
+    };
+    window._removeReqCutoffExempt = function(nm) {
+        if(!db.cfg || !Array.isArray(db.cfg.reqCutoffExemptItems)) return;
+        db.cfg.reqCutoffExemptItems = db.cfg.reqCutoffExemptItems.filter(n => n !== nm);
+        window._renderReqCutoffExempt();
+        try { dbRef.child('cfg/reqCutoffExemptItems').set(db.cfg.reqCutoffExemptItems.length ? db.cfg.reqCutoffExemptItems : null); } catch(e){}
     };
 
     function rVoucherPoolList() {
@@ -16919,6 +17210,8 @@ window.appU = function(y, si, k) {
         // 화폐 차감
         if (cType === 'kc') {
             me.shopUsed = (me.shopUsed || 0) + effectiveCost;
+            // race 방지: upMe debounce 내에서 ServerValue.increment로 원자적 증가
+            window._shopUsedAtomicDelta = (window._shopUsedAtomicDelta || 0) + effectiveCost;
             _pushShopLog({type:'아이템 구입', name:item.n, cost:effectiveCost, passUsed, ts:Date.now()});
 
         } else {
@@ -17836,6 +18129,11 @@ window.appU = function(y, si, k) {
             await dbRef.child('auc').set(arr);
             db.auc = arr;
             if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(arr);
+            // aucReqCnt 동기화 — sv() 우회 write이므로 별도 갱신
+            const _aucReqCnt = arr.filter(a => a && a.st === 'req').length;
+            if(!db.cfg) db.cfg = {};
+            db.cfg.aucReqCnt = _aucReqCnt;
+            dbRef.child('cfg/aucReqCnt').set(_aucReqCnt).catch(()=>{});
             console.log('[submitAucReq] Firebase 저장 완료 — id', newEntry.id);
         } catch(e) { console.error('[submitAucReq]', e); return alert('경매 요청 저장 실패: ' + (e && e.message || e)); }
         upMe(); // 본인 잔액 등 변경분 반영
@@ -22615,7 +22913,10 @@ window.addCharRow = function() {
         if(_mAuc) {
             _mAuc.querySelector('.menu-badge-auc')?.remove();
             const _today = new Date().toLocaleDateString('sv-SE');
-            const _aucReqCnt = (db.auc||[]).filter(a=>a.st==='req').length;
+            // db.auc가 로드된 경우 직접 계산, 미로드 시 cfg.aucReqCnt 경량 카운터 사용
+            const _aucReqCnt = (db.auc && db.auc.length > 0)
+                ? (db.auc).filter(a => a && a.st === 'req').length
+                : (db.cfg?.aucReqCnt || 0);
             // 🔒 [Feature 3] 배지는 "승인 안 된 요청"만 카운트 (이미 승인된 항목은 제외)
             const _todayReqCnt = Object.values(window._reqCntMap||{}).reduce((sum,c)=>{
                 return sum + (c.invReq||0);
@@ -22623,9 +22924,7 @@ window.addCharRow = function() {
             const _gacWaitCnt = Object.values(db.gacQueue||{}).reduce((s,arr)=>{
                 const a=Array.isArray(arr)?arr:Object.values(arr); return s+a.filter(e=>e.st==='wait').length;
             },0);
-            const _stuList4Badge = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
-            const _cookiePendingCnt = _stuList4Badge.reduce((s,st)=>s+(st?(st.mondayCookiePending||0)+(st.levelupCookiePending||0):0),0);
-            const _totalBadge = _aucReqCnt + _todayReqCnt + _gacWaitCnt + _cookiePendingCnt;
+            const _totalBadge = _aucReqCnt + _todayReqCnt + _gacWaitCnt;
             if(_totalBadge > 0) {
                 const b = document.createElement('div');
                 b.className = 'menu-badge-auc';
@@ -22654,7 +22953,9 @@ window.addCharRow = function() {
         // 홈 화면 요청사항 배지 동기화
         const _hbAuc = document.getElementById('home_badge_auc');
         if(_hbAuc) {
-            const _ar = (db.auc||[]).filter(a=>a.st==='req').length;
+            const _ar = (db.auc && db.auc.length > 0)
+                ? (db.auc).filter(a => a && a.st === 'req').length
+                : (db.cfg?.aucReqCnt || 0);
             // 🔒 [Feature 3] 배지는 "승인 안 된 요청"만 카운트
             const _tr = Object.values(window._reqCntMap||{}).reduce((sum,c)=>{
                 return sum + (c.invReq||0);
@@ -24058,7 +24359,10 @@ window.addCharRow = function() {
                     <hr style="border:none;border-top:1.5px dashed #E0E0E0;margin:10px 0;">
                     <div style="font-size:13px;font-weight:bold;color:#7B1FA2;margin-bottom:8px;">🎁 쿠폰 자동지급 설정</div>
                     <label>지급 아이템
-                        <select id="bdg_coupon_item" style="width:100%;margin-top:4px;padding:6px;border:1px solid #CE93D8;border-radius:8px;font-family:'Jua';font-size:13px;">${couponOpts}</select>
+                        ${(b.name||'').replace(/\s/g,'')==='월요쿠키'
+                            ? `<div style="margin-top:4px;padding:8px;background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;font-size:12px;color:#F57F17;">🍪 월요 쿠키는 잠금 해금 시 교사 요청으로 자동 전환 → 교사가 직접 쿠키 지급<br>별도 아이템 선택 불필요</div>`
+                            : `<select id="bdg_coupon_item" style="width:100%;margin-top:4px;padding:6px;border:1px solid #CE93D8;border-radius:8px;font-family:'Jua';font-size:13px;">${couponOpts}</select>`
+                        }
                     </label>
                     <div style="display:flex;gap:8px;margin-top:6px;">
                         <label style="flex:1;">지급 주기<select id="bdg_coupon_period" style="width:100%;margin-top:4px;padding:6px;border:1px solid #ddd;border-radius:8px;font-family:'Jua';font-size:12px;">${periodOpts}</select></label>
@@ -24153,18 +24457,27 @@ window.addCharRow = function() {
             }
         }
         const existingLastGrant = editIdx>=0 ? (db.bdg[editIdx]?.coupon?.lastGrantDate || '') : '';
-        const coupon = couponItem ? { period: couponPeriod, dayOfWeek: couponDow, item: couponItem, lastGrantDate: existingLastGrant, mode: couponMode, ...(couponMode==='lockMission'?(_saveLockDays?{lockDays:_saveLockDays}:{weeks:_saveWeeks}):{}) } : null;
+        // lockMission 모드는 아이템 미선택이어도 쿠폰 설정 저장 (월요 쿠키처럼 item이 pseudo인 경우)
+        const _hasCouponConfig = couponItem || couponMode === 'lockMission';
+        const coupon = _hasCouponConfig ? { period: couponPeriod, dayOfWeek: couponDow, item: couponItem, lastGrantDate: existingLastGrant, mode: couponMode, ...(couponMode==='lockMission'?(_saveLockDays?{lockDays:_saveLockDays}:{weeks:_saveWeeks}):{}) } : null;
         const item = {id: editIdx>=0 ? db.bdg[editIdx].id : `bdg_${Date.now()}`, icon:icon||'🏅', name, desc, img, ...(coupon ? {coupon} : {})};
+        const _bdgWriteIdx = editIdx >= 0 ? editIdx : db.bdg.length;
         if(editIdx>=0) db.bdg[editIdx] = item; else db.bdg.push(item);
         sv();
-        // Firebase 루트 리스너 race condition 방지: bdg를 즉시 직접 저장
-        try { dbRef.child('bdg').set(db.bdg); } catch(e){}
+        // 개별 배지 경로 직접 저장 — 전체 배열 덮어쓰기보다 안전
+        try {
+            dbRef.child('bdg/' + _bdgWriteIdx).set(item)
+                .then(() => console.log('[saveBdg] ✅ 저장 성공 idx:', _bdgWriteIdx, '/ coupon:', JSON.stringify(item.coupon||null)))
+                .catch(e => console.error('[saveBdg] ❌ 저장 실패:', e));
+        } catch(e){ console.error('[saveBdg] 예외:', e); }
         rBdgMgrList(); document.getElementById('bdgMgrModal').remove();
     };
 
     window.delBdg = function(i) {
         if(!confirm('이 뱃지를 삭제하시겠습니까?')) return;
-        db.bdg.splice(i,1); sv(); rBdgMgrList();
+        db.bdg.splice(i,1); sv();
+        try { dbRef.child('bdg').set(db.bdg).then(()=>console.log('[delBdg] ✅ 삭제 후 저장')).catch(e=>console.error('[delBdg] ❌',e)); } catch(e){}
+        rBdgMgrList();
     };
 
     /* ────────── 칭호 관리 ────────── */
@@ -26028,6 +26341,8 @@ window.addCharRow = function() {
                 const _tsA = Date.now();
                 me.updatedAt = _tsA;
                 dbRef.child('stu/' + _kA).update({ avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: me.shopUsed, inv: me.inv, eq: me.eq, updatedAt: _tsA });
+                // avt-direct가 최신 me.shopUsed를 raw write했으므로 pending delta 소비 (중복 increment 방지)
+                window._shopUsedAtomicDelta = 0;
                 try { const _hA = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_hA) ['avtOwned','displayPets','ownedPets','shopUsed','inv','eq'].forEach(k => { _hA[k] = JSON.stringify(me[k]); }); } catch(_){}
             }
         } catch(e) { console.warn('[avt-direct]', e); }
@@ -27570,6 +27885,9 @@ window.addCharRow = function() {
     function rPlzT() {
         if(window._renderPlzRoomTabs) window._renderPlzRoomTabs();
         if(window._updateNoticeToggleBtn) window._updateNoticeToggleBtn();
+        // 게임 관찰 버튼 초기화
+        try { window._renderTeacherGameBtns && window._renderTeacherGameBtns(); } catch(_){}
+        try { window._renderTeacherGameObserver && window._renderTeacherGameObserver(); } catch(_){}
         const plzCfg = (db.cfg && db.cfg.plz) || {};
         const curBg = plzCfg.bg || 'grass';
         // 공지 textarea 현재값 반영
@@ -28489,6 +28807,79 @@ window.addCharRow = function() {
             plzListeners.push({ref:aRef, type:'child_removed', fn:aRem, who:'teacher'});
         });
     }
+
+    // ── 교사 게임 관찰 구독 ──────────────────────────────────────────────
+    // enterPlaza의 전체 게임 구독 대신, 교사가 선택한 게임 state만 경량 구독
+    window._teacherGameSubs   = [];
+    window._teacherGameState  = null;
+    window._teacherGameScores = null;
+    window._teacherGameType   = null;
+
+    window._attachTeacherGameObserver = function(gameType) {
+        window._detachTeacherGameObserver(); // 기존 구독 정리
+        if(!gameType || typeof getPlzRef !== 'function') return;
+        window._teacherGameType = gameType;
+        const plzRef = getPlzRef();
+        const _push = (ref, type, fn) => { ref.on(type, fn); window._teacherGameSubs.push({ ref, type, fn }); };
+        const _onState = s => { window._teacherGameState = s.val(); window._renderTeacherGameObserver(); };
+
+        if(gameType === 'catchMind') {
+            const cmRef = (typeof _catchMindRef === 'function') ? _catchMindRef() : plzRef.child('catchMind');
+            _push(cmRef, 'value', _onState);
+            const scRef = (typeof _catchMindScoresRef === 'function') ? _catchMindScoresRef() : plzRef.child('catchMindScores');
+            _push(scRef, 'value', s => { window._teacherGameScores = s.val(); window._renderTeacherGameObserver(); });
+        } else {
+            // iceTag/hideSeek/oxQuiz/mafia/liar/bombGame/omok — state ref만 구독 (strokes·역할 제외)
+            const refMap = { iceTag:'iceTag', hideSeek:'hideSeek', oxQuiz:'oxQuiz',
+                             mafia:'mafia', liar:'liar', bombGame:'bombGame', omok:'omokDir' };
+            const path = refMap[gameType];
+            if(path) _push(plzRef.child(path), 'value', _onState);
+        }
+        window._renderTeacherGameBtns();
+        window._renderTeacherGameObserver();
+    };
+
+    window._detachTeacherGameObserver = function() {
+        (window._teacherGameSubs || []).forEach(({ ref, type, fn }) => { try { ref.off(type, fn); } catch(_){} });
+        window._teacherGameSubs   = [];
+        window._teacherGameState  = null;
+        window._teacherGameScores = null;
+        window._teacherGameType   = null;
+        try { window._renderTeacherGameBtns(); } catch(_){}
+        try { window._renderTeacherGameObserver(); } catch(_){}
+    };
+
+    window._renderTeacherGameObserver = function() {
+        const statusEl = document.getElementById('_tgoStatus');
+        if(!statusEl) return;
+        const type  = window._teacherGameType;
+        const state = window._teacherGameState;
+        if(!type) { statusEl.textContent = '관찰할 게임을 선택하세요.'; return; }
+        const _emoji = { catchMind:'🎨', iceTag:'🧊', hideSeek:'🔎', oxQuiz:'📝',
+                         mafia:'🕵️', liar:'🎭', bombGame:'💣', omok:'⚫' };
+        const isOn = state && (state.on === true || state.phase === 'playing' || state.phase === 'active' || state.phase === 'lobby');
+        const summary = state ? JSON.stringify(state).substring(0, 150) + (JSON.stringify(state).length > 150 ? '...' : '') : '(데이터 없음)';
+        const _safeSummary = (window._escHtml || (s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])))(summary);
+        statusEl.innerHTML = `<b>${_emoji[type]||'🎮'} ${type}</b> — ${isOn
+            ? '<span style="color:#4CAF50;font-weight:bold;">진행 중</span>'
+            : '<span style="color:#aaa;">대기 / 종료</span>'}` +
+            `<br><span style="color:#999;font-size:10px;">${_safeSummary}</span>`;
+    };
+
+    window._renderTeacherGameBtns = function() {
+        const el = document.getElementById('_tgoGameBtns');
+        if(!el) return;
+        const games = [
+            { id:'catchMind', label:'🎨 캐치마인드' }, { id:'iceTag', label:'🧊 얼음땡' },
+            { id:'hideSeek', label:'🔎 숨바꼭질' },   { id:'oxQuiz', label:'📝 OX' },
+            { id:'mafia', label:'🕵️ 마피아' },          { id:'liar', label:'🎭 라이어' },
+            { id:'bombGame', label:'💣 폭탄' },          { id:'omok', label:'⚫ 오목' },
+        ];
+        el.innerHTML = games.map(g => {
+            const active = window._teacherGameType === g.id;
+            return `<button onclick="window._teacherGameType==='${g.id}'?window._detachTeacherGameObserver():window._attachTeacherGameObserver('${g.id}')" style="padding:3px 8px;border:1.5px solid ${active?'#FF9800':'#ddd'};border-radius:12px;font-size:11px;cursor:pointer;background:${active?'#FFF3E0':'white'};font-family:'Jua';">${active?'✓ ':''} ${g.label}</button>`;
+        }).join('');
+    };
 
     function _roomLabel(rid) {
         const meta = db.cfg?.plzRooms?.[rid] || {};
@@ -40442,28 +40833,39 @@ window.addCharRow = function() {
         };
         (function _lmSeatsSubscribe(){
             const sRef = getPlzRef().child('lmSeats');
-            const fn = snap => {
-                window._lmSeatsCache = window._lmReadSeats(snap.val());
-            };
-            sRef.on('value', fn);
-            plzListeners.push({ ref:sRef, type:'value', fn, who:'student' });
+            // child 이벤트로 전환 — 자리 1개 변경 시 전체 seats 배열 대신 해당 자리만 수신
+            // Firebase child_added 는 attach 직후 기존 children 전체를 순차 발화하므로 초기 로드 별도 once() 불필요
+            window._lmSeatsRaw = {};
+            const _refresh = () => { window._lmSeatsCache = window._lmReadSeats(window._lmSeatsRaw); };
+            const fnAdded   = snap => { window._lmSeatsRaw[snap.key] = snap.val(); _refresh(); };
+            const fnChanged = snap => { window._lmSeatsRaw[snap.key] = snap.val(); _refresh(); };
+            const fnRemoved = snap => { delete window._lmSeatsRaw[snap.key]; _refresh(); };
+            sRef.on('child_added',   fnAdded);
+            sRef.on('child_changed', fnChanged);
+            sRef.on('child_removed', fnRemoved);
+            plzListeners.push({ ref:sRef, type:'child_added',   fn:fnAdded,   who:'student' });
+            plzListeners.push({ ref:sRef, type:'child_changed', fn:fnChanged, who:'student' });
+            plzListeners.push({ ref:sRef, type:'child_removed', fn:fnRemoved, who:'student' });
         })();
-        // 얼음땡 게임 상태 구독
-        _iceTagSubscribe();
-        // 숨바꼭질 구독
-        _hideSeekSubscribe();
-        _oxQuizSubscribe();
-        // 오목 구독
-        if(typeof _omokSubscribe === 'function') _omokSubscribe();
-        // 마피아 게임 상태 구독
-        if(typeof window._mafiaSubscribe === 'function') window._mafiaSubscribe();
-        // 라이어 게임 상태 구독
-        if(typeof window._liarSubscribe === 'function') window._liarSubscribe();
-        // 캐치마인드 게임 상태 구독 (광장 진입 시 — 다른 학생이 시작한 게임 감지)
-        console.log('[plaza] enterPlaza done — subscribing to games. _plzCurRoom=', _plzCurRoom, 'me=', me?.cd);
-        if(typeof _catchMindSubscribe === 'function') _catchMindSubscribe();
-        // 폭탄게임 상태 구독
-        if(typeof _bombGameSubscribe === 'function') _bombGameSubscribe();
+        // 게임 구독 — 학생 전용 (교사는 _attachTeacherGameObserver로 개별 진입)
+        if(!window._isTeacherSession) {
+            // 얼음땡 게임 상태 구독
+            _iceTagSubscribe();
+            // 숨바꼭질 구독
+            _hideSeekSubscribe();
+            _oxQuizSubscribe();
+            // 오목 구독
+            if(typeof _omokSubscribe === 'function') _omokSubscribe();
+            // 마피아 게임 상태 구독
+            if(typeof window._mafiaSubscribe === 'function') window._mafiaSubscribe();
+            // 라이어 게임 상태 구독
+            if(typeof window._liarSubscribe === 'function') window._liarSubscribe();
+            // 캐치마인드 게임 상태 구독 (광장 진입 시 — 다른 학생이 시작한 게임 감지)
+            console.log('[plaza] enterPlaza done — subscribing to games. _plzCurRoom=', _plzCurRoom, 'me=', me?.cd);
+            if(typeof _catchMindSubscribe === 'function') _catchMindSubscribe();
+            // 폭탄게임 상태 구독
+            if(typeof _bombGameSubscribe === 'function') _bombGameSubscribe();
+        }
         // 종료 투표 구독 — 모든 학생이 토스트 알림 받음
         // child_added/removed로 분리: value 전체 객체 다운로드 대신 변경분(uid 1개)만 받음
         (function _voteEndSubscribe(){
