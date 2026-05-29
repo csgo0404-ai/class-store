@@ -3564,7 +3564,9 @@ let _renderLock = false; // 재진입 방지
                     const _prevPetSkinSale = me.petSkinSale;
                     const _prevInvArr = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
                     const _prevCookieReqCount = _prevInvArr.filter(it => it && it.type === 'cookie_req' && it.locked).length;
+                    if(v.titNotify) console.log('[STUOWN-cd] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    console.log('[STUOWN-cd] me 업데이트 me.titNotify=', me.titNotify);
                     if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
                     if(v.aucWin && (!_prevAucWin || _prevAucWin.id !== v.aucWin.id)) {
                         try { window._showAucWinModal && window._showAucWinModal(v.aucWin); } catch(_){}
@@ -3631,7 +3633,9 @@ let _renderLock = false; // 재진입 방지
                     const _prevInvArr2 = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
                     const _prevCookieReqCount2 = _prevInvArr2.filter(it => it && it.type === 'cookie_req' && it.locked).length;
                     const _prevPetSkinSale2 = me.petSkinSale;
+                    if(v.titNotify) console.log('[STUOWN-idx] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    console.log('[STUOWN-idx] me 업데이트 me.titNotify=', me.titNotify);
                     if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
                     // 월요 쿠키 잠금 아이템이 새로 추가됐을 때 배너 표시
                     const _newInvArr2 = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
@@ -4618,7 +4622,7 @@ let _renderLock = false; // 재진입 방지
     };
     window._showNextArrivalPopup = function(){
         if(window._anyArrivalPopupOpen()) return;
-        // 우선순위: 교사 메시지 → 칭호 → 간식 → 쿠폰
+        console.log('[ARRIVAL] _showNextArrivalPopup 호출 me.titNotify=', me&&me.titNotify);
         if(window._showTeacherMsgPopup) window._showTeacherMsgPopup();
         if(window._anyArrivalPopupOpen()) return;
         if(window._showTitGrantPopup) window._showTitGrantPopup();
@@ -4717,27 +4721,48 @@ let _renderLock = false; // 재진입 방지
 
     // ===== 칭호 획득 팝업 =====
     window._showTitGrantPopup = function() {
-        if(!me || me.cd === 'teacher_main') return;
-        if(window._titPopupClosing) return; // 방금 닫은 팝업이 Firebase echo로 다시 뜨는 것 방지
-        if(window._anyArrivalPopupOpen && window._anyArrivalPopupOpen()) return;
-        const pending = Array.isArray(me.titNotify) ? me.titNotify.filter(n=>n&&n.titId) : [];
-        // 이미 본 titId 는 제외 (이번 세션에서 확인 완료)
+        console.log('[TIT-POPUP] 호출됨 me.cd=', me&&me.cd, 'titNotify=', me&&me.titNotify);
+        if(!me || me.cd === 'teacher_main') { console.log('[TIT-POPUP] ❌ me 없음 또는 교사'); return; }
+        if(window._titPopupClosing) { console.log('[TIT-POPUP] ❌ titPopupClosing 중'); return; }
+        if(window._anyArrivalPopupOpen && window._anyArrivalPopupOpen()) { console.log('[TIT-POPUP] ❌ 다른 팝업 열려있음'); return; }
+        const _rawTitNotify = me.titNotify;
+        const _titNotifyArr = Array.isArray(_rawTitNotify) ? _rawTitNotify : (_rawTitNotify && typeof _rawTitNotify === 'object' ? Object.values(_rawTitNotify) : []);
+        if(!Array.isArray(me.titNotify)) me.titNotify = _titNotifyArr;
+        const pending = _titNotifyArr.filter(n=>n&&n.titId);
+        console.log('[TIT-POPUP] pending=', pending.length, pending.map(n=>n.titId));
         if(!window._titSeen) window._titSeen = new Set();
         const fresh = pending.filter(n => !n.seen && !window._titSeen.has(String(n.titId)));
+        console.log('[TIT-POPUP] fresh=', fresh.length, '_titSeen=', [...window._titSeen]);
         if(!fresh.length) {
-            // Firebase 가 stale 데이터를 echo 한 경우 — titNotify 정리
-            if(pending.length && me) { me.titNotify = []; if(typeof upMe==='function') upMe(); }
+            if(pending.length && me) { console.log('[TIT-POPUP] ❌ fresh 없음 — titNotify 정리'); me.titNotify = []; if(typeof upMe==='function') upMe(); }
+            else { console.log('[TIT-POPUP] ❌ pending 없음'); }
             return;
         }
         const _titList = Array.isArray(db.tit)?db.tit:Object.values(db.tit||{});
+        console.log('[TIT-POPUP] db.tit 길이=', _titList.length, '찾는 titId=', fresh.map(n=>n.titId));
         const items = fresh.map(n=>_titList.find(t=>t&&t.id===n.titId)).filter(Boolean);
-        if(!items.length){ me.titNotify=[]; if(typeof upMe==='function') upMe(); return; }
+        console.log('[TIT-POPUP] items 찾음=', items.length, items.map(t=>t&&t.id));
+        if(!items.length){
+            if(window._ensureLazyPaths && (!db.tit || !db.tit.length)){
+                console.log('[TIT-POPUP] ⏳ db.tit 미로드 — lazy load 후 재시도');
+                window._ensureLazyPaths(['tit']).then(()=>{
+                    console.log('[TIT-POPUP] ✅ tit lazy load 완료, 재시도');
+                    if(window._showTitGrantPopup) window._showTitGrantPopup();
+                }).catch(e=>{ console.error('[TIT-POPUP] tit lazy load 실패', e); });
+            } else {
+                console.warn('[TIT-POPUP] ❌ db.tit 있는데 칭호 ID 없음 — fresh titId:', fresh.map(n=>n.titId), 'db.tit IDs:', _titList.map(t=>t&&t.id));
+            }
+            return;
+        }
         const t = items[0];
+        console.log('[TIT-POPUP] ✅ 팝업 표시 titId=', t.id, 'name=', t.name);
         const rewardLabel = (ct,amt)=>{
             const map={c:'🍪 쿠키',cookie:'🍪 쿠키',cn:'🍭 캔디',co:'🍯 꿀',tk:'🧺 바구니'};
             return ct&&amt?`<div style="margin-top:10px;background:linear-gradient(135deg,#FFF59D,#FFD54F);border-radius:12px;padding:10px 14px;font-size:15px;color:#5D4037;font-weight:bold;">보너스 ${map[ct]||ct} <b>+${amt}</b></div>`:'';
         };
-        const titBadge = `<div style="display:inline-block;padding:10px 22px;border-radius:14px;background:linear-gradient(135deg,#5D4037,#3E2723);box-shadow:0 4px 14px rgba(0,0,0,0.25);"><span style="color:${t.color||'#FFF8E1'};font-size:${Math.min(t.fontSize||30,32)}px;font-weight:bold;line-height:1.1;text-shadow:-1px -1px 0 #2723,1px -1px 0 #2723,-1px 1px 0 #2723,1px 1px 0 #2723,0 2px 4px rgba(0,0,0,0.4);">${t.name||''}</span></div>`;
+        const _titNameEl = document.createElement('div'); _titNameEl.innerHTML = t.name||'';
+        const _titNamePlain = (_titNameEl.textContent||_titNameEl.innerText||'').trim();
+        const titBadge = `<div style="display:inline-block;padding:10px 22px;border-radius:14px;background:linear-gradient(135deg,#5D4037,#3E2723);box-shadow:0 4px 14px rgba(0,0,0,0.25);"><span style="color:${t.color||'#FFF8E1'};font-size:${Math.min(t.fontSize||30,32)}px;font-weight:bold;line-height:1.1;text-shadow:-1px -1px 0 #2723,1px -1px 0 #2723,-1px 1px 0 #2723,1px 1px 0 #2723,0 2px 4px rgba(0,0,0,0.4);">${_titNamePlain}</span></div>`;
         const more = items.length>1 ? `<div style="font-size:12px;color:#888;margin-top:8px;">외 ${items.length-1}개 더 획득!</div>` : '';
         const html = `<div id="_titGrantPopup" style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:99200;display:flex;align-items:center;justify-content:center;padding:20px;animation:_caFadeIn 0.3s;">
             <div style="background:linear-gradient(160deg,#FFF8E1,#FFE082);border-radius:28px;width:min(440px,96vw);font-family:'Jua';box-shadow:0 24px 60px rgba(255,193,7,0.5);overflow:hidden;animation:_caBounce 0.55s ease;border:5px solid #FFB300;" onclick="event.stopPropagation()">
@@ -4747,7 +4772,6 @@ let _renderLock = false; // 재진입 방지
                     <div style="font-size:13px;opacity:0.92;margin-top:4px;">멋진 활동을 인정받았어요 ✨</div>
                 </div>
                 <div style="padding:24px 22px;text-align:center;">
-                    ${t.img?`<img src="${t.img}" style="max-width:120px;max-height:120px;object-fit:contain;margin-bottom:10px;">`:''}
                     ${titBadge}
                     ${t.desc?`<div style="margin-top:12px;font-size:13px;color:#5D4037;line-height:1.6;background:rgba(255,255,255,0.6);border-radius:10px;padding:8px 12px;">${_escHtml(t.desc)}</div>`:''}
                     ${rewardLabel(t.rewardCoinType,t.rewardCoinAmt)}
@@ -8064,9 +8088,10 @@ let _renderLock = false; // 재진입 방지
                     return;
                 }
                 const _tn = s.titNotify;
-                const _hasPendingTit = Array.isArray(_tn) && _tn.some(n => n && !n.seen);
+                const _tnArr = Array.isArray(_tn) ? _tn : (_tn && typeof _tn === 'object' ? Object.values(_tn) : []);
+                const _hasPendingTit = _tnArr.some(n => n && !n.seen);
                 const _sCopy = Object.assign({}, s);
-                if(Array.isArray(_tn) && !_hasPendingTit) delete _sCopy.titNotify;
+                if(!_hasPendingTit) delete _sCopy.titNotify;
                 if(!_sCopy.lastCouponView) delete _sCopy.lastCouponView;
                 if(!_sCopy.lastTeacherSnackView) delete _sCopy.lastTeacherSnackView;
                 delete _sCopy.shopLog; // shopLog는 별도 경로(shopLog/{cd})에서 관리
@@ -13795,6 +13820,13 @@ window.appU = function(y, si, k) {
             }
             if(Array.isArray(s.earnedTit)) {
                 dbRef.child(`stu/${_fbk}/earnedTit`).set(s.earnedTit, e => { if(e) console.error('[givMulti] earnedTit write 실패', _fbk, e); });
+            }
+            // titNotify: stale-guard 우회 — 칭호 알림이 학생에게 즉시 전달되도록 직접 경로 쓰기
+            if(Array.isArray(s.titNotify) && s.titNotify.some(n=>n&&!n.seen)) {
+                console.log('[givMulti] titNotify write fbKey=', _fbk, s.titNotify);
+                dbRef.child(`stu/${_fbk}/titNotify`).set(s.titNotify, e => { if(e) console.error('[givMulti] titNotify write 실패', _fbk, e); else console.log('[givMulti] titNotify write 성공', _fbk); });
+            } else {
+                console.warn('[givMulti] titNotify write 스킵 fbKey=', _fbk, 'titNotify=', s.titNotify);
             }
         });
         // bdg 지급 시 쿠폰 자동 즉시 지급 (_svStu 이전에 s.inv/col에 추가해야 함 — race condition 방지)
@@ -24816,7 +24848,7 @@ window.addCharRow = function() {
 
         const listEl = document.getElementById('mdist_stu_list');
         if(!listEl) return;
-        const stus = (db.stu||[]).filter(s=>s&&s.nm);
+        const stus = (db.stu||[]).filter(s=>s&&s.nm).sort((a,b)=>(parseInt(a.no)||0)-(parseInt(b.no)||0));
         listEl.innerHTML = stus.map(s=>`
             <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;" onmouseover="this.style.background='#F5F5F5'" onmouseout="this.style.background=''">
                 <input type="checkbox" class="mdist-chk" value="${s.cd}" ${checkedUids.has(String(s.cd))?'checked':''} style="width:16px;height:16px;cursor:pointer;">
@@ -24880,6 +24912,12 @@ window.addCharRow = function() {
             db.monthlyTitRec.push(rec);
         }
 
+        // 자식 칭호 정의를 Firebase tit 배열에 먼저 직접 써서 학생이 titNotify 받기 전에 정의가 존재하도록 보장
+        try {
+            const _titIdx = (db.tit||[]).findIndex(t=>t.id===childTitId);
+            if(_titIdx >= 0) dbRef.child(`tit/${_titIdx}`).set(db.tit[_titIdx]);
+        } catch(e){ console.error('[monthlyTit] tit def write 실패', e); }
+
         // 선택된 학생 → earnedTit 추가 + 화폐 보상 + 알림 마커
         const childDef = db.tit.find(t=>t.id===childTitId);
         let _skippedOwned = 0;
@@ -24895,6 +24933,15 @@ window.addCharRow = function() {
             }
             if(!Array.isArray(stu.titNotify)) stu.titNotify = [];
             stu.titNotify.push({titId:childTitId, ts:Date.now()});
+            // stale-guard 우회 — 알림이 확실히 Firebase에 전달되도록 직접 경로 쓰기
+            const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+            const _fbKey = _cdMig ? stu.cd : (db.stu||[]).indexOf(stu);
+            if(_fbKey !== undefined && _fbKey !== null && _fbKey !== -1) {
+                console.log('[monthlyTit] titNotify write fbKey=', _fbKey, 'titNotify=', stu.titNotify);
+                try { dbRef.child(`stu/${_fbKey}/earnedTit`).set(stu.earnedTit); dbRef.child(`stu/${_fbKey}/titNotify`).set(stu.titNotify, e=>{ if(e) console.error('[monthlyTit] titNotify write 실패', _fbKey, e); else console.log('[monthlyTit] titNotify write 성공', _fbKey); }); } catch(e){ console.error('[monthlyTit] tit write 실패', _fbKey, e); }
+            } else {
+                console.warn('[monthlyTit] fbKey 없음 — write 스킵 stu.cd=', stu.cd);
+            }
         });
         if(_skippedOwned) console.log('[monthlyTit] 이미 보유한 ' + _skippedOwned + '명 스킵');
 
