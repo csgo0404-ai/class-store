@@ -1207,6 +1207,8 @@
                     <h3 style="margin:0;">📛 펫 스킬 등록</h3>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                         <button id="_vacToggleBtn" style="padding:5px 12px;font-size:12px;border-radius:20px;border:1.5px solid #A5D6A7;background:#E8F5E9;color:#2E7D32;cursor:pointer;font-weight:bold;" onclick="toggleVacationActive()">▶ 자동지급 중</button>
+                        <button onclick="(async()=>{try{await(window._runLockMissionTest&&window._runLockMissionTest());}catch(e){alert('오류: '+e);}})();" class="btn btn-gray" style="padding:6px 14px;font-size:13px;">🧪 자동 테스트</button>
+                        <button class="btn btn-gray" style="padding:6px 14px;font-size:13px;" onclick="showHolidayMgr()">🗓️ 공휴일 설정</button>
                         <button class="btn btn-gray" style="padding:6px 14px;font-size:13px;" onclick="showVacationMgr()">🏖️ 방학 기간 설정</button>
                         <button class="btn btn-org" style="padding:6px 14px;font-size:13px;" onclick="executePetSkillCouponGrant()">🎁 쿠폰 일괄 지급</button>
                     </div>
@@ -1346,12 +1348,6 @@
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 토픽 추가" oncontextmenu="event.preventDefault();window._bombTopicsEditor&&window._bombTopicsEditor();return false;"><input type="checkbox" id="plz_room_bombgame_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">💣 폭탄게임 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                             </div>
                         </div>
-                    </div>
-                    <!-- 게임 관찰 패널 — 교사가 진행 중인 게임 상태를 경량 구독으로 모니터링 -->
-                    <div class="card" id="_teacherGameObserverCard" style="padding:10px 12px;">
-                        <h4 style="margin:0 0 7px;font-size:13px;">👁 게임 관찰</h4>
-                        <div id="_tgoGameBtns" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
-                        <div id="_tgoStatus" style="font-size:12px;color:#888;line-height:1.5;">관찰할 게임을 선택하세요.</div>
                     </div>
                     <div class="card" style="padding:0;overflow:hidden;">
                         <div onclick="window._toggleBgCard()" style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;">
@@ -2155,6 +2151,242 @@ let _renderLock = false; // 재진입 방지
 
     let db = {stu:[], itm:[], gac:[{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}], log:[], rec:[], auc:[], avt:[], bdg:[], tit:[], ak:'', cfg: {baseChar:'', gh:{token:'',owner:'',repo:''}}};
     window._pageLoadTime = Date.now();
+    window._debugDate = null; // 'YYYY-MM-DD' 설정 시 해당 날짜로 시뮬, null이면 실제 날짜
+    window._getTestDate = function() { return window._debugDate ? new Date(window._debugDate + 'T12:00:00') : new Date(); };
+
+    // 🗓️ 공휴일 Set — 법정공휴일(2025~2027) + 교사 커스텀 (db.cfg.holidays)
+    window._getHolidaySet = function() {
+        const s = new Set([
+            // 2025
+            '2025-01-01','2025-01-28','2025-01-29','2025-01-30',
+            '2025-03-01','2025-03-03','2025-05-01','2025-05-05','2025-05-06',
+            '2025-06-06','2025-08-15',
+            '2025-10-03','2025-10-05','2025-10-06','2025-10-07','2025-10-08','2025-10-09',
+            '2025-12-25',
+            // 2026
+            '2026-01-01','2026-02-16','2026-02-17','2026-02-18',
+            '2026-03-01','2026-03-02','2026-05-01','2026-05-05','2026-05-24','2026-05-25',
+            '2026-06-03','2026-06-06','2026-08-15','2026-08-17',
+            '2026-09-24','2026-09-25','2026-09-26','2026-09-28',
+            '2026-10-03','2026-10-05','2026-10-09','2026-12-25',
+            // 2027 (1~8월)
+            '2027-01-01','2027-02-06','2027-02-07','2027-02-08','2027-02-09','2027-02-10',
+            '2027-03-01','2027-05-01','2027-05-05','2027-06-06','2027-08-15',
+        ]);
+        ((db.cfg && db.cfg.holidays) || []).forEach(h => {
+            if(!h.month || !h.date) return;
+            const y = h.year || new Date().getFullYear();
+            s.add(`${y}-${String(h.month).padStart(2,'0')}-${String(h.date).padStart(2,'0')}`);
+        });
+        return s;
+    };
+
+    // 기간 내 영업일·공휴일 수 반환 {total, holidays}
+    window._countPeriodHolidays = function(startStr, endStr) {
+        const hols = window._getHolidaySet();
+        let total = 0, holidays = 0;
+        const d = new Date(startStr + 'T12:00:00'), e = new Date(endStr + 'T12:00:00');
+        while(d <= e) {
+            if(d.getDay() >= 1 && d.getDay() <= 5) {
+                total++;
+                if(hols.has(d.toISOString().slice(0,10))) holidays++;
+            }
+            d.setDate(d.getDate() + 1);
+        }
+        return {total, holidays};
+    };
+
+    // 🧪 잠금 미션 자동 테스트 (Firebase 미변경, in-memory 시뮬) — 모든 lockMission 배지 대상
+    window._runLockMissionTest = async function() {
+        // 배지 데이터 lazy-load 확보
+        if((!db.bdg || !db.bdg.length) && window._ensureLazyPaths) {
+            try { await window._ensureLazyPaths(['bdg']); } catch(_) {}
+        }
+        const _bdgL = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg||{});
+        const _itmL = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
+        const _dN = ['일','월','화','수','목','금','토'];
+        const _addBW = (s,w) => { const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+(w*7-1)); return d.toISOString().slice(0,10); };
+        const _addWN = (s,n) => { const d=new Date(s+'T12:00:00'); let c=0; while(c<n-1){d.setDate(d.getDate()+1);if(d.getDay()>=1&&d.getDay()<=5)c++;} return d.toISOString().slice(0,10); };
+
+        // lockMission 배지 전체 수집
+        const _lockBdgs = _bdgL.filter(b => {
+            if(!b || !b.coupon) return false;
+            const _isMC = b.name && b.name.replace(/\s/g,'') === '월요쿠키';
+            return (b.coupon.mode==='lockMission'||b.coupon.lockDays||b.coupon.weeks) &&
+                   (b.coupon.item || _isMC);
+        });
+        if(!_lockBdgs.length) {
+            const _all = _bdgL.filter(Boolean).map(b => `• ${b.name||'(이름없음)'}: coupon=${JSON.stringify(b.coupon||null)}`).join('\n');
+            return alert(`❌ lockMission 배지 없음\n\n전체 배지 현황 (${_bdgL.filter(Boolean).length}개):\n${_all||'배지 없음'}`);
+        }
+
+        // ━━ 공휴일 인프라 글로벌 테스트 ━━
+        const _holRes = [];
+        const _holFnBk = window._getHolidaySet;
+
+        // ⓐ 법정공휴일 내장 확인 (2026-05-05 어린이날)
+        const _hs = window._getHolidaySet();
+        _holRes.push({n:'ⓐ 법정공휴일 내장 (2026-05-05 어린이날)', ok:_hs.has('2026-05-05'), d:_hs.has('2026-05-05')?'Set에 포함 ✅':'❌ 미포함'});
+
+        // ⓑ 커스텀 공휴일 반영 (db.cfg.holidays)
+        const _origCfgHols = db.cfg && db.cfg.holidays;
+        if(!db.cfg) db.cfg = {};
+        db.cfg.holidays = [{year:2026, month:7, date:20, content:'테스트휴일'}];
+        const _hs2 = window._getHolidaySet();
+        const _cusOk = _hs2.has('2026-07-20');
+        db.cfg.holidays = _origCfgHols || [];
+        _holRes.push({n:'ⓑ 커스텀 공휴일 db.cfg.holidays 반영', ok:_cusOk, d:_cusOk?'2026-07-20 포함 ✅':'❌ 미포함'});
+
+        // ⓒ _countPeriodHolidays 정확성 (2026-05-04~08: 05-05 어린이날)
+        // 2026-05-04(월) 05(화·공휴일) 06(수) 07(목) 08(금) → total=5, holidays=1
+        const _cnt = window._countPeriodHolidays('2026-05-04', '2026-05-08');
+        const _cntOk = _cnt.total === 5 && _cnt.holidays === 1;
+        _holRes.push({n:'ⓒ _countPeriodHolidays 정확성 (05-04~08, total=5 holidays=1)', ok:_cntOk, d:`total=${_cnt.total}, holidays=${_cnt.holidays} ${_cntOk?'✅':'❌ 오류'}`});
+
+        // ⓓ _totalDays 계산 공휴일 제외 검증 (05-04~08, 공휴일 1개 → 4일 필요)
+        window._getHolidaySet = () => new Set(['2026-05-05']);
+        let _tdTest = 0;
+        const _tdIter = new Date('2026-05-04T12:00:00'), _tdEnd = new Date('2026-05-08T12:00:00');
+        const _tdH = window._getHolidaySet();
+        const _tdIt = new Date(_tdIter);
+        while(_tdIt <= _tdEnd) { const _k=_tdIt.toISOString().slice(0,10); if(_tdIt.getDay()>=1&&_tdIt.getDay()<=5&&!_tdH.has(_k)) _tdTest++; _tdIt.setDate(_tdIt.getDate()+1); }
+        window._getHolidaySet = _holFnBk;
+        _holRes.push({n:'ⓓ _totalDays 공휴일 제외 (공휴일1 → 4일 필요)', ok:_tdTest===4, d:`계산: ${_tdTest}일 (기대: 4) ${_tdTest===4?'✅':'❌'}`});
+
+        // ⓔ showHolidayMgr 함수 존재
+        _holRes.push({n:'ⓔ showHolidayMgr 함수 등록', ok:typeof window.showHolidayMgr==='function', d:typeof window.showHolidayMgr==='function'?'✅':'❌ 미정의'});
+
+        // ⓕ 캘린더 클릭 차단: 공휴일은 _clickable=false
+        const _mockHols = new Set(['2026-06-01']);
+        const _dt = '2026-06-01';
+        const _isFuture = _dt > '2026-06-01';
+        const _isHol = _mockHols.has(_dt);
+        const _clickable = !_isFuture && !_isHol;
+        _holRes.push({n:'ⓕ 공휴일 클릭 차단 (_clickable=false)', ok:!_clickable, d:!_clickable?'공휴일 클릭 불가 ✅':'❌ 클릭 가능하면 안 됨'});
+
+        const _holAllPass = _holRes.every(r=>r.ok);
+
+        // ━━ 배지별 테스트 ━━
+        // 배지별 테스트
+        const _bdgResults = _lockBdgs.map(b => {
+            const _cp = b.coupon;
+            const _isMC = b.name && b.name.replace(/\s/g,'') === '월요쿠키';
+            const _cDef = _isMC ? {n:'월요 쿠키',i:'🍪',g:'C'} : _itmL.find(it=>it&&it.n===_cp.item);
+            const _gDow = _cp.dayOfWeek != null ? _cp.dayOfWeek : 1;
+            const _lkD = _cp.lockDays||null, _wks = _cp.weeks||1;
+
+            if(!_cDef) return {name:b.name, skip:true, reason:'아이템 정의 없음 (아이템 관리에서 해당 아이템 확인 필요)'};
+
+            // 지급 요일 기준으로 테스트 날짜 계산
+            // 기준: 2026-06-01(월)~2026-06-07 중 지급요일 찾기
+            const _baseMonday = new Date('2026-06-01T12:00:00');
+            const _grantDay = new Date(_baseMonday);
+            while(_grantDay.getDay() !== _gDow) _grantDay.setDate(_grantDay.getDate()+1);
+            const _d1 = _grantDay.toISOString().slice(0,10); // 지급요일 당일
+            // 틀린 요일 (다음날)
+            const _wrongDay = new Date(_grantDay); _wrongDay.setDate(_wrongDay.getDate()+1);
+            const _d2 = _wrongDay.toISOString().slice(0,10);
+            // 다음 주 지급요일
+            const _nextGrantDay = new Date(_grantDay); _nextGrantDay.setDate(_nextGrantDay.getDate()+7);
+            const _d3 = _nextGrantDay.toISOString().slice(0,10);
+
+            const _tryGrant = (dateStr, inv) => {
+                const dow = new Date(dateStr+'T12:00:00').getDay();
+                if(dow !== _gDow) return {ok:false, r:`${_dN[dow]}요일 → 지급요일(${_dN[_gDow]}) 아님`};
+                if(inv.some(it=>it&&it.locked&&it.skillId===b.id&&it.st==='active'&&it.periodStart===dateStr)) return {ok:false, r:'이번 주 이미 지급됨'};
+                const pe = _lkD ? _addWN(dateStr,_lkD) : _addBW(dateStr,_wks);
+                inv.push({n:_cDef.n,locked:true,st:'active',skillId:b.id,periodStart:dateStr,periodEnd:pe,...(_lkD?{lockDays:_lkD}:{weeks:_wks}),...(_isMC?{type:'cookie_req'}:{})});
+                return {ok:true};
+            };
+
+            const _inv = [];
+            const _res = [];
+            const t1 = _tryGrant(_d1, _inv);
+            _res.push({n:`① ${_d1}(${_dN[_gDow]}) 지급 → 즉시 지급`, ok:t1.ok, d:t1.ok?`periodEnd:${_inv[0]?.periodEnd}`:t1.r});
+            const t2 = _tryGrant(_d2, _inv);
+            _res.push({n:`② ${_d2}(${_dN[new Date(_d2+'T12:00:00').getDay()]}) 지급 → 당일 미지급`, ok:!t2.ok, d:!t2.ok?`차단: ${t2.r}`:'❌ 잘못 지급됨'});
+            const t3 = _tryGrant(_d3, _inv);
+            _res.push({n:`③ ${_d3}(${_dN[_gDow]}) → 새 아이템 추가`, ok:t3.ok, d:t3.ok?`inv ${_inv.length}개 (신규:${_d3})`:t3.r});
+            const _prevOk = _inv.some(it=>it&&it.periodStart===_d1);
+            _res.push({n:`④ 이전 아이템(${_d1}) 유지`, ok:_prevOk, d:_prevOk?'이전 아이템 존재':'❌ 사라짐'});
+
+            // ⑤⑥ 공휴일 테스트: 기간 내 실제 영업일 목록에서 선택 후 오버라이드
+            const _origHolFn = window._getHolidaySet;
+            const _pe5 = _lkD ? _addWN(_d1,_lkD) : _addBW(_d1,_wks);
+            // 기간 내 영업일 수집
+            const _periodWdays = [];
+            { const _it=new Date(_d1+'T12:00:00'), _en=new Date(_pe5+'T12:00:00');
+              while(_it<=_en){if(_it.getDay()>=1&&_it.getDay()<=5)_periodWdays.push(_it.toISOString().slice(0,10));_it.setDate(_it.getDate()+1);} }
+            // ⑤ 기간 내 영업일 절반 이상(3/5)을 공휴일로 → 미지급
+            const _half = Math.ceil(_periodWdays.length / 2);
+            window._getHolidaySet = () => { const s=new Set(); _periodWdays.slice(0,_half).forEach(dt=>s.add(dt)); return s; };
+            const _hc5 = window._countPeriodHolidays(_d1, _pe5);
+            const _t5 = _hc5.total > 0 && _hc5.holidays * 2 >= _hc5.total;
+            _res.push({n:`⑤ 공휴일 ${_hc5.holidays}/${_hc5.total}일(절반이상) → 미지급`, ok:_t5, d:_t5?`미지급 조건 충족 (${_hc5.holidays}*2≥${_hc5.total})`:`❌ 조건 미충족`});
+            // ⑥ 기간 내 영업일 1개만 공휴일로 → 정상 지급
+            window._getHolidaySet = () => { const s=new Set(); if(_periodWdays[0]) s.add(_periodWdays[0]); return s; };
+            const _hc6 = window._countPeriodHolidays(_d1, _pe5);
+            const _t6 = !(_hc6.total > 0 && _hc6.holidays * 2 >= _hc6.total);
+            _res.push({n:`⑥ 공휴일 ${_hc6.holidays}/${_hc6.total}일(절반미만) → 정상 지급`, ok:_t6, d:_t6?`지급 조건 충족 (${_hc6.holidays}*2<${_hc6.total})`:`❌ 잘못 차단됨`});
+            window._getHolidaySet = _origHolFn; // 복원
+
+            return {name:b.name, info:`${_dN[_gDow]}요일 | ${_lkD?_lkD+'일':_wks+'주'}`, res:_res, all:_res.every(r=>r.ok)};
+        });
+
+        // 결과 모달 출력
+        const _totalPass = _bdgResults.filter(r=>!r.skip&&r.all).length;
+        const _total = _bdgResults.filter(r=>!r.skip).length;
+        const _allPass = _holAllPass && _totalPass === _total;
+
+        const _rowHtml = res => res.map(r => `
+            <div style="display:flex;flex-direction:column;gap:2px;padding:6px 10px;border-radius:8px;background:${r.ok?'#F1F8E9':'#FFF3E0'};">
+                <div style="font-size:13px;font-weight:bold;color:${r.ok?'#2E7D32':'#E65100'};">${r.ok?'✅':'❌'} ${r.n}</div>
+                <div style="font-size:12px;color:#757575;padding-left:4px;">└ ${r.d}</div>
+            </div>`).join('');
+
+        // 공휴일 섹션
+        const _holHtml = `<div style="margin:10px 0;border:2px solid ${_holAllPass?'#A5D6A7':'#FFCC80'};border-radius:12px;overflow:hidden;">
+            <div style="padding:8px 14px;background:${_holAllPass?'#E8F5E9':'#FFF3E0'};display:flex;align-items:center;gap:8px;">
+                <span style="font-size:16px;">${_holAllPass?'✅':'❌'}</span>
+                <span style="font-weight:bold;font-size:14px;color:#37474F;">🗓️ 공휴일 인프라</span>
+                <span style="font-size:12px;color:#78909C;margin-left:auto;">${_holRes.filter(r=>r.ok).length}/${_holRes.length} 통과</span>
+            </div>
+            <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px;">${_rowHtml(_holRes)}</div>
+        </div>`;
+
+        // 배지 섹션
+        const _bdgHtml = _bdgResults.map(br => {
+            if(br.skip) return `<div style="margin:10px 0;padding:10px 12px;background:#F5F5F5;border-radius:10px;color:#9E9E9E;font-size:13px;">⏭️ <b>${br.name}</b> — ${br.reason}</div>`;
+            return `<div style="margin:10px 0;border:2px solid ${br.all?'#A5D6A7':'#FFCC80'};border-radius:12px;overflow:hidden;">
+                <div style="padding:8px 14px;background:${br.all?'#E8F5E9':'#FFF3E0'};display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">${br.all?'✅':'❌'}</span>
+                    <span style="font-weight:bold;font-size:14px;color:#37474F;">${br.name}</span>
+                    <span style="font-size:12px;color:#78909C;margin-left:auto;">${br.info}</span>
+                </div>
+                <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px;">${_rowHtml(br.res)}</div>
+            </div>`;
+        }).join('');
+
+        const _el = document.createElement('div');
+        _el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+        _el.onclick = e => { if(e.target===_el) _el.remove(); };
+        _el.innerHTML = `<div style="background:white;border-radius:20px;width:min(540px,96vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="padding:16px 20px 12px;border-bottom:1px solid #EEE;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                <span style="font-size:22px;">🧪</span>
+                <div>
+                    <div style="font-weight:bold;font-size:16px;color:#37474F;">잠금 미션 자동 테스트</div>
+                    <div style="font-size:12px;color:#9E9E9E;">Firebase 미변경 · 배지 ${_lockBdgs.length}개 · ${_allPass?'<span style="color:#2E7D32;font-weight:bold;">전체 통과 🎉</span>':'<span style="color:#E65100;font-weight:bold;">일부 실패 ⚠️</span>'}</div>
+                </div>
+                <button onclick="this.closest('div[style*=fixed]').remove()" style="margin-left:auto;background:none;border:none;font-size:22px;color:#BDBDBD;cursor:pointer;line-height:1;">✕</button>
+            </div>
+            <div style="overflow-y:auto;padding:10px 16px 16px;flex:1;">
+                ${_holHtml}
+                <div style="font-size:12px;font-weight:bold;color:#78909C;margin:14px 0 4px;padding:0 2px;">📛 배지별 잠금 미션 테스트</div>
+                ${_bdgHtml}
+            </div>
+        </div>`;
+        document.body.appendChild(_el);
+    };
 
     // 교사-학생프리뷰 탭 간 즉시 동기화 (같은 기기 내 탭 전용)
     const _teacherBC = (() => { try { return new BroadcastChannel('teacher_preview'); } catch(_) { return null; } })();
@@ -2919,6 +3151,49 @@ let _renderLock = false; // 재진입 방지
         });
     };
 
+    // [GAC-CACHE] gac 학생 세션 전용: localStorage 캐시 즉시 복원 → _splitInitialDone 블로킹 없음
+    function _attachGacStudentCached() {
+        try {
+            const cv = localStorage.getItem('_gac_v');
+            if(cv) {
+                const parsed = JSON.parse(cv);
+                if(Array.isArray(parsed) && parsed.length > 0) db.gac = parsed;
+            }
+        } catch(_) {}
+        if(!db.gac || !db.gac.length) db.gac = [{n:'랜덤',c:20,cur:'cn',i:'',r:[{n:'꽝',p:50},{n:'당첨',p:50}]}];
+        _splitInitialReceived['gac'] = true;
+        if(!_splitInitialDone && _splitPaths.every(k => _splitInitialReceived[k])) {
+            _splitInitialDone = true;
+            _splitFire();
+        }
+    }
+    // [GAC-CACHE-H] 상점 탭 진입 시 idempotent 호출 — rev 체크 후 캐시 미스 시만 once() fetch
+    let _gacRevAttached = false;
+    window._ensureGacLive = function() {
+        if(window._isTeacherSession || _gacRevAttached) return;
+        _gacRevAttached = true;
+        const _normalize = v => {
+            if(v && !Array.isArray(v) && typeof v === 'object') return Object.values(v).filter(Boolean);
+            return Array.isArray(v) ? v.filter(Boolean) : [];
+        };
+        let _hasCache = !!localStorage.getItem('_gac_v');
+        let _knownRev = localStorage.getItem('_gac_rev') || '';
+        dbRef.child('cfg/gacRev').on('value', rs => {
+            const rv = rs.val();
+            const rvStr = (rv == null) ? '' : String(rv);
+            if(_hasCache && rvStr === _knownRev) return; // 캐시 일치 — fetch 생략
+            dbRef.child('gac').once('value').then(s2 => {
+                const arr = _normalize(s2.val());
+                if(arr.length) db.gac = arr;
+                try { localStorage.setItem('_gac_v', JSON.stringify(db.gac)); } catch(_){}
+                try { localStorage.setItem('_gac_rev', rvStr); } catch(_){}
+                _knownRev = rvStr;
+                _hasCache = true;
+                if(_splitInitialDone) _splitFire();
+            }).catch(()=>{});
+        });
+    };
+
     // 큰 path를 child_* 이벤트로 변환 — 변경 시 해당 child만 다운로드 (전체 path 아님)
     function _attachChildLiveListener(p) {
         // [B+G] 학생 + petSkins: 캐시-우선 경로로 우회 (초기 once 생략)
@@ -2928,6 +3203,10 @@ let _renderLock = false; // 재진입 방지
         // [ITM-CACHE] 학생 + itm: localStorage 캐시-우선 경로로 우회 (초기 once 생략)
         if(p === 'itm' && !window._isTeacherSession) {
             return _attachItmStudentCached();
+        }
+        // [GAC-CACHE] 학생 + gac: localStorage 캐시-우선 경로로 우회 (초기 once 생략)
+        if(p === 'gac' && !window._isTeacherSession) {
+            return _attachGacStudentCached();
         }
         const ref = dbRef.child(p);
         // 초기 fetch — 한 번에 전체 받기
@@ -4309,8 +4588,23 @@ let _renderLock = false; // 재진입 방지
     window._attachReqCntListener = function(){
         if(!_useSplit || window._reqCntAttached) return;
         window._reqCntAttached = true;
+        // localStorage 캐시 즉시 복원 — 페이지 새로고침 시 Firebase round-trip 전에 배지 표시
+        const _cacheKeys = new Set(); // 캐시에서 복원된 키 목록 (고스트 키 정리용)
+        try {
+            const _cached = localStorage.getItem('_reqCntMapCache');
+            if(_cached) {
+                const _parsed = JSON.parse(_cached);
+                if(_parsed && typeof _parsed === 'object') {
+                    Object.assign(window._reqCntMap, _parsed);
+                    Object.keys(_parsed).forEach(k => _cacheKeys.add(k));
+                    if(typeof updateMenuBadges === 'function') updateMenuBadges();
+                }
+            }
+        } catch(_){}
         const ref = dbRef.child('reqCnt');
         const _onReqCntChange = () => {
+            // 변경 시 localStorage 갱신 (다음 새로고침에서 즉시 복원용)
+            try { localStorage.setItem('_reqCntMapCache', JSON.stringify(window._reqCntMap)); } catch(_){}
             if(typeof updateMenuBadges === 'function') updateMenuBadges();
             // t_set 학생별 모드: 이름 그리드 갱신 (reqCntMap 기반 — 추가 fetch 없음)
             if(window._mgrOpen === 'stu' && !document.getElementById('t_set')?.classList.contains('hidden')) {
@@ -4318,7 +4612,9 @@ let _renderLock = false; // 재진입 방지
             }
             // reqCnt 변경 시 fetch 없음 — 탭 클릭 시에만 fetch (트래픽 절감)
         };
+        const _fbConfirmedKeys = new Set(); // Firebase child_added로 확인된 키
         const apply = snap => {
+            _fbConfirmedKeys.add(snap.key);
             window._reqCntMap[snap.key] = snap.val() || {};
             _onReqCntChange();
         };
@@ -4328,6 +4624,23 @@ let _renderLock = false; // 재진입 방지
             delete window._reqCntMap[snap.key];
             _onReqCntChange();
         });
+        // 🛡️ 고스트 키 정리: 3초 후 Firebase가 확인하지 않은 캐시 키 제거
+        // (Firebase는 child_added를 모든 기존 키에 대해 동기적으로 전달 — 3초면 충분)
+        if(_cacheKeys.size > 0) {
+            setTimeout(() => {
+                let _cleaned = false;
+                _cacheKeys.forEach(k => {
+                    if(!_fbConfirmedKeys.has(k) && k in window._reqCntMap) {
+                        delete window._reqCntMap[k];
+                        _cleaned = true;
+                    }
+                });
+                if(_cleaned) {
+                    if(typeof updateMenuBadges === 'function') updateMenuBadges();
+                    try { localStorage.setItem('_reqCntMapCache', JSON.stringify(window._reqCntMap)); } catch(_){}
+                }
+            }, 3000);
+        }
     };
     // 1회용 마이그레이션: 콘솔에서 window._rebuildRank() 호출 — /rank 전체 재계산
     window._rebuildRank = function(){
@@ -5528,9 +5841,9 @@ let _renderLock = false; // 재진입 방지
     // ── 월요 쿠키 체크 (교사 측) ──────────────────────────────────────────────
     // "월요쿠키" 펫 스킬 보유 학생에게 월요일마다 잠금 아이템 지급 → 주중 미션 후 자동 요청
     window._checkMondayCookie = async function() {
-        console.log('[월요쿠키] 함수 진입 — teacherLogged:', localStorage.getItem('teacherLogged'), '요일:', new Date().getDay());
+        console.log('[월요쿠키] 함수 진입 — teacherLogged:', localStorage.getItem('teacherLogged'), '요일:', window._getTestDate().getDay(), window._debugDate?'(시뮬:'+window._debugDate+')':'');
         if(localStorage.getItem('teacherLogged') !== '1') { console.log('[월요쿠키] 교사 아님 → 종료'); return; }
-        const today = new Date();
+        const today = window._getTestDate();
         if(today.getDay() !== 1) { console.log('[월요쿠키] 월요일 아님('+today.getDay()+') → 종료'); return; }
         const monday = today.toLocaleDateString('sv-SE');
         // db.bdg 미로드 시 lazy fetch
@@ -5595,7 +5908,17 @@ let _renderLock = false; // 재진입 방지
             changed = true;
         });
         console.log('[월요쿠키] 완료 — changed:', changed);
-        if(changed) try { window._renderCookiePending && window._renderCookiePending(); } catch(_){}
+        if(changed) {
+            // lastGrantDate 갱신 → executePetSkillCouponGrant 중복 지급 방지
+            const _mondayBdgIdx = Array.isArray(db.bdg)
+                ? db.bdg.indexOf(mondayBdg)
+                : Object.keys(db.bdg||{}).find(k => db.bdg[k] === mondayBdg);
+            if(_mondayBdgIdx != null && _mondayBdgIdx !== -1 && mondayBdg.coupon) {
+                mondayBdg.coupon.lastGrantDate = monday;
+                try { dbRef.child(`bdg/${_mondayBdgIdx}/coupon/lastGrantDate`).set(monday); } catch(e){}
+            }
+            try { window._renderCookiePending && window._renderCookiePending(); } catch(_){}
+        }
     };
 
     // ── 배너 UI (학생) ────────────────────────────────────────────────────────
@@ -5745,6 +6068,112 @@ let _renderLock = false; // 재진입 방지
         showToast(db.cfg.grantPaused ? '⏸️ 자동지급을 일시정지했습니다.' : '▶ 자동지급을 재개했습니다.');
     };
 
+    // 학년도별 법정공휴일 DB (3/1~다음해 2/28)
+    window._HOL_BY_SY = {
+        2025: [ // 2025.3.1~2026.2.28
+            {year:2025,month:3,date:1,content:'삼일절'},{year:2025,month:3,date:3,content:'삼일절 대체'},
+            {year:2025,month:5,date:1,content:'근로자의 날'},{year:2025,month:5,date:5,content:'어린이날'},
+            {year:2025,month:5,date:6,content:'어린이날 대체'},{year:2025,month:6,date:6,content:'현충일'},
+            {year:2025,month:8,date:15,content:'광복절'},
+            {year:2025,month:10,date:3,content:'개천절'},{year:2025,month:10,date:5,content:'추석 전날'},
+            {year:2025,month:10,date:6,content:'추석'},{year:2025,month:10,date:7,content:'추석 다음날'},
+            {year:2025,month:10,date:8,content:'추석 대체'},{year:2025,month:10,date:9,content:'한글날'},
+            {year:2025,month:12,date:25,content:'성탄절'},
+            {year:2026,month:1,date:1,content:'새해'},{year:2026,month:2,date:16,content:'설날 전날'},
+            {year:2026,month:2,date:17,content:'설날'},{year:2026,month:2,date:18,content:'설날 다음날'},
+        ],
+        2026: [ // 2026.3.1~2027.2.28
+            {year:2026,month:3,date:1,content:'삼일절'},{year:2026,month:3,date:2,content:'삼일절 대체'},
+            {year:2026,month:5,date:1,content:'근로자의 날'},{year:2026,month:5,date:5,content:'어린이날'},
+            {year:2026,month:5,date:24,content:'석가탄신일'},{year:2026,month:5,date:25,content:'석가탄신일 대체'},
+            {year:2026,month:6,date:3,content:'지방선거'},{year:2026,month:6,date:6,content:'현충일'},
+            {year:2026,month:8,date:15,content:'광복절'},{year:2026,month:8,date:17,content:'광복절 대체'},
+            {year:2026,month:9,date:24,content:'추석 전날'},{year:2026,month:9,date:25,content:'추석'},
+            {year:2026,month:9,date:26,content:'추석 다음날'},{year:2026,month:9,date:28,content:'추석 대체'},
+            {year:2026,month:10,date:3,content:'개천절'},{year:2026,month:10,date:5,content:'개천절 대체'},
+            {year:2026,month:10,date:9,content:'한글날'},{year:2026,month:12,date:25,content:'성탄절'},
+            {year:2027,month:1,date:1,content:'새해'},{year:2027,month:2,date:6,content:'설날 전전날'},
+            {year:2027,month:2,date:7,content:'설날 전날'},{year:2027,month:2,date:8,content:'설날'},
+            {year:2027,month:2,date:9,content:'설날 다음날'},{year:2027,month:2,date:10,content:'설날 대체'},
+        ],
+    };
+
+    // 학년도 범위 헬퍼 (3/1~다음해 2/말)
+    window._getSYRange = (sy) => {
+        const febEnd = new Date(sy+1, 2, 0).getDate(); // 다음해 2월 마지막 날
+        return {start:`${sy}-03-01`, end:`${sy+1}-02-${String(febEnd).padStart(2,'0')}`};
+    };
+    window._dateInSY = (h, sy) => {
+        if(!h.year) return false;
+        const ds = `${h.year}-${String(h.month).padStart(2,'0')}-${String(h.date).padStart(2,'0')}`;
+        const {start, end} = window._getSYRange(sy);
+        return ds >= start && ds <= end;
+    };
+
+    window.showHolidayMgr = function(selSY) {
+        if(!db.cfg) db.cfg = {};
+        if(!Array.isArray(db.cfg.holidays)) db.cfg.holidays = [];
+        // 현재 학년도 (3월 이전이면 전년도)
+        const _now = new Date();
+        const _curSY = _now.getMonth() >= 2 ? _now.getFullYear() : _now.getFullYear() - 1;
+        const _sy = selSY || _curSY;
+        const {start: _syStart, end: _syEnd} = window._getSYRange(_sy);
+        const _syHols = db.cfg.holidays.filter(h => window._dateInSY(h, _sy));
+        const _fixedForSY = window._HOL_BY_SY[_sy] || [];
+
+        const _holListHtml = () => {
+            if(!_syHols.length) return '<div style="color:#9E9E9E;font-size:13px;padding:8px 0;">이 학년도에 등록된 공휴일이 없습니다.</div>';
+            return _syHols.map(h => {
+                const _gi = db.cfg.holidays.indexOf(h);
+                const _ds = `${h.year}/${h.month}/${h.date}`;
+                return `<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:#F3E5F5;margin-bottom:5px;">
+                    <span style="font-size:13px;flex:1;">🗓️ <b>${_ds}</b>${h.content?` — ${h.content}`:''}</span>
+                    <button onclick="db.cfg.holidays.splice(${_gi},1);try{dbRef.child('cfg/holidays').set(db.cfg.holidays);}catch(e){}window.showHolidayMgr(${_sy});" style="background:#EF5350;color:white;border:none;border-radius:6px;padding:3px 8px;font-family:'Jua';font-size:12px;cursor:pointer;">삭제</button>
+                </div>`;
+            }).join('');
+        };
+
+        const _syOpts = [2024,2025,2026,2027].map(y =>
+            `<option value="${y}" ${y===_sy?'selected':''}>${y}학년도 (${y}.3.1~${y+1}.2.28)</option>`
+        ).join('');
+
+        document.getElementById('_holidayMgrModal')?.remove();
+        document.body.insertAdjacentHTML('beforeend', `<div id="_holidayMgrModal" class="modal-overlay" onclick="if(event.target===this)this.remove()">
+            <div class="modal-window" style="width:460px;max-height:85vh;display:flex;flex-direction:column;">
+                <button class="modal-close-btn" onclick="document.getElementById('_holidayMgrModal').remove()">X</button>
+                <div class="modal-inner" style="overflow-y:auto;flex:1;">
+                    <h3 style="margin-top:0;">🗓️ 공휴일 설정</h3>
+                    <div style="font-size:12px;color:#9E9E9E;margin-bottom:10px;">법정공휴일은 코드에 자동 내장돼 별도 버튼 없이 항상 적용됩니다.<br>재량휴업일 등 추가 공휴일만 여기서 관리하세요.</div>
+
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <label style="font-size:13px;font-weight:bold;color:#37474F;white-space:nowrap;">학년도</label>
+                        <select onchange="window.showHolidayMgr(parseInt(this.value))" style="flex:1;padding:6px 8px;border:1.5px solid #AB47BC;border-radius:8px;font-family:'Jua';font-size:13px;">${_syOpts}</select>
+                    </div>
+
+                    <div style="font-size:12px;color:#7B1FA2;background:#F3E5F5;border-radius:8px;padding:7px 10px;margin-bottom:10px;">
+                        📌 내장 법정공휴일 <b>${_fixedForSY.length}개</b> (${_syStart} ~ ${_syEnd}) — 자동 적용 중
+                    </div>
+
+                    <div style="font-size:13px;font-weight:bold;color:#37474F;margin-bottom:6px;">추가 공휴일 (${_syHols.length}개)</div>
+                    <div id="_holList">${_holListHtml()}</div>
+
+                    <hr style="border:none;border-top:1px dashed #EEE;margin:10px 0;">
+                    <div style="font-size:13px;font-weight:bold;color:#6A1B9A;margin-bottom:8px;">+ 추가 공휴일 입력</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                        <input id="_holYear" type="number" value="${_sy}" style="width:80px;padding:6px;border:1px solid #DDD;border-radius:8px;font-family:'Jua';font-size:13px;" placeholder="연도">
+                        <input id="_holMonth" type="number" placeholder="월" min="1" max="12" style="width:55px;padding:6px;border:1px solid #DDD;border-radius:8px;font-family:'Jua';font-size:13px;">
+                        <input id="_holDate" type="number" placeholder="일" min="1" max="31" style="width:55px;padding:6px;border:1px solid #DDD;border-radius:8px;font-family:'Jua';font-size:13px;">
+                        <input id="_holContent" type="text" placeholder="이름(예: 재량휴업일)" style="flex:1;min-width:100px;padding:6px;border:1px solid #DDD;border-radius:8px;font-family:'Jua';font-size:13px;">
+                    </div>
+                    <button onclick="(function(){const y=parseInt(document.getElementById('_holYear').value)||${_sy};const m=parseInt(document.getElementById('_holMonth').value);const d2=parseInt(document.getElementById('_holDate').value);const c=document.getElementById('_holContent').value.trim();if(!m||!d2)return alert('월, 일을 입력하세요.');if(!db.cfg)db.cfg={};if(!Array.isArray(db.cfg.holidays))db.cfg.holidays=[];db.cfg.holidays.push({year:y,month:m,date:d2,...(c?{content:c}:{})});try{dbRef.child('cfg/holidays').set(db.cfg.holidays);}catch(e){}window.showHolidayMgr(${_sy});})()" style="background:#8E24AA;color:white;border:none;border-radius:8px;padding:6px 16px;font-family:'Jua';font-size:13px;cursor:pointer;margin-bottom:12px;">추가</button>
+
+                    <hr style="border:none;border-top:1px dashed #EEE;margin:10px 0;">
+                    <button onclick="(function(){const _f=window._HOL_BY_SY[${_sy}]||[];if(!_f.length)return alert('${_sy}학년도 데이터가 없습니다.');if(!confirm('📥 '+_f.length+'개 법정공휴일을 db에도 등록합니다\\n(이미 자동 적용 중이며, 목록 표시용입니다)\\n${_sy}학년도 기존 항목은 삭제됩니다. 계속할까요?'))return;db.cfg.holidays=db.cfg.holidays.filter(h=>!window._dateInSY(h,${_sy}));db.cfg.holidays.push(..._f);try{dbRef.child('cfg/holidays').set(db.cfg.holidays);}catch(e){}window.showHolidayMgr(${_sy});})()" style="background:#546E7A;color:white;border:none;border-radius:8px;padding:7px 14px;font-family:'Jua';font-size:13px;cursor:pointer;width:100%;">📋 ${_sy}학년도 법정공휴일 목록에 등록 (표시용)</button>
+                </div>
+            </div>
+        </div>`);
+    };
+
     window.showVacationMgr = function() {
         const vac = (db.cfg && db.cfg.vacationPeriods) || [];
         const listHtml = vac.length
@@ -5822,7 +6251,7 @@ let _renderLock = false; // 재진입 방지
             return;
         }
         // 🏖️ 방학 기간 체크
-        const _todayVac = new Date().toLocaleDateString('sv-SE');
+        const _todayVac = window._getTestDate().toLocaleDateString('sv-SE');
         const _vacList = (db.cfg && db.cfg.vacationPeriods) || [];
         const _curVac = _vacList.find(v => v.start <= _todayVac && _todayVac <= v.end);
         if(_curVac) {
@@ -5839,9 +6268,9 @@ let _renderLock = false; // 재진입 방지
         const bdgList = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg||{});
         const stuList = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         const itmList = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
-        const today = new Date();
+        const today = window._getTestDate();
         const todayStr = today.toLocaleDateString('sv-SE');
-        console.log('[펫스킬] bdg:', bdgList.length, '개, stu:', stuList.filter(Boolean).length, '명, itm:', itmList.length, '개');
+        console.log('[펫스킬] bdg:', bdgList.length, '개, stu:', stuList.filter(Boolean).length, '명, itm:', itmList.length, '개', window._debugDate?'(시뮬날짜:'+todayStr+')':'');
 
         // 데이터 복구: avtOwned에 있는 펫의 setSkillId가 earnedBdg에 없으면 자동 추가 후 저장
         const _cdMig0 = !!(db.cfg && db.cfg.stuKeyCdMigrated);
@@ -5956,10 +6385,23 @@ let _renderLock = false; // 재진입 방지
                     _coup.mode = 'lockMission';
                     try { dbRef.child(`bdg/${bi}/coupon/mode`).set('lockMission'); } catch(e){}
                 }
+                // 이미 이번 주 잠금 아이템 지급됐으면 중복 방지 (periodStart 기준 — 이전 주 아이템은 허용)
+                const _alreadyLockedGrant = s.inv.some(it => it && it.locked && it.skillId === _bdgItem.id && it.st === 'active' && it.periodStart === todayStr);
+                if(_alreadyLockedGrant) {
+                    console.log(`[펫스킬] 이미 활성 잠금 아이템 있음, 중복 지급 스킵:`, s.nm||s.cd);
+                    grantedBiSet.add(bi);
+                    return;
+                }
                 // [잠금 미션] 잠금 상태로 push — 학생이 매일 점검해야 해금
                 const _lockDays = _coup.lockDays || null;
                 const _weeks = _coup.weeks || 1;
                 const _periodEnd = _lockDays ? _addWeekdaysN(todayStr, _lockDays) : _addBusinessWeeks(todayStr, _weeks);
+                // 공휴일 절반 이상이면 미지급
+                const _hChkE = window._countPeriodHolidays(todayStr, _periodEnd);
+                if(_hChkE.total > 0 && _hChkE.holidays * 2 >= _hChkE.total) {
+                    console.log(`[펫스킬] 공휴일 절반 이상 → 미지급: ${s.nm||s.cd} ${_hChkE.holidays}/${_hChkE.total}일`);
+                    return;
+                }
                 const _newItem = {
                     n: couponDef.n,
                     i: couponDef.i||'',
@@ -6171,7 +6613,7 @@ let _renderLock = false; // 재진입 방지
     };
 
     function _autoGrantOnLogin() {
-        const _todayStr = new Date().toLocaleDateString('sv-SE');
+        const _todayStr = window._getTestDate().toLocaleDateString('sv-SE');
         // 중복 방지: 오늘 이미 자동실행했으면 스킵
         if(db.cfg && db.cfg._autoGrantLastRun === _todayStr) return;
         // 일시정지 / 방학 체크 (조용히 스킵)
@@ -6182,7 +6624,7 @@ let _renderLock = false; // 재진입 방지
         // db.bdg가 lazy path라 아직 로드 안 됐을 수 있음 — 먼저 확보 후 진행
         const _runAfterBdgLoad = function() {
             const _bdgList = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg||{});
-            const _today = new Date();
+            const _today = window._getTestDate();
             const _hasTarget = _bdgList.some(b => {
                 const c = b && b.coupon;
                 if(!c || !(c.mode === 'lockMission' || c.lockDays || c.weeks)) return false;
@@ -6313,7 +6755,7 @@ let _renderLock = false; // 재진입 방지
 
     window._checkLockMissionUnlock = function() {
         if(!me || !Array.isArray(me.inv)) return;
-        const today = new Date().toLocaleDateString('sv-SE');
+        const today = window._getTestDate().toLocaleDateString('sv-SE');
         let changed = false;
         me.inv.forEach((it) => {
             if(!it || !it.locked || it.failedFlag) return;
@@ -6364,11 +6806,12 @@ let _renderLock = false; // 재진입 방지
         if(!Array.isArray(me.inv)) me.inv = me.inv ? Object.values(me.inv).filter(Boolean) : [];
         const item = me.inv[invIdx];
         if(!item || !item.locked) return;
-        const today = new Date().toLocaleDateString('sv-SE');
+        const today = window._getTestDate().toLocaleDateString('sv-SE');
         const periodStart = item.periodStart, periodEnd = item.periodEnd;
         const checkedDates = Array.isArray(item.checkedDates) ? item.checkedDates : [];
 
         // 기간 영업일(월~금) 목록
+        const _holsModal = window._getHolidaySet();
         const days = [];
         const d = new Date(periodStart + 'T12:00:00');
         const endD = new Date(periodEnd + 'T12:00:00');
@@ -6382,6 +6825,7 @@ let _renderLock = false; // 재진입 방지
 
         const cellsHtml = days.map(dt => {
             const isChecked = checkedDates.includes(dt);
+            const isHoliday = _holsModal.has(dt);
             const isFuture = dt > today;
             const isToday = dt === today;
             const _dObj = new Date(dt + 'T12:00:00');
@@ -6389,10 +6833,11 @@ let _renderLock = false; // 재진입 방지
             const _dow = ['일','월','화','수','목','금','토'][_dObj.getDay()];
             let bg, color, content;
             if(isChecked) { bg = '#43A047'; color = 'white'; content = `<div style="font-size:24px;">✅</div><div style="font-size:11px;">${_label} (${_dow})</div>`; }
+            else if(isHoliday) { bg = '#F5F5F5'; color = '#BDBDBD'; content = `<div style="font-size:18px;">🚩</div><div style="font-size:11px;">${_label} (${_dow})</div>`; }
             else if(isFuture) { bg = '#F5F5F5'; color = '#BDBDBD'; content = `<div style="font-size:18px;">⏳</div><div style="font-size:11px;">${_label} (${_dow})</div>`; }
             else { bg = isToday ? '#FFF3E0' : '#FFEBEE'; color = isToday ? '#E65100' : '#C62828'; content = `<div style="font-size:18px;">${isToday?'🔥':'📅'}</div><div style="font-size:11px;font-weight:bold;">${_label} (${_dow})</div>`; }
-            // 통과한 날짜 → 취소 확인 팝업 / 미통과+오늘이하 → 통과/실패 팝업
-            const _clickable = !isFuture;
+            // 공휴일·미래는 클릭 불가
+            const _clickable = !isFuture && !isHoliday;
             const _onclick = _clickable
                 ? (isChecked
                     ? `window._lockMissionUndoConfirm(${invIdx}, '${dt}')`
@@ -6402,7 +6847,8 @@ let _renderLock = false; // 재진입 방지
             return `<div onclick="${_onclick}" style="background:${bg};color:${color};border-radius:12px;padding:14px 8px;text-align:center;${_cursor}transition:transform .15s;" ${_clickable?'onmouseenter="this.style.transform=\'scale(1.05)\'" onmouseleave="this.style.transform=\'\'"':''}>${content}</div>`;
         }).join('');
 
-        const remainCount = days.filter(dt => dt <= today && !checkedDates.includes(dt)).length;
+        // 남은 일수: 공휴일 제외
+        const remainCount = days.filter(dt => dt <= today && !checkedDates.includes(dt) && !_holsModal.has(dt)).length;
 
         // 펫 스킬(배지) 설명 가져오기
         const _bdgList = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg||{});
@@ -6533,9 +6979,11 @@ let _renderLock = false; // 재진입 방지
         let _totalDays = 0;
         if(_pStart && _pEnd) {
             const _td = new Date(_pStart + 'T12:00:00'), _te = new Date(_pEnd + 'T12:00:00');
-            while(_td <= _te) { if(_td.getDay() >= 1 && _td.getDay() <= 5) _totalDays++; _td.setDate(_td.getDate()+1); }
+            const _holsPass = window._getHolidaySet();
+            while(_td <= _te) { const _k=_td.toISOString().slice(0,10); if(_td.getDay()>=1&&_td.getDay()<=5&&!_holsPass.has(_k)) _totalDays++; _td.setDate(_td.getDate()+1); }
         }
-        const _allDone = _totalDays > 0 && item.checkedDates.length >= _totalDays;
+        // _totalDays=0(전체 공휴일)이면 바로 완료 처리
+        const _allDone = _totalDays === 0 || item.checkedDates.length >= _totalDays;
         if(_allDone) {
             item.locked = false;
             item.unlockedAt = Date.now();
@@ -7789,6 +8237,35 @@ let _renderLock = false; // 재진입 방지
                         } catch(_){}
                     }
                 }
+                // gac 변경 시 cfg/gacRev 갱신 — 학생 캐시 무효화 트리거
+                // 배포 후 gac가 있는데 gacRev 미설정인 경우도 초기값 기록 (1회성)
+                // 'gac' 변경 → 무조건 bump.
+                // gacRev 초기화 → Firebase 초기 로드 완료(_splitInitialDone) 후에만:
+                //   로드 전엔 db.gac가 기본값 플레이스홀더([{n:'랜덤',...}])이므로
+                //   그 상태로 gacRev를 기록하면 모든 학생 캐시가 불필요하게 무효화됨
+                const _needGacRevBump = ('gac' in payload) ||
+                    (_splitInitialDone && db.gac && db.gac.length && db.cfg && !db.cfg.gacRev);
+                if(_needGacRevBump) {
+                    const _gacRev = Date.now();
+                    if(!db.cfg) db.cfg = {};
+                    db.cfg.gacRev = _gacRev;
+                    if('cfg' in payload) {
+                        payload.cfg = { ...payload.cfg, gacRev: _gacRev };
+                        try {
+                            const _h = JSON.stringify(payload.cfg);
+                            if(window._lastSentHash) window._lastSentHash['cfg'] = _h;
+                            if(window._lastSavedHash) window._lastSavedHash['cfg'] = _h;
+                        } catch(_){}
+                    } else {
+                        payload['cfg/gacRev'] = _gacRev;
+                        try {
+                            const _cfgSnap = { ...db.cfg }; delete _cfgSnap.plz;
+                            const _h = JSON.stringify(_cfgSnap);
+                            if(window._lastSentHash) window._lastSentHash['cfg'] = _h;
+                            if(window._lastSavedHash) window._lastSavedHash['cfg'] = _h;
+                        } catch(_){}
+                    }
+                }
                 // itm per-item write — race 방지: 각 아이템을 itm/{id} 독립 경로로 write
                 if(!window._itmSentHash) window._itmSentHash = {};
                 if(!window._deletedItmIds) window._deletedItmIds = new Set();
@@ -7881,6 +8358,9 @@ let _renderLock = false; // 재진입 방지
                     if(!window._lastSavedHash) window._lastSavedHash = {};
                     let _bumpFailed = false;
                     _cachePaths.forEach(p => {
+                        // lazy 경로(avt/bdg/tit/petDef)가 아직 로드되지 않았으면 cacheVer bump 건너뜀
+                        // (미로드 상태에서 bump하면 학생이 변경 없는 탭 진입 시도 불필요하게 재fetch함)
+                        if(LAZY_PATHS.has(p) && !(window._lazyLoaded && window._lazyLoaded.has(p))) return;
                         try {
                             const cur = JSON.stringify(db[p] == null ? null : db[p]);
                             if(window._lastSavedHash[p] !== cur) {
@@ -7889,9 +8369,12 @@ let _renderLock = false; // 재진입 방지
                             }
                         } catch(_) { _bumpFailed = true; }
                     });
-                    // 비교 실패 시 안전을 위해 모든 path bump (현재 동작 유지 — fallback)
+                    // 비교 실패 시 안전을 위해 로드된 path만 bump (미로드 lazy 경로는 제외 유지)
                     if(_bumpFailed) {
-                        _cachePaths.forEach(p => { payload['cacheVer/' + p] = _now; });
+                        _cachePaths.forEach(p => {
+                            if(LAZY_PATHS.has(p) && !(window._lazyLoaded && window._lazyLoaded.has(p))) return;
+                            payload['cacheVer/' + p] = _now;
+                        });
                     }
                 }
                 // 📋 write 명세 로깅 (포렌식용)
@@ -9238,10 +9721,6 @@ let _renderLock = false; // 재진입 방지
         } else {
             try { window._detachSplitAucFullListener && window._detachSplitAucFullListener(); } catch(_){}
         }
-        // 교사 게임 관찰 구독 — t_plz 이탈 시 cleanup
-        if(id !== 't_plz') {
-            try { window._detachTeacherGameObserver && window._detachTeacherGameObserver(); } catch(_){}
-        }
         if(_stuDepTabs.includes(id) && window._ensureStuLoaded) {
             try {
                 if(!window._stuLoaded) window._showStuLoadingOverlay && window._showStuLoadingOverlay();
@@ -9399,7 +9878,7 @@ let _renderLock = false; // 재진입 방지
             try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
         }
 
-        if(id==='s_sh') { try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){} try { window._ensureItmLive && window._ensureItmLive(); } catch(_){} rSh(); }
+        if(id==='s_sh') { try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){} try { window._ensureItmLive && window._ensureItmLive(); } catch(_){} try { window._ensureGacLive && window._ensureGacLive(); } catch(_){} rSh(); }
         if(id==='s_gababo') { try { window._ensureEventCfg && _ensureEventCfg('gababoEvent').then(()=>rGababoS()); } catch(_) { rGababoS(); } }
         if(id==='s_fashion') { try { window._ensureEventCfg && _ensureEventCfg('fashionShow').then(()=>{ try { _renderStudentFashion(); } catch(_){} }); } catch(_){} }
         if(id==='s_tbank') { try { window._ensureEventCfg && _ensureEventCfg('timeBank').then(()=>{ try { _renderStudentTimeBank(); } catch(_){} }); } catch(_){} }
@@ -10431,7 +10910,7 @@ let _renderLock = false; // 재진입 방지
             const shopLogs = (Array.isArray(raw) ? raw : raw ? Object.values(raw) : [])
                 .filter(Boolean).slice().reverse().slice(0, 50);
             const shopHtml = shopLogs.length ? shopLogs.map(e => {
-                const curEmoji = {cn:'🍯',cd:'🍭',kc:'🍪'}[e.cur||'cn']||'🍪';
+                const curEmoji = {cn:'🍭',tk:'🧺',kc:'🍪',co:'🍯'}[e.cur||'kc']||'🍪';
                 return `<div style="border-bottom:1px solid #F5F5F5;padding:5px 0;font-size:12px;">
                     <span style="color:#aaa;margin-right:6px;">${fmt(e.ts)}</span>
                     <span style="color:#E65100;">-${e.cost||0}${curEmoji}</span> · ${e.type||''} · <b>${e.name||''}</b>
@@ -13829,57 +14308,86 @@ window.appU = function(y, si, k) {
                 console.warn('[givMulti] titNotify write 스킵 fbKey=', _fbk, 'titNotify=', s.titNotify);
             }
         });
-        // bdg 지급 시 쿠폰 자동 즉시 지급 (_svStu 이전에 s.inv/col에 추가해야 함 — race condition 방지)
+        // bdg/avt(pet) 지급 시 쿠폰 자동 즉시 지급 (_svStu 이전에 s.inv/col에 추가해야 함 — race condition 방지)
         const _bdgListC2 = Array.isArray(db.bdg)?db.bdg:Object.values(db.bdg||{});
-        const _givenBdgIds = items.filter(it=>it.type==='bdg').map(it=>_bdgListC2[it.idx]?.id).filter(Boolean);
-        let _couponGranted = false;
+        // bdg 타입: 직접 지급한 배지 ID + avt(pet) 타입: setSkillId로 연결된 배지 ID 모두 수집
+        const _givenBdgIds = [
+            ...items.filter(it=>it.type==='bdg').map(it=>_bdgListC2[it.idx]?.id),
+            ...items.filter(it=>it.type==='avt').map(it=>(db.avt||[])[it.idx]?.setSkillId)
+        ].filter(Boolean);
+        let _couponGranted = false, _holidaySkipCount = 0;
         if(_givenBdgIds.length) {
-            const _bdgWithCoupon = _bdgListC2.filter(b=>b&&_givenBdgIds.includes(b.id)&&b.coupon&&b.coupon.item);
+            // 월요쿠키(pseudo-item)도 포함: coupon.item 없어도 lockMission이면 허용
+            const _bdgWithCoupon = _bdgListC2.filter(b => {
+                if(!b || !_givenBdgIds.includes(b.id) || !b.coupon) return false;
+                const _isMCG2 = b.name && b.name.replace(/\s/g,'') === '월요쿠키';
+                return b.coupon.item || (_isMCG2 && (b.coupon.mode === 'lockMission' || b.coupon.lockDays || b.coupon.weeks));
+            });
             if(_bdgWithCoupon.length) {
                 const _itmListC = Array.isArray(db.itm)?db.itm:Object.values(db.itm||{});
-                const _todayStr = new Date().toLocaleDateString('sv-SE');
+                const _todayStr = window._getTestDate().toLocaleDateString('sv-SE'); // 시뮬 날짜 적용
                 _bdgWithCoupon.forEach(b => {
-                    const _couponDef = _itmListC.find(it=>it&&it.n===b.coupon.item);
+                    const _isMCG2 = b.name && b.name.replace(/\s/g,'') === '월요쿠키';
+                    const _couponDef = _isMCG2 ? {n:'월요 쿠키',i:'🍪',g:'C'} : _itmListC.find(it=>it&&it.n===b.coupon.item);
                     if(!_couponDef) return;
                     const _cp = b.coupon;
                     const _isLockC = _cp.mode === 'lockMission' || _cp.lockDays || _cp.weeks;
                     // 잠금 아이템은 지급 요일에만 즉시 지급 — 다른 요일에 배지를 받으면 다음 지급일에 자동지급이 처리
                     if(_isLockC) {
-                        const _todayDow = new Date().getDay();
+                        const _todayDow = window._getTestDate().getDay(); // 시뮬 날짜 적용
                         const _grantDow = _cp.dayOfWeek != null ? _cp.dayOfWeek : 1;
                         if(_todayDow !== _grantDow) return; // 지급 요일 아님 → 스킵
                     }
                     // 잠금 미션 기간 종료일 계산
                     const _addBWC = (s, w) => { const d=new Date(s+'T12:00:00'); d.setDate(d.getDate()+(w*7-1)); return d.toISOString().slice(0,10); };
                     const _addWDC = (s, n) => { const d=new Date(s+'T12:00:00'); let c=0; while(c<n-1){d.setDate(d.getDate()+1);if(d.getDay()>=1&&d.getDay()<=5)c++;} return d.toISOString().slice(0,10); };
+                    // 공휴일 체크는 배지 단위로 1회만 (모든 학생 동일한 기간)
+                    const _ldC = _cp.lockDays||null, _wkC = _cp.weeks||1;
+                    const _peC = _ldC ? _addWDC(_todayStr,_ldC) : _addBWC(_todayStr,_wkC);
+                    const _hChkC = _isLockC ? window._countPeriodHolidays(_todayStr, _peC) : null;
+                    const _holTooMany = _isLockC && _hChkC && _hChkC.total > 0 && _hChkC.holidays * 2 >= _hChkC.total;
+                    if(_holTooMany) {
+                        console.log('[펫스킬] 공휴일 절반 이상 → 전체 학생 미지급:', `${_hChkC.holidays}/${_hChkC.total}일`);
+                        _holidaySkipCount += checked.filter(si => {
+                            const s=stuArr[si]; if(!s) return false;
+                            return (Array.isArray(s.earnedBdg)?s.earnedBdg:Object.values(s.earnedBdg||{})).includes(b.id);
+                        }).length;
+                        return; // 이 배지 전체 스킵
+                    }
                     checked.forEach(si => {
                         const s = stuArr[si]; if(!s) return;
                         const earned = Array.isArray(s.earnedBdg)?s.earnedBdg:Object.values(s.earnedBdg||{});
                         if(!earned.includes(b.id)) return;
                         if(!Array.isArray(s.inv)) s.inv = s.inv?Object.values(s.inv).filter(Boolean):[];
+                        // 이번 주 잠금 아이템 이미 지급됐으면 중복 방지 (periodStart 기준 — 이전 주 아이템은 허용)
+                        if(_isLockC && s.inv.some(it=>it&&it.locked&&it.skillId===b.id&&it.st==='active'&&it.periodStart===_todayStr)) return;
                         if(_isLockC) {
-                            const _ld = _cp.lockDays||null, _wk = _cp.weeks||1;
-                            const _pe = _ld ? _addWDC(_todayStr,_ld) : _addBWC(_todayStr,_wk);
+                            const _ld = _ldC, _wk = _wkC;
+                            const _pe = _peC;
                             s.inv.push({n:_couponDef.n,i:_couponDef.i||'',st:'active',g:_couponDef.g||'C',
                                 locked:true,periodStart:_todayStr,periodEnd:_pe,
                                 ...(_ld?{lockDays:_ld}:{weeks:_wk}),
-                                checkedDates:[],failedFlag:false,skillId:b.id});
+                                checkedDates:[],failedFlag:false,skillId:b.id,
+                                ...(_isMCG2?{type:'cookie_req',needApprove:true}:{})});
                         } else {
                             s.inv.push({n:_couponDef.n,i:_couponDef.i||'',st:'active',g:_couponDef.g||'C'});
                         }
-                        if(!Array.isArray(s.col)) s.col = s.col?Object.values(s.col).filter(Boolean):[];
-                        if(!s.col.includes(_couponDef.n)) s.col.push(_couponDef.n);
+                        if(!_isMCG2) {
+                            if(!Array.isArray(s.col)) s.col = s.col?Object.values(s.col).filter(Boolean):[];
+                            if(!s.col.includes(_couponDef.n)) s.col.push(_couponDef.n);
+                        }
                         _couponGranted = true;
                     });
-                    const bi = _bdgListC2.indexOf(b);
+                    const _bkC = Array.isArray(db.bdg) ? db.bdg.indexOf(b) : Object.keys(db.bdg||{}).find(k=>db.bdg[k]===b);
                     // 수동 지급은 lastGrantDate만 갱신 — grantedWeeks는 건드리지 않음 (자동 지급과 독립)
-                    if(bi>=0&&_bdgListC2[bi].coupon) { _bdgListC2[bi].coupon.lastGrantDate=_todayStr; try{dbRef.child(`bdg/${bi}/coupon/lastGrantDate`).set(_todayStr);}catch(e){} }
+                    if(_bkC!=null&&_bkC!==-1&&_bdgListC2[_bkC]?.coupon) { _bdgListC2[_bkC].coupon.lastGrantDate=_todayStr; try{dbRef.child(`bdg/${_bkC}/coupon/lastGrantDate`).set(_todayStr);}catch(e){} }
                 });
             }
         }
         // 타깃 저장 — 변경된 학생 인덱스만 업데이트 (inv/col 쿠폰 포함 상태로 한번에 저장)
         window._svStu(checked); rAs(); rColT();
         if(_couponGranted) showToast('🎁 펫 스킬 쿠폰 자동 지급 완료!');
+        if(_holidaySkipCount > 0) showToast(`🚩 공휴일 절반 이상 — ${_holidaySkipCount}명 잠금 아이템 미지급`);
         // 지급 기록 (각 아이템별로)
         try {
             const _names = checked.map(si=>(Array.isArray(db.stu)?db.stu:Object.values(db.stu||{}))[si]?.nm).filter(Boolean);
@@ -14207,9 +14715,9 @@ window.appU = function(y, si, k) {
                     const _cDef = _isMC ? { n: '월요 쿠키', i: '🍪', g: 'C' } : _itmAll.find(it => it && it.n === _bc.item);
                     if(_cDef) {
                         if(!Array.isArray(s.inv)) s.inv = s.inv ? Object.values(s.inv).filter(Boolean) : [];
-                        const _alreadyLocked = s.inv.some(it => it && it.locked && it.skillId === b.id && it.st === 'active');
+                        const _gTodayStr = window._getTestDate().toLocaleDateString('sv-SE');
+                        const _alreadyLocked = s.inv.some(it => it && it.locked && it.skillId === b.id && it.st === 'active' && it.periodStart === _gTodayStr);
                         if(!_alreadyLocked) {
-                            const _gTodayStr = new Date().toLocaleDateString('sv-SE');
                             const _lkDays = _bc.lockDays || null;
                             const _lkWeeks = _bc.weeks || 1;
                             const _addWkN = (start, n) => {
@@ -14223,6 +14731,23 @@ window.appU = function(y, si, k) {
                                 return _d.toISOString().slice(0,10);
                             };
                             const _pe = _lkDays ? _addWkN(_gTodayStr, _lkDays) : _addBW(_gTodayStr, _lkWeeks);
+                            // 공휴일 절반 이상이면 미지급 + 안내 모달
+                            const _hChkG = window._countPeriodHolidays(_gTodayStr, _pe);
+                            if(_hChkG.total > 0 && _hChkG.holidays * 2 >= _hChkG.total) {
+                                console.log('[doGiv] 공휴일 절반 이상 → 미지급:', s.nm||s.cd, `${_hChkG.holidays}/${_hChkG.total}일`);
+                                const _hEl = document.createElement('div');
+                                _hEl.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;';
+                                _hEl.onclick = e => { if(e.target===_hEl) _hEl.remove(); };
+                                _hEl.innerHTML = `<div style="background:white;border-radius:24px;padding:32px 28px 24px;width:min(340px,92vw);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);font-family:'Jua';" onclick="event.stopPropagation()">
+                                    <div style="font-size:52px;margin-bottom:8px;">🚩</div>
+                                    <div style="font-size:18px;font-weight:bold;color:#5D4037;margin-bottom:8px;">공휴일이 너무 많아요</div>
+                                    <div style="font-size:14px;color:#888;margin-bottom:6px;">이번 주 영업일 ${_hChkG.total}일 중<br>공휴일이 <b style="color:#E53935;">${_hChkG.holidays}일</b>이라 잠금 아이템을 지급하지 않아요.</div>
+                                    <div style="font-size:12px;color:#BDBDBD;margin-bottom:20px;">(공휴일이 절반 이상인 주는 자동 미지급)</div>
+                                    <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#7B1FA2;color:white;border:none;border-radius:12px;padding:10px 32px;font-family:'Jua';font-size:15px;cursor:pointer;">확인</button>
+                                </div>`;
+                                document.body.appendChild(_hEl);
+                                return;
+                            }
                             s.inv.push({
                                 n: _cDef.n, i: _cDef.i||'', st: 'active', g: _cDef.g||'C',
                                 locked: true, periodStart: _gTodayStr, periodEnd: _pe,
@@ -24359,7 +24884,8 @@ window.addCharRow = function() {
         const dowOpts = [['1','월'],['2','화'],['3','수'],['4','목'],['5','금']].map(([v,l])=>`<option value="${v}" ${String(cp.dayOfWeek||1)===v?'selected':''}>${l}요일</option>`).join('');
         const lastGrant = cp.lastGrantDate ? `마지막 지급: ${cp.lastGrantDate}` : '아직 지급 없음';
         // [잠금 미션] 지급 방식 + 주(weeks)
-        const _mode = cp.mode || 'auto';
+        const _isMondayCookieBdg = (b.name||'').replace(/\s/g,'') === '월요쿠키';
+        const _mode = cp.mode || (_isMondayCookieBdg ? 'lockMission' : 'auto');
         const modeOpts = [['auto','✅ 자동 즉시 지급 (기본)'],['lockMission','🔒 잠금 미션 (매일 자기 점검)']]
             .map(([v,l])=>`<option value="${v}" ${_mode===v?'selected':''}>${l}</option>`).join('');
         // lockDays 또는 weeks → select value 계산
@@ -26390,9 +26916,9 @@ window.addCharRow = function() {
                 dbRef.child('stu/' + _kA).update({ avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: me.shopUsed, inv: me.inv, eq: me.eq, updatedAt: _tsA });
                 // avt-direct가 최신 me.shopUsed를 raw write했으므로 pending delta 소비 (중복 increment 방지)
                 window._shopUsedAtomicDelta = 0;
-                try { const _hA = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_hA) ['avtOwned','displayPets','ownedPets','shopUsed','inv','eq'].forEach(k => { _hA[k] = JSON.stringify(me[k]); }); } catch(_){}
             }
         } catch(e) { console.warn('[avt-direct]', e); }
+        // avt-direct가 쓴 필드를 hash에서 제거 → upMe가 항상 재동기화 (write 실패 시에도 보장)
         try { const _h = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_h) ['avtOwned','displayPets','ownedPets','shopUsed','eq','inv','col'].forEach(k => { delete _h[k]; }); } catch(_){}
         upMe(); updateNameTag(); rChar(); rSh(); rBg(); snd('f');
         // 가드 플래그 해제 — 1초 후 (Firebase write 큐 안정화 시간)
@@ -27933,8 +28459,6 @@ window.addCharRow = function() {
         if(window._renderPlzRoomTabs) window._renderPlzRoomTabs();
         if(window._updateNoticeToggleBtn) window._updateNoticeToggleBtn();
         // 게임 관찰 버튼 초기화
-        try { window._renderTeacherGameBtns && window._renderTeacherGameBtns(); } catch(_){}
-        try { window._renderTeacherGameObserver && window._renderTeacherGameObserver(); } catch(_){}
         const plzCfg = (db.cfg && db.cfg.plz) || {};
         const curBg = plzCfg.bg || 'grass';
         // 공지 textarea 현재값 반영
@@ -28855,78 +29379,6 @@ window.addCharRow = function() {
         });
     }
 
-    // ── 교사 게임 관찰 구독 ──────────────────────────────────────────────
-    // enterPlaza의 전체 게임 구독 대신, 교사가 선택한 게임 state만 경량 구독
-    window._teacherGameSubs   = [];
-    window._teacherGameState  = null;
-    window._teacherGameScores = null;
-    window._teacherGameType   = null;
-
-    window._attachTeacherGameObserver = function(gameType) {
-        window._detachTeacherGameObserver(); // 기존 구독 정리
-        if(!gameType || typeof getPlzRef !== 'function') return;
-        window._teacherGameType = gameType;
-        const plzRef = getPlzRef();
-        const _push = (ref, type, fn) => { ref.on(type, fn); window._teacherGameSubs.push({ ref, type, fn }); };
-        const _onState = s => { window._teacherGameState = s.val(); window._renderTeacherGameObserver(); };
-
-        if(gameType === 'catchMind') {
-            const cmRef = (typeof _catchMindRef === 'function') ? _catchMindRef() : plzRef.child('catchMind');
-            _push(cmRef, 'value', _onState);
-            const scRef = (typeof _catchMindScoresRef === 'function') ? _catchMindScoresRef() : plzRef.child('catchMindScores');
-            _push(scRef, 'value', s => { window._teacherGameScores = s.val(); window._renderTeacherGameObserver(); });
-        } else {
-            // iceTag/hideSeek/oxQuiz/mafia/liar/bombGame/omok — state ref만 구독 (strokes·역할 제외)
-            const refMap = { iceTag:'iceTag', hideSeek:'hideSeek', oxQuiz:'oxQuiz',
-                             mafia:'mafia', liar:'liar', bombGame:'bombGame', omok:'omokDir' };
-            const path = refMap[gameType];
-            if(path) _push(plzRef.child(path), 'value', _onState);
-        }
-        window._renderTeacherGameBtns();
-        window._renderTeacherGameObserver();
-    };
-
-    window._detachTeacherGameObserver = function() {
-        (window._teacherGameSubs || []).forEach(({ ref, type, fn }) => { try { ref.off(type, fn); } catch(_){} });
-        window._teacherGameSubs   = [];
-        window._teacherGameState  = null;
-        window._teacherGameScores = null;
-        window._teacherGameType   = null;
-        try { window._renderTeacherGameBtns(); } catch(_){}
-        try { window._renderTeacherGameObserver(); } catch(_){}
-    };
-
-    window._renderTeacherGameObserver = function() {
-        const statusEl = document.getElementById('_tgoStatus');
-        if(!statusEl) return;
-        const type  = window._teacherGameType;
-        const state = window._teacherGameState;
-        if(!type) { statusEl.textContent = '관찰할 게임을 선택하세요.'; return; }
-        const _emoji = { catchMind:'🎨', iceTag:'🧊', hideSeek:'🔎', oxQuiz:'📝',
-                         mafia:'🕵️', liar:'🎭', bombGame:'💣', omok:'⚫' };
-        const isOn = state && (state.on === true || state.phase === 'playing' || state.phase === 'active' || state.phase === 'lobby');
-        const summary = state ? JSON.stringify(state).substring(0, 150) + (JSON.stringify(state).length > 150 ? '...' : '') : '(데이터 없음)';
-        const _safeSummary = (window._escHtml || (s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])))(summary);
-        statusEl.innerHTML = `<b>${_emoji[type]||'🎮'} ${type}</b> — ${isOn
-            ? '<span style="color:#4CAF50;font-weight:bold;">진행 중</span>'
-            : '<span style="color:#aaa;">대기 / 종료</span>'}` +
-            `<br><span style="color:#999;font-size:10px;">${_safeSummary}</span>`;
-    };
-
-    window._renderTeacherGameBtns = function() {
-        const el = document.getElementById('_tgoGameBtns');
-        if(!el) return;
-        const games = [
-            { id:'catchMind', label:'🎨 캐치마인드' }, { id:'iceTag', label:'🧊 얼음땡' },
-            { id:'hideSeek', label:'🔎 숨바꼭질' },   { id:'oxQuiz', label:'📝 OX' },
-            { id:'mafia', label:'🕵️ 마피아' },          { id:'liar', label:'🎭 라이어' },
-            { id:'bombGame', label:'💣 폭탄' },          { id:'omok', label:'⚫ 오목' },
-        ];
-        el.innerHTML = games.map(g => {
-            const active = window._teacherGameType === g.id;
-            return `<button onclick="window._teacherGameType==='${g.id}'?window._detachTeacherGameObserver():window._attachTeacherGameObserver('${g.id}')" style="padding:3px 8px;border:1.5px solid ${active?'#FF9800':'#ddd'};border-radius:12px;font-size:11px;cursor:pointer;background:${active?'#FFF3E0':'white'};font-family:'Jua';">${active?'✓ ':''} ${g.label}</button>`;
-        }).join('');
-    };
 
     function _roomLabel(rid) {
         const meta = db.cfg?.plzRooms?.[rid] || {};
@@ -36130,7 +36582,7 @@ window.addCharRow = function() {
     function _catchMindParticipantsRef() { return getPlzRef().child('catchMindParticipants'); }
     // 호스트 heartbeat — onDisconnect.remove(전체 게임 삭제) 대신 staleness 기반 cleanup으로 네트워크 blip 내구성↑
     function _catchMindHbRef() { return getPlzRef().child('catchMindHb'); }
-    const _CM_HB_PERIOD = 20000, _CM_HB_STALE = 75000;
+    const _CM_HB_PERIOD = 20000, _CM_HB_STALE = 45000; // 45s: hb 2.25× 주기 — 빠른 고아 게임 감지
     function _catchMindStartHostHeartbeat() {
         if(window._cmHostHbInterval) clearInterval(window._cmHostHbInterval);
         try { _catchMindHbRef().set(Date.now()); } catch(_){}
@@ -36625,11 +37077,18 @@ window.addCharRow = function() {
             } catch(e){ console.warn('[catchMind] spy 승격 실패', e); }
         }
     }
+    // 참가자 등록 헬퍼 — set + onDisconnect.remove 동시 등록
+    // 탭 닫기/새로고침 시 Firebase 연결 끊기면 자동 제거 → "나간 학생 계속 표시" 방지
+    function _cmSetParticipant(nm) {
+        const ref = _catchMindParticipantsRef().child(me.cd);
+        try { ref.set(nm || '학생'); } catch(_){}
+        try { ref.onDisconnect().remove(); } catch(_){}
+    }
     function _catchMindJoin() {
         const g = window._catchMindState;
         if(!g || !g.on || !me) return;
         if(g.participants && g.participants[me.cd]) return;
-        _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생');
+        _cmSetParticipant(me.nm);
         _catchMindMaybePromoteToSpy(g, me.cd);
     }
     window._catchMindJoinFromBanner = function() {
@@ -36637,7 +37096,7 @@ window.addCharRow = function() {
         const g = window._catchMindState;
         if(!g || !g.on) return;
         const wasParticipant = !!(g.participants && g.participants[me.cd]);
-        try { _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생'); } catch(_){}
+        _cmSetParticipant(me.nm);
         try { _catchMindSpectatorsRef().child(me.cd).remove(); } catch(_){}
         window._catchMindWasSpecBefore = false;
         if(!wasParticipant) _catchMindMaybePromoteToSpy(g, me.cd);
@@ -36920,6 +37379,7 @@ window.addCharRow = function() {
             correctGuesserNm: null,
             revealedWord: null
         };
+        _cmCancelStrokeBatch();
         Promise.all([
             _catchMindStrokesRef().remove(),
             _catchMindGuessesRef().remove(),
@@ -36957,6 +37417,7 @@ window.addCharRow = function() {
             timeoutNextHostNm: nextHostNm,
             timeoutAt: Date.now()
         });
+        _cmCancelStrokeBatch();
         _catchMindStrokesRef().remove();
         // 4초 뒤 자동으로 새 라운드 (호스트가 진행)
         setTimeout(() => {
@@ -36968,6 +37429,7 @@ window.addCharRow = function() {
             const now = Date.now();
             const ROUND_MS = 60 * 1000;
             const nextRound = (cur.round || 1) + 1;
+            _cmCancelStrokeBatch();
             Promise.all([
                 _catchMindStrokesRef().remove(),
                 _catchMindGuessesRef().remove()
@@ -37024,6 +37486,7 @@ window.addCharRow = function() {
         const g = window._catchMindState;
         if(!g) return;
         // 트래픽 절감: 게임 종료 시 strokes/guesses 즉시 삭제 (큰 데이터)
+        _cmCancelStrokeBatch();
         Promise.all([
             _catchMindStrokesRef().remove(),
             _catchMindGuessesRef().remove()
@@ -37038,6 +37501,7 @@ window.addCharRow = function() {
 
     function _catchMindEndGame() {
         _catchMindStopHostHeartbeat();
+        _cmCancelStrokeBatch();
         Promise.all([
             _catchMindRef().remove(),
             _catchMindStrokesRef().remove(),
@@ -37121,6 +37585,7 @@ window.addCharRow = function() {
                 // 사이클 리셋 — 별도 path
                 _catchMindCycleRef().remove();
                 // 트래픽 절감: 라운드 종료 즉시 strokes 삭제 (오버레이가 캔버스를 가리므로 필요 없음)
+                _cmCancelStrokeBatch();
                 _catchMindStrokesRef().remove();
                 // ※ 자동 진행 X — 우승자가 [한 판 더] 또는 [그만] 클릭으로 결정
             });
@@ -37128,6 +37593,10 @@ window.addCharRow = function() {
     };
 
     // ───── stroke 전송 (RDP + 평면 좌표로 트래픽 절감) ─────
+    function _cmCancelStrokeBatch() {
+        if(window._cmStrokeFlushTimer) { clearTimeout(window._cmStrokeFlushTimer); window._cmStrokeFlushTimer = null; }
+        window._cmStrokeBatch = [];
+    }
     window._catchMindSubmitStroke = function(stroke) {
         const g = window._catchMindState;
         if(!g || !g.on || g.phase !== 'drawing' || !me) return;
@@ -37144,10 +37613,23 @@ window.addCharRow = function() {
         const ref = _catchMindStrokesRef().push();
         stroke._key = ref.key;
         stroke.by = me.cd;
-        stroke.pts = simplified;  // 로컬도 simplified 사용 → echo와 동일 굵기/모양
+        stroke.pts = simplified;
         window._catchMindLocalStrokes.push(stroke);
         window._catchMindRedrawCanvas();
-        ref.set(payload);
+        // 1초 배치 flush — 같은 1초 안의 stroke를 update() 한 번으로 묶어 전송
+        window._cmStrokeBatch = window._cmStrokeBatch || [];
+        window._cmStrokeBatch.push({ key: ref.key, payload });
+        if(!window._cmStrokeFlushTimer) {
+            window._cmStrokeFlushTimer = setTimeout(() => {
+                const batch = window._cmStrokeBatch || [];
+                window._cmStrokeBatch = [];
+                window._cmStrokeFlushTimer = null;
+                if(!batch.length) return;
+                const upd = {};
+                batch.forEach(({key, payload: p}) => { upd[key] = p; });
+                _catchMindStrokesRef().update(upd);
+            }, 1000);
+        }
     };
 
     // ───── Flood fill (페인트통) ─────
@@ -37155,7 +37637,14 @@ window.addCharRow = function() {
         const h = (hex||'#000000').replace('#','');
         return [parseInt(h.substr(0,2),16), parseInt(h.substr(2,2),16), parseInt(h.substr(4,2),16)];
     }
+    window._cmFillCallCount = window._cmFillCallCount || 0;
     window._catchMindApplyFill = function(ctx, x, y, hex) {
+        // willReadFrequently 캐시 context로 교체 — GPU→CPU 복사 블로킹 방지
+        if(ctx.canvas && ctx.canvas._cmCtx) ctx = ctx.canvas._cmCtx;
+        window._cmFillCallCount++;
+        const _fillId = window._cmFillCallCount;
+        const _fillT0 = performance.now();
+        console.log(`[catchMind/fill] #${_fillId} START x=${x} y=${y} c=${hex} canvas=${ctx.canvas.width}x${ctx.canvas.height}`);
         const w = ctx.canvas.width, h = ctx.canvas.height;
         x = Math.max(0, Math.min(w-1, Math.floor(x)));
         y = Math.max(0, Math.min(h-1, Math.floor(y)));
@@ -37167,32 +37656,82 @@ window.addCharRow = function() {
         if(sR===tR && sG===tG && sB===tB) return;
         const tol = 96;
         const matches = (i) => Math.abs(data[i]-sR)<=tol && Math.abs(data[i+1]-sG)<=tol && Math.abs(data[i+2]-sB)<=tol;
-        const stack = [[x,y]];
-        while(stack.length) {
-            const [cx, cy] = stack.pop();
-            let nx = cx;
-            while(nx >= 0 && matches((cy*w+nx)*4)) nx--;
-            nx++;
-            let spanU=false, spanD=false;
-            while(nx < w && matches((cy*w+nx)*4)) {
-                const i = (cy*w+nx)*4;
+        const isFilled = (i) => data[i]===tR && data[i+1]===tG && data[i+2]===tB;
+        // anti-aliasing 프린지 판별: stroke 코어보다 밝고 배경과도 다른 픽셀
+        const isFringe = (i) => !isFilled(i) &&
+            Math.abs(data[i]-sR) <= 220 && Math.abs(data[i+1]-sG) <= 220 && Math.abs(data[i+2]-sB) <= 220 &&
+            (Math.abs(data[i]-sR) > tol || Math.abs(data[i+1]-sG) > tol || Math.abs(data[i+2]-sB) > tol);
+        // Pass 1: 스캔라인 flood fill
+        // push 시 visited 마킹 금지 — 마킹하면 pop 후 오른쪽 스캔이 push 지점에서 막힘
+        // 대신 pop 초기에 visited 체크로 중복 처리 방지
+        const visited1 = new Uint8Array(w * h);
+        const _s1 = new Int32Array(w * h * 2); let _s1len = 0;
+        _s1[_s1len++] = y * w + x;
+        while(_s1len > 0) {
+            const pidx1 = _s1[--_s1len];
+            if(visited1[pidx1]) continue; // 이미 처리된 행의 시작점 — 중복 pop 스킵
+            const sy = (pidx1 / w) | 0;
+            let lx = pidx1 % w;
+            // 왼쪽 경계 탐색 — visited 체크로 다른 영역 침범 방지
+            while(lx > 0 && !visited1[sy*w+(lx-1)] && matches((sy*w+(lx-1))*4)) lx--;
+            let nx = lx, spanU=false, spanD=false;
+            while(nx < w && !visited1[sy*w+nx] && matches((sy*w+nx)*4)) {
+                const pi = sy*w+nx;
+                visited1[pi] = 1;
+                const i = pi*4;
                 data[i]=tR; data[i+1]=tG; data[i+2]=tB; data[i+3]=255;
-                if(cy>0) {
-                    const u = ((cy-1)*w+nx)*4;
-                    if(!spanU && matches(u)) { stack.push([nx, cy-1]); spanU=true; }
-                    else if(spanU && !matches(u)) spanU=false;
+                if(sy>0) {
+                    const uni = (sy-1)*w+nx;
+                    // push 시 visited 마킹 안 함 — 이중 push는 pop 초기 skip으로 처리
+                    if(!spanU && !visited1[uni] && matches(uni*4)) { _s1[_s1len++]=uni; spanU=true; }
+                    else if(spanU && (visited1[uni] || !matches(uni*4))) spanU=false;
                 }
-                if(cy<h-1) {
-                    const d = ((cy+1)*w+nx)*4;
-                    if(!spanD && matches(d)) { stack.push([nx, cy+1]); spanD=true; }
-                    else if(spanD && !matches(d)) spanD=false;
+                if(sy<h-1) {
+                    const dni = (sy+1)*w+nx;
+                    if(!spanD && !visited1[dni] && matches(dni*4)) { _s1[_s1len++]=dni; spanD=true; }
+                    else if(spanD && (visited1[dni] || !matches(dni*4))) spanD=false;
                 }
                 nx++;
             }
         }
+        // Pass 2: 프린지 확장 — anti-aliasing 경계 픽셀 채우기
+        const border = [];
+        const visited2 = new Uint8Array(w * h);
+        const _s2 = new Int32Array(w * h); let _s2len = 0;
+        const _s2push = (px, py) => { _s2[_s2len++] = py * w + px; };
+        const _s2pop  = () => _s2[--_s2len];
+        visited2[y * w + x] = 1;
+        _s2push(x, y);
+        const DX = [-1, 1, 0, 0], DY = [0, 0, -1, 1];
+        while(_s2len > 0) {
+            const pidx = _s2pop();
+            const cy2 = (pidx / w) | 0, cx2 = pidx % w;
+            for(let d = 0; d < 4; d++) {
+                const nx2 = cx2 + DX[d], ny2 = cy2 + DY[d];
+                if(nx2 < 0 || nx2 >= w || ny2 < 0 || ny2 >= h) continue;
+                const ni2 = ny2 * w + nx2;
+                if(visited2[ni2]) continue;
+                visited2[ni2] = 1;
+                const ni = ni2 * 4;
+                if(isFilled(ni)) { _s2push(nx2, ny2); }
+                else if(isFringe(ni)) { border.push(ni); }
+            }
+        }
+        for(const ni of border) { data[ni]=tR; data[ni+1]=tG; data[ni+2]=tB; data[ni+3]=255; }
         ctx.putImageData(img, 0, 0);
+        const _fillMs = (performance.now() - _fillT0).toFixed(1);
+        console.log(`[catchMind/fill] #${_fillId} END ${_fillMs}ms | pass1_stack peaked, pass2_border=${border.length}`);
+        if(_fillMs > 200) console.warn(`[catchMind/fill] #${_fillId} SLOW fill ${_fillMs}ms — 응답없음 원인 후보`);
     };
+    let _cmFillBusy = false;
+    let _cmFillLastMs = 0;
     window._catchMindSubmitFill = function(x, y, c) {
+        const _cmNow = Date.now();
+        console.log(`[catchMind/submitFill] called x=${x} y=${y} c=${c} busy=${_cmFillBusy} cooldown=${_cmNow - _cmFillLastMs}ms localStrokes=${(window._catchMindLocalStrokes||[]).length}`);
+        if(_cmFillBusy || _cmNow - _cmFillLastMs < 500) {
+            console.warn(`[catchMind/submitFill] BLOCKED busy=${_cmFillBusy} cooldown=${_cmNow - _cmFillLastMs}ms`);
+            return;
+        }
         const g = window._catchMindState;
         if(!g || !g.on || g.phase !== 'drawing' || !me) return;
         if(g.mode === 'relay') {
@@ -37207,21 +37746,38 @@ window.addCharRow = function() {
         const ref = _catchMindStrokesRef().push();
         const localOp = { _key: ref.key, by: me.cd, kind:'fill', x:payload.x, y:payload.y, c:payload.c };
         window._catchMindLocalStrokes.push(localOp);
-        window._catchMindRedrawCanvas();
-        ref.set(payload).then(() => {
-            if(g.mode === 'relay') {
+        _cmFillBusy = true;
+        try { window._catchMindRedrawCanvas(); } finally { _cmFillLastMs = Date.now(); _cmFillBusy = false; }
+        if(g.mode === 'relay') {
+            ref.set(payload).then(() => {
                 const myCount = ((g.strokeCounts && g.strokeCounts[me.cd]) || 0) + 1;
                 _catchMindRef().child('strokeCounts').child(me.cd).set(myCount).then(() => {
                     _catchMindRelayAdvanceTurn();
                 });
+            });
+        } else {
+            // 클래식 fill — stroke 배치 버퍼에 합류
+            window._cmStrokeBatch = window._cmStrokeBatch || [];
+            window._cmStrokeBatch.push({ key: ref.key, payload });
+            if(!window._cmStrokeFlushTimer) {
+                window._cmStrokeFlushTimer = setTimeout(() => {
+                    const batch = window._cmStrokeBatch || [];
+                    window._cmStrokeBatch = [];
+                    window._cmStrokeFlushTimer = null;
+                    if(!batch.length) return;
+                    const upd = {};
+                    batch.forEach(({key, payload: p}) => { upd[key] = p; });
+                    _catchMindStrokesRef().update(upd);
+                }, 1000);
             }
-        });
+        }
     };
 
     window._catchMindClearCanvas = function() {
         const g = window._catchMindState;
         if(!g || !g.on || !me) return;
         if(g.hostUid !== me.cd) return;
+        _cmCancelStrokeBatch();
         _catchMindStrokesRef().remove();
     };
 
@@ -37239,16 +37795,51 @@ window.addCharRow = function() {
         window._catchMindSubs = [];
         const cmRef = _catchMindRef();
         console.log('[catchMind] subscribe ATTACHING listener on path:', cmRef.toString());
-        // 진입 시 stale 게임 자동 정리: 1시간 이상 진행 중이거나 finished 상태가 30초 이상 지났으면 제거
-        // ※ hostGone 체크는 제거 — 새로 입장한 학생의 _plzUserCache가 미처 안 채워졌을 때 게임을 잘못 삭제하는 사고 방지
+        // 진입 시 stale 게임 자동 정리
+        // - 1시간 이상 진행 중, finished >30초: 즉시 제거
+        // - hb stale(>45s): 호스트 비정상 이탈 → 제거 (startedAt 재확인으로 race 방어)
+        // - participants 비어있고 게임 시작 60초 이후: 모든 학생이 이탈한 고아 게임 → 제거
         cmRef.once('value', snap => {
             const v = snap.val();
             if(!v || !v.on) return;
             const now = Date.now();
             const stale = (v.startedAt && (now - v.startedAt > 60*60*1000));
             const finishedTooLong = (v.phase === 'finished' && v.finishedAt && (now - v.finishedAt > 30*1000));
-            if(stale || finishedTooLong) {
+            const _doCleanup = () => {
                 try { cmRef.remove(); _catchMindStrokesRef().remove(); _catchMindGuessesRef().remove(); _catchMindParticipantsRef().remove(); _catchMindHbRef().remove(); } catch(_){}
+            };
+            if(stale || finishedTooLong) { _doCleanup(); return; }
+            if(v.phase !== 'finished' && !(v.startedAt && now - v.startedAt < 30000)) {
+                const _staleStartedAt = v.startedAt;
+                // hb stale 확인
+                _catchMindHbRef().once('value').then(hbSnap => {
+                    const hb = hbSnap.val();
+                    if(!hb || now - hb <= _CM_HB_STALE) return;
+                    cmRef.once('value', reSnap => {
+                        const re = reSnap.val();
+                        if(re && re.startedAt !== _staleStartedAt) return;
+                        _doCleanup();
+                    });
+                }).catch(()=>{});
+                // participants 비어있는지 확인 — 모든 학생이 이탈한 고아 게임 정리
+                // 게임 시작 60초 이후 + participants 빈 경우에만 적용 (race 방지)
+                if(v.startedAt && now - v.startedAt > 60000) {
+                    _catchMindParticipantsRef().once('value').then(pSnap => {
+                        const pts = pSnap.val();
+                        if(pts && Object.keys(pts).length > 0) return; // 참가자 있음 → 유지
+                        // 게임 상태 재확인 (새 게임 시작 또는 참가자가 막 들어온 경우 취소)
+                        cmRef.once('value', reSnap2 => {
+                            const re2 = reSnap2.val();
+                            if(!re2 || re2.startedAt !== _staleStartedAt) return;
+                            _catchMindParticipantsRef().once('value', pSnap2 => {
+                                const pts2 = pSnap2.val();
+                                if(pts2 && Object.keys(pts2).length > 0) return; // 재확인 후 참가자 있으면 취소
+                                console.log('[catchMind] 참가자 없는 고아 게임 자동 정리');
+                                _doCleanup();
+                            });
+                        });
+                    }).catch(()=>{});
+                }
             }
         });
         const fn = snap => {
@@ -37272,41 +37863,69 @@ window.addCharRow = function() {
             const alreadyOpened = window._catchMindOpenedForStart === startedKey;
             const panelExists = !!document.getElementById('_catchMindPanel');
             console.log('[catchMind] subscribe fired', JSON.stringify({ hasState:!!v, startedKey, me:!!me, meCd:me?.cd, plzActive:!!window._plzActive, isTeacher, isSpectator, alreadyOpened, panelExists }));
-            // 자동참여 self-heal — 게임 도중 입장해도 즉시 참여 (관전 단계 없음)
+            // 자동참여 — 500ms 지연 후 participants 확인
+            // 즉시 실행하면 on('value')가 partAddFn(child_added)보다 먼저 발동해
+            // _catchMindParticipantsLocal이 비어있어 고아 게임을 구분 못 함
             if(me && v.on && v.startedAt && !isTeacher && me.cd !== v.hostUid) {
                 window._catchMindLastSeenStartedAt = v.startedAt;
-                if(!v.participants || !v.participants[me.cd]) {
-                    try { _catchMindParticipantsRef().child(me.cd).set(me.nm || '학생'); } catch(_){}
-                    if(v.mode === 'relay' && v.turnOrder && !v.turnOrder.includes(me.cd)) {
-                        const newOrder = (v.turnOrder || []).slice();
-                        newOrder.push(me.cd);
-                        try { _catchMindRef().child('turnOrder').set(newOrder); } catch(_){}
-                        // 공정성: mid-join이 spyUids 배열에 k/N 확률로 편입 (k=현재 스파이 수, N=총 인원)
-                        // ※ 캐치마인드 스파이는 spyUids(배열)이 실사용. spyUid는 레거시 단일 fallback.
-                        const _newN = newOrder.length;
-                        try {
-                            _catchMindRef().child('spyUids').transaction(curSpies => {
-                                let arr = Array.isArray(curSpies) ? curSpies.slice() : (curSpies ? [curSpies] : []);
-                                if(arr.length === 0) return; // 스파이 미설정이면 abort
-                                if(arr.includes(me.cd)) return; // 이미 스파이 (드물지만)
-                                const k = arr.length;
-                                if(Math.random() < k / _newN) {
-                                    // 무작위 스파이 1명을 본인으로 교체 → 공정 분포 유지
-                                    const replaceIdx = Math.floor(Math.random() * k);
-                                    arr[replaceIdx] = me.cd;
-                                    return arr;
-                                }
-                                return; // 변경 안 함
-                            }, (err, committed, snap) => {
-                                if(committed && snap) {
-                                    // 레거시 spyUid 필드도 동기화 (구버전 코드 호환)
-                                    const newSpies = snap.val();
-                                    try { _catchMindRef().child('spyUid').set((newSpies && newSpies[0]) || null); } catch(_){}
-                                }
-                            });
-                        } catch(_){}
+                const _ajStartedAt = v.startedAt;
+                // 고아 게임 체크 헬퍼 — 실제 Firebase에서 직접 읽어 로컬 캐시 타이밍 오판 방지
+                const _doAutoJoin = () => {
+                    const cur = window._catchMindState;
+                    if(!cur || !cur.on || cur.startedAt !== _ajStartedAt) return;
+                    // 원본 참가자 onDisconnect 등록
+                    if(cur.participants && cur.participants[me.cd]) {
+                        try { _catchMindParticipantsRef().child(me.cd).onDisconnect().remove(); } catch(_){}
                     }
-                }
+                    if(!cur.participants || !cur.participants[me.cd]) {
+                        _cmSetParticipant(me.nm);
+                        // relay mid-join: cur.turnOrder 사용 (캡처 시점이 아닌 현재 상태)
+                        if(cur.mode === 'relay' && cur.turnOrder && !cur.turnOrder.includes(me.cd)) {
+                            const newOrder = cur.turnOrder.slice();
+                            newOrder.push(me.cd);
+                            try { _catchMindRef().child('turnOrder').set(newOrder); } catch(_){}
+                            const _newN = newOrder.length;
+                            try {
+                                _catchMindRef().child('spyUids').transaction(curSpies => {
+                                    let arr = Array.isArray(curSpies) ? curSpies.slice() : (curSpies ? [curSpies] : []);
+                                    if(arr.length === 0) return;
+                                    if(arr.includes(me.cd)) return;
+                                    const k = arr.length;
+                                    if(Math.random() < k / _newN) {
+                                        const replaceIdx = Math.floor(Math.random() * k);
+                                        arr[replaceIdx] = me.cd;
+                                        return arr;
+                                    }
+                                    return;
+                                }, (err, committed, snap) => {
+                                    if(committed && snap) {
+                                        const newSpies = snap.val();
+                                        try { _catchMindRef().child('spyUid').set((newSpies && newSpies[0]) || null); } catch(_){}
+                                    }
+                                });
+                            } catch(_){}
+                        }
+                    }
+                };
+                setTimeout(() => {
+                    const cur = window._catchMindState;
+                    if(!cur || !cur.on || cur.startedAt !== _ajStartedAt) return;
+                    // 게임 시작 60초 이내면 고아 게임일 리 없음 → 즉시 참가
+                    if(!(Date.now() - _ajStartedAt > 60000)) { _doAutoJoin(); return; }
+                    // 60초 이상: Firebase에서 직접 participants 읽어 고아 여부 판단
+                    // (로컬 캐시는 네트워크 지연으로 타이밍이 어긋날 수 있음)
+                    _catchMindParticipantsRef().once('value').then(pSnap => {
+                        const cur2 = window._catchMindState;
+                        if(!cur2 || !cur2.on || cur2.startedAt !== _ajStartedAt) return;
+                        const pts = pSnap.val();
+                        if(!pts || Object.keys(pts).length === 0) {
+                            console.log('[catchMind] 고아 게임(참가자 없음) 자동 정리');
+                            _catchMindEndGame();
+                            return;
+                        }
+                        _doAutoJoin();
+                    }).catch(() => _doAutoJoin()); // 읽기 실패 시 안전하게 참가
+                }, 500);
             }
             if(me && v.on && window._plzActive && !isTeacher && !isSpectator) {
                 if(!alreadyOpened && !panelExists) {
@@ -37338,8 +37957,26 @@ window.addCharRow = function() {
             if(window._catchMindRoundTimer) { clearTimeout(window._catchMindRoundTimer); window._catchMindRoundTimer = null; }
             if(v.phase === 'drawing' && v.roundEndsAt) {
                 const remain = v.roundEndsAt - Date.now();
-                if(remain > 0 && v.hostUid === me?.cd) {
-                    window._catchMindRoundTimer = setTimeout(_catchMindRoundTimeout, remain + 500);
+                if(remain > 0) {
+                    if(v.hostUid === me?.cd) {
+                        window._catchMindRoundTimer = setTimeout(_catchMindRoundTimeout, remain + 500);
+                    }
+                } else {
+                    // 이미 만료 — 호스트가 처리 못한 stuck 상태
+                    // 호스트면 1초 후 즉시 timeout 처리, 비호스트는 랜덤 지연 후 stale이면 강제 정리
+                    const isHost = v.hostUid === me?.cd;
+                    const delay = isHost ? 1000 : 6000 + Math.random() * 6000;
+                    window._catchMindRoundTimer = setTimeout(() => {
+                        const cur = window._catchMindState;
+                        if(!cur || !cur.on || cur.phase !== 'drawing') return;
+                        if(cur.roundEndsAt && cur.roundEndsAt > Date.now()) return;
+                        if(isHost) {
+                            _catchMindRoundTimeout();
+                        } else {
+                            // 비호스트 최후 수단: hb 없이도 stale 정리
+                            try { _catchMindRef().remove(); _catchMindStrokesRef().remove(); _catchMindGuessesRef().remove(); _catchMindCycleRef().remove(); _catchMindScoresRef().remove(); _catchMindParticipantsRef().remove(); _catchMindHbRef().remove(); } catch(_){}
+                        }
+                    }, delay);
                 }
             }
             // 릴레이 투표 타임아웃 타이머
@@ -37422,7 +38059,44 @@ window.addCharRow = function() {
         const partRemFn = snap => {
             delete window._catchMindParticipantsLocal[snap.key];
             if(window._catchMindState) window._catchMindState.participants = Object.assign({}, window._catchMindParticipantsLocal);
+            const _remRemaining = Object.keys(window._catchMindParticipantsLocal||{}).length;
+            const _remG = window._catchMindState;
+            console.log(`[catchMind/partRemoved] uid=${snap.key} remaining=${_remRemaining} phase=${_remG?.phase} gameOn=${_remG?.on}`);
             window._catchMindRender && window._catchMindRender();
+            // 모든 참가자가 나갔고 게임이 진행 중이면 종료 — 버그2 추적
+            if(_remRemaining === 0 && _remG && _remG.on && _remG.phase !== 'finished') {
+                const _isHostOrStarter = me && (_remG.hostUid === me.cd || _remG.starter === me.cd);
+                console.warn(`[catchMind/partRemoved] 모든 참가자 이탈 감지! remaining=0 phase=${_remG.phase} isHostOrStarter=${_isHostOrStarter} myUid=${me?.cd}`);
+                // 이미 종료 타이머가 걸려있으면 중복 실행 방지
+                if(!window._cmEmptyEndTimer) {
+                    window._cmEmptyEndTimer = setTimeout(() => {
+                        window._cmEmptyEndTimer = null;
+                        _catchMindParticipantsRef().once('value').then(pSnap2 => {
+                            const pts2 = pSnap2.val();
+                            const cnt2 = pts2 ? Object.keys(pts2).length : 0;
+                            console.warn(`[catchMind/partRemoved] Firebase 재확인 remaining=${cnt2}`);
+                            const cur2 = window._catchMindState;
+                            if(cur2 && cur2.on && cur2.phase !== 'finished' && cnt2 === 0) {
+                                console.warn('[catchMind/partRemoved] → _catchMindEndGame() 호출');
+                                _catchMindEndGame();
+                            }
+                        }).catch(e => console.error('[catchMind/partRemoved] Firebase 재확인 실패', e));
+                    }, 3000);
+                }
+            }
+            // 내 항목이 서버에서 제거됐고 게임 활성 중이면 즉시 재참여 (onDisconnect 후 재연결 대응)
+            // exitPlaza는 _catchMindState = null을 동기적으로 설정하므로 명시적 퇴장 시에는 발동 안 함
+            // _catchMindEndGame 시 catchMind node 전체 삭제 → on('value')가 먼저 null 처리하면 안전
+            // 순서 역전 방어: phase가 'drawing'/'voting' 등 실제 진행 중인 경우에만 재참여
+            if(snap.key === me?.cd) {
+                const _rg = window._catchMindState;
+                const _isTeacher = me && me.cd === 'teacher_main';
+                const _activePhase = _rg && (_rg.phase === 'drawing' || _rg.phase === 'voting' || _rg.phase === 'continueDecision');
+                if(_rg && _rg.on && _activePhase && !_isTeacher && me.cd !== _rg.hostUid) {
+                    console.log(`[catchMind/partRemoved] 내 항목 제거됨 → 재참여 시도`);
+                    _cmSetParticipant(me.nm);
+                }
+            }
         };
         partRef.on('child_added', partAddFn);
         partRef.on('child_changed', partChgFn);
@@ -37510,6 +38184,9 @@ window.addCharRow = function() {
         window._catchMindSubs = null;
         if(window._catchMindRoundTimer) { clearTimeout(window._catchMindRoundTimer); window._catchMindRoundTimer = null; }
         if(window._cmHbCheckInterval) { clearInterval(window._cmHbCheckInterval); window._cmHbCheckInterval = null; }
+        if(window._cmStrokeFlushTimer) { clearTimeout(window._cmStrokeFlushTimer); window._cmStrokeFlushTimer = null; }
+        if(window._cmEmptyEndTimer) { clearTimeout(window._cmEmptyEndTimer); window._cmEmptyEndTimer = null; }
+        window._cmStrokeBatch = [];
         _catchMindStopHostHeartbeat();
     }
     // 모든 client가 30초마다 호스트 hb 검사 — stale 시 정리 (idempotent remove)
@@ -37572,6 +38249,9 @@ window.addCharRow = function() {
                 </div>
             </div>
         </div>`;
+        // appendChild 전에 초기화 — attach/redraw 사이에 child_added가 끼어들어도 flash 없음
+        window._catchMindLocalStrokes = [];
+        window._catchMindCurrentStroke = null;
         document.body.appendChild(el);
         _catchMindAttachCanvas();
         window._catchMindRender();
@@ -37926,6 +38606,11 @@ window.addCharRow = function() {
     function _catchMindAttachCanvas() {
         const canvas = document.getElementById('_cmCanvas');
         if(!canvas) return;
+        // willReadFrequently: true — getImageData(flood fill)가 잦으므로 CPU 렌더링 모드 강제
+        if(!canvas._cmCtx) canvas._cmCtx = canvas.getContext('2d', { willReadFrequently: true });
+        // DOM 추가 즉시 흰 캔버스 — child_added 이벤트 사이에 이전 그림이 노출되는 flash 방지
+        canvas._cmCtx.fillStyle = '#FFFFFF';
+        canvas._cmCtx.fillRect(0, 0, canvas.width, canvas.height);
         const getPos = (ev) => {
             const r = canvas.getBoundingClientRect();
             const t = ev.touches && ev.touches[0];
@@ -37985,36 +38670,78 @@ window.addCharRow = function() {
         canvas.addEventListener('touchend', end);
     }
 
+    // 펜 스트로크 하나를 ctx에 그리는 헬퍼
+    function _cmDrawPenStroke(ctx, s) {
+        if(!s || !s.pts || !s.pts.length) return;
+        ctx.strokeStyle = s.c || '#000';
+        ctx.lineWidth = s.w || 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(s.pts[0][0], s.pts[0][1]);
+        for(let i = 1; i < s.pts.length; i++) ctx.lineTo(s.pts[i][0], s.pts[i][1]);
+        if(s.pts.length === 1) {
+            ctx.fillStyle = s.c || '#000';
+            ctx.fillRect(s.pts[0][0]-1, s.pts[0][1]-1, (s.w||3), (s.w||3));
+        } else { ctx.stroke(); }
+    }
+
     window._catchMindRedrawCanvas = function() {
         const canvas = document.getElementById('_cmCanvas');
         if(!canvas) return;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        const all = (window._catchMindLocalStrokes || []).slice();
-        if(window._catchMindCurrentStroke) all.push(window._catchMindCurrentStroke);
-        all.forEach(s => {
+        if(!canvas._cmCtx) canvas._cmCtx = canvas.getContext('2d', { willReadFrequently: true });
+        const ctx = canvas._cmCtx;
+        const strokes = window._catchMindLocalStrokes || [];
+        const _fillPending = strokes.filter(s => s.kind === 'fill').length;
+        if(_fillPending > 0) console.log(`[catchMind/redraw] stroke총=${strokes.length} fill미처리=${_fillPending}`);
+
+        // 마지막 baked 이미지 인덱스 탐색 — 그 이전 스트로크는 이미 이미지에 포함됨
+        let lastImgIdx = -1;
+        for(let i = strokes.length - 1; i >= 0; i--) {
+            if(strokes[i].kind === 'image') { lastImgIdx = i; break; }
+        }
+
+        // 시작점 설정: 마지막 baked 이미지 복원 (없으면 흰 캔버스)
+        if(lastImgIdx >= 0) {
+            ctx.putImageData(strokes[lastImgIdx]._baked, 0, 0); // putImageData 1회만
+        } else {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 마지막 baked 이후 스트로크만 처리 — rAF당 unbaked fill 1개 제한
+        // 여러 fill이 동시 수신될 때 한 rAF에서 N×_catchMindApplyFill 블록 방지
+        let bakedThisCall = false;
+        for(let i = lastImgIdx + 1; i < strokes.length; i++) {
+            const s = strokes[i];
             if(s.kind === 'fill') {
+                if(bakedThisCall) {
+                    // 이번 rAF에서 이미 fill 1개 처리 → 나머지는 다음 rAF에서 순차 처리
+                    if(window._catchMindCurrentStroke) _cmDrawPenStroke(ctx, window._catchMindCurrentStroke);
+                    // _cmScheduleRedraw는 _catchMindSubscribe closure — window 플래그로 직접 구현
+                    if(!window._cmRedrawScheduled) {
+                        window._cmRedrawScheduled = true;
+                        requestAnimationFrame(() => {
+                            window._cmRedrawScheduled = false;
+                            window._catchMindRedrawCanvas && window._catchMindRedrawCanvas();
+                        });
+                    }
+                    return;
+                }
                 window._catchMindApplyFill(ctx, s.x, s.y, s.c || '#000');
-                return;
-            }
-            if(!s.pts || !s.pts.length) return;
-            ctx.strokeStyle = s.c || '#000';
-            ctx.lineWidth = s.w || 3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.beginPath();
-            ctx.moveTo(s.pts[0][0], s.pts[0][1]);
-            for(let i=1; i<s.pts.length; i++) {
-                ctx.lineTo(s.pts[i][0], s.pts[i][1]);
-            }
-            if(s.pts.length === 1) {
-                ctx.fillStyle = s.c || '#000';
-                ctx.fillRect(s.pts[0][0]-1, s.pts[0][1]-1, (s.w||3), (s.w||3));
+                s._baked = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                s.kind = 'image';
+                lastImgIdx = i;
+                bakedThisCall = true;
+            } else if(s.kind === 'image') {
+                ctx.putImageData(s._baked, 0, 0);
+                lastImgIdx = i;
             } else {
-                ctx.stroke();
+                _cmDrawPenStroke(ctx, s);
             }
-        });
+        }
+
+        if(window._catchMindCurrentStroke) _cmDrawPenStroke(ctx, window._catchMindCurrentStroke);
     };
 
     // ───── 단어 편집 UI (교사) ─────
@@ -38550,13 +39277,26 @@ window.addCharRow = function() {
             return window._bombGameState;
         };
 
-        // stale 정리 — meta.startedAt만 한 번 확인
+        // stale 정리 — >1시간 즉시 제거 + heartbeat stale 확인 (catchMind와 동일 패턴)
         _bombGameMetaRef().once('value', snap => {
             const m = snap.val();
             if(!m || !m.on) return;
             const now = Date.now();
-            if(m.startedAt && (now - m.startedAt > 60*60*1000)) {
-                try { _bombGameRef().remove(); _bombGameHbRef().remove(); } catch(_){}
+            const _bgDoCleanup = () => { try { _bombGameRef().remove(); _bombGameHbRef().remove(); } catch(_){} };
+            if(m.startedAt && (now - m.startedAt > 60*60*1000)) { _bgDoCleanup(); return; }
+            // hb 직접 확인 — 게임 시작 30초 이후 AND hb stale이면 고아 게임 판단
+            if(!(m.startedAt && now - m.startedAt < 30000)) {
+                const _bgStaleStartedAt = m.startedAt;
+                _bombGameHbRef().once('value').then(hbSnap => {
+                    const hb = hbSnap.val();
+                    if(!hb || now - hb <= _BG_HB_STALE) return;
+                    // startedAt 재확인 — 새 게임 시작됐으면 중단
+                    _bombGameMetaRef().once('value', reSnap => {
+                        const re = reSnap.val();
+                        if(re && re.startedAt !== _bgStaleStartedAt) return;
+                        _bgDoCleanup();
+                    });
+                }).catch(()=>{});
             }
         });
         // 호스트 heartbeat staleness 검사 — 모든 client 30초 주기
@@ -38604,7 +39344,9 @@ window.addCharRow = function() {
                         _bombGameRosterRef().child(me.cd).once('value', s => {
                             if(s.exists()) return;
                             try {
-                                _bombGameRosterRef().child(me.cd).set(me.nm || '학생');
+                                const _bgMyRef = _bombGameRosterRef().child(me.cd);
+                                _bgMyRef.set(me.nm || '학생');
+                                _bgMyRef.onDisconnect().remove(); // 탭 닫기/새로고침 시 roster 자동 제거
                                 _bombGameAliveRef().child(me.cd).set(false);
                             } catch(_){}
                         });
@@ -38649,6 +39391,20 @@ window.addCharRow = function() {
             const g = _ensureState();
             if(g.participants) delete g.participants[snap.key];
             window._bombGameRender && window._bombGameRender();
+            // 내 roster가 제거됐고 게임 활성 중이면 재참여 (onDisconnect 후 재연결 대응)
+            // exitPlaza는 _bombGameState=null을 동기적으로 설정하므로 명시적 퇴장 시 발동 안 함
+            // _bombGameEnd 시 meta null이 먼저 처리되면 _rg=null → 안전. 순서 역전 방어로 phase 체크 추가
+            if(snap.key === me?.cd) {
+                const _rg = window._bombGameState;
+                const _isTeacher = me && me.cd === 'teacher_main';
+                if(_rg && _rg.on && _rg.phase === 'playing' && !_isTeacher) {
+                    try {
+                        const _bgMyRef = _bombGameRosterRef().child(me.cd);
+                        _bgMyRef.set(me.nm || '학생');
+                        _bgMyRef.onDisconnect().remove();
+                    } catch(_){}
+                }
+            }
         });
 
         // alive — child_added/changed/removed
@@ -40385,9 +41141,16 @@ window.addCharRow = function() {
             const container = document.getElementById('s_plz');
             container.innerHTML = `<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#f9f9f9;">
                 <div style="font-size:60px;">🕐</div>
-                <div style="font-size:18px;color:#888;text-align:center;">방 이동 후 <b style="color:#FF9800;">${sec}초</b>를<br>기다려 주세요!</div>
+                <div style="font-size:18px;color:#888;text-align:center;">방 이동 후 <b id="_plzCdNum" style="color:#FF9800;">${sec}초</b>를<br>기다려 주세요!</div>
                 <button onclick="showPlzRoomPicker()" style="padding:10px 24px;border-radius:20px;border:none;background:#BDBDBD;color:white;font-family:'Jua';font-size:14px;cursor:pointer;">돌아가기</button>
             </div>`;
+            const _cdTick = setInterval(() => {
+                const left = Math.ceil((COOLDOWN_MS - (Date.now() - lastSwitch)) / 1000);
+                const numEl = document.getElementById('_plzCdNum');
+                if(!numEl) { clearInterval(_cdTick); return; }
+                if(left <= 0) { clearInterval(_cdTick); showPlzRoomPicker(); }
+                else { numEl.textContent = left + '초'; }
+            }, 1000);
             return;
         }
         // 쿨다운은 방 나갈 때부터 재기 시작 (_studentExitPlaza에서 stamp)
@@ -40750,54 +41513,49 @@ window.addCharRow = function() {
             // 1단계: 일단 빈 자리 좌표(0,0 대신 학생 본인 번호 기반 추정)에 임시 위치로 presence 작성
             // 본인 학생 데이터에서 no 가져오기
             const myNo = (db.stu||[]).find(s => s && s.cd === uid)?.no || 999;
-            const _doSeatAssign = () => {
+            // 이전 방 claim 잔재 정리 (방 자동이동 시 exitPlaza 없이 재진입하는 경우)
+            if(window._plzSeatClaimRef) {
+                try { window._plzSeatClaimRef.onDisconnect().cancel(); window._plzSeatClaimRef.remove(); } catch(_){}
+                window._plzSeatClaimRef = null;
+            }
+            // Transaction으로 자리 인덱스 원자적 확보 — 동시 입장 race condition 없음
+            const _claimsRef = getPlzRef().child('lmSeatClaims');
+            const _myClaimRef = _claimsRef.child(uid);
+            _claimsRef.transaction(current => {
+                const claims = current || {};
+                const taken = new Set(Object.values(claims));
+                let idx = 0;
+                while(taken.has(idx)) idx++;
+                claims[uid] = idx;
+                return claims;
+            }, (err, committed, snap) => {
+                if(err || !committed) {
+                    // 트랜잭션 실패 시 기본 위치로 fallback
+                    console.warn('[lm] seat claim transaction failed:', err);
+                    _writePresenceWithSeat(_plzPos.x, _plzPos.y);
+                    return;
+                }
+                const idx = snap.val()[uid];
+                // 퇴장/연결 끊김 시 claim 자동 해제
+                _myClaimRef.onDisconnect().remove();
+                window._plzSeatClaimRef = _myClaimRef;
                 getPlzRef().child('lmSeats').once('value', sSnap => {
                     const sraw = sSnap.val();
                     const seats = (window._lmReadSeats||(r=>r?(Array.isArray(r)?r:Object.keys(r).filter(k=>/^s\d+$/.test(k)).sort().map(k=>r[k])):[]))(sraw);
-                    if(!seats.length){
-                        _writePresenceWithSeat(_plzPos.x, _plzPos.y);
-                        return;
+                    if(!seats.length){ _writePresenceWithSeat(_plzPos.x, _plzPos.y); return; }
+                    const b = _plzGetBounds();
+                    if(idx >= seats.length){
+                        console.warn('[lm] 자리 부족 — 자리', seats.length, '학생 idx', idx, '(no=', myNo, ') → 기본 위치 사용');
+                        const overflow = idx - seats.length + 1;
+                        const baseSeat = seats[seats.length - 1];
+                        _writePresenceWithSeat(Math.max(b.xMin,Math.min(b.xMax,baseSeat.x+overflow*6)), Math.max(b.yMin,Math.min(b.yMax,baseSeat.y)));
+                    } else {
+                        const seat = seats[idx];
+                        _writePresenceWithSeat(Math.max(b.xMin,Math.min(b.xMax,seat.x)), Math.max(b.yMin,Math.min(b.yMax,seat.y)));
                     }
-                    getPlzRef().child('users').once('value', uSnap => {
-                        // {uid, no} 객체 배열로 모음 (no 기준 정렬용)
-                        const entries = [];
-                        uSnap.forEach(c => {
-                            if(c.key === 'teacher_main') return;
-                            const v = c.val()||{}; const i = v.i||{};
-                            entries.push({ uid: c.key, no: i.no || v.no || 999 });
-                        });
-                        // 본인이 아직 없으면 추가
-                        if(!entries.find(e => e.uid === uid)){
-                            entries.push({ uid, no: myNo });
-                        }
-                        // 학생 번호(no) 오름차순 정렬 — 동일 no면 uid 알파벳 보조
-                        entries.sort((a,b) => a.no - b.no || a.uid.localeCompare(b.uid));
-                        let idx = entries.findIndex(e => e.uid === uid);
-                        if(idx === -1) idx = 0;
-                        if(idx >= seats.length){
-                            console.warn('[lm] 자리 부족 — 자리', seats.length, '학생 idx', idx, '(no=', myNo, ') → 기본 위치 사용');
-                            // 자리 부족 시 첫 자리 옆으로 약간 옮긴 위치 (겹침 방지)
-                            const overflow = idx - seats.length + 1;
-                            const baseSeat = seats[seats.length - 1];
-                            const offset = overflow * 6; // 6% 간격으로 펼침
-                            const b = _plzGetBounds();
-                            const sx = Math.max(b.xMin, Math.min(b.xMax, baseSeat.x + offset));
-                            const sy = Math.max(b.yMin, Math.min(b.yMax, baseSeat.y));
-                            _writePresenceWithSeat(sx, sy);
-                        } else {
-                            const seat = seats[idx];
-                            const b = _plzGetBounds();
-                            const sx = Math.max(b.xMin, Math.min(b.xMax, seat.x));
-                            const sy = Math.max(b.yMin, Math.min(b.yMax, seat.y));
-                            _writePresenceWithSeat(sx, sy);
-                        }
-                        console.log('[lm] 자리 배정 — no=', myNo, 'idx=', idx, '/', entries.length, '명, 자리', seats.length, '개', '→ seat', idx+1);
-                    });
+                    console.log('[lm] 자리 배정 — no=', myNo, 'idx=', idx, '자리', seats.length, '개', '→ seat', idx+1);
                 });
-            };
-            _doSeatAssign();
-            // 1.5초 후 재계산 (다른 학생들 presence 도착 후 정확한 idx로 보정)
-            setTimeout(_doSeatAssign, 1500);
+            });
         } else {
             _writePresenceWithSeat(_plzPos.x, _plzPos.y);
         }
@@ -43083,7 +43841,9 @@ window.addCharRow = function() {
             chatRef.once('value', snap => {
                 const keys = Object.keys(snap.val()||{});
                 if(keys.length > 5) {
-                    keys.slice(0, keys.length - 5).forEach(k => chatRef.child(k).remove());
+                    const toDelete = {};
+                    keys.slice(0, keys.length - 5).forEach(k => { toDelete[k] = null; });
+                    chatRef.update(toDelete);
                 }
             });
         }
@@ -44198,6 +44958,11 @@ window.addCharRow = function() {
             try { firebase.database().ref('.info/connected').off('value', window._plzConnHandler); } catch(_){}
             window._plzConnHandler = null;
         }
+        // 자리 claim 해제
+        if(window._plzSeatClaimRef) {
+            try { window._plzSeatClaimRef.onDisconnect().cancel(); window._plzSeatClaimRef.remove(); } catch(_){}
+            window._plzSeatClaimRef = null;
+        }
         // Remove from presence + 방이 비었으면 채팅 정리
         if(plzMyRef) {
             const _ridRef = plzMyRef.parent ? plzMyRef.parent.parent : null; // users/{uid} → plaza/{rid}
@@ -44269,7 +45034,17 @@ window.addCharRow = function() {
         document.getElementById('_omokMenu')?.remove();
         document.querySelectorAll('._omokBadge,._omokGuestBadge,._omokSpectatorBadge').forEach(el => el.remove());
         document.querySelectorAll('[id^="_omokEndModal_"]').forEach(el => el.remove());
-        // 캐치마인드 정리
+        // 캐치마인드 정리 — 강제퇴장(idle timeout, 방 이동) 시 participants에서 본인 제거
+        // 참고: _studentExitPlaza는 게임 활성 중 나가기를 차단하므로 이 경로는 게임 비활성 또는 강제퇴장 전용
+        // 탭 닫기/새로고침은 onDisconnect (← _cmSetParticipant 등록)가 처리
+        try {
+            const _cmG = window._catchMindState;
+            if(_cmG && _cmG.on && me && me.cd && me.cd !== 'teacher_main' && me.cd !== _cmG.hostUid) {
+                const _cmPartRef = _catchMindParticipantsRef().child(me.cd);
+                _cmPartRef.onDisconnect().cancel(); // 이미 명시적 제거 → onDisconnect 불필요
+                _cmPartRef.remove();
+            }
+        } catch(_){}
         window._catchMindState = null;
         window._catchMindCycleLocal = null;
         window._catchMindScoresLocal = null;
@@ -44282,6 +45057,7 @@ window.addCharRow = function() {
         if(window._cmRelayEndTimer){ clearTimeout(window._cmRelayEndTimer); window._cmRelayEndTimer = null; }
         if(window._cmTimerInterval){ clearInterval(window._cmTimerInterval); window._cmTimerInterval = null; }
         window._catchMindAutoOpenedFor = null;
+        window._catchMindOpenedForStart = null; // 페이지 재진입 시 이전 게임 자동 오픈 방지
         document.getElementById('_catchMindPanel')?.remove();
         document.getElementById('_catchMindMenu')?.remove();
         if(window._catchMindSubs){
@@ -44291,9 +45067,18 @@ window.addCharRow = function() {
         window._catchMindLastSeenStartedAt = null;
         window._catchMindWasSpecBefore = false;
         // 폭탄게임 정리
+        try {
+            const _bgG = window._bombGameState;
+            if(_bgG && _bgG.on && me && me.cd && me.cd !== 'teacher_main') {
+                const _bgMyRef = _bombGameRosterRef().child(me.cd);
+                _bgMyRef.onDisconnect().cancel();
+                _bgMyRef.remove();
+            }
+        } catch(_){}
         window._bombGameState = null;
         window._bombGameTurnLocal = null;
         window._bombGameAutoOpenedFor = null;
+        window._bombGameOpenedForStart = null; // 페이지 재진입 시 이전 게임 자동 오픈 방지
         if(window._bgBombTimer){ clearTimeout(window._bgBombTimer); window._bgBombTimer = null; }
         if(window._bgUiInterval){ clearInterval(window._bgUiInterval); window._bgUiInterval = null; }
         document.getElementById('_bgPanel')?.remove();
@@ -44614,6 +45399,8 @@ window.addCharRow = function() {
                 window._tchPlzSavedMe = me;
                 me = { nm: tchNm, cd: 'teacher_main', no: 0, eq: tchEq, cookie: 0, inv: [], bugReqs: [], teacherMsgs: [] };
                 _buildPlzUI(cont, finalCfg);
+                // 교사는 게임 구독 블록이 스킵되므로 오목 랭킹만 별도 초기화
+                setTimeout(() => { if(typeof _omokSubscribe === 'function') _omokSubscribe(); }, 200);
             };
             // 교사는 광장이 닫혀있어도 바로 접속 가능
             const finalCfg = cfg.open ? cfg : { ...cfg, open: true };
@@ -44945,6 +45732,11 @@ window.addCharRow = function() {
         // 빙고 active를 마니또 공개와 연동
         if(!db.bingo) db.bingo = {};
         db.bingo.active = next;
+        // 새 빙고 세션 ID 발급 — 드래프트 키 격리용 (clearBingo 후 재시작 시 이전 드래프트 차단)
+        if(next) {
+            db.bingo.sid = Date.now().toString(36);
+            try { dbRef.child('bingo/sid').set(db.bingo.sid); } catch(e){}
+        }
         try { dbRef.child('bingo/active').set(next); } catch(e){}
         _updateManittoStatus();
         try { window._writeEventsOpenSnap && _writeEventsOpenSnap(); } catch(_){}
@@ -45364,6 +46156,11 @@ window.addCharRow = function() {
                 if(!db.bingo.rejected) db.bingo.rejected = {};
                 db.bingo.rejected[cd] = snap.val() || {};
             });
+            // sid: 새 빙고 세션 ID — 드래프트 키 격리용. live 구독으로 교사 재시작 시 즉시 반영
+            dbRef.child('bingo/sid').on('value', snap => {
+                if(!db.bingo) db.bingo = {};
+                db.bingo.sid = snap.val() || '';
+            });
         } catch(e){ console.error('[bingo]',e); }
     }
 
@@ -45381,6 +46178,7 @@ window.addCharRow = function() {
             try { dbRef.child(`bingo/pending/${cd}`).off(); } catch(e){}
             try { dbRef.child(`bingo/rejected/${cd}`).off(); } catch(e){}
         }
+        try { dbRef.child('bingo/sid').off(); } catch(e){}
     }
 
     // 학생 로그인 시 1회 실행: bingo/active 변경을 실시간 수신해 메뉴 버튼 제어
@@ -45806,10 +46604,12 @@ window.addCharRow = function() {
             try {
                 dbRef.child(`bingo/rejected/${cd}/${ci}`).once('value', snap => {
                     const _rejImg = snap.val() || '';
-                    try { iframe.contentWindow.postMessage({type:'bingoDrawInit', cellLabel, prevImg: _rejImg, cd, ci: String(ci)}, '*'); } catch(e){}
+                    const _sid = db.bingo?.sid || '';
+                    try { iframe.contentWindow.postMessage({type:'bingoDrawInit', cellLabel, prevImg: _rejImg, cd, ci: String(ci), sid: _sid}, '*'); } catch(e){}
                 });
             } catch(e) {
-                try { iframe.contentWindow.postMessage({type:'bingoDrawInit', cellLabel, prevImg:'', cd, ci: String(ci)}, '*'); } catch(_){}
+                const _sid2 = db.bingo?.sid || '';
+                try { iframe.contentWindow.postMessage({type:'bingoDrawInit', cellLabel, prevImg:'', cd, ci: String(ci), sid: _sid2}, '*'); } catch(_){}
             }
         };
 
