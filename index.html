@@ -1710,7 +1710,7 @@
         <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 경험치 축제</div>
         <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💘 마니또</div>
 
-        <button class="btn" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%; font-size:19px; padding:12px; background:#FFC107; color:#5D4037;">로그아웃</button>
+        <button class="btn" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%; font-size:21px; padding:15px; background:var(--act); color:white;">로그아웃</button>
     </div>
     <div class="cont" style="padding:15px; display:flex; flex-direction:column;">
         <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="zoom:0.7;"></div></div>
@@ -2967,11 +2967,51 @@ let _renderLock = false; // 재진입 방지
     // ===== Lazy path 로더 — 탭 진입 시 필요한 정적 경로만 1회 fetch =====
     window._lazyLoaded = new Set();
     window._lazyLoading = {}; // 진행 중인 fetch Promise 캐시 (중복 fetch 방지)
+    // [LAZY-CACHE] 학생 세션에서 localStorage로 즉시 복원할 정적 카탈로그 (새로고침 시 아바타·아이템 즉시 표시)
+    const _STU_LAZY_CACHE = ['avt','bdg','tit','petDef','spPetDef'];
+    // 캐시로 먼저 렌더된 뒤 최신본이 달라졌을 때만, 현재 떠 있는 화면을 재렌더
+    function _rerenderAfterLazy() {
+        try { const _sc=document.getElementById('s_char'); if(_sc && !_sc.classList.contains('hidden') && typeof rChar==='function') { rChar(); return; } } catch(_){}
+        try { const _sb=document.getElementById('s_bg');   if(_sb && !_sb.classList.contains('hidden') && typeof rBg==='function')   { rBg();   return; } } catch(_){}
+        try { const _scl=document.getElementById('s_col'); if(_scl && !_scl.classList.contains('hidden') && typeof rCol==='function') { rCol();  return; } } catch(_){}
+    }
+    // 정적 카탈로그: localStorage 캐시 즉시 복원 → 즉시 resolve(렌더 안 막음). 최신본은 항상 백그라운드 fetch, 달라졌을 때만 재렌더(= stale-while-revalidate, stale 위험 없음).
+    function _ensureLazyCached(p) {
+        const _key = '_lz_'+p+'_v';
+        let _restored = false;
+        try { const cv = localStorage.getItem(_key); if(cv){ const parsed = JSON.parse(cv); if(Array.isArray(parsed)){ db[p] = parsed; _restored = parsed.length>0; } } } catch(_){}
+        const _bg = dbRef.child(p).once('value').then(snap => {
+            const v = snap.val();
+            const arr = Array.isArray(v) ? v.filter(Boolean)
+                       : (v && typeof v === 'object') ? Object.values(v).filter(Boolean)
+                       : [];
+            const _newHash = JSON.stringify(arr);
+            const _changed = _newHash !== JSON.stringify(db[p]||[]);
+            db[p] = arr;
+            window._lazyLoaded.add(p);
+            delete window._lazyLoading[p];
+            try { localStorage.setItem(_key, _newHash); } catch(_){}
+            try { if(window._lastSavedHash) window._lastSavedHash[p] = _newHash; } catch(_){}
+            try { if(window._lastSentHash)  window._lastSentHash[p]  = _newHash; } catch(_){}
+            if(_restored && _changed) _rerenderAfterLazy();
+        }).catch(e => { delete window._lazyLoading[p]; window._lazyLoaded.add(p); console.warn('[lazy-cache] fetch 실패:', p, e); });
+        if(_restored) {
+            window._lazyLoaded.add(p); // 캐시로 즉시 사용 → 렌더 블로킹 안 함
+            // 🛡️ 캐시값 hash를 즉시 기록 — 학생 sv()는 no-op이라 원래 안전하지만, 세션 오탐 등 만일의 경우에도
+            //    sv()가 이 캐시(아직 검증 전, stale 가능)를 Firebase에 덮어쓰지 않도록 방어.
+            try { const _ch = JSON.stringify(db[p]); if(window._lastSavedHash) window._lastSavedHash[p]=_ch; if(window._lastSentHash) window._lastSentHash[p]=_ch; } catch(_){}
+            return Promise.resolve();
+        }
+        window._lazyLoading[p] = _bg; // 캐시 없음(첫 로드) → fetch 완료까지 대기
+        return _bg;
+    }
     window._ensureLazyPaths = function(paths) {
         const needed = paths.filter(p => !window._lazyLoaded.has(p));
         if(!needed.length) return Promise.resolve();
         return Promise.all(needed.map(p => {
             if(window._lazyLoading[p]) return window._lazyLoading[p];
+            // [LAZY-CACHE] 학생 + 정적 카탈로그는 캐시 즉시 복원 경로로 (교사는 항상 최신 fetch)
+            if(!window._isTeacherSession && _STU_LAZY_CACHE.includes(p)) return _ensureLazyCached(p);
             window._lazyLoading[p] = dbRef.child(p).once('value').then(snap => {
                 const v = snap.val();
                 db[p] = Array.isArray(v) ? v.filter(Boolean)
@@ -10606,8 +10646,22 @@ let _renderLock = false; // 재진입 방지
         };
     };
 
-    window.backupDB = function() {
+    window.backupDB = async function() {
         const backup = window._makeFullSnapshot();
+        // 🛡️ [부분 백업 방지] stu는 메모리(증분 로드라 일부일 수 있음) 대신 Firebase 현재 전체값으로 백업
+        //    → 부분 로드 상태에서 "3명짜리 백업"이 만들어져 나중에 복원 시 wipe되는 사고 원천 차단
+        try {
+            const _snap = await dbRef.child('stu').once('value');
+            const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+            const _full = [];
+            _snap.forEach(c => { const v=c.val(); if(!v) return; if(_cdMig) _full.push(v); else { const i=parseInt(c.key); if(!isNaN(i)) _full[i]=v; else _full.push(v); } });
+            const _real = _full.filter(s => s && (s.cd||s.nm));
+            const _memCnt = (db.stu||[]).filter(s => s && (s.cd||s.nm)).length;
+            if(_real.length) {
+                backup.stu = _cdMig ? _real : _full;
+                if(_real.length !== _memCnt) console.warn('[backupDB] 메모리', _memCnt, '명 vs Firebase', _real.length, '명 — Firebase 전체로 백업');
+            }
+        } catch(e) { console.warn('[backupDB] stu 전체 fetch 실패 — 메모리로 백업', e); }
         const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -10627,6 +10681,16 @@ let _renderLock = false; // 재진입 방지
                 // 백업 파일의 stu에 null 슬롯 있으면 정규화 (다른 쪽 .cookie 등 cascade 에러 방지)
                 if(Array.isArray(data.stu)) data.stu = data.stu.filter(s => s && s.cd);
                 if(!confirm(`백업 파일을 불러오면 현재 데이터가 덮어씌워집니다.\n학생 수: ${data.stu.length}명\n날짜: ${data.ts||'알 수 없음'}\n\n계속하시겠습니까?`)) return;
+                // 🛡️ [급감 방지] 현재 Firebase 학생 수와 비교 — 백업이 현재의 절반 미만이면 강한 경고로 차단
+                //    (부분 로드 상태에서 만든 불완전 백업을 잘못 복원해 학생이 통째로 wipe되는 사고 방지)
+                try {
+                    const _curSnap = await dbRef.child('stu').once('value');
+                    let _fbCnt = 0;
+                    _curSnap.forEach(c => { const v = c.val(); if(v && (v.cd || v.nm)) _fbCnt++; });
+                    if(_fbCnt >= 5 && data.stu.length < _fbCnt * 0.5) {
+                        if(!confirm(`🚨 위험 경고\n\n백업의 학생 수(${data.stu.length}명)가 현재 데이터(${_fbCnt}명)의 절반 미만입니다.\n이대로 복원하면 약 ${_fbCnt - data.stu.length}명의 학생 데이터가 삭제됩니다!\n\n부분 로드 상태에서 만들어진 불완전한 백업일 수 있습니다.\n정말로 ${data.stu.length}명으로 덮어쓰시겠습니까?`)) return;
+                    }
+                } catch(_){}
                 const keys = ['stu','itm','gac','avt','bdg','tit','petDef','spPetDef','petSkins','log','cfg','auc','gacQueue','rec','ak'];
                 // ⚠️ Firebase 직접 set 먼저 (실제 데이터 복구는 여기서 완료) — 이후 렌더 실패해도 데이터는 안전
                 // 아이템 정의 키는 .set()으로 완전 교체 (기존 id키 잔존 방지), 나머지는 .update()
@@ -14056,7 +14120,7 @@ window.appU = function(y, si, k) {
             } else if(type==='tit'){
                 const t=(db.tit||[])[idx];
                 const _d=document.createElement('div'); _d.innerHTML=t?.name||'';
-                icon = t?.img ? `<img src="${t.img}" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;">` : '🏆';
+                icon = t?.img ? `<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="width:20px;height:20px;object-fit:contain;vertical-align:middle;">` : '🏆';
                 name = (_d.textContent||_d.innerText||'').trim()||t?.name||'?'; showExp = true;
             }
             const durId = `giDur_${ri}`, durDaysId = `giDurD_${ri}`;
@@ -14675,13 +14739,13 @@ window.appU = function(y, si, k) {
             const regularCards = (db.tit||[]).filter(t=>!t.parentId&&!t.isMonthly).map(t=>{
                 const origIdx=(db.tit||[]).indexOf(t);
                 return `<div class="${_givCardStyle('tit',origIdx)}">
-                    <div style="font-size:28px;line-height:1.2;">${t.img?`<img src="${t.img}" style="width:36px;height:36px;object-fit:contain;border-radius:6px;">`:'🏆️'}</div>
+                    <div style="font-size:28px;line-height:1.2;">${t.img?`<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="width:36px;height:36px;object-fit:contain;border-radius:6px;">`:'🏆️'}</div>
                     <div style="font-size:12px;color:#3E2723;font-weight:bold;margin-top:4px;word-break:keep-all;line-height:1.3;font-family:'Jua',sans-serif;">${plainN(t)}</div>
                 </div>`;
             });
             const monthlyCards = (db.tit||[]).filter(t=>t.isMonthly&&!t.parentId).map(t=>{
                 return `<div style="background:white;border:2px solid #90CAF9;border-radius:12px;padding:10px 6px;text-align:center;">
-                    <div style="font-size:28px;line-height:1.2;">${t.img?`<img src="${t.img}" style="width:36px;height:36px;object-fit:contain;border-radius:6px;">`:'📅'}</div>
+                    <div style="font-size:28px;line-height:1.2;">${t.img?`<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="width:36px;height:36px;object-fit:contain;border-radius:6px;">`:'📅'}</div>
                     <div style="font-size:12px;color:#1565C0;font-weight:bold;margin-top:4px;word-break:keep-all;line-height:1.3;font-family:'Jua',sans-serif;">${plainN(t)}</div>
                     <button onclick="showMonthlyTitDist('${t.id}')" style="margin-top:5px;width:100%;padding:3px 0;font-size:11px;background:#E3F2FD;border:1px solid #90CAF9;border-radius:5px;color:#1565C0;cursor:pointer;font-family:'Jua';">📅 월별 지급</button>
                 </div>`;
@@ -16848,7 +16912,7 @@ window.appU = function(y, si, k) {
                 const _rb = window._expireBadgeHtml(_exp);
                 return `<div class="inventory-slot has-item" onclick="equipTit('${t.id}')" style="cursor:pointer;padding:8px;${isEq?'border:3px solid #FF9F43;background:#FFF3E0;':''}">
                     ${isEq?`<div style="position:absolute;top:0;left:0;right:0;background:#FF9F43;color:white;font-size:10px;text-align:center;border-radius:9px 9px 0 0;padding:2px;">착용중</div>`:''}
-                    ${t.img ? `<img src="${t.img}" style="width:110px;height:110px;object-fit:contain;border-radius:8px;">` : `<div style="font-size:64px;">🏆️</div>`}
+                    ${t.img ? `<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="width:110px;height:110px;object-fit:contain;border-radius:8px;">` : `<div style="font-size:64px;">🏆️</div>`}
                     <div style="font-size:15px;font-weight:normal;margin-top:6px;color:#5D4037;text-align:center;word-break:keep-all;">${(()=>{const _d=document.createElement('div');_d.innerHTML=t.name||'';return(_d.textContent||_d.innerText||'').trim()||t.name||'칭호';})()}</div>
                     ${_rb}
                 </div>`;
@@ -20164,6 +20228,13 @@ window.addCharRow = function() {
     const getEqId   = v => (v && typeof v === 'object') ? v.id   : (v || '');
     const getEqFlip = v => (v && typeof v === 'object') ? (v.flip || 'right') : 'right';
 
+    // raw.githubusercontent.com → jsDelivr CDN (빠른 엣지 캐시). 파일명이 불변(타임스탬프)이라 캐시 안전.
+    // jsDelivr 실패 시 img onerror로 raw 폴백 → 절대 안 깨짐(최악도 기존 동작).
+    function _cdnUrl(u) {
+        if(typeof u !== 'string') return u;
+        const m = u.match(/^https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
+        return m ? `https://cdn.jsdelivr.net/gh/${m[1]}/${m[2]}@${m[3]}/${m[4]}` : u;
+    }
     function renderAvatar(eq, size=120, displayPetsArr, displayPropsArr) {
         eq = eq || {};
         const baseUrl = (db.cfg && db.cfg.baseChar) || '기본 캐릭터.png';
@@ -20186,8 +20257,8 @@ window.addCharRow = function() {
                 return `position:absolute;left:${left}%;top:${py2}%;width:${ps2}%;height:${ps2}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t?`transform:${t};`:''}`;
             };
             const isLeft = flip === 'left';
-            let html = `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img}" style="${mkStyle(isLeft?mirrorPx:px, isLeft, rot)}">`;
-            if(item.img2) html += `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img2}" style="${mkStyle2(isLeft?(100-(item.px2??px)-(item.ps2??ps)):(px2), isLeft, rot2)}">`;
+            let html = `<img class="avt-layer" loading="lazy" decoding="async" src="${_cdnUrl(item.img)}" onerror="this.onerror=null;this.src='${item.img}'" style="${mkStyle(isLeft?mirrorPx:px, isLeft, rot)}">`;
+            if(item.img2) html += `<img class="avt-layer" loading="lazy" decoding="async" src="${_cdnUrl(item.img2)}" onerror="this.onerror=null;this.src='${item.img2}'" style="${mkStyle2(isLeft?(100-(item.px2??px)-(item.ps2??ps)):(px2), isLeft, rot2)}">`;
             return html;
         };
         // 소품(prop) 다중 렌더 — displayPropsArr 우선, 없으면 eq.prop 단일 (Firebase 역직렬화: object→array 정규화)
@@ -20210,19 +20281,19 @@ window.addCharRow = function() {
             const left = isRight ? Math.max(0, 100-px-ps) : px;
             const tParts = [isRight?'scaleX(-1)':'', rot?`rotate(${rot}deg)`:''].filter(Boolean);
             const t = tParts.length ? `transform:${tParts.join(' ')};` : '';
-            let html = `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img}" style="position:absolute;left:${left}%;top:${py}%;width:${ps}%;height:${ps}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t}">`;
+            let html = `<img class="avt-layer" loading="lazy" decoding="async" src="${_cdnUrl(item.img)}" onerror="this.onerror=null;this.src='${item.img}'" style="position:absolute;left:${left}%;top:${py}%;width:${ps}%;height:${ps}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t}">`;
             if(item.img2) {
                 const px2=item.px2??px, py2=item.py2??py, ps2=item.ps2??ps, rot2=item.rot2??rot;
                 const left2 = isRight ? Math.max(0, 100-px2-ps2) : px2;
                 const t2Parts = [isRight?'scaleX(-1)':'', rot2?`rotate(${rot2}deg)`:''].filter(Boolean);
                 const t2 = t2Parts.length ? `transform:${t2Parts.join(' ')};` : '';
-                html += `<img class="avt-layer" loading="lazy" decoding="async" src="${item.img2}" style="position:absolute;left:${left2}%;top:${py2}%;width:${ps2}%;height:${ps2}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t2}">`;
+                html += `<img class="avt-layer" loading="lazy" decoding="async" src="${_cdnUrl(item.img2)}" onerror="this.onerror=null;this.src='${item.img2}'" style="position:absolute;left:${left2}%;top:${py2}%;width:${ps2}%;height:${ps2}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t2}">`;
             }
             return html;
         };
         // 등 장식(back)은 기본 캐릭터 뒤(z-index:0), 나머지는 앞(z-index:2)
         const backLayer  = renderLyr('back', 0);
-        const baseEl     = `<img class="avt-base" loading="lazy" decoding="async" src="${baseUrl}" style="position:relative;z-index:1;width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;">`;
+        const baseEl     = `<img class="avt-base" loading="lazy" decoding="async" src="${_cdnUrl(baseUrl)}" onerror="this.onerror=null;this.src='${baseUrl}'" style="position:relative;z-index:1;width:${size}px;height:${size}px;object-fit:contain;image-rendering:pixelated;">`;
         // 펫: [0]=오른쪽(반전), [1]=왼쪽 / 소품: [0]=왼쪽, [1]=오른쪽
         // 펫: Firebase 역직렬화 object→array 정규화
         const _petsNorm = Array.isArray(displayPetsArr) ? displayPetsArr
@@ -20316,59 +20387,9 @@ window.addCharRow = function() {
                 });
             }
         } catch(_) {}
-        if(window._rankExpanded===undefined) window._rankExpanded=false;
-        const medals2 = ['🥇','🥈','🥉'];
-        let rankRows = '', myRank2 = 0;
-
-        // 공통: 순위 데이터 소스 확보 + myRank2 계산
-        {
-            const _rawStu2 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
-            const _hasStuData = _rawStu2.filter(s => s && s.cd).length > 1;
-            const _isLightStudent2 = !window._isTeacherSession && !window._rpgStudentStuFull;
-            const _rankSrc2 = (_isLightStudent2 && Array.isArray(window._rankCache) && window._rankCache.length)
-                ? window._rankCache
-                : (_hasStuData ? _rawStu2 : (Array.isArray(window._rankCache) && window._rankCache.length ? window._rankCache : _rawStu2));
-            const _rankMap2 = new Map();
-            const _stuArr2 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
-            _rankSrc2.forEach(s => {
-                if (!s || (!s.cd && !s.nm)) return;
-                const key = s.cd || s.nm;
-                const prev = _rankMap2.get(key);
-                // _rankCache 항목에 displayPets/Props 없으면 db.stu에서 보완
-                let merged = s;
-                if (s.cd && (!s.displayPets && !s.displayProps)) {
-                    const stuMatch = _stuArr2.find(x => x && String(x.cd) === String(s.cd));
-                    if (stuMatch && (stuMatch.displayPets || stuMatch.displayProps)) {
-                        merged = Object.assign({}, s, { displayPets: stuMatch.displayPets, displayProps: stuMatch.displayProps });
-                    }
-                }
-                if (!prev || (merged.cookie||0) > (prev.cookie||0)) _rankMap2.set(key, merged);
-            });
-            // me 항상 포함
-            if (me && me.cd && !_rankMap2.has(me.cd)) {
-                _rankMap2.set(me.cd, { nm:me.nm||me.name||'', cd:me.cd, no:me.no||0, cookie:me.cookie||0, rb:me.rb||0, eq:me.eq, equippedTit:me.equippedTit, displayPets:me.displayPets, displayProps:me.displayProps });
-            }
-            const _allRankStus = [..._rankMap2.values()].sort((a,b)=>{
-                const d = (b.cookie||0)-(a.cookie||0);
-                return d!==0 ? d : (b.rb||0)-(a.rb||0);
-            });
-            myRank2 = _allRankStus.findIndex(s=>s.cd===me.cd)+1;
-
-            if(window._rankExpanded){
-                rankRows = _allRankStus.map((s,idx)=>{
-                    const rank = idx+1;
-                    const isMe2 = s.cd===me.cd;
-                    const rlv = Math.floor((s.cookie||0)/10);
-                    const rrb = s.rb||0;
-                    const stars2 = rrb>0?`<span style="color:#FFB300;font-size:12px;">${'★'.repeat(Math.min(rrb,5))}${rrb>5?'…':''}</span>`:'';
-                    const rankEl2 = rank<=3 ? `<div class="rank-num medal">${medals2[rank-1]}</div>` : `<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
-                    const rowClass2 = `rank-row${isMe2?' me':rank===1?' top1':rank===2?' top2':rank===3?' top3':''}`;
-                    const avtSize = rank<=3 ? 110 : 75;
-                    return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize,s.displayPets,s.displayProps)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;"><span style="display:inline-block;font-weight:bold;color:#F57C00;background:#FFE8CC;border-radius:8px;padding:1px 9px;font-size:${rank<=3?15:13}px;margin-right:5px;vertical-align:middle;">Lv.${rlv}</span>${s.nm||s.name||''}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div></div></div>`;
-                }).join('');
-            }
-            // (접힌 상태에서는 내 랭킹 카드를 표시하지 않음 — + 버튼으로 펼칠 때만 전체 목록에 '나' 강조로 표시)
-        }
+        // 내 순위(myRank2) 계산 — 모달과 동일한 _computeRankedStudents 공용 함수 사용 (전체 랭킹은 + 클릭 시 모달에서 표시)
+        let myRank2 = 0;
+        try { myRank2 = window._computeRankedStudents().findIndex(s => s && s.cd === me.cd) + 1; } catch(_) {}
 
         // 칭호 정보
         const equippedTitId = me.equippedTit;
@@ -20482,7 +20503,7 @@ window.addCharRow = function() {
                 const _tn=(()=>{const _d=document.createElement('div');_d.innerHTML=t.name||'';return(_d.textContent||_d.innerText||'').trim()||t.name||'칭호';})();
                 return `<div onclick="equipTit('${t.id}')" data-tooltip="${_tn}${t.desc?'\n'+t.desc:''}" style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;">
                     <div style="width:64px;height:64px;border:2px solid ${t.id===equippedTit?.id?'#FF9800':'#E0E0E0'};border-radius:14px;background:${t.id===equippedTit?.id?'#FFF3E0':'white'};display:flex;align-items:center;justify-content:center;overflow:hidden;transition:0.15s;">
-                        ${t.img ? `<img src="${t.img}" style="width:54px;height:54px;object-fit:contain;border-radius:8px;">` : `<div style="font-size:28px;">🏆️</div>`}
+                        ${t.img ? `<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="width:54px;height:54px;object-fit:contain;border-radius:8px;">` : `<div style="font-size:28px;">🏆️</div>`}
                     </div>
                     <div style="font-size:12px;color:#5D4037;text-align:center;width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:normal;">${_tn}</div>
                 </div>`;}).join('')
@@ -20499,7 +20520,7 @@ window.addCharRow = function() {
         const titBarHtml = equippedTit
             ? (equippedTit.img
                 ? `<div onclick="showTitPicker()" ${equippedTit.desc?`data-tooltip="${equippedTit.desc}"`:''}  style="${_titBase2}border:1.5px solid #000;border-radius:9px;height:78px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;padding:0 24px;box-sizing:border-box;">
-                    <img src="${equippedTit.img}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;">
+                    <img src="${_cdnUrl(equippedTit.img)}" onerror="this.onerror=null;this.src='${equippedTit.img}'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;">
                     <div style="position:relative;display:flex;align-items:center;">
                         <span style="font-size:${Math.round(_titFs*1.6)}px;font-weight:normal;color:${_titCol};text-shadow:${_titOutline};white-space:pre;">${equippedTit.name}</span>
                     </div>
@@ -20519,8 +20540,8 @@ window.addCharRow = function() {
             _scInner = document.getElementById('s_char_inner');
         }
         _scInner.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                <h2 style="margin:0;">🧑 내 캐릭터</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:30px;">
+                <h2 style="margin:0;">💖 내 캐릭터</h2>
             </div>
             <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;">
                 <!-- 좌측: 캐릭터 패널 -->
@@ -20554,39 +20575,138 @@ window.addCharRow = function() {
                 </div>
             </div>
 
-            <div style="margin-top:20px; background:white; border-radius:20px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.05); border:2px solid #F5F5F5; margin-bottom:20px;">
-                <div class="rank-header" style="cursor:pointer;user-select:none;border-radius:0;margin-bottom:0;box-shadow:none;background:linear-gradient(135deg,#FFEDD2 0%,#FFDCA8 55%,#FFC987 100%);" onclick="window._toggleRankExpanded()">
-                    <div style="font-size:32px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1));">🏆</div>
-                    <div style="font-size:19px;font-weight:bold;color:#6D4C41;white-space:nowrap;">용사 랭킹</div>
-                    ${myRank2 > 0 ? `<span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;flex-shrink:0;"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:48px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">⭐</span><span style="position:relative;z-index:1;font-size:13px;font-weight:bold;color:#6D4C41;text-shadow:0 1px 1px rgba(255,255,255,0.7);margin-top:1px;">${myRank2}위</span></span>` : ''}
+            <div style="margin-top:44px; background:white; border-radius:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.07); border:none; margin-bottom:36px; zoom:1.3;">
+                <div class="rank-header" style="cursor:pointer;user-select:none;border-radius:0;margin-bottom:0;box-shadow:none;background:linear-gradient(90deg,#FFEFDB 0%,#FFD9AC 55%,#FFC78A 100%);" onclick="window._openRankModal()">
+                    <div style="font-size:34px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.22));">🏆</div>
+                    <h2 style="margin:0;font-weight:bold;color:#6D4C41;white-space:nowrap;">용사 랭킹</h2>
+                    ${myRank2 > 0 ? `<span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;flex-shrink:0;"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.22));">⭐</span><span style="position:relative;z-index:1;font-size:16px;font-weight:bold;color:#6D4C41;text-shadow:0 1px 1px rgba(255,255,255,0.7);margin-top:1px;">${myRank2}위</span></span>` : ''}
                     <div style="flex:1;"></div>
-                    <div style="font-size:22px;color:#FB8C00;font-weight:bold;line-height:1;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:white;box-shadow:0 2px 5px rgba(0,0,0,0.1);">${window._rankExpanded?'−':'+'}</div>
+                    <div style="font-size:22px;color:#FB8C00;font-weight:bold;line-height:1;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:white;box-shadow:0 2px 5px rgba(0,0,0,0.1);">+</div>
                 </div>
-                ${window._rankExpanded ? `<div class="rank-page" style="padding:12px 16px 16px;">${rankRows || '<div style="color:#ccc;text-align:center;padding:30px;">학생 정보가 없습니다.</div>'}</div>` : ''}
             </div>`;
     }
 
-    // 용사 랭킹 토글 — 펼칠 때만 다른 학생 데이터 fetch (트래픽 절감)
-    window._toggleRankExpanded = function() {
-        if(window._rankExpanded) {
-            // 접기 — fetch 불필요
-            window._rankExpanded = false;
-            rChar();
-            return;
+    // 용사 랭킹: 정렬된 학생 배열 계산 (rChar 헤더 + 모달 공용)
+    window._computeRankedStudents = function() {
+        const _rawStu2 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        const _hasStuData = _rawStu2.filter(s => s && s.cd).length > 1;
+        const _isLightStudent2 = !window._isTeacherSession && !window._rpgStudentStuFull;
+        const _rankSrc2 = (_isLightStudent2 && Array.isArray(window._rankCache) && window._rankCache.length)
+            ? window._rankCache
+            : (_hasStuData ? _rawStu2 : (Array.isArray(window._rankCache) && window._rankCache.length ? window._rankCache : _rawStu2));
+        const _rankMap2 = new Map();
+        const _stuArr2 = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        _rankSrc2.forEach(s => {
+            if (!s || (!s.cd && !s.nm)) return;
+            const key = s.cd || s.nm;
+            const prev = _rankMap2.get(key);
+            let merged = s;
+            if (s.cd && (!s.displayPets && !s.displayProps)) {
+                const stuMatch = _stuArr2.find(x => x && String(x.cd) === String(s.cd));
+                if (stuMatch && (stuMatch.displayPets || stuMatch.displayProps)) {
+                    merged = Object.assign({}, s, { displayPets: stuMatch.displayPets, displayProps: stuMatch.displayProps });
+                }
+            }
+            if (!prev || (merged.cookie||0) > (prev.cookie||0)) _rankMap2.set(key, merged);
+        });
+        if (me && me.cd && !_rankMap2.has(me.cd)) {
+            _rankMap2.set(me.cd, { nm:me.nm||me.name||'', cd:me.cd, no:me.no||0, cookie:me.cookie||0, rb:me.rb||0, eq:me.eq, equippedTit:me.equippedTit, displayPets:me.displayPets, displayProps:me.displayProps });
         }
-        // 펼치기 — 페이지 세션 1회만 fetch (재접속 시 다시 받음). 같은 세션 내 + 토글은 캐시 사용.
-        window._rankExpanded = true;
+        return [..._rankMap2.values()].sort((a,b)=>{
+            const d = (b.cookie||0)-(a.cookie||0);
+            return d!==0 ? d : (b.rb||0)-(a.rb||0);
+        });
+    };
+
+    // 용사 랭킹: + 클릭 → 새 창(모달)으로 캐릭터 그리드 (1위부터, 가로 스크롤)
+    window._openRankModal = function() {
+        const _render = () => {
+            const ranked = window._computeRankedStudents();
+            // [타겟 프리로드] 랭킹에 뜨는 학생들의 아바타 이미지만 미리 받아 SW 캐시에 → 페이지 넘김 즉시화 (전체 카탈로그 X)
+            try {
+                const _avtArr = Array.isArray(db.avt)?db.avt:Object.values(db.avt||{});
+                const _avtById = {}; _avtArr.forEach(a=>{ if(a&&a.id) _avtById[a.id]=a; });
+                const _psArr = Array.isArray(db.petSkins)?db.petSkins:Object.values(db.petSkins||{});
+                const _psById = {}; _psArr.forEach(x=>{ if(x&&x.id!=null) _psById[String(x.id)]=x; });
+                const _eqId = v => (v && typeof v === 'object') ? v.id : (v||'');
+                const _seen = new Set();
+                const _pre = u => { u = (typeof _cdnUrl==='function') ? _cdnUrl(u) : u; if(u && !_seen.has(u)){ _seen.add(u); const im=new Image(); im.decoding='async'; im.src=u; } };
+                if(db.cfg && String(db.cfg.baseChar||'').startsWith('http')) _pre(db.cfg.baseChar);
+                ranked.forEach(s => {
+                    const ids = new Set();
+                    Object.values(s.eq||{}).forEach(v=>{ const id=_eqId(v); if(id) ids.add(id); });
+                    (Array.isArray(s.displayPets)?s.displayPets:Object.values(s.displayPets||{})).forEach(id=>id&&ids.add(id));
+                    (Array.isArray(s.displayProps)?s.displayProps:Object.values(s.displayProps||{})).forEach(id=>id&&ids.add(id));
+                    ids.forEach(id => {
+                        if(String(id).startsWith('ps_')) { const sk=_psById[String(id).slice(3)]; if(sk&&sk.img) _pre(sk.img); }
+                        else { const a=_avtById[id]; if(a){ _pre(a.img); _pre(a.img2); } }
+                    });
+                });
+            } catch(_){}
+            const medals = ['🥇','🥈','🥉'];
+            const PAGE = 5;
+            const totalPages = Math.max(1, Math.ceil(ranked.length / PAGE));
+            let page = 0;
+            // 한 명 카드 HTML (페이지 단위로 5명만 렌더 → 스크롤·페인팅 부하 없음)
+            const _cardHtml = (s, idx) => {
+                const rank = idx + 1;
+                const isMe = me && s.cd === me.cd;
+                const rlv = Math.floor((s.cookie||0)/10);
+                const rankEl = rank <= 3
+                    ? `<div style="font-size:32px;line-height:1;">${medals[rank-1]}</div>`
+                    : `<div style="font-size:17px;font-weight:bold;color:#fff;background:#BDBDBD;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;">${rank}</div>`;
+                let avt=''; try { avt = (typeof renderAvatar==='function') ? renderAvatar(s.eq||{},140,s.displayPets,s.displayProps) : ''; } catch(_){}
+                return `<div style="flex:1 1 0;min-width:0;max-width:210px;background:${isMe?'#FFF3E0':'#FFF8F0'};border:2px solid ${isMe?'#FFB74D':'#FFE3C0'};border-radius:18px;padding:14px 8px 16px;text-align:center;">
+                    <div style="height:36px;display:flex;align-items:center;justify-content:center;">${rankEl}</div>
+                    <div style="width:140px;height:140px;margin:4px auto 8px;display:flex;align-items:center;justify-content:center;pointer-events:none;">${avt}</div>
+                    <div style="display:inline-block;font-weight:bold;color:#F57C00;background:#FFE8CC;border-radius:8px;padding:2px 11px;font-size:14px;margin-bottom:6px;">Lv.${rlv}</div>
+                    <div style="font-weight:bold;color:#5D4037;font-size:15px;font-family:'Jua',sans-serif;word-break:keep-all;">${s.nm||s.name||''}${isMe?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div>
+                </div>`;
+            };
+            document.querySelectorAll('[data-rank-modal]').forEach(el=>el.remove());
+            const modal = document.createElement('div');
+            modal.setAttribute('data-rank-modal','1');
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99300;display:flex;align-items:center;justify-content:center;padding:20px;user-select:none;-webkit-user-select:none;-webkit-user-drag:none;touch-action:manipulation;';
+            const _arrow = 'flex:0 0 auto;width:50px;height:50px;border-radius:50%;border:none;background:#FFE0B2;color:#F57C00;font-size:30px;font-weight:bold;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.12);font-family:sans-serif;';
+            modal.innerHTML = `<div style="background:white;border-radius:24px;padding:22px 20px;width:min(1080px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 10px 44px rgba(0,0,0,0.25);font-family:'Jua',sans-serif;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
+                    <div style="font-size:22px;font-weight:bold;color:#5D4037;">🏆 용사 랭킹</div>
+                    <button onclick="this.closest('[data-rank-modal]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#bbb;line-height:1;">✕</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <button id="_rkPrev" style="${_arrow}">‹</button>
+                    <div id="_rkPage" style="flex:1;min-width:0;display:flex;gap:12px;justify-content:center;align-items:stretch;"></div>
+                    <button id="_rkNext" style="${_arrow}">›</button>
+                </div>
+            </div>`;
+            // 창 밖(배경) 클릭으로는 닫히지 않음 — ✕ 버튼으로만 닫기
+            document.body.appendChild(modal);
+            const pageEl = modal.querySelector('#_rkPage');
+            const prevBtn = modal.querySelector('#_rkPrev');
+            const nextBtn = modal.querySelector('#_rkNext');
+            const _draw = () => {
+                const start = page*PAGE;
+                const slice = ranked.slice(start, start+PAGE);
+                pageEl.innerHTML = slice.length ? slice.map((s,i)=>_cardHtml(s, start+i)).join('') : '<div style="color:#ccc;padding:30px;text-align:center;">학생 정보가 없습니다.</div>';
+                prevBtn.style.visibility = page>0 ? 'visible' : 'hidden';
+                nextBtn.style.visibility = page<totalPages-1 ? 'visible' : 'hidden';
+            };
+            prevBtn.onclick = ()=>{ if(page>0){ page--; _draw(); } };
+            nextBtn.onclick = ()=>{ if(page<totalPages-1){ page++; _draw(); } };
+            _draw();
+        };
+        // 데이터 1회 로드 후 렌더 (트래픽 절감 — 세션 1회)
         const _isLightStudent = !window._isTeacherSession && !window._rpgStudentStuFull;
         if(!_isLightStudent && window._refreshAllStu && !window._rankFetchedThisSession) {
             try {
                 window._refreshAllStu().finally(() => {
                     window._rankFetchedThisSession = true;
                     window._lastStuRefresh = Date.now();
-                    rChar();
+                    _render();
                 });
-            } catch(_){ rChar(); }
+            } catch(_){ _render(); }
         } else {
-            rChar();
+            _render();
         }
     };
 
@@ -20612,7 +20732,7 @@ window.addCharRow = function() {
                 <div onclick="me.equippedTit='${t.id}';upMe();rChar();document.getElementById('titPickerModal')?.remove();"
                      ${t.desc?`data-tooltip="${t.desc}"`:''}
                      style="padding:10px 14px;cursor:pointer;border-radius:10px;background:${t.id===me.equippedTit?'#FFF3E0':'white'};border:2px solid ${t.id===me.equippedTit?'#FF9800':'#EEE'};display:flex;align-items:center;gap:10px;">
-                    ${t.img?`<img src="${t.img}" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;">`:`<span style="font-size:24px;">🏆️</span>`}
+                    ${t.img?`<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="width:36px;height:36px;object-fit:contain;flex-shrink:0;">`:`<span style="font-size:24px;">🏆️</span>`}
                     <span style="font-size:14px;color:#3E2723;font-family:'Jua',sans-serif;">${(()=>{const _d=document.createElement('div');_d.innerHTML=t.name||'';return(_d.textContent||_d.innerText||'').trim()||t.name||'';})()}</span>
                 </div>`).join('')
             : `<div style="color:#CCC;text-align:center;padding:16px;font-size:14px;">획득한 칭호가 없습니다</div>`;
@@ -25161,7 +25281,7 @@ window.addCharRow = function() {
                  ondragleave="mgrDragLeave(event)" ondrop="mgrDrop(event)" ondragend="mgrDragEnd(event)"
                  onclick="showTitMgr(${i})" oncontextmenu="dupMgr(event,'tit',${i}); return false;">
                 <div class="mgr-del-btn" onclick="event.stopPropagation();delTit(${i})" style="position:absolute;top:-6px;right:-6px;background:#EF5350;color:white;border-radius:50%;width:20px;height:20px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">×</div>
-                <div class="bdg-icon">${t.img?`<img src="${t.img}" style="width:60px;height:60px;object-fit:contain;border-radius:8px;">`:(t.isMonthly?'📅':'🏆️')}</div>
+                <div class="bdg-icon">${t.img?`<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="width:60px;height:60px;object-fit:contain;border-radius:8px;">`:(t.isMonthly?'📅':'🏆️')}</div>
                 <div class="bdg-name">${plainName}</div>
                 <div class="bdg-desc">${t.desc||''}</div>
                 ${monthlyBtn}
@@ -25269,7 +25389,7 @@ window.addCharRow = function() {
                     </div>
                     <label>이미지 (선택, 이미지 등록 시 위 설정 대신 이미지 표시)</label>
                     <div class="gh-upload-area" onclick="document.getElementById('tit_img_file').click()" id="tit_drop_area">
-                        <div id="tit_img_preview">${t.img?`<img src="${t.img}" style="max-height:80px;border-radius:8px;">`:'📁 클릭하거나 이미지를 드래그하여 업로드'}</div>
+                        <div id="tit_img_preview">${t.img?`<img src="${_cdnUrl(t.img)}" onerror="this.onerror=null;this.src='${t.img}'" style="max-height:80px;border-radius:8px;">`:'📁 클릭하거나 이미지를 드래그하여 업로드'}</div>
                     </div>
                     <input type="file" id="tit_img_file" accept="image/*" style="display:none;" onchange="onTitImgSelect(this)">
                     <input id="tit_img_url" placeholder="또는 이미지 URL 직접 입력" value="${t.img||''}">
