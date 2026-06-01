@@ -6378,7 +6378,9 @@ let _renderLock = false; // 재진입 방지
             const _effectiveDow = c.dayOfWeek != null ? c.dayOfWeek : 1;
             const isRightDay = today.getDay() === _effectiveDow;
             const periodOk = !c.lastGrantDate || (() => {
-                const diffDays = Math.floor((today - new Date(c.lastGrantDate)) / 86400000);
+                // 날짜 문자열끼리(둘 다 UTC 자정) 비교 — today(현지 시각) 대신 todayStr 사용해 시간대 경계 오류 제거.
+                // (_autoGrantOnLogin의 _hasTarget 판정과 동일한 방식으로 통일. Math.round로 부동소수 경계 안전.)
+                const diffDays = Math.round((new Date(todayStr) - new Date(c.lastGrantDate)) / 86400000);
                 const minDays = c.period==='biweekly'?14:c.period==='triweekly'?21:c.period==='quadweekly'?28:c.period==='monthly'?28:7;
                 return diffDays >= minDays;
             })();
@@ -6388,7 +6390,9 @@ let _renderLock = false; // 재진입 방지
                 : itmList.find(it => it && it.n === c.item);
             diagLog.push(`[배지 ${b.name||b.id}] 아이템="${c.item}" 찾음=${!!couponDef} 요일ok=${isRightDay} 주기ok=${periodOk} dayOfWeek=${c.dayOfWeek} 오늘=${today.getDay()}`);
             if(!couponDef) { console.warn('[펫스킬] 아이템 못 찾음:', c.item, '→ itmList 이름들:', itmList.map(i=>i?.n)); return; }
-            if(!force && (!isRightDay || !periodOk)) { skippedByDay.push(b.name||b.id); return; }
+            // 'auto'(자동 지급)도 수동과 동일하게 배지별 요일/주기를 반드시 지킨다.
+            // (true=강제 확인 후, 'missed'=누락복구만 요일 무시) — auto가 요일을 무시하면 다른 요일 스킬까지 오늘 지급됨.
+            if((!force || force === 'auto') && (!isRightDay || !periodOk)) { skippedByDay.push(b.name||b.id); return; }
             // missed 모드: 선택된 배지만 지급
             if(force === 'missed' && window._missedGrantBiSet && !window._missedGrantBiSet.has(bi)) return;
             let matchCount = 0;
@@ -6405,13 +6409,21 @@ let _renderLock = false; // 재진입 방지
             const dowNames = ['일','월','화','수','목','금','토'];
             const skipMsg = skippedByDay.length ? `\n\n⚠️ 요일/주기 미충족으로 건너뜀: ${skippedByDay.join(', ')}` : '';
             console.log('[펫스킬] targets 없음. skippedByDay:', skippedByDay);
+            // 자동('auto')은 백그라운드 실행이므로 팝업·토스트 없이 완전 무음 종료.
+            if(force === 'auto') return;
+            // 누락복구('missed')·강제(true)는 피드백 토스트는 주되, 위험한 강제지급 escalation 확인창은 띄우지 않는다.
+            // (escalation 시 요일 무시하고 전체 지급되는 사고가 남 → force 모드에선 차단.)
+            if(force) { showToast('지급 대상 학생이 없습니다.'); return; }
+            // 수동 버튼(force 미지정)만: 건너뛴 스킬이 있으면 강제 지급 여부를 묻는다.
             if(skippedByDay.length && confirm(`오늘(${dowNames[today.getDay()]}요일)은 지급 요일이 아닌 스킬이 있습니다.${skipMsg}\n\n강제로 지금 지급하시겠습니까?`)) {
                 return window.executePetSkillCouponGrant(true);
             }
             showToast('지급 대상 학생이 없습니다.'); return;
         }
         console.log('[펫스킬] targets:', targets.length, '건 지급 시도');
-        if(!confirm(`${targets.length}건의 쿠폰을 지급하시겠습니까?`)) return;
+        // 수동 버튼(force 미지정)만 확인창 표시. 'auto'(자동지급)·'missed'(누락복구 모달에서 이미 선택)·true(강제 확인 후)는 건너뜀.
+        // ⚠️ 자동 지급은 로그인 1.5초 뒤 사용자 제스처 없이 실행되므로, confirm()을 띄우면 브라우저가 차단(→false)해 조용히 실패함.
+        if(!force && !confirm(`${targets.length}건의 쿠폰을 지급하시겠습니까?`)) return;
         const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
         console.log('[펫스킬] _cdMig:', _cdMig);
         const grantedBiSet = new Set();
@@ -6586,7 +6598,7 @@ let _renderLock = false; // 재진입 방지
             if(c.lastGrantDate && c.lastGrantDate >= _expDate) return;
             // 기대 지급일이 오늘인 경우: 개학 직후면 팝업 포함, 아니면 _autoGrantOnLogin이 처리
             if(_expDate === _todayStr && !_postVac) return;
-            const _needDays = c.period==='biweekly'?14:c.period==='triweekly'?21:c.period==='quadweekly'?28:7;
+            const _needDays = c.period==='biweekly'?14:c.period==='triweekly'?21:c.period==='quadweekly'?28:c.period==='monthly'?28:7; // monthly=28(매월) — periodOk와 일치
             // 주기 상 아직 지급 시기가 아닌 경우 스킵
             if(c.lastGrantDate) {
                 const _daysSince = Math.round((new Date(_expDate) - new Date(c.lastGrantDate)) / 86400000);
@@ -6693,7 +6705,7 @@ let _renderLock = false; // 재진입 방지
                 if(!isRightDay) return false;
                 if(!c.lastGrantDate) return true;
                 const diff = Math.round((new Date(_todayStr) - new Date(c.lastGrantDate)) / 86400000);
-                const need = c.period === 'biweekly' ? 14 : c.period === 'triweekly' ? 21 : c.period === 'quadweekly' ? 28 : 7;
+                const need = c.period === 'biweekly' ? 14 : c.period === 'triweekly' ? 21 : c.period === 'quadweekly' ? 28 : c.period === 'monthly' ? 28 : 7; // monthly=28(매월) — periodOk와 일치
                 return diff >= need;
             });
             if(_hasTarget) {
@@ -48418,7 +48430,7 @@ window.addCharRow = function() {
         </div>`;
 
         return `<div id="_bingoPlusLetter" style="display:flex;gap:14px;align-items:flex-start;">
-            <div id="_bingoGridBox" style="background:white;border-radius:18px;border:2px solid #F8BBD0;padding:22px;flex:7;min-width:0;">
+            <div id="_bingoGridBox" style="background:white;border-radius:18px;border:2px solid #F8BBD0;padding:22px;flex:2;min-width:0;">
                 <div style="text-align:center;margin-bottom:16px;">
                     <div style="font-size:24px;font-family:'Jua';color:#880E4F;">💘 마니또 빙고</div>
                 </div>
@@ -48427,7 +48439,7 @@ window.addCharRow = function() {
                     <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">${_svgLines}</svg>
                 </div>
             </div>
-            <div style="flex:7;min-width:0;">${_letterHtml}</div>
+            <div style="flex:1;min-width:0;">${_letterHtml}</div>
         </div>`;
     }
 
