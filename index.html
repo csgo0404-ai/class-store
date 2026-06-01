@@ -1510,7 +1510,7 @@
                 <!-- 마니또 섹션 -->
                 <div id="bingoCard">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-                    <h3 style="margin:0;font-size:18px;">💖 마니또</h3>
+                    <h3 style="margin:0;font-size:18px;">💘 마니또</h3>
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                         <button class="btn" style="background:#9C27B0;color:white;padding:6px 14px;font-size:13px;" onclick="genManitto()">🎲 뽑기</button>
                         <button class="btn" style="background:#43A047;color:white;padding:6px 14px;font-size:13px;" id="manittoRevealBtn" onclick="toggleManittoReveal()">🔒 비공개중</button>
@@ -1708,7 +1708,7 @@
         <div class="menu" id="menuTimeBankBtn" onclick="navS('s_tbank',this)" style="display:none;">🐷 순공통장</div>
         <div class="menu" id="menuGababoBtn" onclick="navS('s_gababo',this)" style="display:none;">⚔ 가바보 용사</div>
         <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 경험치 축제</div>
-        <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💖 마니또</div>
+        <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💘 마니또</div>
 
         <button class="btn" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%; font-size:19px; padding:12px; background:#FFC107; color:#5D4037;">로그아웃</button>
     </div>
@@ -20318,7 +20318,7 @@ window.addCharRow = function() {
         } catch(_) {}
         if(window._rankExpanded===undefined) window._rankExpanded=false;
         const medals2 = ['🥇','🥈','🥉'];
-        let rankRows = '', myRank2 = 0, myRankRowHtml = '';
+        let rankRows = '', myRank2 = 0;
 
         // 공통: 순위 데이터 소스 확보 + myRank2 계산
         {
@@ -20364,17 +20364,10 @@ window.addCharRow = function() {
                     const rankEl2 = rank<=3 ? `<div class="rank-num medal">${medals2[rank-1]}</div>` : `<div class="rank-num" style="color:#BDBDBD;">${rank}</div>`;
                     const rowClass2 = `rank-row${isMe2?' me':rank===1?' top1':rank===2?' top2':rank===3?' top3':''}`;
                     const avtSize = rank<=3 ? 110 : 75;
-                    return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize,s.displayPets,s.displayProps)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;">${s.nm||s.name||''}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}경험치 ${s.cookie||0}</div></div><div class="rank-lv">Lv.${rlv}</div></div>`;
+                    return `<div class="${rowClass2}" style="padding:10px 14px;gap:14px;">${rankEl2}${renderAvatar(s.eq||{},avtSize,s.displayPets,s.displayProps)}<div class="rank-info"><div class="rank-nm" style="font-size:${rank<=3?17:15}px;"><span style="display:inline-block;font-weight:bold;color:#F57C00;background:#FFE8CC;border-radius:8px;padding:1px 9px;font-size:${rank<=3?15:13}px;margin-right:5px;vertical-align:middle;">Lv.${rlv}</span>${s.nm||s.name||''}${isMe2?' <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span>':''}</div></div></div>`;
                 }).join('');
-            } else {
-                // 접힌 상태 — 순위 번호 표시
-                const rrb = me.rb||0;
-                const stars2 = rrb>0?`<span style="color:#FFB300;font-size:12px;">${'★'.repeat(Math.min(rrb,5))}${rrb>5?'…':''}</span>`:'';
-                const rankNumEl = myRank2 > 0 && myRank2 <= 3
-                    ? `<div class="rank-num medal">${medals2[myRank2-1]}</div>`
-                    : `<div class="rank-num" style="color:#BDBDBD;">${myRank2 > 0 ? myRank2 : '?'}</div>`;
-                myRankRowHtml = `<div class="rank-row me" style="padding:10px 14px;gap:14px;">${rankNumEl}${renderAvatar(me.eq||{},90,me.displayPets,me.displayProps)}<div class="rank-info"><div class="rank-nm" style="font-size:16px;">${me.nm} <span style="font-size:11px;background:#FF9800;color:white;border-radius:8px;padding:1px 5px;">나</span></div><div class="rank-sub">${stars2}${rrb>0?` 진화 ${rrb}회 · `:''}경험치 ${me.cookie||0}</div></div><div class="rank-lv">Lv.${lv}</div></div>`;
             }
+            // (접힌 상태에서는 내 랭킹 카드를 표시하지 않음 — + 버튼으로 펼칠 때만 전체 목록에 '나' 강조로 표시)
         }
 
         // 칭호 정보
@@ -20528,7 +20521,6 @@ window.addCharRow = function() {
         _scInner.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                 <h2 style="margin:0;">🧑 내 캐릭터</h2>
-                <span style="font-size:14px;color:#9E9E9E;background:#F5F5F5;border:1px solid #E0E0E0;border-radius:8px;padding:3px 10px;font-family:monospace;">v.5.19</span>
             </div>
             <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;">
                 <!-- 좌측: 캐릭터 패널 -->
@@ -20562,20 +20554,15 @@ window.addCharRow = function() {
                 </div>
             </div>
 
-            <div style="margin-top:20px; background:white; border-radius:20px; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); border:2px solid #F5F5F5; margin-bottom:20px;">
-                <div class="rank-header" style="cursor:pointer;user-select:none;" onclick="window._toggleRankExpanded()">
-                    <div style="font-size:36px;">🏆</div>
-                    <div style="flex:1;">
-                        <div style="font-size:18px;font-weight:bold;color:#4E342E;">용사 랭킹</div>
-                        <div style="font-size:13px;color:#888;">${myRank2 > 0 ? `<b style="color:#FF9800;">${myRank2}위</b> &nbsp;·&nbsp; ` : ''}Lv.${lv} &nbsp;·&nbsp; 경험치 ${totalCookie}</div>
-                    </div>
-                    <div style="font-size:22px;color:#FF9800;font-weight:bold;line-height:1;padding:4px 8px;border-radius:10px;background:#FFF3E0;">${window._rankExpanded?'−':'+'}</div>
+            <div style="margin-top:20px; background:white; border-radius:20px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.05); border:2px solid #F5F5F5; margin-bottom:20px;">
+                <div class="rank-header" style="cursor:pointer;user-select:none;border-radius:0;margin-bottom:0;box-shadow:none;background:linear-gradient(135deg,#FFEDD2 0%,#FFDCA8 55%,#FFC987 100%);" onclick="window._toggleRankExpanded()">
+                    <div style="font-size:32px;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.1));">🏆</div>
+                    <div style="font-size:19px;font-weight:bold;color:#6D4C41;white-space:nowrap;">용사 랭킹</div>
+                    ${myRank2 > 0 ? `<span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;flex-shrink:0;"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:48px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.2));">⭐</span><span style="position:relative;z-index:1;font-size:13px;font-weight:bold;color:#6D4C41;text-shadow:0 1px 1px rgba(255,255,255,0.7);margin-top:1px;">${myRank2}위</span></span>` : ''}
+                    <div style="flex:1;"></div>
+                    <div style="font-size:22px;color:#FB8C00;font-weight:bold;line-height:1;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:white;box-shadow:0 2px 5px rgba(0,0,0,0.1);">${window._rankExpanded?'−':'+'}</div>
                 </div>
-                <div class="rank-page" style="margin-top:10px;">
-                    ${window._rankExpanded
-                        ? (rankRows || '<div style="color:#ccc;text-align:center;padding:30px;">학생 정보가 없습니다.</div>')
-                        : myRankRowHtml}
-                </div>
+                ${window._rankExpanded ? `<div class="rank-page" style="padding:12px 16px 16px;">${rankRows || '<div style="color:#ccc;text-align:center;padding:30px;">학생 정보가 없습니다.</div>'}</div>` : ''}
             </div>`;
     }
 
@@ -48096,7 +48083,7 @@ window.addCharRow = function() {
             .filter(x => x.g)
             .sort((a, b) => (Number(a.g.no)||9999) - (Number(b.g.no)||9999));
         for(const {g, recv} of pairs) {
-            html += `<tr style="border-bottom:1px solid #F3E5F5;"><td style="padding:5px 8px;text-align:center;">${g.no||''} ${g.nm}</td><td style="padding:5px 8px;color:#7B1FA2;font-weight:bold;text-align:center;">💖 ${recv.nm}</td></tr>`;
+            html += `<tr style="border-bottom:1px solid #F3E5F5;"><td style="padding:5px 8px;text-align:center;">${g.no||''} ${g.nm}</td><td style="padding:5px 8px;color:#7B1FA2;font-weight:bold;text-align:center;">💘 ${recv.nm}</td></tr>`;
         }
         html += '</tbody></table>';
         el.innerHTML = html;
@@ -48118,7 +48105,7 @@ window.addCharRow = function() {
             if(prevPairs.length) {
                 const modeLabel = db.manitto.mode==='same'?'동성간':db.manitto.mode==='cross'?'이성간':'전체';
                 const rows = prevPairs.map(({g,recv})=>
-                    `<tr><td style="padding:4px 10px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:12px;">${g.no||''} ${g.nm}</td><td style="padding:4px 10px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:12px;color:#7B1FA2;font-weight:bold;">💖 ${recv.nm}</td></tr>`
+                    `<tr><td style="padding:4px 10px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:12px;">${g.no||''} ${g.nm}</td><td style="padding:4px 10px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:12px;color:#7B1FA2;font-weight:bold;">💘 ${recv.nm}</td></tr>`
                 ).join('');
                 prevResultHtml = `<div style="margin-bottom:16px;">
                     <div style="font-size:12px;color:#888;font-weight:bold;margin-bottom:6px;">이전 결과 (${modeLabel})</div>
@@ -48195,7 +48182,7 @@ window.addCharRow = function() {
             .map(([cd,recv])=>({g:stuMap[cd],recv})).filter(x=>x.g)
             .sort((a,b)=>(Number(a.g.no)||9999)-(Number(b.g.no)||9999));
         const rows = pairs.map(({g,recv})=>
-            `<tr><td style="padding:7px 14px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:14px;">${g.no||''} ${g.nm}</td><td style="padding:7px 14px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:14px;color:#7B1FA2;font-weight:bold;">💖 ${recv.nm}</td></tr>`
+            `<tr><td style="padding:7px 14px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:14px;">${g.no||''} ${g.nm}</td><td style="padding:7px 14px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:14px;color:#7B1FA2;font-weight:bold;">💘 ${recv.nm}</td></tr>`
         ).join('');
         document.querySelectorAll('[data-manitto-modal]').forEach(m=>m.remove());
         const modal = document.createElement('div');
@@ -48203,7 +48190,7 @@ window.addCharRow = function() {
         modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99200;display:flex;align-items:center;justify-content:center;padding:20px;';
         modal.innerHTML=`<div style="background:white;border-radius:24px;padding:28px 24px;width:min(480px,100%);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(156,39,176,0.25);font-family:'Jua';">
             <div style="text-align:center;margin-bottom:18px;">
-                <div style="font-size:36px;margin-bottom:6px;">💖</div>
+                <div style="font-size:36px;margin-bottom:6px;">💘</div>
                 <div style="font-size:20px;font-weight:bold;color:#6A1B9A;">마니또 뽑기 결과</div>
             </div>
             <div style="overflow-y:auto;flex:1;min-height:0;">
@@ -48322,7 +48309,7 @@ window.addCharRow = function() {
                 if(!recv) {
                     inner = `<div style="text-align:center;padding:20px;color:#BDBDBD;"><div style="font-size:36px;">🤔</div><div style="font-size:14px;font-family:'Jua';margin-top:8px;">배정 정보를 찾을 수 없어요</div></div>`;
                 } else {
-                    inner = `<div style="font-size:46px;font-family:'Jua';color:#4A148C;font-weight:bold;padding:20px 24px;background:#F3E5F5;border-radius:20px;border:3px solid #CE93D8;text-align:center;">💖 ${recv.nm}</div>
+                    inner = `<div style="font-size:46px;font-family:'Jua';color:#4A148C;font-weight:bold;padding:20px 24px;background:#F3E5F5;border-radius:20px;border:3px solid #CE93D8;text-align:center;">💘 ${recv.nm}</div>
                         <div style="font-size:15px;color:#9E9E9E;margin-top:12px;text-align:center;">이 사람에게 몰래 좋은 일을 해주세요 💜</div>`;
                 }
             }
@@ -48334,7 +48321,7 @@ window.addCharRow = function() {
                 <div data-mnt-card style="background:white;border-radius:18px;border:2px solid #E1BEE7;overflow:hidden;margin-bottom:0;">
                     <div onclick="${_mntToggleFn}"
                         style="display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 22px;cursor:pointer;user-select:none;background:#F3E5F5;position:relative;">
-                        <span style="font-size:21px;font-family:'Jua';color:#7B1FA2;">💖 내 마니또 확인하기</span>
+                        <span style="font-size:21px;font-family:'Jua';color:#7B1FA2;">💘 내 마니또 확인하기</span>
                         <span class="mnt-arrow" style="font-size:15px;color:#9C27B0;position:absolute;right:18px;">${_open?'▲':'▼'}</span>
                     </div>
                     <div data-mnt-body onclick="${_mntToggleFn}" style="display:${_open?'':'none'};padding:22px 26px;cursor:pointer;">${inner}
