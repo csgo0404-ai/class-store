@@ -1710,7 +1710,7 @@
         <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 경험치 축제</div>
         <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💖 마니또</div>
 
-        <button class="btn btn-gray" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
+        <button class="btn" onclick="localStorage.removeItem('stuCode');location.reload();" style="margin-top:auto; width:100%; font-size:19px; padding:12px; background:#FFC107; color:#5D4037;">로그아웃</button>
     </div>
     <div class="cont" style="padding:15px; display:flex; flex-direction:column;">
         <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="zoom:0.7;"></div></div>
@@ -16699,8 +16699,11 @@ window.appU = function(y, si, k) {
         const _dalInv = (me.inv||[]).find(i => i && i.special === 'dalgona');
         // 빈 슬롯 수 계산: 최소 21칸, 그 이상이면 다음 행을 완성할 만큼만 추가
         const _ivEmptyCount = (itemCount) => {
-            const COLS = 6;
-            const MIN = 24;
+            // 태블릿 가로모드(#s_iv 5칸 규칙: @media max-height:850px) → 15개(5칸×3줄)
+            // 일반 컴퓨터(데스크톱 6칸) → 18개(6칸×3줄)
+            const _isTablet = window.matchMedia && window.matchMedia('(max-height: 850px)').matches;
+            const COLS = _isTablet ? 5 : 6;
+            const MIN  = _isTablet ? 15 : 18;
             const total = itemCount <= MIN ? MIN : Math.ceil(itemCount / COLS) * COLS;
             return total - itemCount;
         };
@@ -16852,7 +16855,8 @@ window.appU = function(y, si, k) {
             }).join('');
             if(ownedTitles.length === 0) {
                 titHtml = '';
-                for(let i = 0; i < 24; i++) titHtml += `<div class="inventory-slot"></div>`;
+                const _titEmpty0 = _ivEmptyCount(0); // 태블릿15 / 데스크톱18
+                for(let i = 0; i < _titEmpty0; i++) titHtml += `<div class="inventory-slot"></div>`;
             } else {
                 const titEmptyCount = _ivEmptyCount(ownedTitles.length);
                 for(let i = 0; i < titEmptyCount; i++) titHtml += `<div class="inventory-slot"></div>`;
