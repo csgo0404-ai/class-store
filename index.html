@@ -82,6 +82,11 @@
         .cont { flex:1; padding:30px; overflow-y:auto; background:#FAFAFA; position:relative; }
         .menu { padding:15px 12px; margin-bottom:10px; cursor:pointer; border-radius:15px; color:#8D6E63; font-size:24px; font-weight:bold; transition:0.2s; }
         .menu.on { background:var(--act); color:white; font-weight:900; box-shadow:0 4px 10px rgba(255, 159, 67, 0.4); }
+        /* 탭 제목 글자 수별 letter-spacing — 짧을수록 넓게, 길수록 좁게 */
+        #appS .menu[data-tlen="2"] { letter-spacing: 6px; }
+        #appS .menu[data-tlen="3"] { letter-spacing: 2px; }
+        #appS .menu[data-tlen="4"] { letter-spacing: 0px; }
+        #appS .menu[data-tlen="5"], #appS .menu[data-tlen="6"], #appS .menu[data-tlen="7"] { letter-spacing: -1px; }
         .card { background:white; padding:15px; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom:15px; border:2px solid #F5F5F5; position:relative; }
         .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; align-items: start; }
         
@@ -226,13 +231,13 @@
             grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)) !important;
             row-gap: 24px !important;
             column-gap: 15px !important;
-            justify-items: start !important;
+            justify-items: center !important;
         }
         #shop-gacha-sec .shop-card {
             transform: scale(0.63) !important;
             transform-origin: top center !important;
             margin-bottom: -163px !important;
-            margin-left: 0 !important;
+            margin-left: auto !important;
             margin-right: auto !important;
         }
         #shop-gacha-sec .shop-card .pedestal {
@@ -824,7 +829,7 @@
 
             /* 2. 가방: 슬롯 및 아이콘 크기 축소 */
             #s_bg::-webkit-scrollbar { width: 8px !important; }
-            #s_iv { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
+            #s_iv { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
             .inventory-slot { padding: 5px !important; border-radius: 10px !important; }
             .inventory-slot > img { width: 85px !important; height: 85px !important; }
             .inventory-slot .slot-emoji { font-size: 75px !important; line-height: 85px !important; }
@@ -900,7 +905,7 @@
         /* 광장: 갤럭시 탭 S6 기준(2000×1200) 고정 사이즈. 작은 화면에선 transform: scale로 축소 */
         .plz-fit { width:100%; height:100%; overflow:hidden; position:relative; display:flex; align-items:flex-start; justify-content:flex-start; }
         .plz-layout { display:flex; gap:12px; width:2000px; height:1200px; box-sizing:border-box; transform-origin:top left; transform:scale(var(--plzScale,1)); flex-shrink:0; }
-        .plz-map-wrap { flex:1; position:relative; border-radius:18px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.15); background:#000; cursor:default; }
+        .plz-map-wrap { flex:1; position:relative; border-radius:18px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.15); background:#1a0e06; cursor:default; }
         .plz-chat-overlay { position:absolute; bottom:0; left:0; right:0; background:rgba(10,10,10,0.72); backdrop-filter:blur(6px); z-index:25; display:flex; flex-direction:column; transition:height 0.2s ease; }
         .plz-chat-overlay-input { display:flex; align-items:center; gap:8px; padding:5px 10px 2px; flex-shrink:0; }
         .plz-chat-overlay-input input { flex:1; padding:5px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.15); font-family:'Jua'; font-size:13px; outline:none; background:rgba(255,255,255,0.1); color:#F0F0F0; }
@@ -2434,10 +2439,36 @@ let _renderLock = false; // 재진입 방지
             return {name:b.name, info:`${_dN[_gDow]}요일 | ${_lkD?_lkD+'일':_wks+'주'}`, res:_res, all:_res.every(r=>r.ok)};
         });
 
+        // ━━ Rev 캐시 인프라 테스트 ━━
+        const _revRes = [];
+        // ① 핵심 함수/객체 등록 확인
+        _revRes.push({n:'① _attachRevSub 함수 등록', ok:typeof _attachRevSub==='function', d:typeof _attachRevSub==='function'?'✅':'❌ 미정의'});
+        _revRes.push({n:'② _lazyCachedRevAttached 객체 초기화', ok:typeof _lazyCachedRevAttached==='object'&&_lazyCachedRevAttached!==null, d:typeof _lazyCachedRevAttached==='object'?'✅':'❌'});
+        _revRes.push({n:'③ _lazyCachedVerified(Set) 등록 — null Rev stale 방지', ok:_lazyCachedVerified instanceof Set, d:_lazyCachedVerified instanceof Set?'✅':'❌ 미정의'});
+        // ④ _STU_LAZY_CACHE 5경로 확인
+        const _stu5 = ['avt','bdg','tit','petDef','spPetDef'];
+        const _stuOk = _stu5.every(p=>_STU_LAZY_CACHE.includes(p));
+        _revRes.push({n:'④ _STU_LAZY_CACHE 5경로 (avt/bdg/tit/petDef/spPetDef)', ok:_stuOk, d:_stuOk?'모두 포함 ✅':'❌ 누락: '+_stu5.filter(p=>!_STU_LAZY_CACHE.includes(p)).join(',')});
+        // ⑤ 스킵 로직 4케이스 시뮬
+        const _chkSkip=(rv,kn,loaded,vf)=>rv===kn&&loaded&&(rv!==''||vf);
+        const _s1=_chkSkip('abc','abc',true,false);   // 일치+non-empty → skip
+        const _s2=!_chkSkip('abc','xyz',true,false);   // 불일치 → fetch
+        const _s3=!_chkSkip('','',true,false);          // null 첫발화 → fetch (stale 방지)
+        const _s4=_chkSkip('','',true,true);            // null 검증완료 → skip
+        const _skipOk=_s1&&_s2&&_s3&&_s4;
+        _revRes.push({n:'⑤ 스킵 로직 (일치→skip / 불일치→fetch / null첫발화→fetch / null검증후→skip)', ok:_skipOk, d:_skipOk?'4케이스 정확 ✅':'❌ 실패: '+[!_s1&&'①일치',!_s2&&'②불일치',!_s3&&'③null첫발화',!_s4&&'④null검증후'].filter(Boolean).join('/')});
+        // ⑥ bump 경로 포맷 확인
+        const _bumpPaths=['avt','bdg','tit','petDef','spPetDef'];
+        _revRes.push({n:'⑥ bump 경로 포맷 cfg/{p}Rev × 5', ok:true, d:_bumpPaths.map(p=>'cfg/'+p+'Rev').join(' · ')});
+        // ⑦ localStorage rev 키 포맷 (_lz_{p}_rev)
+        const _revKeyOk=_bumpPaths.every(p=>typeof('_lz_'+p+'_rev')==='string');
+        _revRes.push({n:'⑦ localStorage rev 키 포맷 _lz_{p}_rev × 5', ok:_revKeyOk, d:_bumpPaths.map(p=>'_lz_'+p+'_rev').join(' · ')});
+        const _revAllPass=_revRes.every(r=>r.ok);
+
         // 결과 모달 출력
         const _totalPass = _bdgResults.filter(r=>!r.skip&&r.all).length;
         const _total = _bdgResults.filter(r=>!r.skip).length;
-        const _allPass = _holAllPass && _totalPass === _total;
+        const _allPass = _holAllPass && _revAllPass && _totalPass === _total;
 
         const _rowHtml = res => res.map(r => `
             <div style="display:flex;flex-direction:column;gap:2px;padding:6px 10px;border-radius:8px;background:${r.ok?'#F1F8E9':'#FFF3E0'};">
@@ -2482,6 +2513,14 @@ let _renderLock = false; // 재진입 방지
             </div>
             <div style="overflow-y:auto;padding:10px 16px 16px;flex:1;">
                 ${_holHtml}
+                <div style="margin:10px 0;border:2px solid ${_revAllPass?'#A5D6A7':'#FFCC80'};border-radius:12px;overflow:hidden;">
+                    <div style="padding:8px 14px;background:${_revAllPass?'#E8F5E9':'#FFF3E0'};display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:16px;">${_revAllPass?'✅':'❌'}</span>
+                        <span style="font-weight:bold;font-size:14px;color:#37474F;">🗄️ Rev 캐시 인프라</span>
+                        <span style="font-size:12px;color:#78909C;margin-left:auto;">${_revRes.filter(r=>r.ok).length}/${_revRes.length} 통과</span>
+                    </div>
+                    <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px;">${_rowHtml(_revRes)}</div>
+                </div>
                 <div style="font-size:12px;font-weight:bold;color:#78909C;margin:14px 0 4px;padding:0 2px;">📛 배지별 잠금 미션 테스트</div>
                 ${_bdgHtml}
             </div>
@@ -3063,35 +3102,71 @@ let _renderLock = false; // 재진입 방지
         try { const _sb=document.getElementById('s_bg');   if(_sb && !_sb.classList.contains('hidden') && typeof rBg==='function')   { rBg();   return; } } catch(_){}
         try { const _scl=document.getElementById('s_col'); if(_scl && !_scl.classList.contains('hidden') && typeof rCol==='function') { rCol();  return; } } catch(_){}
     }
-    // 정적 카탈로그: localStorage 캐시 즉시 복원 → 즉시 resolve(렌더 안 막음). 최신본은 항상 백그라운드 fetch, 달라졌을 때만 재렌더(= stale-while-revalidate, stale 위험 없음).
+    // [REV-SUB] cfg/{p}Rev on() 구독 — rev 일치 시 fetch 완전 skip, 불일치 시만 once() fetch + 캐시 갱신
+    const _lazyCachedRevAttached = {};
+    const _lazyCachedVerified = new Set(); // 세션 내 1회 검증 완료 (Rev가 null일 때 구버전 캐시 stale 방지)
+    function _attachRevSub(p) {
+        if(_lazyCachedRevAttached[p]) return;
+        _lazyCachedRevAttached[p] = true;
+        const _key = '_lz_'+p+'_v';
+        const _revKey = '_lz_'+p+'_rev';
+        let _knownRev = localStorage.getItem(_revKey) || '';
+        dbRef.child('cfg/'+p+'Rev').on('value', rs => {
+            const rvStr = rs.val() == null ? '' : String(rs.val());
+            // Rev 일치 → skip. 단, Rev가 ''(미설정)이고 이번 세션 첫 발화면 1회 검증 (배포 초기 stale 방지)
+            if(rvStr === _knownRev && window._lazyLoaded.has(p) && (rvStr !== '' || _lazyCachedVerified.has(p))) return;
+            _lazyCachedVerified.add(p);
+            dbRef.child(p).once('value').then(snap => {
+                const v = snap.val();
+                const arr = Array.isArray(v) ? v.filter(Boolean)
+                           : (v && typeof v === 'object') ? Object.values(v).filter(Boolean) : [];
+                const _newHash = JSON.stringify(arr);
+                const _changed = _newHash !== JSON.stringify(db[p]||[]);
+                db[p] = arr;
+                window._lazyLoaded.add(p);
+                delete window._lazyLoading[p];
+                try { localStorage.setItem(_key, _newHash); } catch(_){}
+                try { localStorage.setItem(_revKey, rvStr); } catch(_){}
+                try { if(window._lastSavedHash) window._lastSavedHash[p]=_newHash; if(window._lastSentHash) window._lastSentHash[p]=_newHash; } catch(_){}
+                _knownRev = rvStr;
+                if(_changed) _rerenderAfterLazy();
+            }).catch(()=>{});
+        });
+    }
+    // [LAZY-CACHE] 정적 카탈로그: localStorage 즉시 복원 → Rev on() 구독으로 변경 시만 fetch
+    // 캐시 없는 첫 세션: once() 직접 fetch → Rev 저장 → 이후 Rev 구독으로 전환
     function _ensureLazyCached(p) {
         const _key = '_lz_'+p+'_v';
+        const _revKey = '_lz_'+p+'_rev';
         let _restored = false;
         try { const cv = localStorage.getItem(_key); if(cv){ const parsed = JSON.parse(cv); if(Array.isArray(parsed)){ db[p] = parsed; _restored = parsed.length>0; } } } catch(_){}
-        const _bg = dbRef.child(p).once('value').then(snap => {
+        if(_restored) {
+            window._lazyLoaded.add(p);
+            try { const _ch = JSON.stringify(db[p]); if(window._lastSavedHash) window._lastSavedHash[p]=_ch; if(window._lastSentHash) window._lastSentHash[p]=_ch; } catch(_){}
+            _attachRevSub(p); // 캐시 있음 → Rev 구독만 (fetch skip)
+            return Promise.resolve();
+        }
+        // 캐시 없음(첫 세션) → once() fetch 후 Rev 저장 → Rev 구독 붙이기
+        if(window._lazyLoading[p]) return window._lazyLoading[p];
+        window._lazyLoading[p] = dbRef.child(p).once('value').then(snap => {
             const v = snap.val();
             const arr = Array.isArray(v) ? v.filter(Boolean)
-                       : (v && typeof v === 'object') ? Object.values(v).filter(Boolean)
-                       : [];
+                       : (v && typeof v === 'object') ? Object.values(v).filter(Boolean) : [];
             const _newHash = JSON.stringify(arr);
-            const _changed = _newHash !== JSON.stringify(db[p]||[]);
             db[p] = arr;
             window._lazyLoaded.add(p);
             delete window._lazyLoading[p];
             try { localStorage.setItem(_key, _newHash); } catch(_){}
-            try { if(window._lastSavedHash) window._lastSavedHash[p] = _newHash; } catch(_){}
-            try { if(window._lastSentHash)  window._lastSentHash[p]  = _newHash; } catch(_){}
-            if(_restored && _changed) _rerenderAfterLazy();
+            try { if(window._lastSavedHash) window._lastSavedHash[p]=_newHash; if(window._lastSentHash) window._lastSentHash[p]=_newHash; } catch(_){}
+            // Rev 저장 후 구독 — _lazyCachedVerified 선행으로 on() 첫 발화 시 중복 fetch 방지
+            dbRef.child('cfg/'+p+'Rev').once('value').then(rs => {
+                const rvStr = rs.val() == null ? '' : String(rs.val());
+                try { localStorage.setItem(_revKey, rvStr); } catch(_){}
+                _lazyCachedVerified.add(p); // 방금 직접 fetch했으므로 검증 완료 처리
+                _attachRevSub(p);
+            }).catch(() => { _lazyCachedVerified.add(p); _attachRevSub(p); });
         }).catch(e => { delete window._lazyLoading[p]; window._lazyLoaded.add(p); console.warn('[lazy-cache] fetch 실패:', p, e); });
-        if(_restored) {
-            window._lazyLoaded.add(p); // 캐시로 즉시 사용 → 렌더 블로킹 안 함
-            // 🛡️ 캐시값 hash를 즉시 기록 — 학생 sv()는 no-op이라 원래 안전하지만, 세션 오탐 등 만일의 경우에도
-            //    sv()가 이 캐시(아직 검증 전, stale 가능)를 Firebase에 덮어쓰지 않도록 방어.
-            try { const _ch = JSON.stringify(db[p]); if(window._lastSavedHash) window._lastSavedHash[p]=_ch; if(window._lastSentHash) window._lastSentHash[p]=_ch; } catch(_){}
-            return Promise.resolve();
-        }
-        window._lazyLoading[p] = _bg; // 캐시 없음(첫 로드) → fetch 완료까지 대기
-        return _bg;
+        return window._lazyLoading[p];
     }
     window._ensureLazyPaths = function(paths) {
         const needed = paths.filter(p => !window._lazyLoaded.has(p));
@@ -7870,6 +7945,7 @@ let _renderLock = false; // 재진입 방지
                     document.getElementById('appS').classList.remove('hidden');
                     updateNameTag(); navS('s_char');
                     setTimeout(_checkTeacherMsgs, 400);
+                    setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); window._attachCoUseListener && window._attachCoUseListener(); } catch(_){} }, 700);
                     window._applyColTabVisibility?.();
                     // 교사 탭(Tab A)에서 보내는 즉시 업데이트 수신 (URL ?cd= 프리뷰 탭 전용)
                     if(_teacherBC && !window._teacherBCListening) {
@@ -7913,6 +7989,7 @@ let _renderLock = false; // 재진입 방지
                         updateNameTag();
                         navS('s_char');
                         setTimeout(_checkTeacherMsgs, 400);
+                        setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); window._attachCoUseListener && window._attachCoUseListener(); } catch(_){} }, 700);
                             window._applyColTabVisibility?.();
                     } else if(window._fetchStuByCd) {
                         // 🛡️ db.stu에 아직 안 들어왔을 수 있음 — Firebase에서 직접 한 번 더 시도
@@ -8623,26 +8700,26 @@ let _renderLock = false; // 재진입 방지
                 // (이전: 매 저장마다 6개 path 모두 갱신 → 학생이 변경되지 않은 정적 path까지 재fetch)
                 if(!isStudentTab) {
                     const _now = Date.now();
-                    const _cachePaths = ['avt','bdg','tit','petDef','itm','gac'];
+                    const _cachePaths = ['avt','bdg','tit','petDef','spPetDef','itm','gac'];
+                    const _revPaths = new Set(['avt','bdg','tit','petDef','spPetDef']); // cfg/{p}Rev bump 대상
                     if(!window._lastSavedHash) window._lastSavedHash = {};
                     let _bumpFailed = false;
                     _cachePaths.forEach(p => {
-                        // lazy 경로(avt/bdg/tit/petDef)가 아직 로드되지 않았으면 cacheVer bump 건너뜀
-                        // (미로드 상태에서 bump하면 학생이 변경 없는 탭 진입 시도 불필요하게 재fetch함)
                         if(LAZY_PATHS.has(p) && !(window._lazyLoaded && window._lazyLoaded.has(p))) return;
                         try {
                             const cur = JSON.stringify(db[p] == null ? null : db[p]);
                             if(window._lastSavedHash[p] !== cur) {
                                 payload['cacheVer/' + p] = _now;
+                                if(_revPaths.has(p)) payload['cfg/' + p + 'Rev'] = _now;
                                 window._lastSavedHash[p] = cur;
                             }
                         } catch(_) { _bumpFailed = true; }
                     });
-                    // 비교 실패 시 안전을 위해 로드된 path만 bump (미로드 lazy 경로는 제외 유지)
                     if(_bumpFailed) {
                         _cachePaths.forEach(p => {
                             if(LAZY_PATHS.has(p) && !(window._lazyLoaded && window._lazyLoaded.has(p))) return;
                             payload['cacheVer/' + p] = _now;
+                            if(_revPaths.has(p)) payload['cfg/' + p + 'Rev'] = _now;
                         });
                     }
                 }
@@ -9257,6 +9334,7 @@ let _renderLock = false; // 재진입 방지
             updateNameTag();
             navS('s_char');
             setTimeout(_checkTeacherMsgs, 400);
+            setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); } catch(_){} }, 700);
             // 이벤트 메뉴 노출 동기화 (cfg 로드 타이밍에 따라 약간 지연)
             try { _refreshGababoMenu(); } catch(_){}
             try { window._refreshEventMenus && _refreshEventMenus(); } catch(_){}
@@ -9271,7 +9349,17 @@ let _renderLock = false; // 재진입 방지
         }
     }
 
+  function _initMenuLetterSpacing() {
+        document.querySelectorAll('#appS .menu').forEach(el => {
+            if(el.dataset.tlen) return;
+            // 이모지·공백·구분자 제거 후 순수 텍스트 글자 수 계산
+            const text = el.textContent.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}⚔️⚔]/gu, '').replace(/\s/g, '').trim();
+            el.dataset.tlen = String(text.length);
+        });
+    }
+
   function updateNameTag() {
+        _initMenuLetterSpacing();
         if(me) {
             const starHtml = (me.rb && me.rb > 0)
                 ? `<span class="trans-star">${'★'.repeat(me.rb)}</span>`
@@ -9358,11 +9446,20 @@ let _renderLock = false; // 재진입 방지
                 </div>
                 <div style="font-size:11px;color:#999;margin-top:8px;text-align:center;">선택 시 즉시 교환되며 되돌릴 수 없어요</div>
             </div>` : '';
+        // ── 공동 사용 인라인 UI ──
+        const _needCollect = itDef?.collectCount || 1;
+        const _canCoUse = (itDef?.collectCount > 1) && totalCount > 0 && totalCount < _needCollect;
+        const _coUseSectionHtml = _canCoUse ? `<div style="background:linear-gradient(135deg,#E3F2FD,#FFF3E0);border:2px solid #64B5F6;border-radius:12px;padding:11px 12px;margin-bottom:12px;">
+            <div style="font-size:13px;font-weight:bold;color:#1565C0;margin-bottom:7px;">🤝 친구와 함께 사용 <span style="font-weight:normal;font-size:11px;color:#888;">(선택)</span></div>
+            <div style="font-size:12px;color:#1565C0;background:#E3F2FD;border-radius:8px;padding:5px 10px;margin-bottom:7px;">내 기여: <b>${totalCount}개</b> &nbsp;|&nbsp; 추가 필요: <b>${_needCollect - totalCount}개</b></div>
+            <div id="_icFriendList" style="max-height:170px;overflow-y:auto;"><div style="text-align:center;color:#999;font-size:12px;padding:10px 0;">⏳ 불러오는 중...</div></div>
+            <div id="_icTotalBar" style="margin-top:7px;padding:6px 10px;background:#FFF9C4;border-radius:8px;font-size:12px;font-weight:bold;color:#F57F17;">합계: ${totalCount}/${_needCollect}개</div>
+        </div>` : '';
         const modalHtml = `
             <div id="itemModal" class="modal-overlay">
-                <div class="modal-window" style="background:white !important; border: 5px solid #FFE0B2 !important;" onclick="event.stopPropagation()">
+                <div class="modal-window" style="background:white !important; border: 5px solid #FFE0B2 !important; max-height:88vh; display:flex; flex-direction:column; overflow:hidden; padding:10px 0 10px 10px !important;" onclick="event.stopPropagation()">
                     <button class="modal-close-btn" onclick="document.getElementById('itemModal').remove()">X</button>
-                    <div class="modal-inner" style="background:white !important; border:none !important;">
+                    <div class="modal-inner" style="background:white !important; border:none !important; overflow-y:auto; flex:1; overscroll-behavior:contain; padding:30px 14px 30px 20px !important; margin-right:2px;">
                         <div class="modal-icon" style="font-size:80px;">
                             ${(item.i||'').includes('http') ? `<img src="${item.i}" style="width:80px; height:80px; object-fit:contain;">` : (item.i||'🎁')}
                         </div>
@@ -9392,7 +9489,11 @@ let _renderLock = false; // 재진입 방지
                                    ${_isUnlDef ? `<div style="background:#FFF3E0;border:2px solid #FFB74D;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12px;color:#E65100;font-weight:bold;text-align:left;">
                                        ⚠️ 한 번 확정하면 날짜를 변경할 수 없어요!<br><span style="font-weight:normal;color:#795548;">신중하게 날짜를 선택해 주세요.</span>
                                    </div>` : ''}
-                                   <button class="btn btn-org" onclick="useQ('${safeN}',${invIdx != null ? invIdx : 'null'})" style="width:100%;font-size:18px;padding:12px;">📨 사용 요청하기</button>
+                                   ${_coUseSectionHtml}
+                                   ${_canCoUse
+                                       ? `<button class="btn btn-org" onclick="window._useQWithCoUse('${safeN}',${invIdx != null ? invIdx : 'null'},${_needCollect},${totalCount})" style="width:100%;font-size:18px;padding:12px;">📨 사용 요청하기</button>`
+                                       : `<button class="btn btn-org" onclick="useQ('${safeN}',${invIdx != null ? invIdx : 'null'})" style="width:100%;font-size:18px;padding:12px;">📨 사용 요청하기</button>`
+                                   }
                                </div>`
                             : `<p style="color:#BDBDBD; font-size:15px; margin:0 0 10px;">보유 중: ${totalCount}개</p>
                                <div style="background:#F5F5F5;border-radius:12px;padding:12px;font-size:14px;color:#9E9E9E;">상점에서 직접 사용하는 아이템이에요.</div>`
@@ -9402,6 +9503,7 @@ let _renderLock = false; // 재진입 방지
             </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         if(canUse) document.getElementById('itemUseQty')?.focus();
+        if(_canCoUse) window._icLoadFriends && window._icLoadFriends(item.n, _needCollect, totalCount);
     }
 
     window.swapItem = function(fromName, toName){
@@ -9722,14 +9824,25 @@ let _renderLock = false; // 재진입 방지
 
     window.cancelReq = function(itemName) {
         if(!confirm(`[${itemName}] 사용 요청을 취소하시겠습니까?`)) return;
+        const _coGroupIds = new Set();
+        const _coPartnerCdMap = new Map();
         (me.inv||[]).forEach(it => {
             if(!it || it.n?.trim() !== itemName.trim() || it.st !== 'req') return;
+            if(it.coUseGroupId) {
+                _coGroupIds.add(it.coUseGroupId);
+                if(it.coUsePartnerCds) _coPartnerCdMap.set(it.coUseGroupId, it.coUsePartnerCds);
+            }
             it.st = 'active';
             delete it.reqApproved; delete it.reqDone;
             delete it.useDate; delete it.useEndDate;
             delete it.currentDay; delete it.totalDays; delete it.baseCookie;
+            delete it.coUseGroupId; delete it.coUsePartners; delete it.coUsePartnerCds;
         });
         upMe(); rBg();
+        _coGroupIds.forEach(gid => {
+            window._cleanCoUsePending && window._cleanCoUsePending(gid, _coPartnerCdMap.get(gid));
+            window._revertCoUseGroup && window._revertCoUseGroup(gid, _coPartnerCdMap.get(gid));
+        });
     };
 
     window.cancelReqByIdx = function(idx) {
@@ -9749,14 +9862,547 @@ let _renderLock = false; // 재진입 방지
         if(!first) return;
         if(first.reqApproved) { alert('이미 선생님이 승인한 요청은 취소할 수 없어요.'); return; }
         if(!confirm(`[${first.n}] 사용 요청 ${idxs.length}개를 모두 취소하시겠습니까?`)) return;
+        const _coGroupIds = new Set();
+        const _coPartnerCdMap = new Map();
         idxs.forEach(i => {
             const it = (me.inv||[])[i];
             if(!it || it.st !== 'req' || it.reqApproved) return;
+            if(it.coUseGroupId) {
+                _coGroupIds.add(it.coUseGroupId);
+                if(it.coUsePartnerCds) _coPartnerCdMap.set(it.coUseGroupId, it.coUsePartnerCds);
+            }
             it.st = 'active';
             delete it.reqApproved; delete it.reqDone; delete it.useDate; delete it.useEndDate;
             delete it.currentDay; delete it.totalDays; delete it.baseCookie; delete it.note;
+            delete it.coUseGroupId; delete it.coUsePartners; delete it.coUsePartnerCds;
         });
         upMe(); rBg();
+        _coGroupIds.forEach(gid => {
+            window._cleanCoUsePending && window._cleanCoUsePending(gid, _coPartnerCdMap.get(gid));
+            window._revertCoUseGroup && window._revertCoUseGroup(gid, _coPartnerCdMap.get(gid));
+        });
+    };
+
+    // ===== 아이템 공동 사용 (CoUse) 기능 =====
+
+    function _showCoUseModal(itemName, invIdx, needCollect, totalAvail) {
+        document.getElementById('_coUseModal')?.remove();
+        const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const friends = stuArr
+            .filter(s => s && s.cd && String(s.cd) !== String(me.cd))
+            .map(s => {
+                const cnt = (s.inv||[]).filter(i => i && i.n && i.n.trim()===itemName.trim() && i.st==='active' && !i.locked && !i.pseudo).length;
+                return { cd: s.cd, nm: s.nm||'', no: s.no||0, cnt };
+            })
+            .filter(f => f.cnt > 0)
+            .sort((a,b) => a.no - b.no);
+
+        const useDate = document.getElementById('itemUseDate')?.value || new Date().toLocaleDateString('sv-SE');
+        window._coUseState = { itemName, invIdx, needCollect, myCount: totalAvail, friends, useDate };
+        const stillNeed = needCollect - totalAvail;
+
+        const friendRows = friends.length === 0
+            ? `<div style="text-align:center;color:#999;font-size:13px;padding:20px 0;">같은 아이템을 가진 친구가 없어요 😢</div>`
+            : friends.map((f, i) => `
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#FFF3E0;margin-bottom:6px;">
+                    <input type="checkbox" data-fi="${i}" onchange="_coUseToggle(${i})" style="width:18px;height:18px;cursor:pointer;">
+                    <span style="flex:1;font-size:14px;font-weight:bold;color:#4E342E;">${f.nm.replace(/</g,'&lt;')}</span>
+                    <span style="font-size:12px;color:#888;">${f.cnt}개 보유</span>
+                    <input type="number" id="_coqty${i}" min="1" max="${f.cnt}" value="${Math.min(stillNeed, f.cnt)}" style="width:52px;padding:4px;border:1.5px solid #FFB74D;border-radius:8px;text-align:center;font-size:14px;" onchange="_coUseRefreshTotal()" disabled>
+                </div>`).join('');
+
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal-overlay" id="_coUseModal" onclick="if(event.target===this)document.getElementById('_coUseModal').remove();">
+            <div class="modal-window" onclick="event.stopPropagation()" style="max-width:380px;">
+                <div class="modal-inner" style="background:linear-gradient(135deg,#FFF8E1,#E3F2FD);border-color:#64B5F6;">
+                    <div style="font-size:48px;margin-bottom:6px;">🤝</div>
+                    <h2 style="color:#1565C0;margin:0 0 4px;font-size:18px;">친구와 함께 사용</h2>
+                    <div style="font-size:13px;color:#5D4037;margin-bottom:10px;"><b>${itemName.replace(/</g,'&lt;')}</b> — ${needCollect}개 필요</div>
+                    <div style="background:#E3F2FD;border-radius:10px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:#1565C0;">
+                        내 기여: <b>${totalAvail}개</b> &nbsp;|&nbsp; 추가 필요: <b>${stillNeed}개</b>
+                    </div>
+                    <div style="max-height:260px;overflow-y:auto;">${friendRows}</div>
+                    <div style="margin-top:10px;padding:10px;background:#FFF9C4;border-radius:10px;font-size:14px;font-weight:bold;color:#F57F17;" id="_coTotalBar">
+                        합계: ${totalAvail}/${needCollect}개
+                    </div>
+                    <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;">
+                        <button class="btn btn-blue" id="_coSubmitBtn" onclick="_submitCoUseFromModal()" disabled>📨 요청 보내기</button>
+                        <button class="btn btn-gray" onclick="document.getElementById('_coUseModal').remove()">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>`);
+    }
+    window._showCoUseModal = _showCoUseModal;
+
+    window._coUseToggle = function(i) {
+        const qEl = document.getElementById(`_coqty${i}`);
+        const chk = document.querySelector(`[data-fi="${i}"]`);
+        if(qEl && chk) qEl.disabled = !chk.checked;
+        window._coUseRefreshTotal();
+    };
+
+    window._coUseRefreshTotal = function() {
+        const st = window._coUseState;
+        if(!st) return;
+        let friendTotal = 0;
+        (st.friends||[]).forEach((f, i) => {
+            const chk = document.querySelector(`[data-fi="${i}"]`);
+            if(chk && chk.checked) {
+                const q = parseInt(document.getElementById(`_coqty${i}`)?.value || 0) || 0;
+                friendTotal += Math.min(q, f.cnt);
+            }
+        });
+        const total = st.myCount + friendTotal;
+        const bar = document.getElementById('_coTotalBar');
+        if(bar) {
+            bar.textContent = `합계: ${total}/${st.needCollect}개`;
+            bar.style.color = total >= st.needCollect ? '#2E7D32' : '#F57F17';
+            bar.style.background = total >= st.needCollect ? '#E8F5E9' : '#FFF9C4';
+        }
+        const btn = document.getElementById('_coSubmitBtn');
+        if(btn) btn.disabled = total < st.needCollect || friendTotal === 0;
+    };
+
+    window._submitCoUseFromModal = function() {
+        const st = window._coUseState;
+        if(!st) return;
+        const coList = [];
+        (st.friends||[]).forEach((f, i) => {
+            const chk = document.querySelector(`[data-fi="${i}"]`);
+            if(chk && chk.checked) {
+                const cnt = parseInt(document.getElementById(`_coqty${i}`)?.value || 1) || 1;
+                coList.push({ cd: f.cd, nm: f.nm, count: Math.min(cnt, f.cnt) });
+            }
+        });
+        if(!coList.length) return;
+        document.getElementById('_coUseModal')?.remove();
+        window._submitCoUseReq(st.itemName, st.invIdx, st.myCount, coList, st.needCollect);
+    };
+
+    window._submitCoUseReq = function(itemName, invIdx, myCount, coList, needCollect) {
+        if(!me || me.cd === 'teacher_main') return;
+        const _rawDate = (window._coUseState && window._coUseState.useDate) || '';
+        const useDate = /^\d{4}-\d{2}-\d{2}$/.test(_rawDate) ? _rawDate : new Date().toLocaleDateString('sv-SE');
+        const groupId = Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+        const partnerNames = coList.map(f => f.nm).join(', ');
+        const partnerCds = coList.map(f => String(f.cd));
+
+        // A의 아이템 myCount개를 즉시 st:'req' 처리
+        let used = 0;
+        for(let k = 0; k < me.inv.length && used < myCount; k++) {
+            const it = me.inv[k];
+            if(it && it.n.trim() === itemName.trim() && it.st === 'active' && !it.locked && !it.pseudo) {
+                it.st = 'req';
+                it.useDate = useDate;
+                it.coUseGroupId = groupId;
+                it.coUsePartners = partnerNames;
+                it.coUsePartnerCds = partnerCds;
+                delete it.reqApproved; delete it.reqDone;
+                used++;
+            }
+        }
+        if(used === 0) { showToast('아이템을 찾을 수 없어요.'); return; }
+
+        if(window._upMeLastHash && me.cd) delete window._upMeLastHash[me.cd];
+        upMe();
+
+        // 교사 배지 갱신
+        try {
+            const fbKey = _getMyFbKey();
+            if(fbKey != null && fbKey !== -1) _debouncedReqCntWrite(fbKey);
+        } catch(_){}
+
+        // B들에게 pendingCoUseReqs 알림 저장
+        const _coUseStuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const _cdMigCoUse = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        coList.forEach(f => {
+            const entry = { fromCd: me.cd, fromNm: me.nm||'', itemName, myCount: f.count, useDate, coUseGroupId: groupId, requestedAt: Date.now() };
+            const bStu = _coUseStuArr.find(s => s && String(s.cd) === String(f.cd));
+            if(bStu) {
+                // db.stu에 있는 경우 — 기존 방식
+                if(!Array.isArray(bStu.pendingCoUseReqs)) bStu.pendingCoUseReqs = [];
+                bStu.pendingCoUseReqs.push(entry);
+                if(window._svStuByCd) window._svStuByCd(bStu.cd); else sv();
+            } else if(typeof dbRef !== 'undefined') {
+                // db.stu에 없는 경우 (스플릿 모드 등) — Firebase 직접 쓰기
+                const fbKey = _cdMigCoUse ? String(f.cd) : null;
+                if(fbKey) {
+                    dbRef.child(`stu/${fbKey}/pendingCoUseReqs`).once('value').then(snap => {
+                        const existing = snap.val();
+                        let arr = Array.isArray(existing) ? [...existing]
+                            : (existing && typeof existing === 'object') ? Object.values(existing).filter(Boolean) : [];
+                        arr.push(entry);
+                        return dbRef.child(`stu/${fbKey}/pendingCoUseReqs`).set(arr);
+                    }).catch(e => console.warn('[CoUse] B 알림 저장 실패', e));
+                }
+            }
+        });
+
+        showToast('🤝 공동 사용 요청을 보냈어요! 친구의 동의를 기다려요.');
+    };
+
+    // ── 실시간 리스너: pendingCoUseReqs 전용 (트래픽 최소) ───────────────────
+    window._attachCoUseListener = function() {
+        if(!me || me.cd === 'teacher_main') return;
+        if(window._coUseListenerAttached) return;
+        if(typeof dbRef === 'undefined') return;
+        try {
+            const fbKey = (typeof _getMyFbKey === 'function') ? _getMyFbKey() : null;
+            if(fbKey == null || fbKey === -1) return;
+            window._coUseListenerAttached = true;
+            let _prevLen = Array.isArray(me.pendingCoUseReqs) ? me.pendingCoUseReqs.length : 0;
+            dbRef.child(`stu/${fbKey}/pendingCoUseReqs`).on('value', snap => {
+                const raw = snap.val();
+                const arr = Array.isArray(raw) ? raw.filter(Boolean)
+                    : (raw && typeof raw === 'object') ? Object.values(raw).filter(Boolean) : [];
+                me.pendingCoUseReqs = arr;
+                if(arr.length > _prevLen) {
+                    _prevLen = arr.length;
+                    // 동의 모달이 이미 열려있으면 덮어쓰지 않음 (idx 리셋 방지)
+                    setTimeout(() => {
+                        if(!document.getElementById('_coConsentModal') && window._checkCoUseReqs)
+                            window._checkCoUseReqs();
+                    }, 400);
+                } else {
+                    _prevLen = arr.length;
+                }
+            });
+        } catch(e) { console.warn('[CoUse] 리스너 연결 실패', e); }
+    };
+
+    // ── B 동의 팝업 (로그인 시 호출) ─────────────────────────────────────────
+    window._checkCoUseReqs = function() {
+        if(!me || me.cd === 'teacher_main') return;
+        const reqs = Array.isArray(me.pendingCoUseReqs) ? me.pendingCoUseReqs : [];
+        if(!reqs.length) return;
+        window._coConsentReqs = reqs;
+        _showCoUseConsentModal(0);
+    };
+
+    function _showCoUseConsentModal(idx) {
+        const reqs = window._coConsentReqs;
+        if(!reqs || idx >= reqs.length) { window._coConsentReqs = null; return; }
+        const req = reqs[idx];
+        document.getElementById('_coConsentModal')?.remove();
+        document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal-overlay" id="_coConsentModal">
+            <div class="modal-window" onclick="event.stopPropagation()" style="max-width:340px;">
+                <div class="modal-inner" style="background:linear-gradient(135deg,#FFF8E1,#E8F5E9);border-color:#81C784;">
+                    <div style="font-size:48px;margin-bottom:8px;">🤝</div>
+                    <h2 style="color:#2E7D32;margin:0 0 8px;font-size:17px;">공동 사용 요청</h2>
+                    <div style="font-size:14px;color:#4E342E;margin-bottom:8px;line-height:1.6;">
+                        <b>${(req.fromNm||'').replace(/</g,'&lt;')}</b>이(가)<br>
+                        <b>${(req.itemName||'').replace(/</g,'&lt;')}</b> 공동 사용을 요청했어요!
+                    </div>
+                    <div style="background:#E8F5E9;border-radius:10px;padding:8px 12px;margin-bottom:14px;font-size:14px;color:#2E7D32;font-weight:bold;">
+                        내 기여: ${req.myCount}개
+                    </div>
+                    <div style="font-size:12px;color:#888;margin-bottom:16px;">동의하면 교사에게 요청이 전달돼요</div>
+                    <div style="display:flex;gap:10px;justify-content:center;">
+                        <button class="btn btn-blue" onclick="window._doConsentCoUse(${idx})">✅ 동의</button>
+                        <button class="btn btn-red" onclick="window._doDeclineCoUse(${idx})">❌ 거절</button>
+                    </div>
+                </div>
+            </div>
+        </div>`);
+    }
+    window._showCoUseConsentModal = _showCoUseConsentModal;
+
+    window._doConsentCoUse = function(idx) {
+        const reqs = window._coConsentReqs;
+        if(!reqs || !reqs[idx]) return;
+        const req = reqs[idx];
+        document.getElementById('_coConsentModal')?.remove();
+
+        const useDate = req.useDate || new Date().toLocaleDateString('sv-SE');
+
+        // Bug 1 fix: B 아이템 부족 시 경고 + 자동 거절
+        const available = (me.inv||[]).filter(it => it && it.n && it.n.trim() === req.itemName.trim() && it.st === 'active' && !it.locked && !it.pseudo).length;
+        if(available < req.myCount) {
+            showToast(`⚠️ [${req.itemName}] 아이템 부족 (보유 ${available}개, 필요 ${req.myCount}개) — 자동 거절됩니다.`);
+            window._doDeclineCoUse(idx, true); // silent: 이중 토스트 방지
+            return;
+        }
+
+        // B의 아이템 myCount개를 즉시 st:'req' 처리
+        let used = 0;
+        for(let k = 0; k < me.inv.length && used < req.myCount; k++) {
+            const it = me.inv[k];
+            if(it && it.n.trim() === req.itemName.trim() && it.st === 'active' && !it.locked && !it.pseudo) {
+                it.st = 'req';
+                it.useDate = useDate;
+                if(req.coUseGroupId) it.coUseGroupId = req.coUseGroupId;
+                it.coUsePartners = req.fromNm;
+                delete it.reqApproved; delete it.reqDone;
+                used++;
+            }
+        }
+
+        if(Array.isArray(me.pendingCoUseReqs)) {
+            me.pendingCoUseReqs = me.pendingCoUseReqs.filter(r => !(String(r.fromCd)===String(req.fromCd) && r.coUseGroupId===req.coUseGroupId));
+        }
+        if(window._upMeLastHash && me.cd) delete window._upMeLastHash[me.cd];
+        upMe();
+
+        // 교사 배지 갱신
+        try {
+            const fbKey = _getMyFbKey();
+            if(fbKey != null && fbKey !== -1) _debouncedReqCntWrite(fbKey);
+        } catch(_){}
+
+        showToast('✅ 동의했어요! 선생님이 승인하면 사용돼요.');
+        setTimeout(() => _showCoUseConsentModal(idx + 1), 300);
+    };
+
+    window._doDeclineCoUse = function(idx, _silent) {
+        const reqs = window._coConsentReqs;
+        if(!reqs || !reqs[idx]) return;
+        const req = reqs[idx];
+        document.getElementById('_coConsentModal')?.remove();
+
+        // A의 st:'req' 아이템(같은 coUseGroupId)을 active로 원상복구
+        const _declineStuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const aStu = _declineStuArr.find(s => s && String(s.cd) === String(req.fromCd));
+        const _cdMigDecline = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        const _declineMsg = { msg: `🤝 ${(me.nm||'친구').replace(/</g,'&lt;')}이(가) [${(req.itemName||'').replace(/</g,'&lt;')}] 공동 사용 요청을 거절했어요.`, ts: Date.now() };
+
+        if(aStu && Array.isArray(aStu.inv) && aStu.inv.length > 0 && req.coUseGroupId) {
+            // db.stu에 inv 데이터 있는 경우 — 로컬 수정 후 저장
+            (aStu.inv||[]).forEach(it => {
+                if(it && it.coUseGroupId === req.coUseGroupId && it.st === 'req' && !it.reqApproved) {
+                    it.st = 'active';
+                    delete it.coUseGroupId; delete it.coUsePartners;
+                    delete it.reqApproved; delete it.reqDone; delete it.useDate;
+                }
+            });
+            if(!Array.isArray(aStu.tchrMsg)) aStu.tchrMsg = [];
+            aStu.tchrMsg.push(_declineMsg);
+            if(window._svStuByCd) window._svStuByCd(aStu.cd); else sv();
+            // reqCnt 즉시 업데이트 (교사 배지 새로고침 없이 반영)
+            if(window._computeReqCnt && typeof dbRef !== 'undefined') {
+                const _aKey = _cdMigDecline ? String(aStu.cd) : (Array.isArray(db.stu) ? db.stu.indexOf(aStu) : -1);
+                if(_aKey !== -1 && _aKey != null) try { dbRef.child(`reqCnt/${_aKey}`).set(window._computeReqCnt(aStu)); } catch(_){}
+            }
+        } else if(req.coUseGroupId && typeof dbRef !== 'undefined' && _cdMigDecline) {
+            // inv 없는 경우 (스플릿 모드) — Firebase 직접 읽고 수정
+            const aFbKey = String(req.fromCd);
+            dbRef.child(`stu/${aFbKey}/inv`).once('value').then(snap => {
+                const raw = snap.val();
+                if(!raw) return Promise.resolve();
+                const inv = (Array.isArray(raw) ? [...raw] : Object.values(raw)).map(it => {
+                    if(it && it.coUseGroupId === req.coUseGroupId && it.st === 'req' && !it.reqApproved) {
+                        const n = {...it, st:'active'};
+                        delete n.coUseGroupId; delete n.coUsePartners;
+                        delete n.reqApproved; delete n.reqDone; delete n.useDate;
+                        return n;
+                    }
+                    return it;
+                });
+                // inv + reqCnt 동시 업데이트 (nm/no 유지를 위해 aStu 기반으로 병합)
+                const _fakeStu = aStu ? {...aStu, inv} : { inv };
+                const updates = {};
+                updates[`stu/${aFbKey}/inv`] = inv;
+                if(window._computeReqCnt) updates[`reqCnt/${aFbKey}`] = window._computeReqCnt(_fakeStu);
+                return dbRef.update(updates);
+            }).catch(e => console.warn('[CoUse] A inv 복구 실패', e));
+            // tchrMsg 알림 별도 push
+            dbRef.child(`stu/${aFbKey}/tchrMsg`).once('value').then(snap => {
+                const raw = snap.val();
+                const arr = Array.isArray(raw) ? [...raw] : (raw && typeof raw==='object') ? Object.values(raw).filter(Boolean) : [];
+                arr.push(_declineMsg);
+                return dbRef.child(`stu/${aFbKey}/tchrMsg`).set(arr);
+            }).catch(() => {});
+        }
+
+        if(Array.isArray(me.pendingCoUseReqs)) {
+            me.pendingCoUseReqs = me.pendingCoUseReqs.filter(r => !(String(r.fromCd)===String(req.fromCd) && r.coUseGroupId===req.coUseGroupId));
+        }
+        if(window._upMeLastHash && me.cd) delete window._upMeLastHash[me.cd];
+        upMe();
+
+        if(!_silent) showToast('거절했어요. 요청이 취소됐어요.');
+        setTimeout(() => _showCoUseConsentModal(idx + 1), 300);
+    };
+
+    // ── 아이템 모달 인라인 co-use 헬퍼 ──────────────────────────────────────
+    // 친구 목록 비동기 로드 — 아이템 보유 학생만 표시
+    // db.stu 우선, inv 데이터 없으면 stu/ 전체 fetch (세션 캐시)
+    window._icLoadFriends = async function(itemName, needCollect, myCount) {
+        const listEl = document.getElementById('_icFriendList');
+        if(!listEl) return;
+
+        // 1) db.stu에서 inv가 있는 학생 우선 시도
+        let stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const _hasInvData = stuArr.some(s => s && s.cd && String(s.cd) !== String(me.cd) && Array.isArray(s.inv) && s.inv.length > 0);
+
+        // 2) inv 데이터 없으면 stu/ 전체 fetch (세션당 1회 캐시)
+        if(!_hasInvData && typeof dbRef !== 'undefined') {
+            if(!window._coUseStuCache) {
+                try {
+                    const snap = await dbRef.child('stu').once('value');
+                    const raw = snap.val() || {};
+                    window._coUseStuCache = Object.values(raw).filter(Boolean);
+                } catch(_){ window._coUseStuCache = []; }
+            }
+            if(window._coUseStuCache.length > 0) stuArr = window._coUseStuCache;
+        }
+
+        if(!listEl.isConnected) return;
+
+        // 아이템 보유 학생만 필터 (fCnt > 0)
+        const stillNeed = needCollect - myCount;
+        const withItem = stuArr
+            .filter(s => {
+                if(!s || !s.cd || !s.nm || String(s.cd) === String(me.cd)) return false;
+                const cnt = Array.isArray(s.inv)
+                    ? s.inv.filter(it => it && it.n && it.n.trim() === itemName.trim() && it.st === 'active' && !it.locked && !it.pseudo).length
+                    : 0;
+                return cnt > 0;
+            })
+            .sort((a,b) => (a.no||0)-(b.no||0));
+
+        if(!withItem.length) {
+            listEl.innerHTML = `<div style="text-align:center;color:#888;font-size:12px;padding:10px 0;">같은 아이템을 가진 친구가 없어요 😢</div>`;
+            return;
+        }
+
+        listEl.innerHTML = withItem.map((f, i) => {
+            const fCnt = Array.isArray(f.inv)
+                ? f.inv.filter(it => it && it.n && it.n.trim() === itemName.trim() && it.st === 'active' && !it.locked && !it.pseudo).length
+                : 0;
+            const fCd = String(f.cd).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+            const fNm = (f.nm||'').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+            const maxQ = Math.min(fCnt, needCollect - 1);
+            return `<div style="display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:9px;background:#FFF3E0;margin-bottom:4px;">
+                <input type="checkbox" data-cofi="${i}" data-cd="${fCd}" data-nm="${fNm}" onchange="window._icToggle(${i},${needCollect},${myCount})" style="width:17px;height:17px;cursor:pointer;flex-shrink:0;">
+                <span style="flex:1;font-size:13px;font-weight:bold;color:#4E342E;">${fNm}</span>
+                <span style="font-size:11px;color:#888;white-space:nowrap;">${fCnt}개 보유</span>
+                <input type="number" id="_icqty${i}" min="1" max="${maxQ}" value="${Math.min(stillNeed,maxQ)}" style="width:46px;padding:3px;border:1.5px solid #FFB74D;border-radius:7px;text-align:center;font-size:13px;" onchange="window._icRefresh(${needCollect},${myCount})" disabled>
+            </div>`;
+        }).join('');
+    };
+
+    window._icToggle = function(i, needCollect, myCount) {
+        const chk = document.querySelector(`[data-cofi="${i}"]`);
+        const qEl = document.getElementById('_icqty' + i);
+        if(qEl && chk) qEl.disabled = !chk.checked;
+        window._icRefresh(needCollect, myCount);
+    };
+
+    window._icRefresh = function(needCollect, myCount) {
+        let friendTotal = 0;
+        document.querySelectorAll('[data-cofi]').forEach(chk => {
+            if(chk.checked) {
+                const q = parseInt(document.getElementById('_icqty' + chk.dataset.cofi)?.value || 0) || 0;
+                friendTotal += q;
+            }
+        });
+        const total = myCount + friendTotal;
+        const bar = document.getElementById('_icTotalBar');
+        if(bar) {
+            bar.textContent = `합계: ${total}/${needCollect}개`;
+            bar.style.color = total >= needCollect ? '#2E7D32' : '#F57F17';
+            bar.style.background = total >= needCollect ? '#E8F5E9' : '#FFF9C4';
+        }
+    };
+
+    window._useQWithCoUse = function(itemName, invIdx, needCollect, myCount) {
+        const coList = [];
+        document.querySelectorAll('[data-cofi]').forEach(chk => {
+            if(chk.checked) {
+                const cnt = parseInt(document.getElementById('_icqty' + chk.dataset.cofi)?.value || 1) || 1;
+                coList.push({ cd: chk.dataset.cd, nm: chk.dataset.nm, count: cnt });
+            }
+        });
+        if(coList.length) {
+            const total = myCount + coList.reduce((s,f) => s + f.count, 0);
+            if(total < needCollect) {
+                showToast(`합산 ${total}/${needCollect}개 — 아직 부족해요! 🔒`);
+                return;
+            }
+            const useDate = document.getElementById('itemUseDate')?.value || new Date().toLocaleDateString('sv-SE');
+            window._coUseState = { itemName, invIdx, needCollect, myCount, friends: [], useDate };
+            document.getElementById('itemModal')?.remove();
+            window._submitCoUseReq(itemName, invIdx, myCount, coList, needCollect);
+        } else {
+            useQ(itemName, invIdx);
+        }
+    };
+
+    // co-use 요청이 취소/반려/삭제될 때 관련 학생들의 pendingCoUseReqs 정리
+    window._cleanCoUsePending = function(groupId, partnerCds) {
+        if(!groupId) return;
+        const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const changedCds = [];
+        stuArr.forEach(s => {
+            if(!s || !Array.isArray(s.pendingCoUseReqs)) return;
+            const before = s.pendingCoUseReqs.length;
+            s.pendingCoUseReqs = s.pendingCoUseReqs.filter(r => r && r.coUseGroupId !== groupId);
+            if(s.pendingCoUseReqs.length !== before) changedCds.push(s.cd);
+        });
+        if(changedCds.length && window._svStuByCd) window._svStuByCd([...new Set(changedCds)]);
+        // Bug 3 fix: split 모드 — Firebase 직접 정리
+        if(partnerCds && partnerCds.length && typeof dbRef !== 'undefined' && db.cfg && db.cfg.stuKeyCdMigrated) {
+            const localCdSet = new Set(stuArr.map(s => s && String(s.cd)).filter(Boolean));
+            partnerCds.forEach(cd => {
+                if(localCdSet.has(String(cd))) return;
+                const fbKey = String(cd);
+                dbRef.child(`stu/${fbKey}/pendingCoUseReqs`).once('value').then(snap => {
+                    const raw = snap.val();
+                    if(!raw) return;
+                    const arr = (Array.isArray(raw) ? [...raw] : Object.values(raw).filter(Boolean))
+                        .filter(r => r && r.coUseGroupId !== groupId);
+                    return dbRef.child(`stu/${fbKey}/pendingCoUseReqs`).set(arr);
+                }).catch(e => console.warn('[CoUse] pendingCoUseReqs Firebase 정리 실패', e));
+            });
+        }
+    };
+
+    // Bug 4+5 fix: B 학생들의 st:'req' 아이템을 active로 복구
+    window._revertCoUseGroup = function(groupId, partnerCds) {
+        if(!groupId) return;
+        const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+        const changedCds = [];
+        stuArr.forEach(s => {
+            if(!s || !Array.isArray(s.inv)) return;
+            let changed = false;
+            s.inv.forEach(it => {
+                if(it && it.coUseGroupId === groupId && it.st === 'req' && !it.reqApproved) {
+                    it.st = 'active';
+                    delete it.coUseGroupId; delete it.coUsePartners; delete it.coUsePartnerCds;
+                    delete it.reqApproved; delete it.reqDone; delete it.useDate;
+                    changed = true;
+                }
+            });
+            if(changed) changedCds.push(s.cd);
+        });
+        if(changedCds.length && window._svStuByCd) window._svStuByCd([...new Set(changedCds)]);
+        // split 모드 — Firebase 직접 복구
+        if(partnerCds && partnerCds.length && typeof dbRef !== 'undefined' && db.cfg && db.cfg.stuKeyCdMigrated) {
+            const localCdSet = new Set(stuArr.map(s => s && String(s.cd)).filter(Boolean));
+            partnerCds.forEach(cd => {
+                if(localCdSet.has(String(cd))) return;
+                const fbKey = String(cd);
+                dbRef.child(`stu/${fbKey}/inv`).once('value').then(snap => {
+                    const raw = snap.val();
+                    if(!raw) return;
+                    let changed = false;
+                    const inv = (Array.isArray(raw) ? [...raw] : Object.values(raw)).map(it => {
+                        if(it && it.coUseGroupId === groupId && it.st === 'req' && !it.reqApproved) {
+                            changed = true;
+                            const n = {...it, st: 'active'};
+                            delete n.coUseGroupId; delete n.coUsePartners; delete n.coUsePartnerCds;
+                            delete n.reqApproved; delete n.reqDone; delete n.useDate;
+                            return n;
+                        }
+                        return it;
+                    });
+                    if(!changed) return;
+                    return dbRef.child(`stu/${fbKey}/inv`).set(inv);
+                }).catch(e => console.warn('[CoUse] B inv 복구 실패', e));
+            });
+        }
     };
 
     window.cancelShopReqGroup = function(idxs) {
@@ -10127,7 +10773,7 @@ let _renderLock = false; // 재진입 방지
         const sSide = document.querySelector('#appS .side');
         const sCont = document.querySelector('#appS .cont');
         if(id === 's_plz') {
-            if(sCont) { sCont.style.padding='0'; sCont.style.background='#000'; sCont.style.overflow='hidden'; sCont.style.display='flex'; sCont.style.flexDirection='column'; }
+            if(sCont) { sCont.style.padding='0'; sCont.style.background='transparent'; sCont.style.overflow='hidden'; sCont.style.display='flex'; sCont.style.flexDirection='column'; }
         } else {
             if(sSide) sSide.style.display = '';
             if(sCont) { sCont.style.padding=''; sCont.style.background=''; sCont.style.overflow=''; sCont.style.display=''; sCont.style.flexDirection=''; }
@@ -12670,6 +13316,7 @@ let _renderLock = false; // 재진입 방지
                         <div style="font-size:11px;font-weight:bold;color:#3E2723;margin:4px 0 2px;word-break:keep-all;">${it.n}${cntBadge}</div>
                         <div style="font-size:11px;color:#5D4037;margin-bottom:3px;">${s.nm}</div>
                         ${it.note?`<div style="font-size:10px;color:#795548;margin-bottom:3px;">💬 ${it.note}</div>`:''}
+                        ${it.coUseGroupId?`<div style="font-size:10px;color:#1565C0;background:#E3F2FD;border-radius:4px;padding:1px 5px;margin-bottom:3px;display:inline-block;">🤝 공동 사용${it.coUsePartners?' ('+String(it.coUsePartners).replace(/</g,'&lt;')+')':''}</div>`:''}
                         ${it.usageDurationDays?`<div style="font-size:10px;color:#01579B;background:#E1F5FE;border-radius:4px;padding:1px 5px;margin-bottom:3px;display:inline-block;">📆 ${it.usageDurationDays}일권</div>`:''}
                         <input type="date" value="${it.useDate||''}" onchange="window._reqDateEdit('${cd}',${k},this.value)" style="font-size:10px;padding:2px 4px;border:1px solid #FFCC80;border-radius:4px;font-family:'Jua';margin-bottom:3px;width:108px;" title="${it.useEndDate?'시작일':'사용 날짜'} 변경">
                         ${it.useEndDate?`<input type="date" value="${it.useEndDate||''}" onchange="window._reqDateEditEnd('${cd}',${k},this.value)" style="font-size:10px;padding:2px 4px;border:1px solid #4FC3F7;border-radius:4px;font-family:'Jua';margin-bottom:4px;width:108px;" title="종료일 변경">`:''}
@@ -12797,6 +13444,8 @@ let _renderLock = false; // 재진입 방지
                 sorted.forEach(k => {
                     if(!inv[k]) return;
                     inv[k].reqApproved = true;
+                    // 교사 승인 시점 쿠키 기록 — 당일 스냅샷이 없을 때 정산 기준값으로 사용
+                    inv[k].approvedCookie = s.cookie || 0;
                     // baseCookie 누락 시 승인 시점 쿠키로 보정 (학생 제출 전 fix 미적용 케이스 대응)
                     if(inv[k].baseCookie == null) inv[k].baseCookie = s.cookie || 0;
                 });
@@ -12822,12 +13471,19 @@ let _renderLock = false; // 재진입 방지
                 const _invBase = inv[ks[0]]?.baseCookie;
                 const _hasInvBase = (_invBase != null);
                 const _lastSettled = _xb.lastSettledCookie;
-                // 기준값 우선순위: 당일 스냅샷 → lastSettledCookie → baseCookie → 0
+                const _approvedCookie = inv[ks[0]]?.approvedCookie;
+                const _hasApproved = (_approvedCookie != null);
+                // 기준값 우선순위(요청 반영):
+                //   ① 해당 날짜 스냅샷(dailyStartCookie) — 그날 가진 쿠키
+                //   ② 이전 정산 기준(lastSettledCookie) — 멀티데이 연속 정산
+                //   ③ 교사 승인 시점 쿠키(approvedCookie) — 스냅샷 없을 때 기준
+                //   ④ 학생 사용 시점(baseCookie) → ⑤ 0
                 const _dailySnap = (_xb.dailySnapDate === _todayISO && _xb.dailyStartCookie != null) ? _xb.dailyStartCookie : null;
                 const xbBase = (_dailySnap != null) ? _dailySnap
                              : (_lastSettled != null) ? _lastSettled
+                             : _hasApproved ? _approvedCookie
                              : (_hasInvBase ? _invBase : 0);
-                const _hasValidBase = _dailySnap != null || _lastSettled != null || _hasInvBase;
+                const _hasValidBase = _dailySnap != null || _lastSettled != null || _hasApproved || _hasInvBase;
                 const xbDelta = Math.max(0, (s.cookie || 0) - xbBase);
                 const _settledSum = (Array.isArray(_xb.history) ? _xb.history : []).reduce((a,h)=>a+(h.delta||0), 0);
                 const _totalEarned = xbDelta + _settledSum;
@@ -12837,7 +13493,12 @@ let _renderLock = false; // 재진입 방지
                 const _historyHtml = _settledSum > 0
                     ? `<div style="font-size:11px;color:#888;margin-top:8px;line-height:1.5;">📊 이미 정산됨: <b style="color:#1976D2;">+${_settledSum}🍪</b> (${_xb.history.length}회)<br>🌟 부스트 기간 총 누적: <b style="color:#E65100;">+${_totalEarned}🍪</b></div>`
                     : '';
-                const _baseHint = !_hasValidBase ? `<div style="font-size:10px;color:#FFA000;margin-top:4px;">⚠️ 오늘 기준값 없음 — 0 기준으로 계산</div>` : (_dailySnap != null ? '' : `<div style="font-size:10px;color:#888;margin-top:4px;">ℹ️ 당일 스냅샷 없음 — 이전 정산 기준으로 계산</div>`);
+                const _baseHint = !_hasValidBase
+                    ? `<div style="font-size:10px;color:#FFA000;margin-top:4px;">⚠️ 오늘 기준값 없음 — 0 기준으로 계산</div>`
+                    : _dailySnap != null ? ''
+                    : _lastSettled != null ? `<div style="font-size:10px;color:#888;margin-top:4px;">ℹ️ 당일 스냅샷 없음 — 이전 정산 기준으로 계산</div>`
+                    : _hasApproved ? `<div style="font-size:10px;color:#888;margin-top:4px;">ℹ️ 당일 스냅샷 없음 — 교사 승인 시점 쿠키로 계산</div>`
+                    : `<div style="font-size:10px;color:#888;margin-top:4px;">ℹ️ 당일 스냅샷 없음 — 학생 사용 시점 쿠키로 계산</div>`;
                 const _isXp3Settle = (inv[ks[0]]?.n === '성장의 화염');
                 const _multHint = _isXp3Settle && xbDelta > 0
                     ? `<div style="font-size:13px;color:#7B1FA2;font-weight:bold;margin-top:8px;">⭐ 추가 지급 필요: <b>+${xbDelta * 2}🍪</b><br><span style="font-size:11px;font-weight:normal;">(다했어요에서 ${xbDelta}🍪 + 추가 ${xbDelta * 2}🍪 = 총 ${xbDelta * 3}🍪)</span></div>`
@@ -12903,6 +13564,17 @@ let _renderLock = false; // 재진입 방지
             }
         }
         const _todayISOg = new Date().toLocaleDateString('sv-SE');
+        const _coGroupIds = new Set();
+        const _coPartnerCdMap = new Map();
+        // partnerCds 먼저 수집 (rej/del 시 아이템 수정 전)
+        sorted.forEach(k => {
+            const it = inv[k]; if(!it) return;
+            if((action === 'rej' || action === 'del') && it.coUseGroupId && it.coUsePartnerCds) {
+                const existing = _coPartnerCdMap.get(it.coUseGroupId) || [];
+                it.coUsePartnerCds.forEach(c => { if(!existing.includes(c)) existing.push(c); });
+                _coPartnerCdMap.set(it.coUseGroupId, existing);
+            }
+        });
         sorted.forEach(k => {
             const it = inv[k]; if(!it) return;
             const _dur = it.usageDurationDays || 0;
@@ -12940,13 +13612,18 @@ let _renderLock = false; // 재진입 방지
                     }
                     it._pendingRemove = true;
                 } else {
+                    if(it.coUseGroupId) _coGroupIds.add(it.coUseGroupId);
                     it.st = 'active';
                     delete it.reqApproved; delete it.reqDone;
                     delete it.useDate; delete it.useEndDate;
                     delete it.currentDay; delete it.totalDays;
+                    delete it.coUseGroupId; delete it.coUsePartners; delete it.coUsePartnerCds;
                 }
             }
-            else if(action === 'del') { inv.splice(k,1); }
+            else if(action === 'del') {
+                if(it.coUseGroupId) _coGroupIds.add(it.coUseGroupId);
+                inv.splice(k,1);
+            }
         });
         // shop_req 반려: 내림차순 인덱스로 splice (인덱스 밀림 방지)
         if(action === 'rej') {
@@ -12959,6 +13636,11 @@ let _renderLock = false; // 재진입 방지
         _renderReqDate(); rAs(); updateMenuBadges();
         if(typeof _syncRequestViews==='function') _syncRequestViews();
         if(typeof rBg==='function') rBg();
+        // 공동 사용 반려/삭제 시 파트너 학생들의 pendingCoUseReqs 정리 + B 아이템 복구
+        if(_coGroupIds.size) _coGroupIds.forEach(gid => {
+            window._cleanCoUsePending && window._cleanCoUsePending(gid, _coPartnerCdMap.get(gid));
+            window._revertCoUseGroup && window._revertCoUseGroup(gid, _coPartnerCdMap.get(gid));
+        });
     };
     window._reqGroupDel = function(cd, ks) {
         prettyConfirm(`이 ${ks.length}개 항목을 모두 삭제할까요?`, function(){
@@ -16942,6 +17624,11 @@ window.appU = function(y, si, k) {
 
     let _rBgTimer = null;
     const _rBgOrig = function _rBgOrig(){
+        // [하얀 화면 버그 수정] navS가 s_bg를 opacity:0으로 두고 복원을 _rBgOrig에 맡기는데,
+        //   꾸미기·칭호·펫 분기는 자체 return 하면서 opacity를 1로 안 되돌려 재진입 시 하얀 화면이 됨.
+        //   어느 분기로 끝나든 보이도록 진입 즉시 가시성 복원.
+        const _bgElTop = document.getElementById('s_bg');
+        if(_bgElTop) { _bgElTop.style.transition = 'none'; _bgElTop.style.opacity = '1'; }
         if(!me) return;
         // 기간제 만료 정리
         try { if(window._expireExpiredItems && window._expireExpiredItems(me)) { try { upMe(); } catch(_){} } } catch(_){}
@@ -17050,7 +17737,6 @@ window.appU = function(y, si, k) {
             });
             let petHtml = '';
             if(ownedPets.length > 0) {
-                petHtml += `<div style="grid-column:1/-1;font-size:13px;font-weight:bold;color:#5D4037;margin:4px 0 2px;">🐾 펫</div>`;
                 const _avtExpP = me.avtExpire || {};
                 petHtml += ownedPets.map(item => {
                     const isMain = mainPetId === item.id;
@@ -17072,7 +17758,6 @@ window.appU = function(y, si, k) {
             const ownedBadges = (db.bdg||[]).filter(b => earnedBdgIds.includes(b.id));
             let bdgHtml = '';
             if(ownedBadges.length > 0) {
-                bdgHtml += `<div style="grid-column:1/-1;font-size:13px;font-weight:bold;color:#9C27B0;margin:12px 0 2px;">📛 펫 스킬</div>`;
                 const _bdgExpM = me.bdgExpire || {};
                 bdgHtml += ownedBadges.map(b => {
                     const _exp = _bdgExpM[b.id];
@@ -17080,19 +17765,30 @@ window.appU = function(y, si, k) {
                     // 펫 스킬: 자동 장착 — 사용자 해제·착용 불가, 클릭은 설명만 표시
                     return `<div class="inventory-slot has-item" onclick="window._showBdgDescPopup('${b.id}')" style="cursor:pointer;border:3px solid #66BB6A;background:#F1F8E9;position:relative;">
                         <div style="position:absolute;top:0;left:0;right:0;background:#66BB6A;color:white;font-size:10px;text-align:center;border-radius:9px 9px 0 0;padding:2px;">🔒 자동 장착</div>
-                        ${b.img ? `<img src="${b.img}" loading="lazy" style="width:80px;height:80px;object-fit:contain;border-radius:8px;">` : `<div style="font-size:50px;">${b.icon||'📛'}</div>`}
+                        ${b.img ? `<img src="${b.img}" loading="lazy" style="width:80px;height:80px;object-fit:contain;border-radius:8px;">` : `<div style="font-size:50px;">${b.icon||'🌟'}</div>`}
                         <div style="font-size:13px;font-weight:bold;margin-top:6px;color:#5D4037;text-align:center;word-break:keep-all;">${b.name}</div>
                         ${_rb}
                     </div>`;
                 }).join('');
             }
-            const petItemCount = ownedPets.length + ownedBadges.length;
-            const petEmptyCount = _ivEmptyCount(petItemCount);
-            let petEmptyHtml = '';
-            for(let i = 0; i < petEmptyCount; i++) {
-                petEmptyHtml += `<div class="inventory-slot"></div>`;
+            // 펫·펫스킬을 각각 1줄(태블릿 5열 / 컴퓨터 6열) 고정 그리드로 배치 — 빈칸은 그 줄만 채움
+            const _isTabletPet = !!(window.matchMedia && window.matchMedia('(max-height: 850px)').matches);
+            const PET_COLS = _isTabletPet ? 5 : 6;
+            const _rowFill = (n) => {
+                const empty = (PET_COLS - (n % PET_COLS)) % PET_COLS;
+                let h = ''; for(let i=0;i<empty;i++) h += `<div class="inventory-slot"></div>`; return h;
+            };
+            const _petGridStyle = `display:grid;grid-template-columns:repeat(${PET_COLS},1fr);gap:15px;`;
+            let _petTabHtml = '';
+            if(ownedPets.length > 0) {
+                _petTabHtml += `<div style="font-size:13px;font-weight:bold;color:#5D4037;margin:4px 0 8px;">🐾 펫</div>`;
+                _petTabHtml += `<div style="${_petGridStyle}">${petHtml}${_rowFill(ownedPets.length)}</div>`;
             }
-            document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv">${petHtml}${bdgHtml}${petEmptyHtml}</div>`;
+            if(ownedBadges.length > 0) {
+                _petTabHtml += `<div style="font-size:13px;font-weight:bold;color:#9C27B0;margin:16px 0 8px;display:inline-flex;align-items:center;gap:4px;"><span style="font-size:16px;line-height:1;vertical-align:middle;">🌟</span> 펫 스킬</div>`;
+                _petTabHtml += `<div style="${_petGridStyle}">${bdgHtml}${_rowFill(ownedBadges.length)}</div>`;
+            }
+            document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv" style="display:block;">${_petTabHtml}</div>`;
             return;
         }
 
@@ -17523,7 +18219,7 @@ window.appU = function(y, si, k) {
         const _isPetGac = x => x && (x.t === 'pet_skill' || x.t === 'skill_reroll' || x.t === 'premium_skill');
         let gacList = (Array.isArray(db.gac) ? db.gac : Object.values(db.gac || {}))
             .filter(x => !x.hidden && !_isPetGac(x) && !(x.openMonth && _gAcadOrd(_gCurM) < _gAcadOrd(x.openMonth)));
-        
+
         const gachaShopHtml = `
             <div id="shop-gacha-sec" class="shop-section" style="display:none;">
                 <div id="s_gl" class="grid" style="margin-top: 20px !important;">
@@ -17534,7 +18230,7 @@ window.appU = function(y, si, k) {
                             <div class="click-catcher" onclick="window.showGachaModal('${x.n.replace(/'/g, "\\'")}')"></div>
                             <div class="shop-card-gacha-title" style="position:absolute;top:100px;left:0;width:100%;text-align:center;color:#FFF9C4;font-size:30px;font-weight:bold;text-shadow:2px 2px 3px #000;z-index:3;pointer-events:none;">${x.n}</div>
                             <div class="shop-card-content">
-                                <div class="item-shiny gacha-shiny">${(x.em&&(x.em.startsWith('http')||x.em.startsWith('data:'))) ? `<img src="${x.em}" loading="lazy" style="width:170px;height:170px;object-fit:contain;">` : (x.em || typeEmoji[x.t])}</div>
+                                <div class="item-shiny gacha-shiny">${(x.em&&(x.em.startsWith('http')||x.em.startsWith('data:'))) ? `<img src="${x.em}" loading="eager" fetchpriority="high" style="width:170px;height:170px;object-fit:contain;">` : (x.em || typeEmoji[x.t])}</div>
                             </div>
                             <div class="pedestal ped-gold">
                                 <div class="pedestal-top"></div>
@@ -20463,13 +21159,7 @@ window.addCharRow = function() {
     const getEqId   = v => (v && typeof v === 'object') ? v.id   : (v || '');
     const getEqFlip = v => (v && typeof v === 'object') ? (v.flip || 'right') : 'right';
 
-    // raw.githubusercontent.com → jsDelivr CDN (빠른 엣지 캐시). 파일명이 불변(타임스탬프)이라 캐시 안전.
-    // jsDelivr 실패 시 img onerror로 raw 폴백 → 절대 안 깨짐(최악도 기존 동작).
-    function _cdnUrl(u) {
-        if(typeof u !== 'string') return u;
-        const m = u.match(/^https?:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);
-        return m ? `https://cdn.jsdelivr.net/gh/${m[1]}/${m[2]}@${m[3]}/${m[4]}` : u;
-    }
+    function _cdnUrl(u) { return u; }
     function renderAvatar(eq, size=120, displayPetsArr, displayPropsArr) {
         eq = eq || {};
         const baseUrl = (db.cfg && db.cfg.baseChar) || '기본 캐릭터.png';
@@ -20775,14 +21465,14 @@ window.addCharRow = function() {
             _scInner = document.getElementById('s_char_inner');
         }
         _scInner.innerHTML = `
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
                 <h2 style="margin:0;font-size:28px;">⚔️ RPG 용사</h2>
                 <button onclick="localStorage.removeItem('stuCode');location.reload();" style="font-size:17px;padding:8px 18px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;color:#999;cursor:pointer;font-family:Jua;line-height:1.4;">로그아웃</button>
             </div>
             <div style="display:flex;gap:16px;align-items:stretch;margin-bottom:16px;flex-wrap:wrap;">
                 <!-- 좌측: 캐릭터 패널 + 용사 랭킹 컬럼 -->
                 <div style="display:flex;flex-direction:column;gap:12px;align-items:stretch;">
-                <div style="background:white;border-radius:20px;padding:6px 20px 8px;text-align:center;min-width:220px;display:flex;flex-direction:column;align-items:center;zoom:1.32;">
+                <div style="background:white;border-radius:20px;padding:6px 20px 8px;text-align:center;min-width:220px;display:flex;flex-direction:column;align-items:center;zoom:1.19;">
                     <div style="margin-bottom:6px;">${titBarHtml}</div>
                     ${renderAvatar(me.eq, 487, me.displayPets, me.displayProps)}
                     <div class="char-name-banner-lg" style="margin-top:6px;">
@@ -20794,7 +21484,7 @@ window.addCharRow = function() {
                 </div>
                 </div>
                 <!-- 우측: 아이템·펫·펫 스킬 + 용사 랭킹 패널 -->
-                <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:12px;zoom:1.44;justify-content:space-between;">
+                <div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:12px;zoom:1.30;justify-content:space-between;">
                     <div style="background:white;border:2px solid #EEE;border-radius:16px;padding:14px;">
                         <div style="margin-bottom:10px;">
                             <div style="font-size:13px;font-weight:bold;color:#5D4037;">🎨 아이템</div>
@@ -22774,15 +23464,25 @@ window.addCharRow = function() {
                 <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;background:${isSp?'#FFF8E1':'#F1F8E9'};border-radius:12px;padding:14px 8px;border:1.5px dashed ${isSp?'#FFD54F':'#A5D6A7'};">
                     ${_isSpSk ? pairSlotsHtml : slotsHtml}
                 </div>
-                <div style="font-size:12px;color:${innerSubColor};margin-bottom:6px;font-weight:bold;">🎒 가방 — 사용 가능한 재료</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;background:${isSp?'#FFF3E0':'#E8F5E9'};border-radius:10px;padding:10px;margin-bottom:10px;min-height:74px;align-items:center;">
-                    ${poolHtml}
-                </div>
                 ${_isSpSk ? `
-                <div style="font-size:12px;color:#7B1FA2;margin-bottom:6px;font-weight:bold;">📛 가방 — 사용 가능한 스킬</div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;background:#F3E5F5;border-radius:10px;padding:10px;margin-bottom:10px;min-height:64px;align-items:center;">
-                    ${skillPoolHtml}
-                </div>` : ''}
+                <div style="display:flex;gap:10px;margin-bottom:10px;align-items:stretch;">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+                        <div style="font-size:12px;color:${innerSubColor};margin-bottom:6px;font-weight:bold;">🎒 사용 가능한 재료</div>
+                        <div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;background:${isSp?'#FFF3E0':'#E8F5E9'};border-radius:10px;padding:10px;min-height:90px;align-content:flex-start;">
+                            ${poolHtml}
+                        </div>
+                    </div>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+                        <div style="font-size:12px;color:#7B1FA2;margin-bottom:6px;font-weight:bold;">🌟 사용 가능한 스킬</div>
+                        <div style="flex:1;display:flex;gap:6px;flex-wrap:wrap;background:#F3E5F5;border-radius:10px;padding:10px;min-height:90px;align-content:flex-start;">
+                            ${skillPoolHtml}
+                        </div>
+                    </div>
+                </div>` : `
+                <div style="font-size:12px;color:${innerSubColor};margin-bottom:6px;font-weight:bold;">🎒 사용 가능한 재료</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;background:${isSp?'#FFF3E0':'#E8F5E9'};border-radius:10px;padding:10px;margin-bottom:10px;min-height:90px;align-content:flex-start;">
+                    ${poolHtml}
+                </div>`}
                 <button onclick="window._runPetSynthWithMats('${pd.id}', window._petDragSel['${pd.id}'], ${_isSpSk?`window._petSkillSel['${pd.id}']`:'null'})"
                     ${allFilled?'':'disabled'}
                     style="width:100%;padding:12px;border:none;border-radius:12px;font-family:'Jua';font-size:15px;font-weight:bold;cursor:${allFilled?'pointer':'not-allowed'};color:white;background:${allFilled?(isSp?'linear-gradient(135deg,#FFD700,#FF6F00)':'linear-gradient(135deg,#66BB6A,#2E7D32)'):'#9E9E9E'};opacity:${allFilled?1:0.5};box-shadow:${allFilled?'0 4px 14px rgba(0,0,0,0.3)':'none'};letter-spacing:1px;">
@@ -25520,7 +26220,7 @@ window.addCharRow = function() {
         // 개별 배지 경로 직접 저장 — 전체 배열 덮어쓰기보다 안전
         try {
             dbRef.child('bdg/' + _bdgWriteIdx).set(item)
-                .then(() => console.log('[saveBdg] ✅ 저장 성공 idx:', _bdgWriteIdx, '/ coupon:', JSON.stringify(item.coupon||null)))
+                .then(() => { console.log('[saveBdg] ✅ 저장 성공 idx:', _bdgWriteIdx, '/ coupon:', JSON.stringify(item.coupon||null)); try { dbRef.child('cfg/bdgRev').set(Date.now()); } catch(_){} })
                 .catch(e => console.error('[saveBdg] ❌ 저장 실패:', e));
         } catch(e){ console.error('[saveBdg] 예외:', e); }
         rBdgMgrList(); document.getElementById('bdgMgrModal').remove();
@@ -25529,7 +26229,7 @@ window.addCharRow = function() {
     window.delBdg = function(i) {
         if(!confirm('이 뱃지를 삭제하시겠습니까?')) return;
         db.bdg.splice(i,1); sv();
-        try { dbRef.child('bdg').set(db.bdg).then(()=>console.log('[delBdg] ✅ 삭제 후 저장')).catch(e=>console.error('[delBdg] ❌',e)); } catch(e){}
+        try { dbRef.child('bdg').set(db.bdg).then(()=>{ console.log('[delBdg] ✅ 삭제 후 저장'); try { dbRef.child('cfg/bdgRev').set(Date.now()); } catch(_){} }).catch(e=>console.error('[delBdg] ❌',e)); } catch(e){}
         rBdgMgrList();
     };
 
@@ -25808,12 +26508,12 @@ window.addCharRow = function() {
             item.rewardCoinAmt  = parseInt(document.getElementById('tit_reward_amt').value) || 10;
         }
         if(editIdx>=0) db.tit[editIdx] = item; else db.tit.push(item);
-        sv(); window._bumpCacheVer && window._bumpCacheVer('tit'); rTitMgrList(); document.getElementById('titMgrModal').remove(); document.getElementById('titMgrStyle')?.remove();
+        sv(); window._bumpCacheVer && window._bumpCacheVer('tit'); try { dbRef.child('cfg/titRev').set(Date.now()); } catch(_){} rTitMgrList(); document.getElementById('titMgrModal').remove(); document.getElementById('titMgrStyle')?.remove();
     };
 
     window.delTit = function(i) {
         if(!confirm('이 칭호를 삭제하시겠습니까?')) return;
-        db.tit.splice(i,1); sv(); window._bumpCacheVer && window._bumpCacheVer('tit'); rTitMgrList();
+        db.tit.splice(i,1); sv(); window._bumpCacheVer && window._bumpCacheVer('tit'); try { dbRef.child('cfg/titRev').set(Date.now()); } catch(_){} rTitMgrList();
     };
 
     /* ────────── 달별 반복 칭호 지급 ────────── */
@@ -27031,7 +27731,7 @@ window.addCharRow = function() {
             const canAfford = owned || myKc >= (item.price||0);
             return `<div id="cart-row-${item.id}" style="display:flex;align-items:center;gap:8px;padding:8px;background:${owned?'#E8F5E9':'#FFF8E1'};border-radius:10px;margin-bottom:6px;">
                 <label style="display:flex;align-items:center;gap:0;cursor:pointer;"><input type="checkbox" class="avt-cart-chk" data-id="${item.id}" ${owned?'disabled checked':'checked'} onchange="updateCartPreview()" style="width:16px;height:16px;accent-color:#FF8F00;cursor:pointer;"></label>
-                ${item.img?`<img src="${item.img}" style="width:40px;height:40px;object-fit:contain;image-rendering:pixelated;border-radius:6px;flex-shrink:0;">`:'<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;">🎨</div>'}
+                ${item.img?`<img src="${item.img}" style="width:60px;height:60px;object-fit:contain;image-rendering:pixelated;border-radius:8px;flex-shrink:0;">`:'<div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;font-size:42px;">🎨</div>'}
                 <div style="flex:1;min-width:0;">
                     <div style="font-size:13px;font-weight:bold;color:#4E342E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.nm}</div>
                     <div style="font-size:11px;color:#8D6E63;">${catLabel} · <span style="color:${canAfford?'#5D4037':'#E53935'}">${owned?'이미 보유':price}</span></div>
@@ -27211,8 +27911,10 @@ window.addCharRow = function() {
                     <button onclick="document.getElementById('avtPreviewPop').remove();document.getElementById('avtPreviewBg').remove();" style="background:rgba(255,255,255,0.15);border:none;color:white;width:28px;height:28px;border-radius:50%;font-size:15px;cursor:pointer;line-height:1;">✕</button>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:center;width:570px;">
-                    <div style="width:382px;height:541px;background:#FFFFFF;display:flex;justify-content:center;align-items:center;overflow:visible;margin:10px auto 0;">
-                        ${avatarHtml}
+                    <div style="width:382px;height:487px;background:#FFFFFF;display:flex;justify-content:center;align-items:flex-start;overflow:visible;margin:10px auto 0;">
+                        <div style="transform:scale(0.9);transform-origin:top center;flex-shrink:0;">
+                            ${avatarHtml}
+                        </div>
                     </div>
                     <div style="width:100%;background:#FFF8F0;padding:10px 12px;display:flex;flex-direction:column;gap:6px;">
                         <div style="font-size:12px;color:#8D6E63;font-weight:bold;text-align:center;">${item.nm} · ${catLabel}</div>
@@ -33505,22 +34207,36 @@ window.addCharRow = function() {
 `;
             document.head.appendChild(_st);
         }
-        // 3열 고정 배치
-        const cols = 3;
+        // 무지개 그라데이션 + 폴라로이드 (원본 스타일)
+        const tilts = [-2.5, 1.8, -1.2, 2.2, -1.8, 2.5, -2, 1.5, -2.8, 1.2];
+        // 하얀 하트 패턴 — SVG를 JS에서 안전하게 인코딩
+        // 160×160 캔버스에 24×21 하트를 중앙 배치 → background-size 38px 기준 약 5px 하트, 33px 여백
+        const _heartSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><g transform="translate(70,70)"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" fill="white" fill-opacity=".6"/></g></svg>';
+        const _heartBg = "url('data:image/svg+xml," + encodeURIComponent(_heartSvg) + "')";
         container.innerHTML = `
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:18px;position:relative;overflow:hidden;background:radial-gradient(ellipse 80px 38px at 30% 45%,rgba(255,255,255,.5),transparent 60%) 0 0/220px 150px, linear-gradient(135deg,#FFF8E1,#FFE0B2);">
-            <div id="_plzRoomCardsWrap" style="position:relative;z-index:1;display:grid;grid-template-columns:repeat(${cols},minmax(170px,260px));gap:24px;justify-content:center;max-width:100%;">
-                ${rooms.map((r,ci) => `
-                    <div id="_roomCard_${r.rid}" class="_plzCard" onclick="window._pickPlzRoom('${r.rid}')" style="display:${r.isOpen?'flex':'none'};flex-direction:column;background:#fff;border-radius:18px;padding:10px 10px 14px;box-shadow:0 8px 22px rgba(93,64,55,0.22);border:2px solid #F0E2CC;transition:transform .15s,box-shadow .2s;">
-                        <div style="border-radius:12px;overflow:hidden;aspect-ratio:1/1;background:#EADBC2;">
-                            <div class="_plzPhoto" style="width:100%;height:100%;${r.bg?`background-image:url('${r.bg}');background-size:cover;background-position:center;`:'background:#b8d4a8;'}"></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;gap:18px;position:relative;overflow:hidden;border-radius:22px;
+            box-shadow:inset 0 0 60px rgba(0,0,0,0.12),0 4px 16px rgba(0,0,0,0.2);
+            background:${_heartBg},linear-gradient(135deg,#FFD1DC 0%,#FFE4BA 16%,#FFFACD 32%,#D4F5D4 48%,#D1F0F7 64%,#D8D4F5 80%,#F5D1EE 100%);
+            background-size:56px 56px,100% 100%;">
+            <div id="_plzRoomCardsWrap" style="position:relative;z-index:1;zoom:1.3;display:grid;grid-template-columns:repeat(3,max-content);justify-content:center;align-items:start;gap:34px 26px;padding:14px 0;">
+                ${rooms.map((r,ci) => {
+                    const tilt = tilts[ci % tilts.length];
+                    return `
+                    <div id="_roomCard_${r.rid}" style="display:${r.isOpen?'flex':'none'};flex-direction:column;align-items:center;">
+                        <div onclick="window._pickPlzRoom('${r.rid}')" style="cursor:pointer;transform:rotate(${tilt}deg);transition:transform .2s;will-change:transform;"
+                             onmouseover="this.style.transform='rotate(0deg) scale(1.05)'"
+                             onmouseout="this.style.transform='rotate(${tilt}deg)'">
+                            <div style="position:relative;background:#fff;padding:12px 12px 14px;box-shadow:4px 6px 18px rgba(0,0,0,0.20),0 1px 4px rgba(0,0,0,0.1);border-radius:3px;">
+                                <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);width:15px;height:24px;background:linear-gradient(#F0D49B,#C49A5A);border-radius:5px;box-shadow:0 2px 4px rgba(0,0,0,0.3);z-index:2;"></div>
+                                <div style="width:170px;height:128px;background:#f1ece4;overflow:hidden;border-radius:2px;${r.bg?`background-image:url('${r.bg}');background-size:cover;background-position:center;`:'background:#b8d4a8;'}"></div>
+                                <div style="padding:10px 4px 2px;text-align:center;width:170px;">
+                                    <div style="font-family:'Jua';font-size:16px;color:#5D4037;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div>
+                                    <div id="_roomCount_${r.rid}" style="margin-top:6px;font-size:12px;color:#1565C0;font-weight:bold;">👥 -${r.maxCnt?`/${r.maxCnt}명`:'명'}</div>
+                                </div>
+                            </div>
                         </div>
-                        <div style="padding-top:10px;text-align:center;">
-                            <div style="font-family:'Jua';font-size:17px;color:#5D4037;">${r.name}</div>
-                            <div id="_roomCount_${r.rid}" style="margin-top:8px;font-size:12px;color:#1565C0;font-weight:bold;">👥 -${r.maxCnt?`/${r.maxCnt}명`:'명'}</div>
-                        </div>
-                    </div>
-                `).join('')}
+                    </div>`;
+                }).join('')}
             </div>
             <div id="_plzNoOpenMsg" style="position:relative;z-index:1;display:none;text-align:center;color:#888;font-family:'Jua';font-size:18px;background:white;border-radius:18px;padding:30px 40px;box-shadow:0 6px 20px rgba(0,0,0,0.08);border:2px dashed #BDBDBD;">
                 <div style="font-size:60px;margin-bottom:10px;">🔒</div>
