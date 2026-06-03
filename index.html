@@ -3192,20 +3192,6 @@ let _renderLock = false; // 재진입 방지
         if(_globalLevelPollTimer) { clearInterval(_globalLevelPollTimer); _globalLevelPollTimer = null; }
     };
 
-    // 캐릭터/가방 탭에 머무를 때만 60초 폴링. 다른 탭이면 자동 중단.
-    let _myCookieTimer = null;
-    function _startMyCookiePoll() {
-        if(_myCookieTimer) return;
-        _myCookieTimer = setInterval(() => {
-            if(document.visibilityState === 'hidden') return; // 백그라운드 탭이면 스킵
-            const _sc = document.getElementById('s_char');
-            const _sb = document.getElementById('s_bg');
-            const active = (_sc && !_sc.classList.contains('hidden')) || (_sb && !_sb.classList.contains('hidden'));
-            if(!active) { clearInterval(_myCookieTimer); _myCookieTimer = null; return; }
-            syncMyCookieSilent();
-        }, 60000); // 1분 — 외부 API 부하 절감
-    }
-    window._startMyCookiePoll = _startMyCookiePoll;
     // 노출 — 탭 진입 시 즉시 동기화에 사용
     window._syncAllCookiesSilent = syncAllCookiesSilent;
     window._syncMyCookieSilent = syncMyCookieSilent;
@@ -4464,13 +4450,14 @@ let _renderLock = false; // 재진입 방지
         clearTimeout(_saveStuCacheTimer);
         _saveStuCacheTimer = setTimeout(() => {
             try {
+                if(!window._isTeacherSession) return; // 교사 세션에서만 저장
                 if(!window._stuLoaded) return; // 초기 fetch 미완료 시 불완전 캐시 저장 금지
                 const _toSave = Array.isArray(db.stu) ? db.stu.filter(s => s && s.cd && s.nm) : [];
                 // 이전 캐시 대비 학생 수 급감 방지 — 리스너 재연결 중 불완전 db.stu 저장 차단
                 try {
                     const _prev = JSON.parse(localStorage.getItem('_teacherStuCache') || '[]');
-                    if (Array.isArray(_prev) && _prev.length > 4 && _toSave.length < _prev.length * 0.7) {
-                        console.warn('[saveStuCache] 학생 수 급감 — 캐시 보존:', _prev.length, '→', _toSave.length);
+                    if (Array.isArray(_prev) && _prev.length > 2 && _toSave.length < _prev.length * 0.7) {
+                        console.warn('[saveStuCache] blocked: count drop', _prev.length, '->', _toSave.length);
                         return;
                     }
                 } catch(_){}
@@ -9635,10 +9622,7 @@ let _renderLock = false; // 재진입 방지
             document.getElementById('login').classList.add('hidden');
             document.getElementById('appS').classList.remove('hidden');
             updateNameTag();
-            // 전사이트 1분 레벨 폴링 시작 (로그인 시 1회 즉시 실행)
-            setTimeout(() => { try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(); } catch(_){} }, 2000);
-            setTimeout(() => { try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){} }, 2000);
-            navS('s_char');
+            navS('s_char'); // navS('s_char')에서 _syncAllLevelsSilent + _startGlobalLevelPoll 처리
             setTimeout(_checkTeacherMsgs, 400);
             setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); } catch(_){} }, 700);
             // 이벤트 메뉴 노출 동기화 (cfg 로드 타이밍에 따라 약간 지연)
@@ -9671,10 +9655,12 @@ let _renderLock = false; // 재진입 방지
                 ? `<span class="trans-star">${'★'.repeat(me.rb)}</span>`
                 : '';
             if(document.getElementById('snm')) document.getElementById('snm').innerHTML = starHtml + _esc(me.nm);
-            const totalCookie = me.cookie || 0;
-            const curCookie = Math.max(0, totalCookie - (me.usedCookie || 0) - (me.shopUsed || 0));
+            const _lcTag = window._localLevelCache?.[me.cd];
+            const _rcTag = (Array.isArray(window._rankCache) ? window._rankCache : []).find(r=>r&&r.cd===me.cd);
+            const totalCookie = _lcTag !== undefined ? _lcTag.cookie : (_rcTag !== undefined ? _rcTag.cookie : me.cookie || 0);
+            const curCookie = Math.max(0, (me.cookie || 0) - (me.usedCookie || 0) - (me.shopUsed || 0));
             const lv = Math.max(0, Math.floor(totalCookie / 10));
-            
+
             if(document.getElementById('side_lv')) document.getElementById('side_lv').innerText = lv;
             if(document.getElementById('side_ck')) document.getElementById('side_ck').innerText = `${curCookie} / ${totalCookie}`;
             
