@@ -3141,35 +3141,28 @@ let _renderLock = false; // 재진입 방지
     async function _syncAllLevelsSilent() {
         if(!me || me.cd === 'teacher_main') return;
         const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
-        if(!isStudentView) { console.log('[LVL-SYNC] skip: not student view'); return; }
+        if(!isStudentView) return;
         const key = localStorage.getItem('dahessni_api_key') || (db.cfg && db.cfg.dahaeApiKey);
-        if(!key) { console.log('[LVL-SYNC] skip: no api key'); return; }
-        // 랭킹에 표시할 학생 목록 수집 (_rankCache 또는 db.stu)
+        if(!key) return;
         const _rawStu = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
         const _rankSrc = (Array.isArray(window._rankCache) && window._rankCache.length) ? window._rankCache : _rawStu;
         const targets = _rankSrc.filter(s => s && s.cd && s.cd !== 'teacher_main');
-        console.log('[LVL-SYNC] start targets=' + targets.length + ' rankCache=' + (window._rankCache?.length||0) + ' db.stu=' + _rawStu.length);
         if(!targets.length) return;
         for(const s of targets) {
             try {
                 const res = await fetch('https://api.dahandin.com/openapi/v1/get/student/total?code=' + s.cd, { headers: { 'X-API-Key': key } });
-                if(!res.ok) { console.log('[LVL-SYNC] fail ' + s.nm + '(' + s.cd + ') status=' + res.status); continue; }
+                if(!res.ok) continue;
                 const json = await res.json();
-                if(!json.data || json.data.cookie === undefined) { console.log('[LVL-SYNC] no data ' + s.nm + '(' + s.cd + ')'); continue; }
+                if(!json.data || json.data.cookie === undefined) continue;
                 const newCookie = json.data.cookie;
                 const newUsed = json.data.usedCookie || 0;
                 const prev = window._localLevelCache[s.cd];
-                const rcEntry = (window._rankCache||[]).find(r=>r&&r.cd===s.cd);
-                console.log('[LVL-SYNC] ' + s.nm + '(' + s.cd + ') api=' + newCookie + '(Lv' + Math.floor(newCookie/10) + ') prevCache=' + (prev?prev.cookie:'none') + ' rankCache=' + (rcEntry?rcEntry.cookie:'none'));
                 if(!prev || prev.cookie !== newCookie || prev.usedCookie !== newUsed) {
                     window._localLevelCache[s.cd] = { cookie: newCookie, usedCookie: newUsed };
-                    // _rankCache 항목도 로컬에서 갱신 (Firebase 저장 없음)
                     if(Array.isArray(window._rankCache)) {
                         const rc = window._rankCache.find(r => r && r.cd === s.cd);
-                        if(rc) { console.log('[LVL-SYNC] rankCache update ' + s.nm + ' ' + rc.cookie + '->' + newCookie); rc.cookie = newCookie; }
-                        else console.log('[LVL-SYNC] not in rankCache: ' + s.nm + '(' + s.cd + ')');
+                        if(rc) rc.cookie = newCookie;
                     }
-                    // 본인이면 me도 갱신
                     if(me && s.cd === me.cd && me.cookie !== newCookie) {
                         const _prevCookie = me.cookie || 0;
                         me.cookie = newCookie;
@@ -3181,9 +3174,8 @@ let _renderLock = false; // 재진입 방지
                         if(_sc && !_sc.classList.contains('hidden')) { try { window._debouncedRChar(); } catch(_){} }
                     }
                 }
-            } catch(e){ console.log('[LVL-SYNC] exception ' + s.nm + '(' + s.cd + '):', e); }
+            } catch(_){}
         }
-        console.log('[LVL-SYNC] done. cache:', JSON.stringify(window._localLevelCache));
     }
     window._syncAllLevelsSilent = _syncAllLevelsSilent;
     function _startGlobalLevelPoll() {
@@ -3196,6 +3188,9 @@ let _renderLock = false; // 재진입 방지
         }, 60000); // 1분
     }
     window._startGlobalLevelPoll = _startGlobalLevelPoll;
+    window._stopGlobalLevelPoll = function() {
+        if(_globalLevelPollTimer) { clearInterval(_globalLevelPollTimer); _globalLevelPollTimer = null; }
+    };
 
     // 캐릭터/가방 탭에 머무를 때만 60초 폴링. 다른 탭이면 자동 중단.
     let _myCookieTimer = null;
@@ -11136,8 +11131,7 @@ let _renderLock = false; // 재진입 방지
                 if(!_fresh2) window._debouncedRChar();
             }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
-            try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
-            // 용사 탭: 전체 학생 레벨도 즉시 동기화 (랭킹 정확도)
+            // 용사 탭: 전체 학생 레벨도 즉시 동기화 (랭킹 정확도) + 1분 폴링 확인
             try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(); } catch(_){}
             try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){}
         }
@@ -11158,7 +11152,6 @@ let _renderLock = false; // 재진입 방지
                 }
             } else { rBg(); }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
-            try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
         }
 
         if(id==='s_sh') {
@@ -21840,7 +21833,7 @@ window.addCharRow = function() {
         _scInner.innerHTML = `
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
                 <h2 style="margin:0;font-size:28px;">⚔️ RPG 용사</h2>
-                <button onclick="localStorage.removeItem('stuCode');location.reload();" style="font-size:17px;padding:8px 18px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;color:#999;cursor:pointer;font-family:Jua;line-height:1.4;">로그아웃</button>
+                <button onclick="try{window._stopGlobalLevelPoll&&window._stopGlobalLevelPoll();}catch(_){}localStorage.removeItem('stuCode');location.reload();" style="font-size:17px;padding:8px 18px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;color:#999;cursor:pointer;font-family:Jua;line-height:1.4;">로그아웃</button>
             </div>
             <div style="display:flex;gap:16px;align-items:stretch;margin-bottom:16px;flex-wrap:wrap;">
                 <!-- 좌측: 캐릭터 패널 + 용사 랭킹 컬럼 -->
@@ -22010,27 +22003,21 @@ window.addCharRow = function() {
         };
         // 용사 랭킹 클릭 시: 다했니 API로 전체 학생 레벨 즉시 갱신 후 렌더
         const _isLightStudent = !window._isTeacherSession && !window._rpgStudentStuFull;
-        console.log('[RANK-MODAL] open light=' + _isLightStudent + ' teacher=' + !!window._isTeacherSession + ' stuFull=' + !!window._rpgStudentStuFull + ' hasRefresh=' + !!window._refreshAllStu + ' fetched=' + !!window._rankFetchedThisSession);
         if(!_isLightStudent && window._refreshAllStu && !window._rankFetchedThisSession) {
-            console.log('[RANK-MODAL] teacher 경로(_refreshAllStu) 진입');
             try {
                 window._refreshAllStu().finally(async () => {
                     window._rankFetchedThisSession = true;
                     window._lastStuRefresh = Date.now();
-                    // teacher 경로에서도 다했니 레벨 동기화
-                    console.log('[RANK-MODAL] _refreshAllStu 완료 → syncAllLevelsSilent 시작');
-                    try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(e){ console.log('[RANK-MODAL] syncAllLevelsSilent 예외:', e); }
-                    console.log('[RANK-MODAL] syncAllLevelsSilent 완료 → _render 호출');
-                    _render();
+                    _render(); // Firebase 로드 후 즉시 렌더
+                    try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
+                    _render(); // 다했니 sync 완료 후 갱신
                 });
             } catch(_){ _render(); }
         } else {
-            // 다했니 API로 전체 레벨 즉시 동기화 후 렌더
+            _render(); // 기존 캐시로 즉시 렌더
             (async () => {
-                console.log('[RANK-MODAL] student 경로 → syncAllLevelsSilent 시작');
-                try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(e){ console.log('[RANK-MODAL] syncAllLevelsSilent 예외:', e); }
-                console.log('[RANK-MODAL] syncAllLevelsSilent 완료 → _render 호출');
-                _render();
+                try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
+                _render(); // 다했니 sync 완료 후 갱신
             })();
         }
     };
@@ -27847,12 +27834,11 @@ window.addCharRow = function() {
                         return item;
                     });
                 window._rankCache = _raw;
-                console.log('[RRANK] firebase /rank loaded ' + _raw.length + ' entries');
             }).catch(e => console.warn('[rank] fetch fail', e)).finally(async () => {
                 window._rankRefreshing = false;
-                // Firebase fetch 후 다했니 API로 레벨 즉시 갱신
+                _rRankCore(); // Firebase 데이터로 즉시 렌더
                 try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
-                _rRankCore();
+                _rRankCore(); // 다했니 sync 완료 후 갱신
             });
             return;
         }
