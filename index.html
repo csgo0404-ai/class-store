@@ -1126,8 +1126,8 @@
         <div class="menu" onclick="nav('t_col',this)">📖 도감 관리</div>
         <div id="menu_avt" class="menu" onclick="nav('t_avt',this)" style="position:relative;">🖨️ 아바타 관리</div>
         <div class="menu" onclick="nav('t_plz',this)">💌 광장 관리</div>
-        <div class="menu" onclick="nav('t_events',this)">🎉 이벤트</div>
-        <div class="menu" id="menu_bank" onclick="nav('t_bank',this)">🏦 은행</div>
+        <div class="menu" id="menu_bank" onclick="nav('t_bank',this)">🏦 은행 관리</div>
+        <div class="menu" onclick="nav('t_events',this)">🎉 이벤트 관리</div>
         <button class="btn btn-gray" onclick="localStorage.removeItem('teacherLogged');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>   
 
@@ -3104,7 +3104,7 @@ let _renderLock = false; // 재진입 방지
     };
     // _xpBoostAutoCheck 자동 실행 제거됨 (정산 안내 메시지 사용 안 함)
 
-    // 🚀 학생 측 본인 쿠키 주기 동기화 (10초, 교사 페이지 닫혀있어도 본인 데이터 반영)
+    // 🚀 학생 측 본인 쿠키 주기 동기화 — Firebase 저장 없이 me.cookie만 갱신
     async function syncMyCookieSilent() {
         if(!me || me.cd === 'teacher_main') return;
         const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
@@ -3133,6 +3133,69 @@ let _renderLock = false; // 재진입 방지
             }
         } catch(e){}
     }
+
+    // 🌐 전사이트 1분 폴링 — 모든 학생 레벨을 다했니 API에서 로컬 캐시(_localLevelCache)에만 저장
+    // 변경된 학생만 _rankCache 갱신 (Firebase /rank 저장 없음)
+    window._localLevelCache = window._localLevelCache || {}; // { cd: { cookie, usedCookie } }
+    let _globalLevelPollTimer = null;
+    async function _syncAllLevelsSilent() {
+        if(!me || me.cd === 'teacher_main') return;
+        const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
+        if(!isStudentView) { console.log('[LVL-SYNC] skip: not student view'); return; }
+        const key = localStorage.getItem('dahessni_api_key') || (db.cfg && db.cfg.dahaeApiKey);
+        if(!key) { console.log('[LVL-SYNC] skip: no api key'); return; }
+        // 랭킹에 표시할 학생 목록 수집 (_rankCache 또는 db.stu)
+        const _rawStu = Array.isArray(db.stu) ? db.stu : Object.values(db.stu || {});
+        const _rankSrc = (Array.isArray(window._rankCache) && window._rankCache.length) ? window._rankCache : _rawStu;
+        const targets = _rankSrc.filter(s => s && s.cd && s.cd !== 'teacher_main');
+        console.log('[LVL-SYNC] start targets=' + targets.length + ' rankCache=' + (window._rankCache?.length||0) + ' db.stu=' + _rawStu.length);
+        if(!targets.length) return;
+        for(const s of targets) {
+            try {
+                const res = await fetch('https://api.dahandin.com/openapi/v1/get/student/total?code=' + s.cd, { headers: { 'X-API-Key': key } });
+                if(!res.ok) { console.log('[LVL-SYNC] fail ' + s.nm + '(' + s.cd + ') status=' + res.status); continue; }
+                const json = await res.json();
+                if(!json.data || json.data.cookie === undefined) { console.log('[LVL-SYNC] no data ' + s.nm + '(' + s.cd + ')'); continue; }
+                const newCookie = json.data.cookie;
+                const newUsed = json.data.usedCookie || 0;
+                const prev = window._localLevelCache[s.cd];
+                const rcEntry = (window._rankCache||[]).find(r=>r&&r.cd===s.cd);
+                console.log('[LVL-SYNC] ' + s.nm + '(' + s.cd + ') api=' + newCookie + '(Lv' + Math.floor(newCookie/10) + ') prevCache=' + (prev?prev.cookie:'none') + ' rankCache=' + (rcEntry?rcEntry.cookie:'none'));
+                if(!prev || prev.cookie !== newCookie || prev.usedCookie !== newUsed) {
+                    window._localLevelCache[s.cd] = { cookie: newCookie, usedCookie: newUsed };
+                    // _rankCache 항목도 로컬에서 갱신 (Firebase 저장 없음)
+                    if(Array.isArray(window._rankCache)) {
+                        const rc = window._rankCache.find(r => r && r.cd === s.cd);
+                        if(rc) { console.log('[LVL-SYNC] rankCache update ' + s.nm + ' ' + rc.cookie + '->' + newCookie); rc.cookie = newCookie; }
+                        else console.log('[LVL-SYNC] not in rankCache: ' + s.nm + '(' + s.cd + ')');
+                    }
+                    // 본인이면 me도 갱신
+                    if(me && s.cd === me.cd && me.cookie !== newCookie) {
+                        const _prevCookie = me.cookie || 0;
+                        me.cookie = newCookie;
+                        me.usedCookie = newUsed;
+                        try { window._checkLevelupCookie && window._checkLevelupCookie(_prevCookie); } catch(_){}
+                        if(typeof upMe === 'function') upMe();
+                        if(typeof updateNameTag === 'function') updateNameTag();
+                        const _sc = document.getElementById('s_char');
+                        if(_sc && !_sc.classList.contains('hidden')) { try { window._debouncedRChar(); } catch(_){} }
+                    }
+                }
+            } catch(e){ console.log('[LVL-SYNC] exception ' + s.nm + '(' + s.cd + '):', e); }
+        }
+        console.log('[LVL-SYNC] done. cache:', JSON.stringify(window._localLevelCache));
+    }
+    window._syncAllLevelsSilent = _syncAllLevelsSilent;
+    function _startGlobalLevelPoll() {
+        if(_globalLevelPollTimer) return;
+        _globalLevelPollTimer = setInterval(() => {
+            if(document.visibilityState === 'hidden') return;
+            const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
+            if(!isStudentView) { clearInterval(_globalLevelPollTimer); _globalLevelPollTimer = null; return; }
+            _syncAllLevelsSilent();
+        }, 60000); // 1분
+    }
+    window._startGlobalLevelPoll = _startGlobalLevelPoll;
 
     // 캐릭터/가방 탭에 머무를 때만 60초 폴링. 다른 탭이면 자동 중단.
     let _myCookieTimer = null;
@@ -9577,6 +9640,9 @@ let _renderLock = false; // 재진입 방지
             document.getElementById('login').classList.add('hidden');
             document.getElementById('appS').classList.remove('hidden');
             updateNameTag();
+            // 전사이트 1분 레벨 폴링 시작 (로그인 시 1회 즉시 실행)
+            setTimeout(() => { try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(); } catch(_){} }, 2000);
+            setTimeout(() => { try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){} }, 2000);
             navS('s_char');
             setTimeout(_checkTeacherMsgs, 400);
             setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); } catch(_){} }, 700);
@@ -10843,18 +10909,7 @@ let _renderLock = false; // 재진입 방지
                     }
                 }
             } catch(_){}
-            // /rank 미러링
-            try {
-                if(typeof window._computeRank === 'function') {
-                    const r = window._computeRank(_safe);
-                    let h; try { h = JSON.stringify(r); } catch(_) { h = null; }
-                    if(!window._rankOwnLastHash) window._rankOwnLastHash = {};
-                    if(r && (h == null || window._rankOwnLastHash[key] !== h)) {
-                        dbRef.child('rank/' + key).set(r);
-                        if(h != null) window._rankOwnLastHash[key] = h;
-                    }
-                }
-            } catch(_){}
+            // /rank 미러링 제거 — 레벨은 다했니 API 로컬 캐시(_localLevelCache)로만 관리
             window._upMeLastHash[me.cd] = newHash;
         } catch(e) {
             console.error('[upMe] partial 실패 — 저장 건너뜀:', e);
@@ -11082,6 +11137,9 @@ let _renderLock = false; // 재진입 방지
             }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
             try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
+            // 용사 탭: 전체 학생 레벨도 즉시 동기화 (랭킹 정확도)
+            try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(); } catch(_){}
+            try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){}
         }
         if(id==='s_bg') {
             try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){}
@@ -21566,7 +21624,10 @@ window.addCharRow = function() {
 
 
         // ── 교사 지급 뱃지만 표시 ──
-        const totalCookie = me.cookie || 0;
+        // API 확인값 > _rankCache값 > me.cookie 순 (오염된 me.cookie 방지)
+        const _lcSelf = window._localLevelCache?.[me.cd];
+        const _rcSelf = (Array.isArray(window._rankCache) ? window._rankCache : []).find(r=>r&&r.cd===me.cd);
+        const totalCookie = _lcSelf !== undefined ? _lcSelf.cookie : (_rcSelf !== undefined ? _rcSelf.cookie : me.cookie || 0);
         const lv = Math.floor(totalCookie / 10);
         const _earnedBdgArr = Array.isArray(me.earnedBdg) ? me.earnedBdg : (me.earnedBdg && typeof me.earnedBdg==='object' ? Object.values(me.earnedBdg) : []);
         const customBadges2 = _earnedBdgArr.map(bId=>{
@@ -21847,10 +21908,18 @@ window.addCharRow = function() {
                     merged = Object.assign({}, s, { displayPets: stuMatch.displayPets, displayProps: stuMatch.displayProps });
                 }
             }
+            // _localLevelCache에 최신 다했니 API 값이 있으면 cookie 덮어쓰기
+            if (s.cd && window._localLevelCache && window._localLevelCache[s.cd]) {
+                merged = Object.assign({}, merged, { cookie: window._localLevelCache[s.cd].cookie });
+            }
             if (!prev || (merged.cookie||0) > (prev.cookie||0)) _rankMap2.set(key, merged);
         });
-        if (me && me.cd && !_rankMap2.has(me.cd)) {
-            _rankMap2.set(me.cd, { nm:me.nm||me.name||'', cd:me.cd, no:me.no||0, cookie:me.cookie||0, rb:me.rb||0, eq:me.eq, equippedTit:me.equippedTit, displayPets:me.displayPets, displayProps:me.displayProps });
+        // me cookie: API 확인값 > _rankCache값 > me.cookie 순 (오염된 me.cookie 방지)
+        if (me && me.cd) {
+            const _prev2 = _rankMap2.get(me.cd) || {};
+            const _lcMe = window._localLevelCache?.[me.cd];
+            const _meCookie = _lcMe !== undefined ? _lcMe.cookie : (_prev2.cookie !== undefined ? _prev2.cookie : me.cookie || 0);
+            _rankMap2.set(me.cd, Object.assign({}, _prev2, { nm:me.nm||me.name||'', cd:me.cd, no:me.no||0, cookie:_meCookie, rb:me.rb||0, eq:me.eq, equippedTit:me.equippedTit, displayPets:me.displayPets, displayProps:me.displayProps }));
         }
         return [..._rankMap2.values()].sort((a,b)=>{
             const d = (b.cookie||0)-(a.cookie||0);
@@ -21939,18 +22008,30 @@ window.addCharRow = function() {
             nextBtn.onclick = ()=>{ if(page<totalPages-1){ page++; _draw(); } };
             _draw();
         };
-        // 데이터 1회 로드 후 렌더 (트래픽 절감 — 세션 1회)
+        // 용사 랭킹 클릭 시: 다했니 API로 전체 학생 레벨 즉시 갱신 후 렌더
         const _isLightStudent = !window._isTeacherSession && !window._rpgStudentStuFull;
+        console.log('[RANK-MODAL] open light=' + _isLightStudent + ' teacher=' + !!window._isTeacherSession + ' stuFull=' + !!window._rpgStudentStuFull + ' hasRefresh=' + !!window._refreshAllStu + ' fetched=' + !!window._rankFetchedThisSession);
         if(!_isLightStudent && window._refreshAllStu && !window._rankFetchedThisSession) {
+            console.log('[RANK-MODAL] teacher 경로(_refreshAllStu) 진입');
             try {
-                window._refreshAllStu().finally(() => {
+                window._refreshAllStu().finally(async () => {
                     window._rankFetchedThisSession = true;
                     window._lastStuRefresh = Date.now();
+                    // teacher 경로에서도 다했니 레벨 동기화
+                    console.log('[RANK-MODAL] _refreshAllStu 완료 → syncAllLevelsSilent 시작');
+                    try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(e){ console.log('[RANK-MODAL] syncAllLevelsSilent 예외:', e); }
+                    console.log('[RANK-MODAL] syncAllLevelsSilent 완료 → _render 호출');
                     _render();
                 });
             } catch(_){ _render(); }
         } else {
-            _render();
+            // 다했니 API로 전체 레벨 즉시 동기화 후 렌더
+            (async () => {
+                console.log('[RANK-MODAL] student 경로 → syncAllLevelsSilent 시작');
+                try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(e){ console.log('[RANK-MODAL] syncAllLevelsSilent 예외:', e); }
+                console.log('[RANK-MODAL] syncAllLevelsSilent 완료 → _render 호출');
+                _render();
+            })();
         }
     };
 
@@ -27766,8 +27847,11 @@ window.addCharRow = function() {
                         return item;
                     });
                 window._rankCache = _raw;
-            }).catch(e => console.warn('[rank] fetch 실패', e)).finally(() => {
+                console.log('[RRANK] firebase /rank loaded ' + _raw.length + ' entries');
+            }).catch(e => console.warn('[rank] fetch fail', e)).finally(async () => {
                 window._rankRefreshing = false;
+                // Firebase fetch 후 다했니 API로 레벨 즉시 갱신
+                try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
                 _rRankCore();
             });
             return;
@@ -27792,22 +27876,29 @@ window.addCharRow = function() {
         const _source = _isLightMode && Array.isArray(window._rankCache) && window._rankCache.length
             ? window._rankCache
             : _rawStu;
-        // null 항목 제거 + cd 기반 dedup — 같은 cd 중 cookie 높은 항목 우선
+        // null 항목 제거 + cd 기반 dedup — _localLevelCache(다했니 API 최신값) 우선 적용
         const _rankMap = new Map();
         _source.forEach(s => {
             if (!s || (!s.cd && !s.nm)) return;
             const key = s.cd || s.nm;
             const prev = _rankMap.get(key);
-            if (!prev || (s.cookie||0) > (prev.cookie||0)) _rankMap.set(key, s);
+            let merged = s;
+            if (s.cd && window._localLevelCache && window._localLevelCache[s.cd]) {
+                merged = Object.assign({}, s, { cookie: window._localLevelCache[s.cd].cookie });
+            }
+            if (!prev || (merged.cookie||0) > (prev.cookie||0)) _rankMap.set(key, merged);
         });
-        // me가 /rank 캐시에 없어도 항상 자신을 포함
-        if (me && me.cd && !_rankMap.has(me.cd)) {
-            _rankMap.set(me.cd, {
+        // me cookie: API 확인값 > _rankCache값 > me.cookie 순 (오염된 me.cookie 방지)
+        if (me && me.cd) {
+            const _prevMe = _rankMap.get(me.cd) || {};
+            const _lcMe2 = window._localLevelCache?.[me.cd];
+            const _meCookie2 = _lcMe2 !== undefined ? _lcMe2.cookie : (_prevMe.cookie !== undefined ? _prevMe.cookie : me.cookie || 0);
+            _rankMap.set(me.cd, Object.assign({}, _prevMe, {
                 nm: me.nm || me.name || '',
                 cd: me.cd, no: me.no || 0,
-                cookie: me.cookie || 0, rb: me.rb || 0,
+                cookie: _meCookie2, rb: me.rb || 0,
                 eq: me.eq, equippedTit: me.equippedTit
-            });
+            }));
         }
         const stus = [..._rankMap.values()].sort((a,b) => {
             const lvA = (b.cookie||0) - (a.cookie||0);
