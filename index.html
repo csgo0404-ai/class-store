@@ -83,10 +83,10 @@
         .menu { padding:15px 12px; margin-bottom:10px; cursor:pointer; border-radius:15px; color:#8D6E63; font-size:24px; font-weight:bold; transition:0.2s; }
         .menu.on { background:var(--act); color:white; font-weight:900; box-shadow:0 4px 10px rgba(255, 159, 67, 0.4); }
         /* 탭 제목 글자 수별 letter-spacing — 짧을수록 넓게, 길수록 좁게 */
-        #appS .menu[data-tlen="2"] { letter-spacing: 6px; }
-        #appS .menu[data-tlen="3"] { letter-spacing: 2px; }
-        #appS .menu[data-tlen="4"] { letter-spacing: 0px; }
-        #appS .menu[data-tlen="5"], #appS .menu[data-tlen="6"], #appS .menu[data-tlen="7"] { letter-spacing: -1px; }
+        #appS .menu[data-tlen="2"] { letter-spacing: 18px; }
+        #appS .menu[data-tlen="3"] { letter-spacing: 11px; }
+        #appS .menu[data-tlen="4"] { letter-spacing: 6px; }
+        #appS .menu[data-tlen="5"], #appS .menu[data-tlen="6"], #appS .menu[data-tlen="7"] { letter-spacing: 3px; }
         .card { background:white; padding:15px; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom:15px; border:2px solid #F5F5F5; position:relative; }
         .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; align-items: start; }
         
@@ -820,16 +820,16 @@
             .item-shiny { width: 80px !important; height: 80px !important; font-size: 80px !important; }
             .shop-title { top: 55px !important; font-size: 20px !important; }
             .shop-card .btn-price { font-size: 20px !important; }
-            /* ── 뽑기 탭 — 태블릿 가로 모드 — 제목 상단, 이미지 1.3배 키움 ── */
-            #shop-gacha-sec .grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; row-gap: 24px !important; column-gap: 18px !important; }
+            /* ── 뽑기 탭 — 태블릿 가로 모드 — 중앙 정렬 ── */
+            #shop-gacha-sec .grid { display: flex !important; flex-wrap: wrap !important; justify-content: center !important; align-items: flex-start !important; gap: 24px 40px !important; }
             #shop-gacha-sec .shop-card { transform: none !important; margin-bottom: 0 !important; width: 220px !important; height: 320px !important; }
             #shop-gacha-sec .shop-card .item-shiny.gacha-shiny { font-size: 161px !important; width: 161px !important; height: 161px !important; bottom: 60px !important; }
             #shop-gacha-sec .shop-card .item-shiny.gacha-shiny img { width: 135px !important; height: 135px !important; }
             #shop-gacha-sec .shop-card .shop-card-gacha-title { top: 55px !important; font-size: 22px !important; }
 
-            /* 2. 가방: 슬롯 및 아이콘 크기 축소 */
+            /* 2. 가방: 5칸 고정 (아이템·꾸미기·칭호·펫 통일) */
             #s_bg::-webkit-scrollbar { width: 8px !important; }
-            #s_iv { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; padding: 15px !important; gap: 10px !important; }
+            #s_iv { grid-template-columns: repeat(5, 1fr) !important; padding: 15px !important; gap: 10px !important; }
             .inventory-slot { padding: 5px !important; border-radius: 10px !important; }
             .inventory-slot > img { width: 85px !important; height: 85px !important; }
             .inventory-slot .slot-emoji { font-size: 75px !important; line-height: 85px !important; }
@@ -1127,6 +1127,7 @@
         <div id="menu_avt" class="menu" onclick="nav('t_avt',this)" style="position:relative;">🖨️ 아바타 관리</div>
         <div class="menu" onclick="nav('t_plz',this)">💌 광장 관리</div>
         <div class="menu" onclick="nav('t_events',this)">🎉 이벤트</div>
+        <div class="menu" id="menu_bank" onclick="nav('t_bank',this)">🏦 은행</div>
         <button class="btn btn-gray" onclick="localStorage.removeItem('teacherLogged');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>   
 
@@ -1786,6 +1787,179 @@
             </div>
         </div>
 
+        <div id="t_bank" class="hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <h2 style="margin:0;">🏦 은행 관리</h2>
+                <div id="bankRunStatus" style="font-size:13px;font-weight:bold;padding:6px 14px;border-radius:10px;background:#f5f5f5;color:#888;">-</div>
+            </div>
+            <!-- ── 학생별 현황 (상단) ── -->
+            <div class="card" style="padding:16px;margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 style="margin:0;font-size:15px;">📊 학생별 현황</h3>
+                    <div id="bankOpStatus" style="font-size:12px;color:#5D4037;white-space:pre-line;"></div>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table id="bankStatusTable" style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead>
+                            <tr style="background:#f5f0e8;">
+                                <th style="padding:8px;text-align:left;border-bottom:2px solid #e5d4b1;">이름</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e5d4b1;">예금액</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e5d4b1;">이자(예정)</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e5d4b1;">대출액</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e5d4b1;">잔여대출</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e5d4b1;">만기</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e5d4b1;">상태</th>
+                                <th style="padding:8px;text-align:center;border-bottom:2px solid #e5d4b1;">수동 조작</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bankStatusBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- ── 자동 처리 현황 (학생별 현황 하단) ── -->
+            <div class="card" style="padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+                <div style="font-size:15px;font-weight:bold;white-space:nowrap;">🔧 자동 처리 현황</div>
+                <div id="bankSweepStatus" style="font-size:12px;background:#f5f0e8;border-radius:10px;padding:8px 14px;line-height:1.7;color:#5D4037;flex:1;min-width:200px;">
+                    <div style="color:#aaa;">로딩 중...</div>
+                </div>
+                <button class="btn btn-blue" onclick="_bankForceAutoSweep()" style="white-space:nowrap;font-size:13px;">🔄 지금 강제 실행<br><small style="font-weight:normal;font-size:11px;">이자 지급 + 연체 처리 즉시 실행</small></button>
+            </div>
+            <!-- ── 설정 ── -->
+            <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;">
+                <!-- 설정 카드 -->
+                <div class="card" style="padding:18px;min-width:340px;flex:2;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <h3 style="margin:0;font-size:16px;">⚙️ 은행 설정</h3>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <div style="display:flex;flex-direction:column;gap:4px;">
+                                <label style="font-size:11px;color:#666;">시작일</label>
+                                <input type="date" id="bankStartDate" style="padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:4px;">
+                                <label style="font-size:11px;color:#666;">종료일 <span style="color:#aaa;">(선택)</span></label>
+                                <input type="date" id="bankEndDate" style="padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:4px;">
+                                <label style="font-size:11px;color:#666;">연체 상점중지(일)</label>
+                                <input type="number" id="bankShopBanDays" value="7" min="1" max="30" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:6px;font-size:12px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 신용등급 × 기간 통합 요율표 -->
+                    <div style="font-size:13px;font-weight:bold;margin-bottom:8px;color:#5D4037;">🏅 신용등급 × 기간별 요율</div>
+                    <div style="overflow-x:auto;margin-bottom:10px;">
+                        <table style="border-collapse:collapse;font-size:11px;min-width:580px;width:100%;">
+                            <thead>
+                                <tr style="background:#f5f0e8;">
+                                    <th rowspan="2" style="padding:6px;text-align:center;border:1px solid #e5d4b1;min-width:48px;">등급</th>
+                                    <th colspan="3" style="padding:5px;text-align:center;border:1px solid #e5d4b1;background:#e8f5e9;color:#2e7d32;">📗 예금 이자율 (%)</th>
+                                    <th colspan="3" style="padding:5px;text-align:center;border:1px solid #e5d4b1;background:#fce4ec;color:#c62828;">📕 대출 금리 (%)</th>
+                                    <th rowspan="2" style="padding:6px;text-align:center;border:1px solid #e5d4b1;min-width:56px;font-size:10px;">대출한도<br>(레벨×)</th>
+                                </tr>
+                                <tr style="background:#f5f0e8;">
+                                    <th style="padding:4px 5px;text-align:center;border:1px solid #e5d4b1;font-weight:normal;color:#558b2f;">1주</th>
+                                    <th style="padding:4px 5px;text-align:center;border:1px solid #e5d4b1;font-weight:normal;color:#558b2f;">2주</th>
+                                    <th style="padding:4px 5px;text-align:center;border:1px solid #e5d4b1;font-weight:normal;color:#558b2f;">4주</th>
+                                    <th style="padding:4px 5px;text-align:center;border:1px solid #e5d4b1;font-weight:normal;color:#c62828;">1주</th>
+                                    <th style="padding:4px 5px;text-align:center;border:1px solid #e5d4b1;font-weight:normal;color:#c62828;">2주</th>
+                                    <th style="padding:4px 5px;text-align:center;border:1px solid #e5d4b1;font-weight:normal;color:#c62828;">4주</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="text-align:center;padding:5px;border:1px solid #e5d4b1;color:#1565c0;font-weight:bold;background:#e3f2fd;">1등급</td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep7_1"  value="8"  min="0" max="100" style="width:44px;padding:3px;border:1px solid #90caf9;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep14_1" value="15" min="0" max="100" style="width:44px;padding:3px;border:1px solid #90caf9;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep30_1" value="28" min="0" max="100" style="width:44px;padding:3px;border:1px solid #90caf9;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan7_1"  value="10" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan14_1" value="12" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan28_1" value="15" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoanMult1" value="5" step="0.5" min="1" max="10" style="width:44px;padding:3px;border:1px solid #90caf9;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:center;padding:5px;border:1px solid #e5d4b1;color:#2e7d32;font-weight:bold;background:#e8f5e9;">2등급</td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep7_2"  value="5"  min="0" max="100" style="width:44px;padding:3px;border:1px solid #a5d6a7;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep14_2" value="12" min="0" max="100" style="width:44px;padding:3px;border:1px solid #a5d6a7;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep30_2" value="25" min="0" max="100" style="width:44px;padding:3px;border:1px solid #a5d6a7;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan7_2"  value="15" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan14_2" value="18" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan28_2" value="22" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoanMult2" value="3" step="0.5" min="1" max="10" style="width:44px;padding:3px;border:1px solid #a5d6a7;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:center;padding:5px;border:1px solid #e5d4b1;color:#f9a825;font-weight:bold;background:#fffde7;">3등급</td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep7_3"  value="3"  min="0" max="100" style="width:44px;padding:3px;border:1px solid #ffe082;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep14_3" value="8"  min="0" max="100" style="width:44px;padding:3px;border:1px solid #ffe082;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grDep30_3" value="18" min="0" max="100" style="width:44px;padding:3px;border:1px solid #ffe082;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan7_3"  value="20" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan14_3" value="25" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoan28_3" value="30" min="0" max="200" style="width:44px;padding:3px;border:1px solid #ef9a9a;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                    <td style="border:1px solid #e5d4b1;text-align:center;"><input type="number" id="grLoanMult3" value="2" step="0.5" min="1" max="10" style="width:44px;padding:3px;border:1px solid #ffe082;border-radius:4px;text-align:center;font-size:11px;"></td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align:center;padding:5px;border:1px solid #e5d4b1;color:#c62828;font-weight:bold;background:#fce4ec;">4등급</td>
+                                    <td colspan="7" style="text-align:center;border:1px solid #e5d4b1;color:#c62828;font-size:11px;padding:6px;background:#fce4ec;">🚫 은행 이용 불가</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button class="btn btn-blue" onclick="_saveBankCfg()" style="width:100%;">💾 저장</button>
+                    <div id="bankCfgStatus" style="font-size:12px;color:#43A047;margin-top:6px;text-align:center;"></div>
+                </div>
+            </div>
+            <!-- 신용등급 배정 카드 -->
+            <div class="card" style="padding:16px;margin-top:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 style="margin:0;font-size:15px;">🏅 신용등급 배정</h3>
+                    <div id="bankGradeActiveLabel" style="font-size:12px;color:#888;">등급 버튼 선택 후 학생 클릭</div>
+                </div>
+                <!-- 등급 버튼 행 -->
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;" id="bankGradeBtnRow">
+                    <button id="bankGradeBtn1" onclick="_bankGradeSelectMode(1)" style="flex:1;min-width:60px;padding:9px 6px;background:#1565c0;color:#fff;border:2px solid transparent;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">1등급<br><small style="font-size:10px;font-weight:normal;">★★★</small></button>
+                    <button id="bankGradeBtn2" onclick="_bankGradeSelectMode(2)" style="flex:1;min-width:60px;padding:9px 6px;background:#2e7d32;color:#fff;border:2px solid transparent;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">2등급<br><small style="font-size:10px;font-weight:normal;">★★</small></button>
+                    <button id="bankGradeBtn3" onclick="_bankGradeSelectMode(3)" style="flex:1;min-width:60px;padding:9px 6px;background:#f9a825;color:#fff;border:2px solid transparent;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">3등급<br><small style="font-size:10px;font-weight:normal;">★</small></button>
+                    <button id="bankGradeBtn4" onclick="_bankGradeSelectMode(4)" style="flex:1;min-width:60px;padding:9px 6px;background:#c62828;color:#fff;border:2px solid transparent;border-radius:10px;font-size:13px;font-weight:bold;cursor:pointer;">4등급<br><small style="font-size:10px;font-weight:normal;">이용불가</small></button>
+                </div>
+                <!-- 현재 등급 배정 현황 -->
+                <div id="bankGradeBody" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;"></div>
+                <div id="bankGradeStatus" style="font-size:12px;color:#43a047;margin-top:8px;text-align:center;"></div>
+            </div>
+            <!-- 🧪 자동처리 테스트 모드 -->
+            <div class="card" id="bankTestPanel" style="padding:14px 16px;margin-top:14px;border:2px dashed #ff9800;background:#fffde7;">
+                <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="_bankTestToggle()">
+                    <h3 style="margin:0;font-size:15px;color:#e65100;">🧪 자동처리 테스트 모드</h3>
+                    <span id="bankTestToggleIcon" style="font-size:14px;color:#e65100;">▼</span>
+                </div>
+                <div id="bankTestBody" style="display:none;margin-top:14px;">
+                    <div id="bankTestCurDate" style="font-size:12px;color:#666;margin-bottom:10px;background:#fff8e1;border-radius:8px;padding:7px 10px;"></div>
+                    <!-- 날짜 설정 -->
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+                        <input type="date" id="bankTestDateInput" style="padding:5px 8px;border:1.5px solid #ffb74d;border-radius:8px;font-family:'Jua';font-size:13px;">
+                        <button onclick="_bankTestSetDate()" style="padding:6px 12px;background:#ff9800;color:#fff;border:none;border-radius:8px;font-family:'Jua';font-size:13px;cursor:pointer;">📅 날짜 설정</button>
+                        <button onclick="_bankTestResetDate()" style="padding:6px 12px;background:#90a4ae;color:#fff;border:none;border-radius:8px;font-family:'Jua';font-size:13px;cursor:pointer;">↩ 초기화</button>
+                    </div>
+                    <!-- 빠른 이동 -->
+                    <div style="font-size:11px;color:#888;margin-bottom:5px;">빠른 날짜 이동 (현재 기준)</div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+                        <button onclick="_bankTestAdvance(1)"  style="padding:5px 10px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:7px;font-family:'Jua';font-size:13px;cursor:pointer;">+1일</button>
+                        <button onclick="_bankTestAdvance(7)"  style="padding:5px 10px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:7px;font-family:'Jua';font-size:13px;cursor:pointer;">+1주</button>
+                        <button onclick="_bankTestAdvance(14)" style="padding:5px 10px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:7px;font-family:'Jua';font-size:13px;cursor:pointer;">+2주</button>
+                        <button onclick="_bankTestAdvance(21)" style="padding:5px 10px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:7px;font-family:'Jua';font-size:13px;cursor:pointer;">+3주</button>
+                        <button onclick="_bankTestAdvance(30)" style="padding:5px 10px;background:#fff3e0;border:1.5px solid #ffb74d;border-radius:7px;font-family:'Jua';font-size:13px;cursor:pointer;">+1달</button>
+                    </div>
+                    <!-- 미리보기 결과 -->
+                    <div id="bankTestPreview" style="background:#fff;border:1.5px solid #ffe082;border-radius:10px;padding:10px 12px;font-size:12px;margin-bottom:12px;min-height:36px;color:#5D4037;line-height:1.7;">미리보기 버튼을 눌러 확인하세요.</div>
+                    <!-- 실행 버튼 -->
+                    <div style="display:flex;gap:8px;">
+                        <button onclick="_bankTestPreviewRun()" style="flex:1;padding:9px;background:#ffa726;color:#fff;border:none;border-radius:10px;font-family:'Jua';font-size:14px;cursor:pointer;box-shadow:0 3px 0 #e65100;">🔍 미리보기</button>
+                        <button onclick="_bankTestActualRun()" style="flex:1;padding:9px;background:#e53935;color:#fff;border:none;border-radius:10px;font-family:'Jua';font-size:14px;cursor:pointer;box-shadow:0 3px 0 #b71c1c;">⚡ 실제 실행</button>
+                    </div>
+                    <div style="font-size:11px;color:#e65100;margin-top:6px;">⚠️ 실제 실행은 Firebase DB를 수정합니다. 테스트 후 데이터를 확인하세요.</div>
+                    <div id="bankTestStatus" style="font-size:12px;margin-top:8px;color:#2e7d32;font-weight:bold;"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <div id="appS" class="app hidden" ondragstart="return false;" style="-webkit-user-drag:none;">
@@ -1802,6 +1976,7 @@
         <div class="menu" id="menuGababoBtn" onclick="navS('s_gababo',this)" style="display:none;">⚔ 가바보 용사</div>
         <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 RPG 축제</div>
         <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💘 마니또</div>
+        <div class="menu" id="menuBankBtn" onclick="navS('s_bank',this)" style="display:none;">🏦은행</div>
 
         
     </div>
@@ -1816,6 +1991,7 @@
         <div id="s_gababo" class="hidden" style="flex:1;overflow-y:auto;"></div>
         <div id="s_manitto" class="hidden" style="flex:1;overflow-y:auto;padding:10px 16px;"></div>
         <div id="s_kiosk" class="hidden" style="flex:1;overflow-y:auto;"></div>
+        <div id="s_bank" class="hidden" style="flex:1;overflow-y:auto;padding:14px;"></div>
     </div>
 </div>
 
@@ -3363,6 +3539,13 @@ let _renderLock = false; // 재진입 방지
                 _knownRev = rvStr;
                 _hasCache = true;
                 if(_splitInitialDone) _splitFire();
+                // 상점·가방이 열려 있으면 최신 itm으로 재렌더
+                if(!document.getElementById('s_sh')?.classList.contains('hidden')) {
+                    try { rSh(); } catch(_){}
+                }
+                if(!document.getElementById('s_bg')?.classList.contains('hidden')) {
+                    try { rBg(); } catch(_){}
+                }
             }).catch(()=>{});
         });
     };
@@ -3406,6 +3589,10 @@ let _renderLock = false; // 재진입 방지
                 _knownRev = rvStr;
                 _hasCache = true;
                 if(_splitInitialDone) _splitFire();
+                // 상점이 열려 있으면 최신 gac로 재렌더 (뽑기 즉시 반영)
+                if(!document.getElementById('s_sh')?.classList.contains('hidden')) {
+                    try { rSh(); } catch(_){}
+                }
             }).catch(()=>{});
         });
     };
@@ -3479,12 +3666,34 @@ let _renderLock = false; // 재진입 방지
                         else db.cfg[k] = v;
                         if(_splitInitialDone) _splitFire();
                         if(k === 'eventsOpen') {
-                            // 이벤트 상태 변경 시 ensureEventCfg 캐시 무효화 → 탭 재클릭 시 fresh fetch
                             try { if(window._loadedEventCfg){ ['fashionShow','timeBank','gababoEvent','kiosk'].forEach(ek=>{ window._loadedEventCfg[ek]=false; }); } } catch(_){}
                             try { _refreshEventMenus && _refreshEventMenus(); } catch(_) {}
                             try { _refreshGababoMenu && _refreshGababoMenu(); } catch(_) {}
                         }
                     });
+                });
+                // cfg/bank: Rev 캐시 방식 — 설정이 실제로 바뀔 때만 재수신 (sweep 로그 변경으로 재발화 없음)
+                const _bkCacheKey = '_bankCfg_v', _bkRevKey = '_bankCfg_rev';
+                let _bkRevStr = localStorage.getItem(_bkRevKey) || '';
+                // localStorage 캐시 즉시 복원 (빠른 메뉴 표시)
+                try {
+                    const _cv = localStorage.getItem(_bkCacheKey);
+                    if(_cv) { if(!db.cfg) db.cfg = {}; db.cfg.bank = JSON.parse(_cv); }
+                } catch(_){}
+                // cfg/bankRev on() — Rev 변경 시에만 cfg/bank 재수신
+                dbRef.child('cfg/bankRev').on('value', snap => {
+                    const rv = snap.val() == null ? '' : String(snap.val());
+                    if(rv === _bkRevStr && db.cfg && db.cfg.bank) return; // 변경 없음 → skip
+                    _bkRevStr = rv;
+                    dbRef.child('cfg/bank').once('value').then(s => {
+                        const v = s.val();
+                        if(!db.cfg) db.cfg = {};
+                        db.cfg.bank = v || {};
+                        try { localStorage.setItem(_bkCacheKey, JSON.stringify(v)); } catch(_){}
+                        try { localStorage.setItem(_bkRevKey, rv); } catch(_){}
+                        if(_splitInitialDone) try { _splitFire(); } catch(_){}
+                        try { _refreshEventMenus && _refreshEventMenus(); } catch(_){}
+                    }).catch(()=>{});
                 });
                 return;
             }
@@ -5751,6 +5960,7 @@ let _renderLock = false; // 재진입 방지
 
     // ===== 새 그림 도착 알림 배너 (학생 첫 화면) =====
     window._renderNewDrawingBanner = function() {
+        return; // 배너 비활성화
         const host = document.getElementById('s_char');
         if(!host || !me) return;
         // 기존 배너 제거
@@ -6847,8 +7057,10 @@ let _renderLock = false; // 재진입 방지
             const _granted = Array.isArray(c.grantedWeeks) ? c.grantedWeeks : [];
             const _skipped = Array.isArray(c.skippedWeeks) ? c.skippedWeeks : [];
             if(_granted.includes(_expWeek) || _skipped.includes(_expWeek)) return;
+            // lastGrantDate가 한 번도 없으면 언제부터 지급해야 했는지 알 수 없음 → 누락 판정 불가
+            if(!c.lastGrantDate) return;
             // lastGrantDate가 기대 지급일 이후면 스킵
-            if(c.lastGrantDate && c.lastGrantDate >= _expDate) return;
+            if(c.lastGrantDate >= _expDate) return;
             // 기대 지급일이 오늘인 경우: 개학 직후면 팝업 포함, 아니면 _autoGrantOnLogin이 처리
             if(_expDate === _todayStr && !_postVac) return;
             const _needDays = c.period==='biweekly'?14:c.period==='triweekly'?21:c.period==='quadweekly'?28:c.period==='monthly'?28:7; // monthly=28(매월) — periodOk와 일치
@@ -7880,6 +8092,7 @@ let _renderLock = false; // 재진입 방지
                 setTimeout(updateNotifBell, 100);
                 setTimeout(updateMenuBadges, 150);
                 setTimeout(() => { try { _autoGrantOnLogin && _autoGrantOnLogin(); } catch(_){} }, 1500);
+                setTimeout(() => { try { window._bankAutoSweep && window._bankAutoSweep(); } catch(_){} }, 2500);
                 return;
             }
 
@@ -7942,8 +8155,11 @@ let _renderLock = false; // 재진입 방지
                     if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                     if(!me.col) me.col = [];
                     document.getElementById('login').classList.add('hidden');
+                    updateNameTag();
+                    // appS 표시 전 s_char 동기 pre-render (흰화면/⚔️로더 방지)
+                    try { if(typeof rChar==='function'){ window._rCharLastRun=Date.now(); try{window._rCharVisualHash=JSON.stringify({eq:me&&me.eq,dp:me&&me.displayPets,dpr:me&&me.displayProps,tit:me&&me.equippedTit,c:me&&me.cookie,bdg:me&&me.earnedBdg,inv:me&&me.inv&&me.inv.length,rank:!!window._rankCache});}catch(_){} rChar(); } } catch(_){}
                     document.getElementById('appS').classList.remove('hidden');
-                    updateNameTag(); navS('s_char');
+                    navS('s_char');
                     setTimeout(_checkTeacherMsgs, 400);
                     setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); window._attachCoUseListener && window._attachCoUseListener(); } catch(_){} }, 700);
                     window._applyColTabVisibility?.();
@@ -7985,8 +8201,10 @@ let _renderLock = false; // 재진입 방지
                         if(!me.displayPets) me.displayPets = []; else if(!Array.isArray(me.displayPets)) me.displayPets = Object.values(me.displayPets).filter(Boolean);
                         if(!me.col) me.col = [];
                         document.getElementById('login').classList.add('hidden');
-                        document.getElementById('appS').classList.remove('hidden');
                         updateNameTag();
+                        // appS 표시 전 s_char 동기 pre-render (흰화면/⚔️로더 방지)
+                        try { if(typeof rChar==='function'){ window._rCharLastRun=Date.now(); try{window._rCharVisualHash=JSON.stringify({eq:me&&me.eq,dp:me&&me.displayPets,dpr:me&&me.displayProps,tit:me&&me.equippedTit,c:me&&me.cookie,bdg:me&&me.earnedBdg,inv:me&&me.inv&&me.inv.length,rank:!!window._rankCache});}catch(_){} rChar(); } } catch(_){}
+                        document.getElementById('appS').classList.remove('hidden');
                         navS('s_char');
                         setTimeout(_checkTeacherMsgs, 400);
                         setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); window._attachCoUseListener && window._attachCoUseListener(); } catch(_){} }, 700);
@@ -8118,6 +8336,7 @@ let _renderLock = false; // 재진입 방지
                         if(!document.getElementById('s_bg').classList.contains('hidden')) rBg();
                         if(!document.getElementById('s_sh').classList.contains('hidden')) rSh();
                         if(!document.getElementById('s_col').classList.contains('hidden')) rCol();
+                        if(!document.getElementById('s_bank')?.classList.contains('hidden')) try { window._renderBankStudent && _renderBankStudent(); } catch(_){}
                         // 펫 훈련소(skill) 서브탭만 라이브 재렌더 — gac(cfg/gacRev) 변경 즉시 반영.
                         // skill에 한정하는 이유: ① gac 의존 서브탭은 skill뿐(buy/synth/salon은 avt/petDef/petSkins 기반)
                         // ② synth에서 재료 드래그 중 무관한 업데이트로 DOM 재구성→드래그 끊김 방지 ③ 불필요 렌더 절감.
@@ -9101,6 +9320,8 @@ let _renderLock = false; // 재진입 방지
         // 디바운스된 sv() pending이면 즉시 저장
         if(window._svImmediate) try { window._svImmediate(); } catch(_) {}
         if(localStorage.getItem('teacherLogged') !== '1') return;
+        // 학생 세션에서 닫을 때는 백업 스킵 (db.stu가 1명짜리가 되는 것 방지)
+        if(window._isTeacherSession === false) return;
         // 🚀 트래픽 절감: 최근 10분 이내 백업 있으면 스킵 — 잦은 새로고침/디버깅 시 백업 폭증 방지
         try {
             const _bakInterval = (db.cfg && typeof db.cfg.autoBackupMinInterval === 'number') ? db.cfg.autoBackupMinInterval : 10 * 60 * 1000;
@@ -9111,6 +9332,29 @@ let _renderLock = false; // 재진입 방지
         // 자동 백업 파일 다운로드 시도 (일부 브라우저에서 작동)
         try {
             const backup = window._makeFullSnapshot ? window._makeFullSnapshot() : {ts:new Date().toISOString(),stu:db.stu,itm:db.itm,gac:db.gac,avt:db.avt,bdg:db.bdg,tit:db.tit,petDef:db.petDef,spPetDef:db.spPetDef,petSkins:db.petSkins,log:db.log,cfg:db.cfg,auc:db.auc,gacQueue:db.gacQueue,rec:db.rec,ak:db.ak};
+            // 🛡️ 부분 로드 상태 대비 — _teacherStuCache / rpg_autosnap 중 가장 많은 stu 사용
+            try {
+                const _stuCount = s => Array.isArray(s) ? s.filter(x=>x&&x.cd).length : 0;
+                let _bestStu = backup.stu;
+                // 소스 1: _teacherStuCache
+                try {
+                    const _c = JSON.parse(localStorage.getItem('_teacherStuCache') || 'null');
+                    if(_stuCount(_c) > _stuCount(_bestStu)) _bestStu = _c;
+                } catch(_){}
+                // 소스 2: rpg_autosnap (sv() 호출 시 저장된 전체 스냅샷)
+                try {
+                    const _snap = JSON.parse(localStorage.getItem('rpg_autosnap') || 'null');
+                    if(_snap && _stuCount(_snap.stu) > _stuCount(_bestStu)) _bestStu = _snap.stu;
+                    // rpg_autosnap에서 다른 필드도 보완 (backup에 없거나 비어있는 경우)
+                    if(_snap) {
+                        const _fields = ['itm','gac','avt','bdg','tit','petDef','spPetDef','petSkins','cfg','auc','gacQueue','rec','ak'];
+                        for(const _f of _fields) {
+                            if(!backup[_f] && _snap[_f]) backup[_f] = _snap[_f];
+                        }
+                    }
+                } catch(_){}
+                backup.stu = _bestStu;
+            } catch(_){}
             const blob = new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
             const d = new Date();
             const fn = `RPG상점_자동백업_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.json`;
@@ -9262,6 +9506,7 @@ let _renderLock = false; // 재진입 방지
             // _checkMondayCookie 비활성화 — 쿠폰 일괄 지급으로 통합
             // setTimeout(() => { try { window._checkMondayCookie && window._checkMondayCookie(); } catch(_){} }, 800);
             setTimeout(() => { try { _autoGrantOnLogin && _autoGrantOnLogin(); } catch(_){} }, 1500);
+            setTimeout(() => { try { window._bankAutoSweep && window._bankAutoSweep(); } catch(_){} }, 2500);
         }else alert("비밀번호 오류");
     }
 
@@ -9367,7 +9612,7 @@ let _renderLock = false; // 재진입 방지
             if(document.getElementById('snm')) document.getElementById('snm').innerHTML = starHtml + _esc(me.nm);
             const totalCookie = me.cookie || 0;
             const curCookie = Math.max(0, totalCookie - (me.usedCookie || 0) - (me.shopUsed || 0));
-            const lv = Math.floor(totalCookie / 10); 
+            const lv = Math.max(0, Math.floor(totalCookie / 10));
             
             if(document.getElementById('side_lv')) document.getElementById('side_lv').innerText = lv;
             if(document.getElementById('side_ck')) document.getElementById('side_ck').innerText = `${curCookie} / ${totalCookie}`;
@@ -10719,6 +10964,31 @@ let _renderLock = false; // 재진입 방지
         }
         if(id==='t_avt') rAvt();
         if(id==='t_plz') rPlzT();
+        if(id==='t_bank') {
+            try {
+                if(typeof _bankFormReady !== 'undefined') _bankFormReady = false; // 탭 재진입 시 폼 재복원
+                // bank 탭 진입 시만 lazy fetch: sweepLog, bankGrades (탭 전까지 수신 안 함)
+                const _fetchSweepLog = db.cfg?.bankSweepLog
+                    ? Promise.resolve()
+                    : dbRef.child('cfg/bankSweepLog').once('value').then(s => {
+                        const v = s.val();
+                        if(!db.cfg) db.cfg = {};
+                        if(v) db.cfg.bankSweepLog = v;
+                    }).catch(()=>{});
+                const _fetchGrades = db.cfg?.bankGrades
+                    ? Promise.resolve()
+                    : dbRef.child('cfg/bankGrades').once('value').then(s => {
+                        const v = s.val();
+                        if(!db.cfg) db.cfg = {};
+                        db.cfg.bankGrades = v || {};
+                    }).catch(()=>{});
+                Promise.all([
+                    window._ensureStuLoaded ? _ensureStuLoaded() : Promise.resolve(),
+                    _fetchSweepLog,
+                    _fetchGrades
+                ]).then(() => { try { _renderBankTeacher(); } catch(_){} });
+            } catch(_) { try { _renderBankTeacher(); } catch(_){} }
+        }
         if(id==='t_events') {
             try { _renderTeacherEvents(); } catch(_){}
             try { rGababoT(); } catch(_){}
@@ -10757,17 +11027,11 @@ let _renderLock = false; // 재진입 방지
         const el = document.getElementById(id);
         el.classList.remove('hidden');
         if(id==='s_plz') el.style.display='flex';
-        // 탭 전환 페이드인
-        if(id !== 's_plz' && id !== 's_char') {
+        // 탭 전환 — 캐시 즉시 렌더로 opacity fade 제거 (흰화면 방지)
+        // s_kiosk는 자체 opacity 애니메이션 보유 → 제외
+        if(id !== 's_plz' && id !== 's_kiosk') {
             el.style.transition = 'none';
-            el.style.opacity = '0';
-            if(id === 's_bg') {
-                // rBg의 _rBgOrig가 opacity 복원 담당 — 타이머 없이 opacity:0만 설정
-            } else {
-                setTimeout(() => {
-                    requestAnimationFrame(() => { el.style.transition = 'opacity 0.15s'; el.style.opacity = '1'; });
-                }, 200);
-            }
+            el.style.opacity = '1';
         }
         // 광장 탭 진입·이탈 시 사이드바 + .cont 스타일 토글
         const sSide = document.querySelector('#appS .side');
@@ -10839,10 +11103,31 @@ let _renderLock = false; // 재진입 방지
             try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
         }
 
-        if(id==='s_sh') { try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){} try { window._ensureItmLive && window._ensureItmLive(); } catch(_){} try { window._ensureGacLive && window._ensureGacLive(); } catch(_){} rSh(); }
+        if(id==='s_sh') {
+            // 대출 연체 → 상점 이용 중지 체크
+            const _myBankShopBan = window._getBankShopBanUntil ? window._getBankShopBanUntil() : null;
+            if(_myBankShopBan) {
+                const _shEl = document.getElementById('s_sh');
+                if(_shEl) _shEl.innerHTML = `<div style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:12px;">🚫</div><div style="font-size:18px;font-weight:bold;color:#c62828;margin-bottom:8px;">상점 이용 중지 중</div><div style="font-size:14px;color:#666;">대출 미상환으로 인해 ${_myBankShopBan}까지 상점을 이용할 수 없습니다.</div></div>`;
+                return;
+            }
+            // 상점 진입 전 캐시 동기 복원 — Firebase rev 체크보다 먼저 실행돼 rSh() 첫 호출에 데이터 보장
+            try {
+                if (!db.gac || !db.gac.length) {
+                    const _gv = localStorage.getItem('_gac_v');
+                    if (_gv) { const _gp = JSON.parse(_gv); if (Array.isArray(_gp) && _gp.length) db.gac = _gp; }
+                }
+                if (!db.itm || !db.itm.length) {
+                    const _iv = localStorage.getItem('_itm_v');
+                    if (_iv) { const _ip = JSON.parse(_iv); if (Array.isArray(_ip) && _ip.length) db.itm = _ip; }
+                }
+            } catch(_) {}
+            try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){} try { window._ensureItmLive && window._ensureItmLive(); } catch(_){} try { window._ensureGacLive && window._ensureGacLive(); } catch(_){} rSh();
+        }
         if(id==='s_gababo') { try { window._ensureEventCfg && _ensureEventCfg('gababoEvent').then(()=>rGababoS()); } catch(_) { rGababoS(); } }
         if(id==='s_fashion') { try { window._ensureEventCfg && _ensureEventCfg('fashionShow').then(()=>{ try { _renderStudentFashion(); } catch(_){} try { window._fsAttachNotiListener && _fsAttachNotiListener(); } catch(_){} }); } catch(_){} }
         if(id==='s_tbank') { try { window._ensureEventCfg && _ensureEventCfg('timeBank').then(()=>{ try { _renderStudentTimeBank(); } catch(_){} }); } catch(_){} }
+        if(id==='s_bank') { try { (window._ensureBankGrades ? _ensureBankGrades() : Promise.resolve()).then(()=>{ try { _renderBankStudent(); } catch(_){} }); } catch(_){ try { _renderBankStudent(); } catch(_){} } }
         if(id==='s_manitto') { try { _attachManittoListener(); window._fetchMyManittoPair && window._fetchMyManittoPair(); window._attachBingoStudentListener && window._attachBingoStudentListener(); rManittoS(); } catch(_){} }
         if(id==='s_kiosk') { try { (window._ensureEventCfg ? _ensureEventCfg('kiosk') : Promise.resolve()).then(()=>{ try { window.rKioskS && rKioskS(); const _ks=document.getElementById('s_kiosk'); if(_ks){_ks.style.transition='none';_ks.style.opacity='0';requestAnimationFrame(()=>{_ks.style.transition='opacity 0.15s';_ks.style.opacity='1';});} } catch(_){} }); } catch(_){} }
         if(id==='s_plz') {
@@ -11496,6 +11781,16 @@ let _renderLock = false; // 재진입 방지
                 if(_real.length !== _memCnt) console.warn('[backupDB] 메모리', _memCnt, '명 vs Firebase', _real.length, '명 — Firebase 전체로 백업');
             }
         } catch(e) { console.warn('[backupDB] stu 전체 fetch 실패 — 메모리로 백업', e); }
+        // 🛡️ [필드 누락 방지] 메모리에 없는 필드는 Firebase에서 직접 fetch
+        const _fbFields = ['itm','gac','avt','bdg','tit','petDef','spPetDef','petSkins','cfg','auc','gacQueue','rec','ak'];
+        await Promise.all(_fbFields.map(async _f => {
+            if (backup[_f] != null) return;
+            try {
+                const _sv = await dbRef.child(_f).once('value');
+                const _v = _sv.val();
+                if (_v != null) backup[_f] = _v;
+            } catch(_) {}
+        }));
         const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -18069,24 +18364,36 @@ window.appU = function(y, si, k) {
         _bgEl.style.opacity = '1';
         _bgEl.innerHTML = html;
     };
-    function rBg(){ clearTimeout(_rBgTimer); _rBgTimer = setTimeout(_rBgOrig, 80); }
+    function rBg(){ clearTimeout(_rBgTimer); _rBgTimer = setTimeout(_rBgOrig, 0); }
+    let _rShTimer;
+    function rSh(){ clearTimeout(_rShTimer); _rShTimer = setTimeout(_rShImpl, 0); }
     // rChar 통합 디바운스 — 시각 상태 해시 기반: 실제 변경 없으면 완전 스킵
     window._rCharLastRun = 0;
     window._rCharVisualHash = '';
     window._debouncedRChar = function() {
-        // me의 시각 출력에 영향을 주는 필드만 해시
+        // 항상 먼저 이전 타이머 취소 — hashMatch 조기 return 시에도 stale timer가 살아있으면 안 됨
+        clearTimeout(window._rCharTimer);
+        // me의 시각 출력에 영향을 주는 필드만 해시 (rank 유무 포함)
         let _vh = '';
-        try { _vh = JSON.stringify({ eq:me&&me.eq, dp:me&&me.displayPets, dpr:me&&me.displayProps, tit:me&&me.equippedTit, c:me&&me.cookie, bdg:me&&me.earnedBdg, inv:me&&me.inv&&me.inv.length }); } catch(_){}
+        try { _vh = JSON.stringify({ eq:me&&me.eq, dp:me&&me.displayPets, dpr:me&&me.displayProps, tit:me&&me.equippedTit, c:me&&me.cookie, bdg:me&&me.earnedBdg, inv:me&&me.inv&&me.inv.length, rank:!!window._rankCache }); } catch(_){}
+        const _hasChildren = !!document.getElementById('s_char_inner')?.hasChildNodes();
+        const _hashMatch = _vh && _vh === window._rCharVisualHash;
         // 해시 동일 + 콘텐츠 있으면 → 변경사항 없음, 스킵
-        if(_vh && _vh === window._rCharVisualHash && document.getElementById('s_char_inner')?.hasChildNodes()) {
+        if(_hashMatch && _hasChildren) {
             return;
         }
         window._rCharVisualHash = _vh;
-        clearTimeout(window._rCharTimer);
+        // 콘텐츠가 없을 때(첫 렌더)는 동기 실행 — setTimeout(0)도 한 프레임 공백 유발
+        const _scInner = document.getElementById('s_char_inner');
+        if (!_scInner || !_scInner.hasChildNodes()) {
+            window._rCharLastRun = Date.now();
+            try { rChar(); } catch(_){}
+            return;
+        }
         window._rCharTimer = setTimeout(function() {
             window._rCharLastRun = Date.now();
             rChar();
-        }, 100);
+        }, 0);
     };
 
     function rCol(){ 
@@ -18158,7 +18465,7 @@ window.appU = function(y, si, k) {
         return {ok: true};
     }
 
-    function rSh(){
+    function _rShImpl(){
         // petDef lazy: 펫 탭 표시용 (openMonth 없는 즉시공개 포함)
         if(!db.petDef && !window._lazyLoaded?.has('petDef') && window._ensureLazyPaths) {
             window._ensureLazyPaths(['petDef']).then(() => { rSh(); }).catch(() => { db.petDef = db.petDef || []; rSh(); });
@@ -21005,7 +21312,7 @@ let isScratchDone = false;
         const old = document.getElementById('charModal'); if(old) old.remove();
         const totalCookie = me.cookie || 0;
         const curCookie = Math.max(0, totalCookie - (me.usedCookie || 0) - (me.shopUsed || 0));
-        const lv = Math.floor(totalCookie / 10); 
+        const lv = Math.max(0, Math.floor(totalCookie / 10));
         
         // 🌟 수정: 모달을 닫을 때(배경 클릭 또는 X 클릭) 이전 탭으로 슬라이더 복원
         const html = `
@@ -21305,10 +21612,15 @@ window.addCharRow = function() {
                     window._rankCache = Object.entries(v)
                         .filter(([k, item]) => item && item.nm)
                         .map(([k, item]) => { if (!item.cd) item.cd = k; return item; });
+                    // localStorage에 캐싱 → 다음 새로고침 시 즉시 사용 (rank re-render 방지)
+                    try { localStorage.setItem('_rankCache_v', JSON.stringify(window._rankCache)); } catch(_){}
                 }).catch(() => {}).finally(() => {
                     window._rankCharFetching = false;
                     const _el = document.getElementById('s_char');
-                    if (_el && !_el.classList.contains('hidden')) rChar();
+                    // _debouncedRChar 사용: rank가 hash에 포함돼 있어 rank 로드 시 재렌더, 이후 동일 hash → skip
+                    if (_el && !_el.classList.contains('hidden')) {
+                        try { window._debouncedRChar && window._debouncedRChar(); } catch(_){}
+                    }
                 });
             }
         } catch(_) {}
@@ -21393,8 +21705,8 @@ window.addCharRow = function() {
                 </div>`;
             } else {
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-                    <div onclick="openAddPetPicker('${slotIdx===0?'L':'R'}')" style="width:64px;height:64px;border:2px dashed #FFCC80;border-radius:14px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;cursor:pointer;">
-                        <div style="font-size:28px;color:#FFAB40;">+</div>
+                    <div onclick="openAddPetPicker('${slotIdx===0?'L':'R'}')" style="width:64px;height:64px;border:2px dashed #DDD;border-radius:14px;background:white;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                        <div style="font-size:28px;color:#CCC;">+</div>
                     </div>
                     <div style="font-size:10px;color:#BDBDBD;text-align:center;width:64px;">${slotLabel}</div>
                 </div>`;
@@ -21407,8 +21719,8 @@ window.addCharRow = function() {
 
         // 뱃지 슬롯 — 펫 스킬은 자동 장착. 보유 시 카드 표시, 미보유 시 펫 빈 슬롯과 동일한 +버튼(연노랑) placeholder.
         const _bdgEmptySlot = `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-                <div style="width:64px;height:64px;border:2px dashed #FFCC80;border-radius:14px;background:#FFF8E1;display:flex;align-items:center;justify-content:center;">
-                    <div style="font-size:28px;color:#FFAB40;">+</div>
+                <div style="width:64px;height:64px;border:2px dashed #DDD;border-radius:14px;background:white;display:flex;align-items:center;justify-content:center;">
+                    <div style="font-size:28px;color:#CCC;">+</div>
                 </div>
                 <div style="font-size:10px;color:#BDBDBD;text-align:center;width:64px;">펫 스킬</div>
             </div>`;
@@ -21454,7 +21766,7 @@ window.addCharRow = function() {
                     <span style="font-size:${Math.round(_titFs*1.6)}px;font-weight:normal;color:${_titCol};text-shadow:${_titOutline};white-space:pre;">${equippedTit.name}</span>
                    </div>`)
             : `<div onclick="showTitPicker()" style="${_titBase2}background:white;border:2px dashed #CCC;height:78px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;">
-                <span style="color:#BDBDBD;font-size:26px;font-weight:900;">칭호 없음</span>
+                <span style="color:#BDBDBD;font-size:36px;font-weight:300;line-height:1;">+</span>
                </div>`;
 
         // s_char 안에 0.7배 축소된 inner 컨테이너 유지 (innerHTML 덮어쓸 때 재생성)
@@ -21579,7 +21891,7 @@ window.addCharRow = function() {
             const _cardHtml = (s, idx) => {
                 const rank = idx + 1;
                 const isMe = me && s.cd === me.cd;
-                const rlv = Math.floor((s.cookie||0)/10);
+                const rlv = Math.max(0, Math.floor((s.cookie||0)/10));
                 const rankEl = rank <= 3
                     ? `<div style="font-size:32px;line-height:1;">${medals[rank-1]}</div>`
                     : `<div style="font-size:17px;font-weight:bold;color:#fff;background:#BDBDBD;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;">${rank}</div>`;
@@ -22407,8 +22719,11 @@ window.addCharRow = function() {
         me.ownedPets = filtered;
         const after = me.ownedPets.length;
         try { upMe(); } catch(_){}
-        try { rChar(); } catch(_){}
-        try { rBg(); } catch(_){}
+        // 실제로 제거된 경우에만 재렌더 (before===after면 skip — 불필요한 rChar 방지)
+        if(before !== after) {
+            try { window._debouncedRChar ? window._debouncedRChar() : rChar(); } catch(_){}
+            try { rBg(); } catch(_){}
+        }
         return `ownedPets 정리 완료: ${before} → ${after} (${before-after}개 제거)`;
     };
 
@@ -24861,7 +25176,7 @@ window.addCharRow = function() {
             // 번호(no)순 정렬 — 원본 db.stu 인덱스(i)는 보존해서 showStudentReqs 등 올바르게 작동
             const _stuSorted = (db.stu||[]).map((s,i)=>({s,i})).filter(({s})=>s&&s.cd).sort((a,b)=>(a.s.no??9999)-(b.s.no??9999));
             stuGrid.innerHTML = _stuSorted.map(({s,i})=>{
-                const lv = Math.floor((s.cookie||0)/10);
+                const lv = Math.max(0, Math.floor((s.cookie||0)/10));
                 // 칭호
                 const _sTitArr = Array.isArray(s.earnedTit) ? s.earnedTit : Object.values(s.earnedTit||{});
                 const earnedTits = _sTitArr.map(tid=>(db.tit||[]).find(t=>t.id===tid)).filter(Boolean);
@@ -27505,7 +27820,7 @@ window.addCharRow = function() {
         const rows = stus.map((s, idx) => {
             const rank = idx + 1;
             const isMe = s.cd === me.cd;
-            const lv = Math.floor((s.cookie||0) / 10);
+            const lv = Math.max(0, Math.floor((s.cookie||0) / 10));
             const rb = s.rb || 0;
             const stars = rb > 0 ? `<span style="color:#FFB300;font-size:12px;">${'★'.repeat(Math.min(rb,5))}${rb>5?'…':''}</span>` : '';
             const rankEl = rank <= 3
@@ -27525,7 +27840,7 @@ window.addCharRow = function() {
         }).join('');
 
         const myRank = stus.findIndex(s=>s.cd===me.cd) + 1;
-        const myLv = Math.floor((me.cookie||0)/10);
+        const myLv = Math.max(0, Math.floor((me.cookie||0)/10));
 
         document.getElementById('s_rank').innerHTML = `
         <div class="rank-page">
@@ -34378,7 +34693,7 @@ window.addCharRow = function() {
     window._useBoost = function() {
         if(!me) return;
         const isTeacher = me.cd === 'teacher_main';
-        const lv = Math.floor((me.cookie||0)/10);
+        const lv = Math.max(0, Math.floor((me.cookie||0)/10));
         if(!isTeacher && lv < 100) { window._showSkillInfo('boost', lv); return; }
         const now = Date.now();
         if(!isTeacher && now < window._plzBoostCooldownUntil) {
@@ -34406,7 +34721,7 @@ window.addCharRow = function() {
         const btn = document.getElementById('plzBoostBtn');
         if(!btn || !me) return;
         const isTeacher = me.cd === 'teacher_main';
-        const lv = Math.floor((me.cookie||0)/10);
+        const lv = Math.max(0, Math.floor((me.cookie||0)/10));
         const now = Date.now();
         if(!isTeacher && lv < 100) { btn.style.opacity='0.8'; btn.textContent='🔒 Lv100+'; btn.style.background='rgba(158,158,158,0.9)'; return; }
         if(now < window._plzBoostUntil) {
@@ -34430,7 +34745,7 @@ window.addCharRow = function() {
     window._useInvis = function() {
         if(!me) return;
         const isTeacher = me.cd === 'teacher_main';
-        const lv = Math.floor((me.cookie||0)/10);
+        const lv = Math.max(0, Math.floor((me.cookie||0)/10));
         if(!isTeacher && lv < 200) { window._showSkillInfo('invis', lv); return; }
         const now = Date.now();
         if(!isTeacher && now < window._plzInvisCooldownUntil) return;
@@ -34459,7 +34774,7 @@ window.addCharRow = function() {
         const btn = document.getElementById('plzInvisBtn');
         if(!btn || !me) return;
         const isTeacher = me.cd === 'teacher_main';
-        const lv = Math.floor((me.cookie||0)/10);
+        const lv = Math.max(0, Math.floor((me.cookie||0)/10));
         const now = Date.now();
         if(!isTeacher && lv < 200) { btn.style.opacity='0.8'; btn.textContent='🔒 Lv200+'; btn.style.background='rgba(158,158,158,0.9)'; return; }
         btn.style.opacity = '';
@@ -46059,7 +46374,7 @@ window.addCharRow = function() {
             if(nmSlot) {
                 // 자기 자신·교사세션은 stu.cookie, 그 외 학생은 presence u.cookie
                 const _ck = (typeof u.cookie === 'number') ? u.cookie : (stu?.cookie || 0);
-                const lv = Math.floor(_ck / 10);
+                const lv = Math.max(0, Math.floor(_ck / 10));
                 const _displayNm = u.nm || (isTeacher ? '선생님' : '학생');
                 nmSlot.innerHTML = `<div style="background:linear-gradient(90deg,#FFE566,#FFCA00,#FFD700,#FFCA00,#FFE566);border:1.5px solid #B8860B;border-radius:5px;padding:1px 7px;display:inline-flex;align-items:center;gap:4px;margin-top:-4px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.5);">${!isTeacher?`<span style="font-size:9px;font-weight:900;color:#3E2723;">Lv.${lv}</span>`:''}<span style="font-size:10px;font-weight:900;color:#3E2723;white-space:nowrap;">${_displayNm}</span></div>`;
             }
@@ -51909,6 +52224,1549 @@ window.addCharRow = function() {
     };
 
 
+    // ============================================================
+    // 🏦 은행 (Bank) 기능
+    // ============================================================
+
+    function _bankToday() {
+        const d = window._getTestDate ? window._getTestDate() : new Date();
+        return d.toLocaleDateString('sv-SE'); // 로컬 날짜 (day 기준, UTC 아님)
+    }
+
+    function _bankAddDays(dateStr, days) {
+        const d = new Date(dateStr);
+        d.setDate(d.getDate() + days);
+        return d.toISOString().slice(0, 10);
+    }
+
+    function _bankDiff(dateStr) {
+        const today = new Date(_bankToday());
+        const target = new Date(dateStr);
+        return Math.round((target - today) / 86400000);
+    }
+
+    function _bankGetCfg() {
+        return (db.cfg && db.cfg.bank) ? db.cfg.bank : {};
+    }
+
+    // ── 신용등급 lazy 로더 — 은행 탭 진입 시 1회, Rev 변경 시만 재수신 ──
+    let _bankGradesRevAttached = false;
+    let _bankGradesRevStr = '';
+    window._bankGradesLoaded = false;
+    window._ensureBankGrades = function() {
+        // localStorage 캐시 즉시 복원
+        if(!window._bankGradesLoaded) {
+            try {
+                const _cv = localStorage.getItem('_bankGrades_v');
+                if(_cv) {
+                    if(!db.cfg) db.cfg = {};
+                    db.cfg.bankGrades = JSON.parse(_cv);
+                    window._bankGradesLoaded = true;
+                }
+            } catch(_){}
+        }
+        // Rev 구독 (1회)
+        if(!_bankGradesRevAttached) {
+            _bankGradesRevAttached = true;
+            dbRef.child('cfg/bankGradesRev').on('value', snap => {
+                const rv = snap.val() == null ? '' : String(snap.val());
+                if(rv === _bankGradesRevStr && window._bankGradesLoaded) return;
+                _bankGradesRevStr = rv;
+                dbRef.child('cfg/bankGrades').once('value').then(s => {
+                    const v = s.val() || {};
+                    if(!db.cfg) db.cfg = {};
+                    db.cfg.bankGrades = v;
+                    window._bankGradesLoaded = true;
+                    try { localStorage.setItem('_bankGrades_v', JSON.stringify(v)); } catch(_){}
+                    try { localStorage.setItem('_bankGrades_rev', rv); } catch(_){}
+                    try { const el = document.getElementById('s_bank'); if(el && !el.classList.contains('hidden')) _renderBankStudent(); } catch(_){}
+                });
+            });
+        }
+        if(window._bankGradesLoaded) return Promise.resolve();
+        return dbRef.child('cfg/bankGrades').once('value').then(s => {
+            const v = s.val() || {};
+            if(!db.cfg) db.cfg = {};
+            db.cfg.bankGrades = v;
+            window._bankGradesLoaded = true;
+            try { localStorage.setItem('_bankGrades_v', JSON.stringify(v)); } catch(_){}
+        }).catch(()=>{ window._bankGradesLoaded = true; });
+    };
+
+    // 학생의 신용등급 반환 (1~5, 미설정 시 3)
+    function _bankGetMyGrade() {
+        if(!me || !me.cd) return 3;
+        const grades = db.cfg && db.cfg.bankGrades;
+        return (grades && grades[me.cd] != null) ? Number(grades[me.cd]) : 3;
+    }
+
+    // 신용등급별 유효 요율 반환
+    function _bankGetEffectiveRates(cfg, grade) {
+        const gr = (cfg.gradeRates || {})[String(grade)] || {};
+        const base = cfg.depositRates || { 7: 5, 14: 12, 30: 25 };
+        const effDep = {};
+        [7, 14, 30].forEach(k => {
+            effDep[k] = (gr.dep7 != null && k === 7) ? gr.dep7
+                      : (gr.dep14 != null && k === 14) ? gr.dep14
+                      : (gr.dep30 != null && k === 30) ? gr.dep30
+                      : (base[k] || 0);
+        });
+        const loanRates = {
+            7:  gr.loan7  != null ? gr.loan7  : (cfg.loanRate || 18),
+            14: gr.loan14 != null ? gr.loan14 : (cfg.loanRate || 18),
+            28: gr.loan28 != null ? gr.loan28 : (cfg.loanRate || 18),
+        };
+        return {
+            depositRates: effDep,
+            loanRates,
+            loanRate: loanRates[14], // 하위호환용 기본값(14일 기준)
+            loanLvMult: gr.loanLvMult != null ? gr.loanLvMult : 2,
+        };
+    }
+
+    // 레벨 기반 대출 한도 계산 (레벨 × 등급별 배수)
+    function _bankGetLoanLimit(cfg, grade, cookieVal) {
+        const lv = Math.max(1, Math.floor((cookieVal || 0) / 10));
+        const eff = _bankGetEffectiveRates(cfg, grade);
+        return Math.floor(lv * (eff.loanLvMult || 2));
+    }
+
+    const _bankGradeName = ['', '1등급 ★★★', '2등급 ★★', '3등급 ★', '이용불가'];
+    const _bankGradeColor = ['', '#1565c0', '#2e7d32', '#f9a825', '#c62828'];
+
+    function _bankGetStudentData(s) {
+        if (!s.bank) s.bank = { deposits: [], loans: [] };
+        // Firebase가 배열을 numeric-key 객체로 변환한 경우 정규화
+        if (!Array.isArray(s.bank.deposits))
+            s.bank.deposits = s.bank.deposits ? Object.values(s.bank.deposits).filter(Boolean) : [];
+        if (!Array.isArray(s.bank.loans))
+            s.bank.loans = s.bank.loans ? Object.values(s.bank.loans).filter(Boolean) : [];
+        return s.bank;
+    }
+
+    // 은행 가용 잔액: me.cookie 기반 실잔액 (예금/대출은 cookie 직접 가감)
+    // 은행 가용 잔액: me.cookie 기반 실잔액 (예금/대출은 cookie 직접 가감)
+    function _bankGetMyCookieBalance() {
+        if (typeof me === 'undefined' || !me) return 0;
+        return Math.max(0, (me.cookie || 0) - (me.usedCookie || 0) - (me.shopUsed || 0));
+    }
+
+    // 내 shopBanUntil 반환 (상점 차단 여부 판단용)
+    window._getBankShopBanUntil = function() {
+        if (typeof me === 'undefined' || !me) return null;
+        const bank = _bankGetStudentData(me);
+        const today = _bankToday();
+        for (const ln of bank.loans) {
+            if (ln.shopBanUntil && ln.shopBanUntil >= today) return ln.shopBanUntil;
+        }
+        return null;
+    };
+
+    // ─── 자동 sweep — 교사 로그인 시 1회, 멀티데이 catch-up 지원 ───
+    window._bankAutoSweep = async function(_forceMsg) {
+        if(localStorage.getItem('teacherLogged') !== '1') return;
+        const cfg = _bankGetCfg();
+        if(!cfg.startDate || _bankToday() < cfg.startDate) return;
+
+        // ── 세션 락: 같은 탭에서 동시 실행 방지 ──
+        if(window._bankSweepRunning) return { skipped: true, reason: 'already_running' };
+        window._bankSweepRunning = true;
+
+        try {
+        const today = _bankToday();
+
+        // ── 하루 1회 체크: 인메모리 상태 불신 — 서버 date 필드를 직접 읽어 판단 ──
+        // (~15B 스칼라 fetch로 race condition 원천 차단)
+        let _serverSweepDate = '';
+        try {
+            const _snap = await dbRef.child('cfg/bankSweepLog/date').once('value');
+            _serverSweepDate = _snap.val() || '';
+            if(!db.cfg) db.cfg = {};
+            if(!db.cfg.bankSweepLog) db.cfg.bankSweepLog = {};
+            db.cfg.bankSweepLog.date = _serverSweepDate;
+        } catch(_) {}
+
+        if(_serverSweepDate === today && !_forceMsg) {
+            console.log('[은행 sweep] 오늘 이미 실행됨 —', today);
+            return { skipped: true }; // finally가 락 해제
+        }
+
+        // cfg/bankGrades 미로드 시 fetch (은행 탭 미방문 상태 대비 — 등급별 이자율 정확 적용)
+        if(!db.cfg?.bankGrades) {
+            try {
+                const _gSnap = await dbRef.child('cfg/bankGrades').once('value');
+                if(!db.cfg) db.cfg = {};
+                db.cfg.bankGrades = _gSnap.val() || {};
+            } catch(_) {}
+        }
+
+        // db.stu 미로드 시 전체 fetch (t_stu 미방문 상태에서도 처리 가능)
+        if((!db.stu || !db.stu.length) && window._ensureStuLoaded) {
+            await window._ensureStuLoaded().catch(()=>{});
+        }
+        if(!db.stu || !db.stu.length) return { skipped: true, reason: 'stu_empty' };
+
+        let interestCount = 0, overdueCount = 0;
+        const updates = {};
+        const gradeMap = Object.assign({}, (db.cfg && db.cfg.bankGrades) || {});
+        let gradesChanged = false;
+        const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+
+        (db.stu || []).forEach((s, i) => {
+            if(!s) return;
+            const fbKey = _cdMig ? s.cd : i;
+            const stuGrade = s.cd ? (Number(gradeMap[s.cd]) || 3) : 3;
+            const bank = _bankGetStudentData(s);
+            const eff = _bankGetEffectiveRates(cfg, stuGrade);
+            let changed = false;
+
+            // 1. 만기 예금 → 원금 s.cookie 복원 + 이자(상점 이용권) 지급
+            if(!s.bankBanned && stuGrade < 4) {
+                for(const dep of bank.deposits) {
+                    if(!dep.settled && !dep.cancelled && dep.dueDate && dep.dueDate <= today) {
+                        const rate = _bankGetDepositRate(eff, dep.periodDays || 14);
+                        const interest = Math.floor(dep.amount * rate / 100);
+                        // 원금 cookie 복원
+                        s.cookie = (s.cookie || 0) + dep.amount;
+                        updates[`stu/${fbKey}/cookie`] = s.cookie;
+                        // 이자 — 상점 이용권 지급
+                        if(interest > 0) {
+                            if(!s.inv) s.inv = [];
+                            for(let _qi=0; _qi<interest; _qi++) s.inv.push({n:'상점 이용권', i:'🎟️', st:'active', g:'C'});
+                            updates[`stu/${fbKey}/inv`] = s.inv;
+                        }
+                        dep.settled = true;
+                        changed = true;
+                        interestCount++;
+                    }
+                }
+            }
+
+            // 2. 연체 대출 → cookie 차감 + 신용4등급 + 영구 bankBanned + 상점 차단
+            for(const ln of bank.loans) {
+                if(!ln.overdue && ln.dueDate && ln.dueDate < today && (ln.remaining || 0) > 0) {
+                    const overdueDebt = ln.remaining + (ln.interest != null && !ln.interestPaid ? (ln.interest || 0) : 0);
+                    s.cookie = (s.cookie || 0) - overdueDebt;
+                    updates[`stu/${fbKey}/cookie`] = s.cookie;
+                    const loanPeriodDays = ln.periodDays || Math.round((new Date(ln.dueDate) - new Date(ln.date)) / 86400000) || 14;
+                    ln.shopBanUntil = _bankAddDays(today, cfg.shopBanDays || loanPeriodDays);
+                    ln.overdue = true;
+                    ln.remaining = 0;
+                    ln.interestPaid = true;
+                    if(s.cd) {
+                        gradeMap[s.cd] = 4;
+                        gradesChanged = true;
+                        updates[`stu/${fbKey}/bankBanned`] = true;
+                    }
+                    changed = true;
+                    overdueCount++;
+                }
+            }
+            if(changed) updates[`stu/${fbKey}/bank`] = bank;
+        });
+
+        // sweep 로그 — cfg/bankSweepLog에 별도 저장 (cfg/bank 변경 안 함 → 학생 재수신 없음)
+        const sweepLog = { date: today, interest: interestCount, overdue: overdueCount, ts: Date.now() };
+        if(!db.cfg) db.cfg = {};
+        db.cfg.bankSweepLog = sweepLog;
+        updates['cfg/bankSweepLog'] = sweepLog;
+
+        if(gradesChanged) {
+            updates['cfg/bankGrades'] = gradeMap;
+            updates['cfg/bankGradesRev'] = String(Date.now());
+            db.cfg.bankGrades = gradeMap;
+        }
+
+        await dbRef.update(updates).catch(e => console.error('[은행 sweep] write 오류', e));
+
+        const parts = [];
+        if(interestCount > 0) parts.push(`이자 ${interestCount}건`);
+        if(overdueCount > 0) parts.push(`연체 ${overdueCount}건`);
+        console.log('[은행 sweep]', today, parts.length ? parts.join(', ') : '처리 없음', _forceMsg ? '(수동)' : '(자동)');
+
+        // 은행 탭 열려있으면 재렌더
+        try { if(!document.getElementById('t_bank')?.classList.contains('hidden')) _renderBankTeacher(); } catch(_){}
+
+        return { interestCount, overdueCount, date: today };
+
+        } finally {
+            window._bankSweepRunning = false; // 세션 락 해제 (성공/오류 무관)
+        }
+    };
+
+    // 기간 코드로 이자율 가져오기 (cfg 또는 eff 객체 모두 허용 — 둘 다 depositRates 보유)
+    function _bankGetDepositRate(cfgOrEff, periodDays) {
+        if (cfgOrEff.depositRates && cfgOrEff.depositRates[periodDays] != null) return cfgOrEff.depositRates[periodDays];
+        return cfgOrEff.depositRate || 12;
+    }
+
+    // ─── 교사: 설정 저장 ───
+    window._saveBankCfg = async function() {
+        const startDate = document.getElementById('bankStartDate').value || _bankToday();
+        const endDate = document.getElementById('bankEndDate').value || null;
+        const _gv = (id) => { const el = document.getElementById(id); return el ? el.value : null; };
+        const _gi = (id, def) => { const v = parseInt(_gv(id)); return isNaN(v) ? def : v; };
+        const _gf = (id, def) => { const v = parseFloat(_gv(id)); return isNaN(v) ? def : v; };
+        const cfg = {
+            startDate,
+            endDate,
+            depositRates: { 7: 5, 14: 12, 30: 25 },
+            loanRate: 18,
+            shopBanDays: _gi('bankShopBanDays', 7),
+            gradeRates: {
+                '1': { dep7: _gi('grDep7_1',8),  dep14: _gi('grDep14_1',15), dep30: _gi('grDep30_1',28), loan7: _gi('grLoan7_1',10),  loan14: _gi('grLoan14_1',12),  loan28: _gi('grLoan28_1',15),  loanLvMult: Math.min(10, Math.max(1, _gf('grLoanMult1',5))) },
+                '2': { dep7: _gi('grDep7_2',5),  dep14: _gi('grDep14_2',12), dep30: _gi('grDep30_2',25), loan7: _gi('grLoan7_2',15),  loan14: _gi('grLoan14_2',18),  loan28: _gi('grLoan28_2',22),  loanLvMult: Math.min(10, Math.max(1, _gf('grLoanMult2',3))) },
+                '3': { dep7: _gi('grDep7_3',3),  dep14: _gi('grDep14_3',8),  dep30: _gi('grDep30_3',18), loan7: _gi('grLoan7_3',20),  loan14: _gi('grLoan14_3',25),  loan28: _gi('grLoan28_3',30),  loanLvMult: Math.min(10, Math.max(1, _gf('grLoanMult3',2))) },
+            }
+        };
+        if (!db.cfg) db.cfg = {};
+        db.cfg.bank = cfg;
+        // bankRev 갱신 → 학생 측 Rev 캐시 무효화 (설정이 바뀔 때만 학생이 재수신)
+        const _bankRev = String(Date.now());
+        await dbRef.update({ 'cfg/bank': cfg, 'cfg/bankRev': _bankRev });
+        _bankFormReady = false; // 저장 후 재진입 시 폼 재복원 허용
+        document.getElementById('bankCfgStatus').textContent = '✅ 저장됨';
+        setTimeout(() => { const el = document.getElementById('bankCfgStatus'); if(el) el.textContent=''; }, 3000);
+    };
+
+    // ─── 교사: 신용등급 배정 저장 ───
+    window._saveBankGrades = async function() {
+        const grades = {};
+        document.querySelectorAll('#bankGradeBody [data-cd]').forEach(sel => {
+            const cd = sel.dataset.cd;
+            const v = parseInt(sel.value);
+            if(cd && !isNaN(v)) grades[cd] = v;
+        });
+        if(!db.cfg) db.cfg = {};
+        db.cfg.bankGrades = grades;
+        const rev = String(Date.now());
+        await dbRef.update({ 'cfg/bankGrades': grades, 'cfg/bankGradesRev': rev });
+        document.getElementById('bankGradeStatus').textContent = '✅ 저장됨';
+        setTimeout(() => { const el = document.getElementById('bankGradeStatus'); if(el) el.textContent=''; }, 3000);
+    };
+
+    // ─── 교사: 강제 sweep (수동 실행) ───
+    window._bankForceAutoSweep = async function() {
+        const btn = document.querySelector('button[onclick="_bankForceAutoSweep()"]');
+        if(btn) { btn.disabled = true; btn.innerHTML = '⏳ 처리 중...'; }
+        const statusEl = document.getElementById('bankOpStatus');
+        if(statusEl) statusEl.textContent = '';
+        try {
+            const result = await window._bankAutoSweep(true);
+            if(!result || result.skipped) {
+                const reason = result?.reason;
+                const msg = reason === 'already_running' ? '⏳ 이미 실행 중입니다.' : reason === 'stu_empty' ? '⚠️ 학생 데이터 미로드' : '✅ 처리할 내역 없음 (오늘 이미 완료)';
+                if(statusEl) { statusEl.style.color = '#888'; statusEl.textContent = msg; }
+                setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 3000);
+            } else {
+                const parts = [];
+                if(result.interestCount > 0) parts.push(`이자 ${result.interestCount}건 지급`);
+                if(result.overdueCount > 0) parts.push(`연체 ${result.overdueCount}건 처리`);
+                const msg = parts.length ? `✅ ${parts.join(' · ')}` : '✅ 처리할 내역 없음';
+                if(statusEl) { statusEl.style.color = '#2e7d32'; statusEl.textContent = msg; }
+                setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 5000);
+            }
+        } catch(e) {
+            if(statusEl) { statusEl.style.color = '#c62828'; statusEl.textContent = '❌ 오류: ' + (e && e.message || e); }
+        }
+        if(btn) { btn.disabled = false; btn.innerHTML = '🔄 지금 강제 실행<br><small style="font-weight:normal;font-size:11px;">이자 지급 + 연체 처리 즉시 실행</small>'; }
+    };
+
+    // sweep 상태 표시 업데이트
+    function _bankUpdateSweepStatus() {
+        const el = document.getElementById('bankSweepStatus');
+        if(!el) return;
+        const today = _bankToday();
+        // sweep 로그는 cfg/bankSweepLog에 저장 (cfg/bank와 분리)
+        const log = (db.cfg && db.cfg.bankSweepLog) || null;
+        const lastDate = log ? (log.date || null) : null;
+        if(!lastDate) {
+            el.innerHTML = '<div style="color:#aaa;">아직 자동 처리 기록 없음</div>';
+            return;
+        }
+        const isToday = lastDate === today;
+        const dayDiff = Math.round((new Date(today) - new Date(lastDate)) / 86400000);
+        const parts = [];
+        if(log) {
+            if(log.interest > 0) parts.push(`🎫 이자 ${log.interest}건`);
+            if(log.overdue  > 0) parts.push(`⚠️ 연체 ${log.overdue}건`);
+            if(!parts.length) parts.push('처리 내역 없음');
+        }
+        el.innerHTML =
+            `<div><b>마지막 처리:</b> ${lastDate} ${isToday
+                ? '<span style="color:#2e7d32;font-weight:bold;">(오늘 ✓)</span>'
+                : `<span style="color:#e65100;">(${dayDiff}일 전)</span>`}</div>` +
+            (parts.length ? `<div style="color:#666;margin-top:2px;">${parts.join(' · ')}</div>` : '') +
+            (!isToday ? `<div style="color:#e65100;font-size:11px;margin-top:4px;">⚠️ 오늘 미처리 — 강제 실행 버튼을 눌러주세요</div>` : '');
+    }
+
+    // ─── 교사: 이자 일괄 지급 ───
+    window._bankPayInterest = async function() {
+        const cfg = _bankGetCfg();
+        if (!cfg.depositRates && !cfg.depositRate) { alert('은행 설정을 먼저 저장하세요.'); return; }
+        const today = _bankToday();
+        const _cdMigLocal = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        let count = 0;
+        const updates = {};
+        const _gradeMap = (db.cfg && db.cfg.bankGrades) || {};
+        db.stu.forEach((s, i) => {
+            const fbKey = _cdMigLocal ? s.cd : i;
+            const bank = _bankGetStudentData(s);
+            const stuGrade = s.cd ? (Number(_gradeMap[s.cd]) || 3) : 3;
+            if (stuGrade >= 4) return; // 4등급 이용 불가
+            const eff = _bankGetEffectiveRates(cfg, stuGrade);
+            let changed = false;
+            for (const dep of bank.deposits) {
+                if (!dep.settled && !dep.cancelled && dep.dueDate && dep.dueDate <= today) {
+                    const rate = _bankGetDepositRate(eff, dep.periodDays || 14);
+                    const interest = Math.floor(dep.amount * rate / 100);
+                    // 원금 cookie 복원
+                    s.cookie = (s.cookie || 0) + dep.amount;
+                    updates[`stu/${fbKey}/cookie`] = s.cookie;
+                    // 이자 지급 — 상점 이용권 아이템으로 지급
+                    if (interest > 0) {
+                        if(!s.inv) s.inv = [];
+                        for(let _qi=0; _qi<interest; _qi++) s.inv.push({n:'상점 이용권', i:'🎟️', st:'active', g:'C'});
+                        updates[`stu/${fbKey}/inv`] = s.inv;
+                    }
+                    dep.settled = true;
+                    changed = true;
+                    count++;
+                }
+            }
+            if (changed) updates[`stu/${fbKey}/bank`] = bank;
+        });
+        if (Object.keys(updates).length) {
+            await dbRef.update(updates);
+        }
+        const statusEl = document.getElementById('bankOpStatus');
+        if (statusEl) statusEl.textContent = count > 0 ? `✅ ${count}건 이자 지급 완료` : '만기된 예금이 없습니다.';
+        setTimeout(() => { const el = document.getElementById('bankOpStatus'); if(el) el.textContent=''; }, 4000);
+        _renderBankTeacher();
+    };
+
+    // ─── 교사: 연체 처리 ───
+    window._bankProcessOverdue = async function() {
+        const cfg = _bankGetCfg();
+        const today = _bankToday();
+        const _cdMigLocal = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        let count = 0;
+        const updates = {};
+        const newGrades = Object.assign({}, (db.cfg && db.cfg.bankGrades) || {});
+        let gradesChanged = false;
+        db.stu.forEach((s, i) => {
+            const fbKey = _cdMigLocal ? s.cd : i;
+            const bank = _bankGetStudentData(s);
+            let changed = false;
+            for (const ln of bank.loans) {
+                if (!ln.overdue && ln.dueDate && ln.dueDate < today && (ln.remaining || 0) > 0) {
+                    const overdueDebt = ln.remaining + (ln.interest != null && !ln.interestPaid ? (ln.interest || 0) : 0);
+                    s.cookie = (s.cookie || 0) - overdueDebt;
+                    ln.interestPaid = true;
+                    // 상점 이용 제한: 대출 기간만큼
+                    const loanPeriodDays = ln.periodDays || Math.round((new Date(ln.dueDate) - new Date(ln.date)) / 86400000) || 14;
+                    ln.shopBanUntil = _bankAddDays(today, cfg.shopBanDays || loanPeriodDays);
+                    // 은행 영구 이용 불가 + 신용 4등급
+                    ln.overdue = true;
+                    ln.remaining = 0;
+                    if(s.cd) {
+                        newGrades[s.cd] = 4;
+                        gradesChanged = true;
+                        updates[`stu/${fbKey}/bankBanned`] = true; // 영구 은행 이용 불가 플래그
+                    }
+                    updates[`stu/${fbKey}/cookie`] = s.cookie;
+                    changed = true;
+                    count++;
+                }
+            }
+            if (changed) updates[`stu/${fbKey}/bank`] = bank;
+        });
+        if (gradesChanged) {
+            updates['cfg/bankGrades'] = newGrades;
+            updates['cfg/bankGradesRev'] = String(Date.now());
+            if(!db.cfg) db.cfg = {};
+            db.cfg.bankGrades = newGrades;
+        }
+        if (Object.keys(updates).length) {
+            await dbRef.update(updates);
+        }
+        const statusEl = document.getElementById('bankOpStatus');
+        if (statusEl) statusEl.textContent = count > 0 ? `⚠️ ${count}건 연체 처리 — 쿠키 차감·신용5등급·은행 영구 정지·상점 이용 제한` : '연체 대출이 없습니다.';
+        setTimeout(() => { const el = document.getElementById('bankOpStatus'); if(el) el.textContent=''; }, 5000);
+        _renderBankTeacher();
+    };
+
+    // ─── 교사: 신용등급 직접 배정 UI ───
+    let _bankGradeMode = 0; // 현재 선택된 등급 (0 = 미선택)
+    const _bgColors = ['','#1565c0','#2e7d32','#f9a825','#e65100','#c62828'];
+    const _bgNames  = ['','1등급','2등급','3등급','4등급','5등급'];
+
+    window._bankGradeSelectMode = function(grade) {
+        _bankGradeMode = (_bankGradeMode === grade) ? 0 : grade; // 같은 버튼 재클릭 시 해제
+        // 버튼 테두리 강조
+        [1,2,3,4].forEach(g => {
+            const btn = document.getElementById('bankGradeBtn' + g);
+            if(!btn) return;
+            btn.style.border = (_bankGradeMode === g) ? '3px solid #fff' : '2px solid transparent';
+            btn.style.boxShadow = (_bankGradeMode === g) ? '0 0 0 3px ' + _bgColors[g] + ', 0 4px 12px rgba(0,0,0,0.3)' : '';
+            btn.style.transform = (_bankGradeMode === g) ? 'scale(1.08)' : '';
+        });
+        const label = document.getElementById('bankGradeActiveLabel');
+        if(label) label.textContent = _bankGradeMode ? `✏️ ${_bgNames[_bankGradeMode]} 선택됨 — 학생 클릭으로 배정` : '등급 버튼 선택 후 학생 클릭';
+        // 학생 카드 커서 업데이트
+        _renderBankGradeBody();
+    };
+
+    window._bankGradeAssign = async function(cd) {
+        if(!_bankGradeMode) return;
+        if(!db.cfg) db.cfg = {};
+        const grades = Object.assign({}, db.cfg.bankGrades || {});
+        grades[cd] = _bankGradeMode;
+        db.cfg.bankGrades = grades;
+        const rev = String(Date.now());
+        try {
+            await dbRef.update({ 'cfg/bankGrades': grades, 'cfg/bankGradesRev': rev });
+            const s = (db.stu || []).find(s => s && s.cd === cd);
+            _bankManualShowStatus(`✅ ${s ? s.nm : cd} → ${_bgNames[_bankGradeMode]}`, _bgColors[_bankGradeMode]);
+        } catch(e) { _bankManualShowStatus('저장 실패', '#c62828'); }
+        _renderBankGradeBody();
+    };
+
+    function _renderBankGradeBody() {
+        const gradeBody = document.getElementById('bankGradeBody');
+        if(!gradeBody) return;
+        const savedGrades = (db.cfg && db.cfg.bankGrades) || {};
+        const stuList = (db.stu || []).filter(s => s && s.nm && s.cd).sort((a,b)=>(a.no||0)-(b.no||0));
+        const cursor = _bankGradeMode ? 'pointer' : 'default';
+        gradeBody.innerHTML = stuList.map(s => {
+            const cur = savedGrades[s.cd] != null ? Number(savedGrades[s.cd]) : 3;
+            const isTarget = _bankGradeMode === cur;
+            return `<div onclick="_bankGradeAssign('${s.cd}')" style="background:#f9f7f2;border:2px solid ${_bgColors[cur]||'#e5d4b1'};border-radius:10px;padding:7px 10px;display:flex;justify-content:space-between;align-items:center;gap:6px;cursor:${cursor};${_bankGradeMode&&!isTarget?'opacity:0.55;':''}transition:transform 0.1s;" onmousedown="if(_bankGradeMode)this.style.transform='scale(0.95)'" onmouseup="this.style.transform=''" onmouseleave="this.style.transform=''">
+                <span style="font-size:11px;color:#aaa;min-width:18px;">${s.no||''}</span>
+                <span style="font-size:12px;font-weight:bold;color:#5D4037;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${s.nm}</span>
+                <span style="font-size:11px;font-weight:bold;color:${_bgColors[cur]};white-space:nowrap;">${_bgNames[cur]||cur+'등급'}</span>
+            </div>`;
+        }).join('') || '<div style="color:#aaa;font-size:12px;text-align:center;">학생 없음</div>';
+    }
+
+    // ─── 교사: 자동처리 테스트 시뮬레이터 ───
+    window._bankTestToggle = function() {
+        const body = document.getElementById('bankTestBody');
+        const icon = document.getElementById('bankTestToggleIcon');
+        if(!body) return;
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : '';
+        if(icon) icon.textContent = open ? '▼' : '▲';
+        if(!open) _bankTestUpdateCurDate();
+    };
+
+    function _bankTestUpdateCurDate() {
+        const el = document.getElementById('bankTestCurDate');
+        if(!el) return;
+        const real = new Date().toLocaleDateString('sv-SE');
+        const sim = window._debugDate;
+        el.innerHTML = sim
+            ? `실제 날짜: <strong>${real}</strong> &nbsp;|&nbsp; 🟠 시뮬 날짜: <strong style="color:#e65100;">${sim}</strong>`
+            : `실제 날짜: <strong>${real}</strong> &nbsp;|&nbsp; <span style="color:#aaa;">시뮬 날짜 미설정 (실제 날짜 사용)</span>`;
+    }
+
+    window._bankTestSetDate = function() {
+        const v = document.getElementById('bankTestDateInput')?.value;
+        if(!v) { alert('날짜를 선택하세요.'); return; }
+        window._debugDate = v;
+        _bankTestUpdateCurDate();
+    };
+
+    window._bankTestResetDate = function() {
+        window._debugDate = null;
+        _bankTestUpdateCurDate();
+        const inp = document.getElementById('bankTestDateInput');
+        if(inp) inp.value = '';
+    };
+
+    window._bankTestAdvance = function(days) {
+        const base = window._debugDate || new Date().toLocaleDateString('sv-SE');
+        window._debugDate = _bankAddDays(base, days);
+        const inp = document.getElementById('bankTestDateInput');
+        if(inp) inp.value = window._debugDate;
+        _bankTestUpdateCurDate();
+    };
+
+    window._bankTestPreviewRun = function() {
+        const prev = document.getElementById('bankTestPreview');
+        if(!prev) return;
+        const today = _bankToday();
+        const cfg = _bankGetCfg();
+        let depRows = [], loanRows = [];
+        for (const s of (db.stu || [])) {
+            if(!s || !s.nm || !s.cd) continue;
+            const stuGrade = Number((db.cfg?.bankGrades||{})[s.cd]) || 3;
+            if(stuGrade >= 4 || s.bankBanned) continue;
+            const eff = _bankGetEffectiveRates(cfg, stuGrade);
+            const bank = s.bank ? { deposits: Array.isArray(s.bank.deposits) ? s.bank.deposits : [], loans: Array.isArray(s.bank.loans) ? s.bank.loans : [] } : { deposits: [], loans: [] };
+            for (const dep of bank.deposits) {
+                if(!dep.settled && !dep.cancelled && dep.dueDate && dep.dueDate <= today) {
+                    const interest = Math.floor((dep.amount||0) * _bankGetDepositRate(eff, dep.periodDays||14) / 100);
+                    depRows.push(`<span style="color:#2e7d32;">${s.nm}</span> 🍪${dep.amount} × ${dep.periodDays||14}일 → 이자 🎫${interest}`);
+                }
+            }
+            for (const ln of bank.loans) {
+                if(!ln.overdue && ln.dueDate && ln.dueDate < today && (ln.remaining||0) > 0) {
+                    const debt = (ln.remaining||0) + (ln.interest!=null && !ln.interestPaid ? (ln.interest||0) : 0);
+                    loanRows.push(`<span style="color:#c62828;">${s.nm}</span> 연체 🍪${debt} 차감 예정`);
+                }
+            }
+        }
+        let html = `<strong>📅 기준 날짜: ${today}</strong><br>`;
+        if(depRows.length) html += `<br>📗 만기 예금 ${depRows.length}건:<br>${depRows.map(r=>'&nbsp;• '+r).join('<br>')}`;
+        else html += `<br>📗 만기 예금 없음`;
+        if(loanRows.length) html += `<br><br>📕 연체 대출 ${loanRows.length}건:<br>${loanRows.map(r=>'&nbsp;• '+r).join('<br>')}`;
+        else html += `<br>📕 연체 대출 없음`;
+        if(!depRows.length && !loanRows.length) html += `<br><span style="color:#aaa;">처리할 항목이 없습니다.</span>`;
+        prev.innerHTML = html;
+    };
+
+    window._bankTestActualRun = async function() {
+        const today = _bankToday();
+        if(!confirm(`시뮬레이션 날짜 [${today}]로 자동처리를 실행합니다.\n이자 지급 및 연체 처리가 Firebase DB에 실제로 저장됩니다.\n계속하시겠습니까?`)) return;
+        const status = document.getElementById('bankTestStatus');
+        if(status) { status.textContent = '⏳ 실행 중...'; status.style.color = '#ff9800'; }
+        try {
+            const result = await window._bankAutoSweep(true);
+            if(status) {
+                if(result && result.skipped) { status.textContent = '⚠️ ' + (result.reason || '이미 실행됨'); status.style.color = '#888'; }
+                else { status.textContent = `✅ 완료 — 예금 ${result?.interestCount||0}건 이자지급, 연체 ${result?.overdueCount||0}건 처리`; status.style.color = '#2e7d32'; }
+            }
+            _bankTestPreviewRun();
+            _renderBankTeacher();
+        } catch(e) {
+            if(status) { status.textContent = '❌ 오류: ' + e.message; status.style.color = '#c62828'; }
+        }
+    };
+
+    // ─── 교사: 수동 조작 헬퍼 ───
+    function _bankManualShowStatus(msg, color) {
+        const el = document.getElementById('bankOpStatus');
+        if(!el) return;
+        el.style.color = color || '#2e7d32';
+        el.textContent = msg;
+        setTimeout(() => { if(el) el.textContent = ''; }, 4000);
+    }
+
+    // 공통: 학생 cd → {s, i, fbKey} 반환
+    function _bankFindStu(cd) {
+        const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        let s = null, i = -1;
+        (db.stu || []).forEach((_s, _i) => { if(_s && _s.cd === cd) { s = _s; i = _i; } });
+        if(!s || (!_cdMig && i === -1)) return null;
+        const fbKey = _cdMig ? cd : i;
+        return { s, i, fbKey };
+    }
+
+    // 🎫 수동 이자 지급 — 만기 예금만
+    window._bankManualInterest = async function(cd) {
+        const r = _bankFindStu(cd);
+        if(!r) return;
+        const { s, fbKey } = r;
+        const cfg = _bankGetCfg();
+        const today = _bankToday();
+        const stuGrade = Number((db.cfg?.bankGrades||{})[cd]) || 3;
+        const eff = _bankGetEffectiveRates(cfg, stuGrade);
+        const bank = _bankGetStudentData(s);
+        let count = 0, itemGained = 0;
+        for(const dep of bank.deposits) {
+            if(!dep.settled && !dep.cancelled && dep.dueDate && dep.dueDate <= today) {
+                const interest = Math.floor(dep.amount * _bankGetDepositRate(eff, dep.periodDays || 14) / 100);
+                s.cookie = (s.cookie || 0) + dep.amount; // 원금 cookie 복원
+                if(interest > 0) {
+                    if(!s.inv) s.inv = [];
+                    for(let _qi=0; _qi<interest; _qi++) s.inv.push({n:'상점 이용권', i:'🎟️', st:'active', g:'C'});
+                    itemGained += interest;
+                }
+                dep.settled = true;
+                count++;
+            }
+        }
+        if(!count) { _bankManualShowStatus('만기된 예금이 없습니다.', '#888'); return; }
+        const updates = {};
+        updates[`stu/${fbKey}/bank`] = bank;
+        updates[`stu/${fbKey}/cookie`] = s.cookie;
+        if(itemGained > 0) updates[`stu/${fbKey}/inv`] = s.inv;
+        await dbRef.update(updates);
+        _bankManualShowStatus(`✅ ${s.nm} — ${count}건 이자 지급 (🎫${itemGained}장)`, '#2e7d32');
+        _renderBankTeacher();
+    };
+
+    // ↩ 수동 예금 취소 — 만기 미도래 예금 원금 반환
+    window._bankManualCancelDeposit = async function(cd) {
+        const r = _bankFindStu(cd);
+        if(!r) return;
+        const { s, fbKey } = r;
+        const bank = _bankGetStudentData(s);
+        const active = bank.deposits.filter(d => !d.settled && !d.cancelled);
+        if(!active.length) { _bankManualShowStatus('취소할 예금이 없습니다.', '#888'); return; }
+        if(!confirm(`${s.nm}의 미결제 예금 ${active.length}건을 모두 취소(원금 반환)하시겠습니까?`)) return;
+        let refund = 0;
+        active.forEach(dep => { dep.cancelled = true; refund += dep.amount || 0; });
+        s.cookie = (s.cookie || 0) + refund;
+        const updates = {};
+        updates[`stu/${fbKey}/bank`] = bank;
+        updates[`stu/${fbKey}/cookie`] = s.cookie;
+        await dbRef.update(updates);
+        _bankManualShowStatus(`✅ ${s.nm} — 예금 ${active.length}건 취소, 🍪${refund} 반환`, '#f57f17');
+        _renderBankTeacher();
+    };
+
+    // 💳 수동 대출 탕감 — 대출 삭제(forgive)
+    window._bankManualForgiveLoan = async function(cd) {
+        const r = _bankFindStu(cd);
+        if(!r) return;
+        const { s, fbKey } = r;
+        const bank = _bankGetStudentData(s);
+        const active = bank.loans.filter(l => (l.remaining || 0) > 0);
+        if(!active.length) { _bankManualShowStatus('탕감할 대출이 없습니다.', '#888'); return; }
+        const totalRem = active.reduce((a, l) => a + (l.remaining || 0), 0);
+        if(!confirm(`${s.nm}의 대출 ${active.length}건(잔여 🍪${totalRem})을 탕감하시겠습니까?\n쿠키 반환 없이 대출 기록만 삭제됩니다.`)) return;
+        active.forEach(l => { l.remaining = 0; l.overdue = false; l.shopBanUntil = null; l.interestPaid = true; });
+        const updates = {};
+        updates[`stu/${fbKey}/bank`] = bank;
+        // bankBanned 해제도 함께
+        if(s.bankBanned) {
+            s.bankBanned = false;
+            updates[`stu/${fbKey}/bankBanned`] = false;
+        }
+        await dbRef.update(updates);
+        _bankManualShowStatus(`✅ ${s.nm} — 대출 ${active.length}건 탕감`, '#c62828');
+        _renderBankTeacher();
+    };
+
+    // 🔓 영구정지 해제
+    window._bankManualUnban = async function(cd) {
+        const r = _bankFindStu(cd);
+        if(!r) return;
+        const { s, fbKey } = r;
+        if(!s.bankBanned) { _bankManualShowStatus('이미 정지 해제 상태입니다.', '#888'); return; }
+        if(!confirm(`${s.nm}의 은행 영구정지를 해제하시겠습니까?`)) return;
+        s.bankBanned = false;
+        await dbRef.child(`stu/${fbKey}/bankBanned`).set(false);
+        _bankManualShowStatus(`✅ ${s.nm} — 은행 이용 정지 해제`, '#1565c0');
+        _renderBankTeacher();
+    };
+
+    // ─── 교사: 은행 탭 렌더 ───
+    let _bankFormReady = false;
+    let _bankDataRevListener = false; // 교사 측 학생 변경 감지 리스너 등록 여부
+    window._renderBankTeacher = function(forceFormRestore) {
+        // 최초 1회: 학생 은행 변경 시 해당 학생 데이터 타깃 fetch → 테이블 갱신
+        if (!_bankDataRevListener) {
+            _bankDataRevListener = true;
+            dbRef.child('cfg/bankDataRev').on('value', async snap => {
+                const v = snap.val();
+                if (!v || !v.cd) return;
+                const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+                const path = _cdMig ? ('stu/' + v.cd) : null;
+                if (!path) return;
+                try {
+                    const stuSnap = await dbRef.child(path).once('value');
+                    const stuData = stuSnap.val();
+                    if (stuData) {
+                        if (!Array.isArray(db.stu)) db.stu = [];
+                        const idx = db.stu.findIndex(s => s && s.cd === v.cd);
+                        if (idx >= 0) db.stu[idx] = stuData;
+                        else db.stu.push(stuData);
+                    }
+                } catch(_) {}
+                if (!document.getElementById('t_bank')?.classList.contains('hidden')) _renderBankTeacher();
+            });
+        }
+        const cfg = _bankGetCfg();
+        _bankUpdateSweepStatus(); // sweep 상태 업데이트
+        // 설정 폼 복원 — 최초 진입 or 저장 직후에만 (편집 중 덮어쓰기 방지)
+        if (!_bankFormReady || forceFormRestore) {
+        _bankFormReady = true;
+        const _sv = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+        _sv('bankStartDate', cfg.startDate || _bankToday());
+        const _edEl = document.getElementById('bankEndDate');
+        if(_edEl) _edEl.value = cfg.endDate || '';
+        _sv('bankShopBanDays', cfg.shopBanDays || 7);
+        // 운영 상태 표시
+        const _rbs = document.getElementById('bankRunStatus');
+        if(_rbs) {
+            const _td = _bankToday();
+            if(!cfg.startDate || _td < cfg.startDate) { _rbs.textContent = '⏳ 운영 전'; _rbs.style.background='#f5f5f5'; _rbs.style.color='#888'; }
+            else if(cfg.endDate && _td > cfg.endDate) { _rbs.textContent = '🔒 운영 종료'; _rbs.style.background='#fce4ec'; _rbs.style.color='#c62828'; }
+            else { _rbs.textContent = '✅ 운영 중'; _rbs.style.background='#e8f5e9'; _rbs.style.color='#2e7d32'; }
+        }
+
+        // 신용등급 요율 폼 복원 (1~3등급)
+        const gr = cfg.gradeRates || {};
+        const _grDef = {1:{dep7:8,dep14:15,dep30:28,loan7:10,loan14:12,loan28:15,loanLvMult:5},2:{dep7:5,dep14:12,dep30:25,loan7:15,loan14:18,loan28:22,loanLvMult:3},3:{dep7:3,dep14:8,dep30:18,loan7:20,loan14:25,loan28:30,loanLvMult:2}};
+        const _fv = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; }; // 항상 덮어씀
+        [1,2,3].forEach(g => {
+            const gd = gr[String(g)] || {};
+            const d = _grDef[g];
+            _fv(`grDep7_${g}`,   gd.dep7   ?? d.dep7);
+            _fv(`grDep14_${g}`,  gd.dep14  ?? d.dep14);
+            _fv(`grDep30_${g}`,  gd.dep30  ?? d.dep30);
+            _fv(`grLoan7_${g}`,  gd.loan7  ?? d.loan7);
+            _fv(`grLoan14_${g}`, gd.loan14 ?? d.loan14);
+            _fv(`grLoan28_${g}`, gd.loan28 ?? d.loan28);
+            _fv(`grLoanMult${g}`, gd.loanLvMult ?? d.loanLvMult);
+        });
+        } // end 폼 복원 블록
+
+        // 현황 테이블 (수동 조작 열 포함)
+        const tbody = document.getElementById('bankStatusBody');
+        if (!tbody) return;
+        const today = _bankToday();
+        let html = '';
+        for (const s of (db.stu || [])) {
+            if(!s || !s.nm) continue;
+            const bank = _bankGetStudentData(s);
+            const activeDeposits = bank.deposits.filter(d => !d.settled && !d.cancelled);
+            const matureDeposits = activeDeposits.filter(d => d.dueDate && d.dueDate <= today);
+            const activeLoans = bank.loans.filter(l => {
+                if(l.overdue) return false;
+                const rem = l.remaining;
+                return (rem == null) ? (l.amount||0) > 0 : rem > 0;
+            });
+            const totalDep = activeDeposits.reduce((a, d) => a + (d.amount || 0), 0);
+            const stuGrade = s.cd ? (Number((db.cfg?.bankGrades||{})[s.cd]) || 3) : 3;
+            const eff = _bankGetEffectiveRates(cfg, stuGrade);
+            const totalInterest = activeDeposits.reduce((a, d) => a + Math.floor((d.amount || 0) * _bankGetDepositRate(eff, d.periodDays || 14) / 100), 0);
+            const totalLoanAmt = activeLoans.reduce((a, l) => a + (l.amount || 0), 0);
+            const totalLoanRem = activeLoans.reduce((a, l) => a + (l.remaining || 0), 0);
+            const dueDates = activeLoans.map(l => l.dueDate).filter(Boolean).sort();
+            const nearestDue = dueDates[0] || null;
+            const diff = nearestDue ? _bankDiff(nearestDue) : null;
+            const overdue = nearestDue && nearestDue < today;
+            const banned = bank.loans.some(l => l.shopBanUntil && l.shopBanUntil >= today);
+            let status = '정상';
+            if(s.bankBanned) status = '<span style="color:#c62828;font-size:11px;">🔒 영구정지</span>';
+            else if(banned) status = '<span style="color:#c62828;">🚫 상점중지</span>';
+            else if(overdue) status = '<span style="color:#e53935;">⚠️ 연체</span>';
+            else if(diff !== null && diff <= 3) status = `<span style="color:#fb8c00;">D-${diff}</span>`;
+            if(totalDep === 0 && totalLoanRem === 0 && !s.bankBanned) continue;
+            // 수동 조작 버튼
+            const safeNm = (s.nm||'').replace(/'/g,'&apos;');
+            const safeCd = s.cd || '';
+            let actions = '';
+            if(matureDeposits.length > 0)
+                actions += `<button onclick="_bankManualInterest('${safeCd}')" style="padding:3px 7px;background:#2e7d32;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;margin:1px;">🎫 이자지급(${matureDeposits.length})</button>`;
+            if(activeDeposits.length > 0)
+                actions += `<button onclick="_bankManualCancelDeposit('${safeCd}')" style="padding:3px 7px;background:#f57f17;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;margin:1px;">↩ 예금취소</button>`;
+            if(activeLoans.length > 0)
+                actions += `<button onclick="_bankManualForgiveLoan('${safeCd}')" style="padding:3px 7px;background:#c62828;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;margin:1px;">💳 대출탕감</button>`;
+            if(s.bankBanned)
+                actions += `<button onclick="_bankManualUnban('${safeCd}')" style="padding:3px 7px;background:#1565c0;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;margin:1px;">🔓 정지해제</button>`;
+            html += `<tr style="border-bottom:1px solid #f0e8d8;">
+                <td style="padding:7px 8px;">${s.nm || ''}</td>
+                <td style="padding:7px 8px;text-align:center;">${totalDep > 0 ? '🍪' + totalDep : '-'}</td>
+                <td style="padding:7px 8px;text-align:center;">${totalInterest > 0 ? '🎫' + totalInterest : '-'}</td>
+                <td style="padding:7px 8px;text-align:center;">${totalLoanAmt > 0 ? '🍪' + totalLoanAmt : '-'}</td>
+                <td style="padding:7px 8px;text-align:center;">${totalLoanRem > 0 ? '🍪' + totalLoanRem : '-'}</td>
+                <td style="padding:7px 8px;text-align:center;">${nearestDue ? nearestDue.slice(5) + (diff !== null ? ` (D${diff >= 0 ? '-' + diff : '+' + Math.abs(diff)})` : '') : '-'}</td>
+                <td style="padding:7px 8px;text-align:center;">${status}</td>
+                <td style="padding:7px 8px;text-align:center;min-width:160px;">${actions || '-'}</td>
+            </tr>`;
+        }
+        tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:20px;color:#aaa;">활성 예금·대출 없음</td></tr>';
+
+        // 신용등급 현황 표시
+        _renderBankGradeBody();
+    };
+
+    // ─── 학생: 은행 탭 렌더 ───
+    // 로컬 캐시 저장 — 액션 후 me.bank + me.cookie를 localStorage에 기록
+    function _bankSaveLocal() {
+        if (!me || !me.cd) return;
+        try {
+            localStorage.setItem('_bankLocal_' + me.cd, JSON.stringify({
+                bank: me.bank || { deposits:[], loans:[] },
+                cookie: me.cookie || 0,
+                ts: Date.now()
+            }));
+        } catch(_) {}
+    }
+    // 액션 공통: 로컬 저장 + 즉시 렌더(낙관적) + Firebase write(await) + 완료 후 재렌더
+    async function _bankCommit(fbKey, updates) {
+        _bankSaveLocal();
+        _renderBankStudent();                       // 낙관적 즉시 렌더
+        window._bankSkipRender = Date.now() + 5000; // Firebase 리스너 자동재렌더 차단
+        // 교사 측에 변경 신호 (cd + 타임스탬프)
+        if (me && me.cd) updates['cfg/bankDataRev'] = { cd: me.cd, ts: Date.now(), r: Math.random() };
+        try {
+            await dbRef.update(updates);
+        } catch(e) {
+            console.error('[bank] Firebase write 오류', e);
+        }
+        window._bankSkipRender = 0; // write 완료 후 차단 해제
+        _renderBankStudent();                      // 최종 확정 렌더 (Firebase 반영본)
+    }
+
+    window._renderBankStudent = function() {
+        const el = document.getElementById('s_bank');
+        if (!el) return;
+        if (window._bankSkipRender && Date.now() < window._bankSkipRender) return;
+        // 로컬 캐시로 me.bank·me.cookie 보완 (Firebase 수신 전 빠른 표시용)
+        if (me && me.cd) {
+            try {
+                const _lc = JSON.parse(localStorage.getItem('_bankLocal_' + me.cd) || 'null');
+                if (_lc && _lc.ts && Date.now() - _lc.ts < 86400000) {
+                    if (me.bank == null && _lc.bank) me.bank = _lc.bank;
+                }
+            } catch(_) {}
+        }
+        const cfg = _bankGetCfg();
+        const _today_b = _bankToday();
+        if (!cfg.startDate || _today_b < cfg.startDate) {
+            el.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;">🏦 은행이 아직 운영 전입니다.</div>';
+            return;
+        }
+        const _bankExpired = !!(cfg.endDate && _today_b > cfg.endDate);
+        if (typeof me === 'undefined' || !me) { el.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;">데이터 로딩 중...</div>'; return; }
+
+
+        // 신용등급 / 영구 은행 이용 불가 체크
+        const myGrade = _bankGetMyGrade();
+        if (myGrade >= 4 || me.bankBanned) {
+            const _bankBanMsg = me.bankBanned
+                ? `대출 연체로 인해 은행 이용이 <strong>영구 정지</strong>되었습니다.<br>쿠키 ${Math.abs(me.cookie||0)}개를 상환해야 합니다.`
+                : `신용등급 4등급으로 은행 서비스 이용이 제한됩니다.`;
+            el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:80vh;">
+                <div style="text-align:center;padding:40px 30px;">
+                    <div style="font-size:160px;line-height:1;margin-bottom:24px;">🚫</div>
+                    <div style="font-size:40px;font-weight:900;color:#c62828;margin-bottom:16px;">은행 이용 불가</div>
+                    <div style="font-size:20px;color:#666;line-height:1.9;">${_bankBanMsg}</div>
+                </div>
+            </div>`;
+            return;
+        }
+        const effRates = _bankGetEffectiveRates(cfg, myGrade);
+
+        const s = me;
+        // 렌더 시엔 me.bank를 직접 뮤테이션하지 않음 (newMeHash 오염 방지)
+        const bank = me.bank ? { deposits: Array.isArray(me.bank.deposits) ? me.bank.deposits : [], loans: Array.isArray(me.bank.loans) ? me.bank.loans : [] } : { deposits: [], loans: [] };
+        const cookieBalance = _bankGetMyCookieBalance();
+        const tkBalance = s.tk || 0;
+        const today = _bankToday();
+        const myLv = Math.max(1, Math.floor((me.cookie || 0) / 10));
+        const loanLimit = _bankGetLoanLimit(cfg, myGrade, me.cookie || 0);
+        const depositRates = effRates.depositRates;
+        // 마지막 선택 기간·탭 (로컬 저장, 기본값)
+        const _savedDepPeriod  = parseInt(localStorage.getItem('bankDepPeriod')  || '7');
+        const _savedLoanPeriod = parseInt(localStorage.getItem('bankLoanPeriod') || '7');
+        const _savedTab = localStorage.getItem('bankActiveTab') || 'dep';
+        const _depSelStyle  = (p) => p === _savedDepPeriod
+            ? 'border:2px solid #2e7d32;border-radius:14px;background:#2e7d32;color:#fff;font-size:15px;cursor:pointer;transition:0.15s;white-space:nowrap;padding:13px 6px;'
+            : 'border:2px solid #aed581;border-radius:14px;background:#fff;font-size:15px;cursor:pointer;transition:0.15s;white-space:nowrap;padding:13px 6px;';
+        const _loanSelStyle = (p) => p === _savedLoanPeriod
+            ? 'border:2px solid #c62828;border-radius:14px;background:#c62828;color:#fff;font-size:15px;cursor:pointer;transition:0.15s;white-space:nowrap;padding:13px 6px;'
+            : 'border:2px solid #ffab40;border-radius:14px;background:#fff;font-size:15px;cursor:pointer;transition:0.15s;white-space:nowrap;padding:13px 6px;';
+        const activeDeposits = bank.deposits.filter(d => !d.settled && !d.cancelled);
+        const activeLoans = bank.loans.filter(l => (l.remaining || 0) > 0);
+
+        // 예금 거래내역 — 통장식 단일 컨테이너 (취소 버튼 없음)
+        const depRows = activeDeposits.length ? `
+            <div style="background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;overflow:hidden;">
+                <div style="background:#2e7d32;color:#fff;padding:9px 14px;font-size:12px;font-weight:bold;">📗 예금 내역 (${activeDeposits.length}건)</div>
+                ${activeDeposits.map((d, idx) => {
+                    const diff = _bankDiff(d.dueDate);
+                    const pd = d.periodDays || 14;
+                    const rate = _bankGetDepositRate(cfg, pd);
+                    const interest = Math.floor(d.amount * rate / 100);
+                    const overdue = diff < 0;
+                    const last = idx === activeDeposits.length - 1;
+                    return `<div style="display:flex;align-items:center;gap:6px;padding:10px 14px;${last?'':'border-bottom:1px solid #f1f8e9;'}flex-wrap:wrap;row-gap:4px;">
+                        <span style="flex:0 0 80px;font-size:11px;color:#888;">${d.date}</span>
+                        <span style="flex:0 0 28px;font-size:11px;color:#558b2f;font-weight:bold;">${pd}일</span>
+                        <span style="flex:1;min-width:50px;font-size:14px;font-weight:bold;">🍪${d.amount}</span>
+                        <span style="font-size:12px;color:#689f38;white-space:nowrap;">+🎫${interest}</span>
+                        <span style="font-size:12px;font-weight:bold;color:${overdue?'#c62828':'#2e7d32'};white-space:nowrap;">${overdue?'만기됨':'D-'+diff}</span>
+                    </div>`;
+                }).join('')}
+            </div>` : '<div style="text-align:center;padding:30px;color:#bbb;font-size:14px;">아직 예금 내역이 없어요</div>';
+
+        // 대출 거래내역 — 읽기 전용 (상환은 하단 버튼 패널에서)
+        const loanRows = activeLoans.length ? `
+            <div style="background:#fff;border:1.5px solid #ffccbc;border-radius:14px;overflow:hidden;">
+                <div style="background:#e53935;color:#fff;padding:9px 14px;font-size:12px;font-weight:bold;">📕 대출 내역 (${activeLoans.length}건)</div>
+                ${activeLoans.map((l, idx) => {
+                    const diff = _bankDiff(l.dueDate);
+                    const overdue = l.dueDate < today;
+                    const last = idx === activeLoans.length - 1;
+                    // 신규 모델: interest 필드 있음
+                    const isNew = l.interest != null;
+                    const interestInfo = isNew
+                        ? (today > l.date && !l.interestPaid ? `이자 🍪${l.interest}` : (l.interestPaid ? '이자 납부 완료' : '당일 상환 시 이자 무료'))
+                        : '';
+                    return `<div style="display:flex;align-items:center;gap:6px;padding:10px 14px;${last?'':'border-bottom:1px solid #fff3e0;'}flex-wrap:wrap;row-gap:4px;">
+                        <span style="flex:0 0 80px;font-size:11px;color:#888;">${l.date}</span>
+                        <span style="flex:1;min-width:50px;font-size:14px;font-weight:bold;color:#c62828;">🍪${l.remaining}</span>
+                        ${isNew && interestInfo ? `<span style="font-size:11px;color:${today>l.date&&!l.interestPaid?'#e53935':'#aaa'};white-space:nowrap;">+${interestInfo}</span>` : ''}
+                        <span style="font-size:12px;font-weight:bold;color:${overdue?'#c62828':'#e64a19'};white-space:nowrap;">${overdue?'⚠️D+'+Math.abs(diff):'D-'+diff}</span>
+                    </div>`;
+                }).join('')}
+            </div>` : '<div style="text-align:center;padding:30px;color:#bbb;font-size:14px;">대출 내역이 없어요 👍</div>';
+
+        el.innerHTML = `
+            <!-- ── 통장 표지 ── -->
+            <div style="background:linear-gradient(135deg,#1a237e 0%,#283593 50%,#3949ab 100%);border-radius:20px;padding:22px 24px 18px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;box-shadow:0 6px 20px rgba(26,35,126,0.35);">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+                    <div>
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                            <div style="font-size:12px;letter-spacing:3px;color:#9fa8da;font-weight:bold;">RPG 은행 · COOKIE BANK</div>
+                            <div style="font-size:10px;color:#c5cae9;background:rgba(255,255,255,0.1);border-radius:6px;padding:2px 7px;white-space:nowrap;">
+                                ${cfg.startDate||'?'} ~ ${cfg.endDate||'무기한'}
+                            </div>
+                        </div>
+                        <div style="font-size:26px;font-weight:900;letter-spacing:1px;">${s.nm || '학생'} 님의 통장</div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;margin-left:10px;">
+                        <div style="font-size:14px;font-weight:bold;color:#fff;background:rgba(255,255,255,0.18);border-radius:8px;padding:5px 12px;white-space:nowrap;letter-spacing:1px;">${['','★★★','★★','★','🚫'][myGrade]||'?'} ${myGrade}등급</div>
+                        <div style="text-align:right;">
+                            <div class="bankBalanceDisplay" style="font-size:28px;font-weight:900;line-height:1;${cookieBalance<0?'color:#ff8a80;':''}">${cookieBalance<0?'🔴':'🍪'}${cookieBalance}</div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <div style="flex:1;background:rgba(255,255,255,0.12);border-radius:12px;padding:10px 14px;text-align:center;">
+                        <div style="font-size:11px;color:#9fa8da;margin-bottom:4px;">예금 중</div>
+                        <div style="font-size:18px;font-weight:bold;">🍪${activeDeposits.reduce((a,d)=>a+d.amount,0)||'-'}</div>
+                    </div>
+                    <div style="flex:1;background:rgba(255,255,255,0.12);border-radius:12px;padding:10px 14px;text-align:center;">
+                        <div style="font-size:11px;color:#9fa8da;margin-bottom:4px;">대출 중</div>
+                        <div style="font-size:18px;font-weight:bold;">🍪${activeLoans.reduce((a,l)=>a+l.remaining,0)||'-'}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── 탭 (통장 표지처럼) ── -->
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+                <button id="bankTabDepBtn" onclick="_bankSwitchTab('dep')" style="flex:1;padding:13px;border:2px solid ${_savedTab==='dep'?'#2e7d32':'#ddd'};background:${_savedTab==='dep'?'#2e7d32':'#fff'};color:${_savedTab==='dep'?'#fff':'#999'};border-radius:14px;font-size:16px;font-weight:bold;cursor:pointer;transition:0.15s;">📗 예금 통장</button>
+                <button id="bankTabLoanBtn" onclick="_bankSwitchTab('loan')" style="flex:1;padding:13px;border:2px solid ${_savedTab==='loan'?'#c62828':'#ddd'};background:${_savedTab==='loan'?'#c62828':'#fff'};color:${_savedTab==='loan'?'#fff':'#999'};border-radius:14px;font-size:16px;font-weight:bold;cursor:pointer;transition:0.15s;">📕 대출 통장</button>
+            </div>
+
+            <!-- ── 예금 패널 ── -->
+            <div id="bankPanelDep" style="${_savedTab==='dep'?'':'display:none;'}">
+                ${_bankExpired ? `<div style="background:#fff3e0;border:2px solid #ffb74d;border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#e65100;text-align:center;">🔒 은행 운영이 종료되어 신규 예금 신청이 불가합니다.<br><span style="font-size:12px;color:#888;">기존 예금은 만기 시 원금+이자가 지급됩니다.</span></div>` : ''}
+                <!-- 예금 신청 폼 -->
+                <div style="background:linear-gradient(135deg,#f1f8e9,#f9fbe7);border:2px solid #a5d6a7;border-radius:20px;padding:22px;margin-bottom:14px;${_bankExpired?'display:none;':''}">
+                    <div style="font-size:17px;font-weight:bold;color:#33691e;margin-bottom:16px;">💰 예금 신청</div>
+                    <!-- 기간 선택 (1줄) -->
+                    <div style="font-size:12px;color:#558b2f;font-weight:bold;margin-bottom:10px;letter-spacing:1px;">📅 기간 선택</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;" id="bankPeriodBtns">
+                        <button onclick="_bankSelectPeriod(7,this)" data-period="7" ${_savedDepPeriod===7?'data-selected="1"':''} style="${_depSelStyle(7)}">
+                            1주일 <span style="${_savedDepPeriod===7?'opacity:0.9;':'color:#689f38;'}font-weight:bold;">(${depositRates[7]}%)</span>
+                        </button>
+                        <button onclick="_bankSelectPeriod(14,this)" data-period="14" ${_savedDepPeriod===14?'data-selected="1"':''} style="${_depSelStyle(14)}">
+                            2주일 <span style="${_savedDepPeriod===14?'opacity:0.9;':'color:#689f38;'}font-weight:bold;">(${depositRates[14]}%)</span>
+                        </button>
+                        <button onclick="_bankSelectPeriod(30,this)" data-period="30" ${_savedDepPeriod===30?'data-selected="1"':''} style="${_depSelStyle(30)}">
+                            1개월 <span style="${_savedDepPeriod===30?'opacity:0.9;':'color:#689f38;'}font-weight:bold;">(${depositRates[30]}%)</span>
+                        </button>
+                    </div>
+                    <!-- 입력 + 미리보기 좌우 배치 (3:7) -->
+                    <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:16px;">
+                        <!-- 왼쪽 3: 금액 입력 -->
+                        <div style="flex:3;display:flex;flex-direction:column;gap:8px;">
+                            <div style="font-size:13px;color:#558b2f;font-weight:bold;">🍪 예금 금액</div>
+                            <div style="display:flex;align-items:center;background:#fff;border:2.5px solid #aed581;border-radius:14px;padding:0 16px;height:68px;gap:8px;">
+                                <input type="number" id="bankDepAmt" placeholder="쿠키 수" min="1" max="${cookieBalance}" style="flex:1;border:none;outline:none;font-size:26px;font-weight:bold;font-family:'Jua';color:#33691e;background:transparent;width:0;">
+                                <span style="font-size:28px;line-height:1;">🍪</span>
+                            </div>
+                        </div>
+                        <!-- 오른쪽 7: 이자 미리보기 -->
+                        <div style="flex:7;display:flex;flex-direction:column;gap:8px;">
+                            <div style="font-size:13px;color:#2e7d32;font-weight:bold;">🎫 예상 수령</div>
+                            <div id="bankDepPreview" style="flex:1;background:linear-gradient(135deg,#e8f5e9,#dcedc8);border:2px solid #a5d6a7;border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;color:#2e7d32;font-weight:bold;min-height:68px;line-height:1.5;white-space:normal;"></div>
+                        </div>
+                    </div>
+                    <button onclick="_bankApplyDeposit()" style="width:100%;padding:16px;background:linear-gradient(90deg,#2e7d32,#43a047);color:#fff;border:none;border-radius:14px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 4px 0 #1b5e20;letter-spacing:1px;">💰 예금 신청하기</button>
+                    <div id="bankDepStatus" style="font-size:13px;text-align:center;margin-top:8px;"></div>
+                </div>
+                <!-- 예금 거래내역 -->
+                <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:8px;padding-left:2px;">📋 예금 내역</div>
+                ${depRows}
+                <!-- 중도 취소 버튼 (예금 있을 때만) -->
+                ${activeDeposits.length ? `
+                <div style="margin-top:12px;">
+                    <button onclick="_bankToggleCancelPanel()" id="bankCancelPanelBtn" style="width:100%;padding:12px;background:linear-gradient(90deg,#c62828,#e53935);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 3px 0 #7f0000;">✕ 중도 취소</button>
+                </div>
+                <div id="bankCancelPanel" style="display:none;margin-top:10px;border:1.5px solid #ef9a9a;border-radius:14px;overflow:hidden;background:#fff;">
+                    <div style="background:#c62828;color:#fff;padding:9px 14px;font-size:12px;font-weight:bold;">⚠️ 중도 취소 — 이자 없이 원금만 반환됩니다</div>
+                    ${activeDeposits.map(d => {
+                        const pd = d.periodDays || 14;
+                        const diff = _bankDiff(d.dueDate);
+                        return `<div data-dep-id="${d.id}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid #fce4ec;">
+                            <span style="font-size:13px;">🍪${d.amount} · ${pd}일 · ${diff<0?'만기됨':'D-'+diff}</span>
+                            <button onclick="_bankCancelDeposit('${d.id}')" style="padding:6px 16px;background:#e53935;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:bold;cursor:pointer;">취소</button>
+                        </div>`;
+                    }).join('')}
+                </div>` : ''}
+            </div>
+
+            <!-- ── 대출 패널 ── -->
+            <div id="bankPanelLoan" style="${_savedTab==='loan'?'':'display:none;'}">
+                ${_bankExpired ? `<div style="background:#fff3e0;border:2px solid #ffb74d;border-radius:14px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#e65100;text-align:center;">🔒 은행 운영이 종료되어 신규 대출 신청이 불가합니다.<br><span style="font-size:12px;color:#888;">기존 대출은 계속 상환할 수 있습니다.</span></div>` : ''}
+                <!-- 대출 신청 폼 -->
+                <div style="background:linear-gradient(135deg,#fff8f5,#fff3e0);border:2px solid #ffcc80;border-radius:20px;padding:22px;margin-bottom:14px;${_bankExpired?'display:none;':''}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <div style="font-size:17px;font-weight:bold;color:#bf360c;">💳 대출 신청</div>
+                        <div style="font-size:13px;color:#e64a19;background:#fbe9e7;border-radius:10px;padding:6px 14px;font-weight:bold;">한도 🍪${loanLimit}</div>
+                    </div>
+                    <!-- 기간 선택 (1줄) -->
+                    <div style="font-size:12px;color:#bf360c;font-weight:bold;margin-bottom:10px;letter-spacing:1px;">📅 상환 기간</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;" id="bankLoanPeriodBtns">
+                        <button onclick="_bankSelectLoanPeriod(7,this)" data-period="7" ${_savedLoanPeriod===7?'data-selected="1"':''} style="${_loanSelStyle(7)}">
+                            1주 <span style="${_savedLoanPeriod===7?'opacity:0.9;':'color:#e64a19;'}font-weight:bold;">(${effRates.loanRates?.[7]??effRates.loanRate}%)</span>
+                        </button>
+                        <button onclick="_bankSelectLoanPeriod(14,this)" data-period="14" ${_savedLoanPeriod===14?'data-selected="1"':''} style="${_loanSelStyle(14)}">
+                            2주 <span style="${_savedLoanPeriod===14?'opacity:0.9;':'color:#e64a19;'}font-weight:bold;">(${effRates.loanRates?.[14]??effRates.loanRate}%)</span>
+                        </button>
+                        <button onclick="_bankSelectLoanPeriod(28,this)" data-period="28" ${_savedLoanPeriod===28?'data-selected="1"':''} style="${_loanSelStyle(28)}">
+                            4주 <span style="${_savedLoanPeriod===28?'opacity:0.9;':'color:#e64a19;'}font-weight:bold;">(${effRates.loanRates?.[28]??effRates.loanRate}%)</span>
+                        </button>
+                    </div>
+                    <!-- 입력 + 미리보기 좌우 배치 (3:7) -->
+                    <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:16px;">
+                        <!-- 왼쪽 3: 금액 입력 -->
+                        <div style="flex:3;display:flex;flex-direction:column;gap:8px;">
+                            <div style="font-size:13px;color:#bf360c;font-weight:bold;">🍪 대출 금액</div>
+                            <div style="display:flex;align-items:center;background:#fff;border:2.5px solid #ffab40;border-radius:14px;padding:0 16px;height:68px;gap:8px;">
+                                <input type="number" id="bankLoanAmt" placeholder="쿠키 수" min="1" max="${loanLimit}" style="flex:1;border:none;outline:none;font-size:26px;font-weight:bold;font-family:'Jua';color:#bf360c;background:transparent;width:0;">
+                                <span style="font-size:28px;line-height:1;">🍪</span>
+                            </div>
+                        </div>
+                        <!-- 오른쪽 7: 상환 미리보기 -->
+                        <div style="flex:7;display:flex;flex-direction:column;gap:8px;">
+                            <div style="font-size:13px;color:#c62828;font-weight:bold;">💸 상환 예정</div>
+                            <div id="bankLoanPreview" style="flex:1;background:linear-gradient(135deg,#fce4ec,#fff3e0);border:2px solid #ef9a9a;border-radius:14px;padding:12px 16px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px;color:#c62828;font-weight:bold;min-height:68px;line-height:1.5;white-space:normal;"></div>
+                        </div>
+                    </div>
+                    <button onclick="_bankApplyLoan()" style="width:100%;padding:16px;background:linear-gradient(90deg,#c62828,#e53935);color:#fff;border:none;border-radius:14px;font-size:18px;font-weight:bold;cursor:pointer;box-shadow:0 4px 0 #7f0000;letter-spacing:1px;">💳 대출 신청하기</button>
+                    <div id="bankLoanStatus" style="font-size:13px;text-align:center;margin-top:8px;"></div>
+                </div>
+                <!-- 대출 거래내역 -->
+                <div style="font-size:13px;font-weight:bold;color:#5D4037;margin-bottom:8px;padding-left:2px;">📋 대출 내역</div>
+                ${loanRows}
+                <!-- 조기 상환 버튼 (대출 있을 때만) -->
+                ${activeLoans.length ? `
+                <div style="margin-top:12px;">
+                    <button onclick="_bankToggleRepayPanel()" id="bankRepayPanelBtn" style="width:100%;padding:12px;background:linear-gradient(90deg,#c62828,#e53935);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:bold;cursor:pointer;box-shadow:0 3px 0 #7f0000;">💸 조기 상환</button>
+                </div>
+                <div id="bankRepayPanel" style="display:none;margin-top:10px;border:1.5px solid #ef9a9a;border-radius:14px;overflow:hidden;background:#fff;">
+                    <div style="background:#c62828;color:#fff;padding:9px 14px;font-size:12px;font-weight:bold;">💸 조기 상환 — 당일 상환 시 이자 무료</div>
+                    ${activeLoans.map(l => {
+                        const diff = _bankDiff(l.dueDate);
+                        const overdue = l.dueDate < today;
+                        const isNew = l.interest != null;
+                        const interestDue = isNew && today > l.date && !l.interestPaid ? l.interest : 0;
+                        const totalDue = l.remaining + interestDue;
+                        const sameDay = isNew && today === l.date;
+                        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid #fce4ec;flex-wrap:wrap;row-gap:6px;">
+                            <div>
+                                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+                                    <span style="font-size:13px;font-weight:bold;color:#c62828;">🍪${l.remaining}</span>
+                                    ${interestDue ? `<span style="font-size:12px;color:#e53935;">+ 이자 🍪${interestDue}</span>` : ''}
+                                    ${sameDay ? `<span style="font-size:11px;color:#2e7d32;background:#e8f5e9;border-radius:6px;padding:2px 6px;">당일 이자 무료</span>` : ''}
+                                    <span style="font-size:11px;color:${overdue?'#c62828':'#e64a19'};white-space:nowrap;">${overdue?'⚠️D+'+Math.abs(diff):'D-'+diff}</span>
+                                </div>
+                                <div style="font-size:11px;color:#888;">총 상환액: 🍪${totalDue}</div>
+                            </div>
+                            <button onclick="_bankOpenRepayModal('${l.id}',${totalDue},${interestDue})" style="padding:9px 20px;background:linear-gradient(90deg,#c62828,#e53935);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:bold;cursor:pointer;white-space:nowrap;box-shadow:0 3px 0 #7f0000;">💸 상환</button>
+                        </div>`;
+                    }).join('')}
+                </div>` : ''}
+            </div>`;
+
+        // ── 미리보기 헬퍼 ──
+        function _fmtDate(d) { // 'YYYY-MM-DD' → 'M월 D일'
+            const [,m,day] = d.split('-');
+            return `${parseInt(m)}월 ${parseInt(day)}일`;
+        }
+        function _updateDepPreview() {
+            const v = parseInt(document.getElementById('bankDepAmt')?.value) || 0;
+            const selPeriod = parseInt(document.querySelector('#bankPeriodBtns button[data-selected]')?.dataset.period || '7');
+            const _effDep = _bankGetEffectiveRates(_bankGetCfg(), _bankGetMyGrade()).depositRates;
+            const rate = _effDep[selPeriod] ?? _bankGetDepositRate(_bankGetCfg(), selPeriod);
+            const interest = Math.floor(v * rate / 100);
+            const dueD = _bankAddDays(_bankToday(), selPeriod);
+            const prev = document.getElementById('bankDepPreview');
+            if (!prev) return;
+            if (v > 0) {
+                prev.innerHTML = `<strong>${_fmtDate(dueD)}</strong>에 🍪<strong>${v}</strong>과 이자 🎫<strong>${interest}장</strong>을 받아요!`;
+            } else {
+                prev.innerHTML = '<span style="color:#aaa;">금액을 입력하면 예상 수령액이 표시돼요</span>';
+            }
+        }
+        function _updateLoanPreview() {
+            const v = parseInt(document.getElementById('bankLoanAmt')?.value) || 0;
+            const _effR = _bankGetEffectiveRates(_bankGetCfg(), _bankGetMyGrade());
+            const _selLoanPeriod = parseInt(document.querySelector('#bankLoanPeriodBtns button[data-selected]')?.dataset.period || '7');
+            const _lRate = (_effR.loanRates && _effR.loanRates[_selLoanPeriod]) ?? _effR.loanRate ?? 18;
+            const interest = Math.floor(v * _lRate / 100);
+            const dueD = _bankAddDays(_bankToday(), _selLoanPeriod);
+            const prev = document.getElementById('bankLoanPreview');
+            if (!prev) return;
+            if (v > 0) {
+                prev.innerHTML = `<strong>${_fmtDate(dueD)}</strong>까지 🍪<strong>${v}</strong>과 이자 🍪<strong>${interest}</strong>를 갚아야 해요!`;
+            } else {
+                prev.innerHTML = '<span style="color:#aaa;">금액을 입력하면 상환 금액이 표시돼요</span>';
+            }
+        }
+
+        // 미리보기 이벤트 연결 + 저장 상태 복원
+        setTimeout(() => {
+            const depAmt = document.getElementById('bankDepAmt');
+            if (depAmt) { depAmt.oninput = _updateDepPreview; _updateDepPreview(); }
+            const loanAmt = document.getElementById('bankLoanAmt');
+            if (loanAmt) { loanAmt.oninput = _updateLoanPreview; _updateLoanPreview(); }
+            // 취소 패널 열림 상태 복원
+            if (window._bankCancelPanelOpen) {
+                const p = document.getElementById('bankCancelPanel');
+                if (p) p.style.display = '';
+            }
+        }, 100);
+    };
+
+    window._bankSelectLoanPeriod = function(days, btn) {
+        document.querySelectorAll('#bankLoanPeriodBtns button').forEach(b => {
+            delete b.dataset.selected;
+            b.style.background = '#fff';
+            b.style.color = '';
+            b.style.borderColor = '#ffab40';
+        });
+        btn.dataset.selected = '1';
+        btn.style.background = '#c62828';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#c62828';
+        try { localStorage.setItem('bankLoanPeriod', btn.dataset.period); } catch(_) {}
+        if (typeof _updateLoanPreview === 'function') _updateLoanPreview();
+    };
+
+    window._bankToggleCancelPanel = function() {
+        const panel = document.getElementById('bankCancelPanel');
+        const btn   = document.getElementById('bankCancelPanelBtn');
+        if(!panel) return;
+        const open = panel.style.display !== 'none';
+        panel.style.display = open ? 'none' : '';
+        window._bankCancelPanelOpen = !open;
+        if(btn) btn.textContent = open ? '✕ 중도 취소' : '▲ 닫기';
+    };
+
+    window._bankToggleRepayPanel = function() {
+        const panel = document.getElementById('bankRepayPanel');
+        const btn   = document.getElementById('bankRepayPanelBtn');
+        if(!panel) return;
+        const open = panel.style.display !== 'none';
+        panel.style.display = open ? 'none' : '';
+        if(btn) btn.textContent = open ? '💸 조기 상환' : '▲ 닫기';
+    };
+
+    window._bankSwitchTab = function(tab) {
+        const dp = document.getElementById('bankPanelDep');
+        const lp = document.getElementById('bankPanelLoan');
+        const db_ = document.getElementById('bankTabDepBtn');
+        const lb_ = document.getElementById('bankTabLoanBtn');
+        if (!dp || !lp) return;
+        if (tab === 'dep') {
+            dp.style.display = ''; lp.style.display = 'none';
+            if (db_) { Object.assign(db_.style, {background:'#2e7d32', color:'#fff', borderColor:'#2e7d32'}); }
+            if (lb_) { Object.assign(lb_.style, {background:'#fff', color:'#999', borderColor:'#ddd'}); }
+        } else {
+            dp.style.display = 'none'; lp.style.display = '';
+            if (lb_) { Object.assign(lb_.style, {background:'#c62828', color:'#fff', borderColor:'#c62828'}); }
+            if (db_) { Object.assign(db_.style, {background:'#fff', color:'#999', borderColor:'#ddd'}); }
+        }
+        try { localStorage.setItem('bankActiveTab', tab); } catch(_) {}
+    };
+
+    // 기간 버튼 선택
+    window._bankSelectPeriod = function(period, btn) {
+        document.querySelectorAll('#bankPeriodBtns button').forEach(b => {
+            delete b.dataset.selected;
+            Object.assign(b.style, { background:'#fff', color:'', borderColor:'#aed581' });
+        });
+        btn.dataset.selected = '1';
+        Object.assign(btn.style, { background:'#2e7d32', color:'#fff', borderColor:'#2e7d32' });
+        try { localStorage.setItem('bankDepPeriod', period); } catch(_) {}
+        if (typeof _updateDepPreview === 'function') _updateDepPreview();
+    };
+
+    window._bankApplyDeposit = async function() {
+        if (typeof me === 'undefined' || !me) { alert('학생 정보를 불러오는 중입니다.'); return; }
+        const fbKey = _getMyFbKey();
+        if (fbKey == null || fbKey === -1) { alert('학생 정보를 불러오는 중입니다.'); return; }
+        const cfg = _bankGetCfg();
+        const today = _bankToday();
+        if (cfg.endDate && today > cfg.endDate) {
+            _bankAlert('🔒', '은행 운영 종료', `은행 운영이 <strong>${cfg.endDate}</strong>에 종료되어<br>신규 예금 신청이 불가합니다.`);
+            return;
+        }
+        const amtEl = document.getElementById('bankDepAmt');
+        const amt = parseInt(amtEl?.value) || 0;
+        const selBtn = document.querySelector('#bankPeriodBtns button[data-selected]');
+        const periodDays = selBtn ? parseInt(selBtn.dataset.period) : 7;
+        if (cfg.endDate && _bankAddDays(today, periodDays) > cfg.endDate) {
+            _bankAlert('📅', '기간 초과', `선택한 기간(<strong>${periodDays}일</strong>)의 만기일이<br>은행 운영 종료일 <strong>${cfg.endDate}</strong>을 넘습니다.<br><br>더 짧은 기간을 선택해주세요.`, '#e65100');
+            return;
+        }
+        const balance = _bankGetMyCookieBalance();
+        if (amt <= 0) { alert('예금할 쿠키 수를 입력하세요.'); return; }
+        if (amt > balance) { alert(`보유 쿠키가 부족합니다. (보유: 🍪${balance})`); return; }
+        const dueDate = _bankAddDays(today, periodDays);
+        const bank = _bankGetStudentData(me);
+        const dep = { id: 'd' + Date.now(), amount: amt, date: today, dueDate, periodDays, settled: false };
+        bank.deposits.push(dep);
+        me.cookie = (me.cookie || 0) - amt;
+        await _bankCommit(fbKey, { [`stu/${fbKey}/bank`]: bank, [`stu/${fbKey}/cookie`]: me.cookie });
+        // _bankCommit이 DOM 교체 후 → 새 요소로 재조회
+        const st = document.getElementById('bankDepStatus');
+        if (st) { st.style.color = '#2e7d32'; st.textContent = `✅ 🍪${amt} 예금 완료 (${periodDays}일 / 만기: ${dueDate})`; }
+        const _newAmtEl = document.getElementById('bankDepAmt');
+        if (_newAmtEl) _newAmtEl.value = '';
+    };
+
+    // 중도취소
+    window._bankCancelDeposit = function(depId) {
+        if (typeof me === 'undefined' || !me) return;
+        const bank = _bankGetStudentData(me);
+        const dep = bank.deposits.find(d => d.id === depId);
+        if (!dep) return;
+        // 예쁜 확인 모달
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML = `
+            <div style="background:#fff;border-radius:24px;padding:32px 28px;max-width:320px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.25);animation:_tbModalPop 0.22s cubic-bezier(.34,1.56,.64,1);">
+                <div style="font-size:52px;margin-bottom:12px;">😢</div>
+                <div style="font-size:18px;font-weight:900;color:#c62828;margin-bottom:10px;">예금 중도취소</div>
+                <div style="font-size:14px;color:#555;line-height:1.7;margin-bottom:8px;">
+                    <strong>🍪${dep.amount}</strong> 을 중도취소하면<br>
+                    이자(<strong>🎫</strong>)는 지급되지 않아요.<br>
+                    원금 <strong>🍪${dep.amount}</strong>만 돌려받습니다.
+                </div>
+                <div style="font-size:12px;color:#aaa;margin-bottom:20px;">만기일: ${dep.dueDate}</div>
+                <div style="display:flex;gap:10px;justify-content:center;">
+                    <button id="_bankCancelNo" style="flex:1;padding:12px;background:#f5f5f5;border:none;border-radius:14px;font-size:15px;font-weight:bold;cursor:pointer;color:#666;">🙅 취소</button>
+                    <button id="_bankCancelYes" style="flex:1;padding:12px;background:linear-gradient(90deg,#c62828,#e53935);border:none;border-radius:14px;font-size:15px;font-weight:bold;cursor:pointer;color:#fff;">✅ 확인</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#_bankCancelNo').onclick = () => document.body.removeChild(overlay);
+        overlay.querySelector('#_bankCancelYes').onclick = async () => {
+            document.body.removeChild(overlay);
+            const fbKey = _getMyFbKey();
+            if (fbKey == null || fbKey === -1) return;
+            dep.cancelled = true;
+            me.cookie = (me.cookie || 0) + dep.amount;
+            await _bankCommit(fbKey, { [`stu/${fbKey}/bank`]: bank, [`stu/${fbKey}/cookie`]: me.cookie });
+        };
+    };
+
+    window._bankApplyLoan = async function() {
+        if (typeof me === 'undefined' || !me) { alert('학생 정보를 불러오는 중입니다.'); return; }
+        const fbKey = _getMyFbKey();
+        if (fbKey == null || fbKey === -1) { alert('학생 정보를 불러오는 중입니다.'); return; }
+        const cfg = _bankGetCfg();
+        const today = _bankToday();
+        if (cfg.endDate && today > cfg.endDate) {
+            _bankAlert('🔒', '은행 운영 종료', `은행 운영이 <strong>${cfg.endDate}</strong>에 종료되어<br>신규 대출 신청이 불가합니다.`);
+            return;
+        }
+        const eff = _bankGetEffectiveRates(cfg, _bankGetMyGrade());
+        const amtEl = document.getElementById('bankLoanAmt');
+        const amt = parseInt(amtEl?.value) || 0;
+        const cookieBal = _bankGetMyCookieBalance();
+        const loanLimit = _bankGetLoanLimit(cfg, _bankGetMyGrade(), me.cookie || 0);
+        if (amt <= 0) { alert('대출할 쿠키 수를 입력하세요.'); return; }
+        if (amt > loanLimit) { alert(`대출 한도를 초과합니다. (한도: 🍪${loanLimit})`); return; }
+        const _loanSelBtn = document.querySelector('#bankLoanPeriodBtns button[data-selected]');
+        const loanPeriod = _loanSelBtn ? parseInt(_loanSelBtn.dataset.period) : (cfg.periodDays || 7);
+        const dueDate = _bankAddDays(today, loanPeriod);
+        if (cfg.endDate && dueDate > cfg.endDate) {
+            _bankAlert('📅', '기간 초과', `선택한 기간(<strong>${loanPeriod}일</strong>)의 만기일이<br>은행 운영 종료일 <strong>${cfg.endDate}</strong>을 넘습니다.<br><br>더 짧은 기간을 선택해주세요.`, '#e65100');
+            return;
+        }
+        const _loanRateForPeriod = (eff.loanRates && eff.loanRates[loanPeriod]) ?? eff.loanRate ?? 18;
+        const interest = Math.floor(amt * _loanRateForPeriod / 100);
+        // 신규 모델: remaining = 원금만, interest 별도 저장 (당일 상환 시 이자 면제)
+        const bank = _bankGetStudentData(me);
+        const ln = { id: 'l' + Date.now(), amount: amt, date: today, dueDate, periodDays: loanPeriod, remaining: amt, interest, interestPaid: false, overdue: false, shopBanUntil: null };
+        bank.loans.push(ln);
+        me.cookie = (me.cookie || 0) + amt;
+        await _bankCommit(fbKey, { [`stu/${fbKey}/bank`]: bank, [`stu/${fbKey}/cookie`]: me.cookie });
+        // _bankCommit이 DOM 교체 후 → 새 요소로 재조회
+        const st = document.getElementById('bankLoanStatus');
+        if (st) { st.style.color = '#1565c0'; st.textContent = `✅ 🍪${amt} 대출 완료 (당일 상환 시 이자 무료 · 만기: ${dueDate})`; }
+        const _newLoanAmtEl = document.getElementById('bankLoanAmt');
+        if (_newLoanAmtEl) _newLoanAmtEl.value = '';
+    };
+
+    // 공통 은행 알림 모달
+    function _bankAlert(emoji, title, msg, color) {
+        color = color || '#c62828';
+        const ov = document.createElement('div');
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        ov.innerHTML = `<div style="background:#fff;border-radius:24px;padding:32px 26px;max-width:300px;width:88%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.25);animation:_tbModalPop 0.2s cubic-bezier(.34,1.56,.64,1);">
+            <div style="font-size:52px;margin-bottom:10px;">${emoji}</div>
+            <div style="font-size:17px;font-weight:900;color:${color};margin-bottom:10px;">${title}</div>
+            <div style="font-size:13px;color:#555;line-height:1.7;margin-bottom:20px;">${msg}</div>
+            <button style="width:100%;padding:12px;background:${color};color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:bold;cursor:pointer;">확인</button>
+        </div>`;
+        document.body.appendChild(ov);
+        ov.querySelector('button').onclick = () => ov.remove();
+        ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+    }
+
+    // 상환 미니창
+    window._bankOpenRepayModal = function(loanId, totalDue, interestDue) {
+        const cookieBal = _bankGetMyCookieBalance();
+        const tkBal = (typeof me !== 'undefined' && me)
+            ? (Array.isArray(me.inv) ? me.inv.filter(it => it && it.n === '상점 이용권' && it.st === 'active').length : 0)
+            : 0;
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        overlay.innerHTML = `
+            <div style="background:#fff;border-radius:24px;padding:28px 24px;max-width:340px;width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.25);animation:_tbModalPop 0.22s cubic-bezier(.34,1.56,.64,1);">
+                <div style="font-size:42px;text-align:center;margin-bottom:8px;">💸</div>
+                <div style="font-size:18px;font-weight:900;color:#c62828;text-align:center;margin-bottom:6px;">조기 상환</div>
+                <div style="font-size:12px;color:#888;text-align:center;margin-bottom:18px;">총 상환액 🍪${totalDue}${interestDue ? ` (이자 🍪${interestDue} 포함)` : ''}</div>
+
+                <!-- 쿠키 상환 -->
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:13px;font-weight:bold;color:#c62828;margin-bottom:6px;">🍪 쿠키로 상환 <span style="font-size:11px;font-weight:normal;color:#aaa;">(보유 ${cookieBal}개)</span></div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" id="_rpModal_kc" value="${Math.min(totalDue, cookieBal)}" min="0" max="${Math.min(totalDue, cookieBal)}"
+                            style="flex:1;padding:10px 14px;border:2px solid #ef9a9a;border-radius:12px;font-size:16px;font-weight:bold;outline:none;font-family:'Jua';">
+                        <button onclick="_bankRepayFromModal('${loanId}','kc')" style="padding:10px 18px;background:linear-gradient(90deg,#c62828,#e53935);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;white-space:nowrap;box-shadow:0 3px 0 #7f0000;">상환</button>
+                    </div>
+                </div>
+
+                <!-- 이용권 상환 -->
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:13px;font-weight:bold;color:#6d4c41;margin-bottom:6px;">🎫 상점 이용권으로 상환 <span style="font-size:11px;font-weight:normal;color:#aaa;">(보유 ${tkBal}장)</span></div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" id="_rpModal_tk" value="${Math.min(totalDue, tkBal)}" min="0" max="${Math.min(totalDue, tkBal)}"
+                            style="flex:1;padding:10px 14px;border:2px solid #d7ccc8;border-radius:12px;font-size:16px;font-weight:bold;outline:none;font-family:'Jua';">
+                        <button onclick="_bankRepayFromModal('${loanId}','tk')" style="padding:10px 18px;background:#6d4c41;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:bold;cursor:pointer;white-space:nowrap;box-shadow:0 3px 0 #3e2723;">상환</button>
+                    </div>
+                </div>
+
+                <button id="_rpModalClose" style="width:100%;padding:12px;background:#f5f5f5;border:none;border-radius:14px;font-size:15px;font-weight:bold;cursor:pointer;color:#666;">닫기</button>
+            </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('#_rpModalClose').onclick = () => document.body.removeChild(overlay);
+        window._bankRepayModalOverlay = overlay;
+        window._bankRepayModalLoanId = loanId;
+    };
+
+    window._bankRepayFromModal = async function(loanId, currency) {
+        const amtEl = document.getElementById(`_rpModal_${currency}`);
+        const amt = parseInt(amtEl?.value) || 0;
+        if (amt <= 0) { alert('상환할 금액을 입력하세요.'); return; }
+        const overlay = window._bankRepayModalOverlay;
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        await window._bankRepay(loanId, currency, amt);
+    };
+
+    window._bankRepay = async function(loanId, currency, amt) {
+        if (typeof me === 'undefined' || !me) return;
+        const fbKey = _getMyFbKey();
+        if (fbKey == null || fbKey === -1) return;
+        amt = parseInt(amt) || 0;
+        if (amt <= 0) { alert('상환할 금액을 입력하세요.'); return; }
+        const bank = _bankGetStudentData(me);
+        const ln = bank.loans.find(l => l.id === loanId);
+        if (!ln) return;
+
+        // 당일/익일 이자 분기: ln.interest 필드 있으면 신규 모델
+        const today = _bankToday();
+        const isNewModel = ln.interest != null;
+        const interestDue = isNewModel && today > ln.date && !ln.interestPaid ? (ln.interest || 0) : 0;
+        const totalDue = ln.remaining + interestDue;
+
+        // 이자 미납 시 이자 이상 금액 요구
+        if (interestDue > 0 && amt < interestDue) {
+            alert(`이자 🍪${interestDue}를 먼저 납부해야 합니다. (최소 입력: ${interestDue})`);
+            return;
+        }
+
+        const pay = Math.min(amt, totalDue);
+        if (pay <= 0) return;
+
+        // 통화별 잔액 확인 및 차감
+        if (currency === 'tk') {
+            const _inv = Array.isArray(me.inv) ? me.inv : [];
+            const _tkItems = _inv.filter(it => it && it.n === '상점 이용권' && it.st === 'active');
+            const tkBal = _tkItems.length;
+            if (pay > tkBal) { alert(`상점 이용권이 부족합니다. (보유: 🎫${tkBal}장, 필요: 🎫${pay}장)`); return; }
+            // inv에서 이용권 pay개 제거
+            let toRemove = pay;
+            me.inv = _inv.filter(it => {
+                if (toRemove > 0 && it && it.n === '상점 이용권' && it.st === 'active') {
+                    toRemove--;
+                    return false;
+                }
+                return true;
+            });
+        } else {
+            const bal = _bankGetMyCookieBalance();
+            if (pay > bal) { alert(`쿠키가 부족합니다. (보유: 🍪${bal}, 필요: 🍪${pay})`); return; }
+            me.cookie = (me.cookie || 0) - pay;
+        }
+
+        // 이자 먼저 차감 후 나머지 원금 상환
+        let payLeft = pay;
+        if (interestDue > 0) {
+            payLeft -= interestDue;
+            ln.interestPaid = true;
+        }
+        ln.remaining = Math.max(0, ln.remaining - payLeft);
+
+        const _repayUpdates = { [`stu/${fbKey}/bank`]: bank };
+        if (currency === 'tk') _repayUpdates[`stu/${fbKey}/inv`] = me.inv;
+        else _repayUpdates[`stu/${fbKey}/cookie`] = me.cookie;
+        await _bankCommit(fbKey, _repayUpdates);
+    };
+
+    // ─── 학생 메뉴 가시성 (날짜 기반 자동 제어) ───
+    const _origRefreshEventMenus = window._refreshEventMenus;
+    window._refreshEventMenus = function() {
+        if (_origRefreshEventMenus) _origRefreshEventMenus();
+        const bankBtn = document.getElementById('menuBankBtn');
+        if (!bankBtn) return;
+        const cfg = _bankGetCfg();
+        const today = _bankToday();
+        if (!cfg.startDate || today < cfg.startDate) { bankBtn.style.display = 'none'; return; }
+        if (cfg.endDate && today > cfg.endDate) {
+            bankBtn.style.display = 'none'; // 기간 종료 후 모든 학생 탭 숨김
+        } else {
+            bankBtn.style.display = '';
+        }
+    };
+
+    // ── 로딩 중 s_char 미리 렌더 ──
+    // 스크립트 로드 직후 lazy 캐시만 동기 복원 — me 설정 금지 (auto-login 흐름 보호)
+    // rChar()는 _handleDbUpdate auto-login 경로에서 appS show 직전에 호출
+    (function _preloadCaches() {
+        try {
+            if (window._isTeacherSession) return;
+            // lazy 정적 데이터를 localStorage에서 동기 복원 (avt·bdg·tit·petDef)
+            ['avt', 'bdg', 'tit', 'petDef', 'spPetDef'].forEach(function(p) {
+                if (db[p] && db[p].length) return;
+                try {
+                    const _cv = localStorage.getItem('_lz_' + p + '_v');
+                    if (_cv) { const _parsed = JSON.parse(_cv); if (Array.isArray(_parsed) && _parsed.length) db[p] = _parsed; }
+                } catch(_){}
+            });
+            if (!db.gac || !db.gac.length) { try { const _gv=localStorage.getItem('_gac_v'); if(_gv){const _gp=JSON.parse(_gv);if(Array.isArray(_gp)&&_gp.length)db.gac=_gp;} } catch(_){} }
+            if (!db.itm || !db.itm.length) { try { const _iv=localStorage.getItem('_itm_v'); if(_iv){const _ip=JSON.parse(_iv);if(Array.isArray(_ip)&&_ip.length)db.itm=_ip;} } catch(_){} }
+            // rank 캐시 복원 → pre-render 시 rank:true → rank fetch 재렌더 없음
+            if (!window._rankCache) { try { const _rv=localStorage.getItem('_rankCache_v'); if(_rv){const _rp=JSON.parse(_rv);if(Array.isArray(_rp)&&_rp.length)window._rankCache=_rp;} } catch(_){} }
+        } catch(_){}
+    })();
+
 </script>
 
 
@@ -52540,7 +54398,7 @@ window.addCharRow = function() {
 
                 targetTotal = Math.floor(currentUser.cookie / 10) + currentUser.extra;
                 document.getElementById('stNameDisplay').innerText = currentUser.name;
-                document.getElementById('pointInfo').innerText = `가용 포인트: ${targetTotal} (Lv.${Math.floor(currentUser.cookie/10)} + 특별 ${currentUser.extra})`;
+                document.getElementById('pointInfo').innerText = `가용 포인트: ${targetTotal} (Lv.${Math.max(0, Math.floor(currentUser.cookie/10))} + 특별 ${currentUser.extra})`;
                 
                 // 3. Firebase에서 저장된 스탯 가져와서 UI 적용
                 if(dbUser.stats) {
@@ -52683,7 +54541,7 @@ window.addCharRow = function() {
             users.forEach(user => {
                 const code = user.code;
                 const stat = user.stats || {s:0, r:0, p:0, h:1};
-                const lv = Math.floor(user.cookie/10);
+                const lv = Math.max(0, Math.floor(user.cookie/10));
                 const ex = parseInt(user.extra)||0;
                 const atk = stat.s>=20?4:stat.s>=10?3:2, rec = stat.r>=20?2:stat.r>=10?1:0, def = stat.p>=20?2:stat.p>=10?1:0;
                 const checkMark = (lv+ex === stat.s+stat.r+stat.p+stat.h) ? "○" : "×";
@@ -52815,7 +54673,7 @@ window.addCharRow = function() {
             };
             document.getElementById('studentSection').style.display = 'none';
             document.getElementById('gameSection').style.display = 'block';
-            const lv = Math.floor((currentUser.cookie||0)/10);
+            const lv = Math.max(0, Math.floor((currentUser.cookie||0)/10));
             document.getElementById('heroName').innerHTML = `<span class="pill">Lv.${lv}</span> ${currentUser.name||'쌍검 전사'} ✌`;
             showTitleScreen();
         }
@@ -53096,7 +54954,7 @@ window.addCharRow = function() {
 
             const mp = document.getElementById('modalPanel');
             mp.style.display='flex';
-            const lv = Math.floor((currentUser.cookie||0)/10);
+            const lv = Math.max(0, Math.floor((currentUser.cookie||0)/10));
             mp.innerHTML = `
                 <div class="victory-card">
                     <div style="text-align:center;">
