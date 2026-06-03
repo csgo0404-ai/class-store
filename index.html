@@ -4456,7 +4456,7 @@ let _renderLock = false; // 재진입 방지
                 // 이전 캐시 대비 학생 수 급감 방지 — 리스너 재연결 중 불완전 db.stu 저장 차단
                 try {
                     const _prev = JSON.parse(localStorage.getItem('_teacherStuCache') || '[]');
-                    if (Array.isArray(_prev) && _prev.length > 2 && _toSave.length < _prev.length * 0.7) {
+                    if (Array.isArray(_prev) && _prev.length > 4 && _toSave.length < _prev.length * 0.7) {
                         console.warn('[saveStuCache] blocked: count drop', _prev.length, '->', _toSave.length);
                         return;
                     }
@@ -21989,21 +21989,27 @@ window.addCharRow = function() {
         };
         // 용사 랭킹 클릭 시: 다했니 API로 전체 학생 레벨 즉시 갱신 후 렌더
         const _isLightStudent = !window._isTeacherSession && !window._rpgStudentStuFull;
+        // sync 완료 후 모달이 열려있으면 현재 페이지 유지하며 카드만 갱신
+        const _refreshOpenModal = () => {
+            const _modal = document.querySelector('[data-rank-modal]');
+            if(!_modal) return; // 사용자가 닫았으면 무시
+            _render(); // 재렌더 (모달 내부에서 page 변수는 새로 시작하지만 사용자가 1페이지면 무방)
+        };
         if(!_isLightStudent && window._refreshAllStu && !window._rankFetchedThisSession) {
             try {
                 window._refreshAllStu().finally(async () => {
                     window._rankFetchedThisSession = true;
                     window._lastStuRefresh = Date.now();
-                    _render(); // Firebase 로드 후 즉시 렌더
+                    _render();
                     try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
-                    _render(); // 다했니 sync 완료 후 갱신
+                    _refreshOpenModal();
                 });
             } catch(_){ _render(); }
         } else {
-            _render(); // 기존 캐시로 즉시 렌더
+            _render();
             (async () => {
                 try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
-                _render(); // 다했니 sync 완료 후 갱신
+                _refreshOpenModal();
             })();
         }
     };
