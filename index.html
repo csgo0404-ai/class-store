@@ -1126,7 +1126,7 @@
         <div class="menu" onclick="nav('t_col',this)">📖 도감 관리</div>
         <div id="menu_avt" class="menu" onclick="nav('t_avt',this)" style="position:relative;">🖨️ 아바타 관리</div>
         <div class="menu" onclick="nav('t_plz',this)">💌 광장 관리</div>
-        <div class="menu" id="menu_bank" onclick="nav('t_bank',this)">🏦 은행 관리</div>
+        <div class="menu" id="menu_bank" onclick="nav('t_bank',this)">💰️ 은행 관리</div>
         <div class="menu" onclick="nav('t_events',this)">🎉 이벤트 관리</div>
         <button class="btn btn-gray" onclick="localStorage.removeItem('teacherLogged');location.reload();" style="margin-top:auto; width:100%">로그아웃</button>
     </div>   
@@ -1789,7 +1789,7 @@
 
         <div id="t_bank" class="hidden">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-                <h2 style="margin:0;">🏦 은행 관리</h2>
+                <h2 style="margin:0;">💰️ 은행 관리</h2>
                 <div id="bankRunStatus" style="font-size:13px;font-weight:bold;padding:6px 14px;border-radius:10px;background:#f5f5f5;color:#888;">-</div>
             </div>
             <!-- ── 학생별 현황 (상단) ── -->
@@ -1970,13 +1970,13 @@
         <div class="menu" onclick="navS('s_bg',this)">🎒 가방</div>
         <div class="menu" id="menuColBtn" onclick="navS('s_col',this)" style="display:none;">📖 도감</div>
         <div class="menu" onclick="navS('s_sh',this)">🎪 상점</div>
+        <div class="menu" id="menuBankBtn" onclick="navS('s_bank',this)" style="display:none;">💰️ 은행</div>
         <div class="menu" onclick="navS('s_plz',this)">💌 광장</div>
         <div class="menu" id="menuFashionBtn" onclick="navS('s_fashion',this)" style="display:none;">👗 패션쇼</div>
         <div class="menu" id="menuTimeBankBtn" onclick="navS('s_tbank',this)" style="display:none;">🐷 순공통장</div>
         <div class="menu" id="menuGababoBtn" onclick="navS('s_gababo',this)" style="display:none;">⚔ 가바보 용사</div>
         <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 RPG 축제</div>
         <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💘 마니또</div>
-        <div class="menu" id="menuBankBtn" onclick="navS('s_bank',this)" style="display:none;">🏦은행</div>
 
         
     </div>
@@ -3130,6 +3130,8 @@ let _renderLock = false; // 재진입 방지
                 if(_sc && !_sc.classList.contains('hidden')) { try { window._debouncedRChar(); } catch(_){} }
                 const _sb = document.getElementById('s_bg');
                 if(_sb && !_sb.classList.contains('hidden')) { try { rBg(); } catch(_){} }
+                const _ssh = document.getElementById('s_sh');
+                if(_ssh && !_ssh.classList.contains('hidden')) { try { rSh(); } catch(_){} }
             }
         } catch(e){}
     }
@@ -3148,6 +3150,7 @@ let _renderLock = false; // 재진입 방지
         const _rankSrc = (Array.isArray(window._rankCache) && window._rankCache.length) ? window._rankCache : _rawStu;
         const targets = _rankSrc.filter(s => s && s.cd && s.cd !== 'teacher_main');
         if(!targets.length) return;
+        let _anyChanged = false;
         for(const s of targets) {
             try {
                 const res = await fetch('https://api.dahandin.com/openapi/v1/get/student/total?code=' + s.cd, { headers: { 'X-API-Key': key } });
@@ -3158,6 +3161,7 @@ let _renderLock = false; // 재진입 방지
                 const newUsed = json.data.usedCookie || 0;
                 const prev = window._localLevelCache[s.cd];
                 if(!prev || prev.cookie !== newCookie || prev.usedCookie !== newUsed) {
+                    _anyChanged = true;
                     window._localLevelCache[s.cd] = { cookie: newCookie, usedCookie: newUsed };
                     if(Array.isArray(window._rankCache)) {
                         const rc = window._rankCache.find(r => r && r.cd === s.cd);
@@ -3170,12 +3174,20 @@ let _renderLock = false; // 재진입 방지
                         try { window._checkLevelupCookie && window._checkLevelupCookie(_prevCookie); } catch(_){}
                         if(typeof upMe === 'function') upMe();
                         if(typeof updateNameTag === 'function') updateNameTag();
-                        const _sc = document.getElementById('s_char');
-                        if(_sc && !_sc.classList.contains('hidden')) { try { window._debouncedRChar(); } catch(_){} }
+                        const _sb = document.getElementById('s_bg');
+                        if(_sb && !_sb.classList.contains('hidden')) { try { rBg(); } catch(_){} }
+                        const _ssh2 = document.getElementById('s_sh');
+                        if(_ssh2 && !_ssh2.classList.contains('hidden')) { try { rSh(); } catch(_){} }
                     }
                 }
             } catch(_){}
         }
+        // 변경이 있으면 현재 열린 탭 즉시 재렌더
+        if(_anyChanged) {
+            const _sc = document.getElementById('s_char');
+            if(_sc && !_sc.classList.contains('hidden')) { try { window._debouncedRChar(); } catch(_){} }
+        }
+        return _anyChanged; // 호출자가 재렌더 여부 판단에 사용
     }
     window._syncAllLevelsSilent = _syncAllLevelsSilent;
     function _startGlobalLevelPoll() {
@@ -3184,7 +3196,7 @@ let _renderLock = false; // 재진입 방지
             if(document.visibilityState === 'hidden') return;
             const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
             if(!isStudentView) { clearInterval(_globalLevelPollTimer); _globalLevelPollTimer = null; return; }
-            _syncAllLevelsSilent();
+            _syncAllLevelsSilent(); // me.cd 포함 전체 학생 쿠키 갱신 + 현재 탭 재렌더 처리
         }, 60000); // 1분
     }
     window._startGlobalLevelPoll = _startGlobalLevelPoll;
@@ -3195,6 +3207,44 @@ let _renderLock = false; // 재진입 방지
     // 노출 — 탭 진입 시 즉시 동기화에 사용
     window._syncAllCookiesSilent = syncAllCookiesSilent;
     window._syncMyCookieSilent = syncMyCookieSilent;
+
+    // 지정 학생 코드 목록의 /rank/{cd} 를 개별 fetch → _rankCache 업데이트
+    // 교사/풀모드는 db.stu 사용 → 스킵. 모달·용사 탭·폴링 공용.
+    // 반환값: 아바타 관련 데이터(eq/displayPets/displayProps)가 실제 변경됐으면 true
+    window._fetchRankForCds = async function(cds) {
+        if(window._isTeacherSession || window._rpgStudentStuFull) return false;
+        if(!cds || !cds.length) return false;
+        let _avatarChanged = false;
+        await Promise.all(cds.map(async cd => {
+            try {
+                const snap = await dbRef.child('rank/' + cd).once('value');
+                const v = snap.val();
+                if(!v || !v.nm) return;
+                if(!Array.isArray(window._rankCache)) window._rankCache = [];
+                const idx = window._rankCache.findIndex(r => r && r.cd === cd);
+                if(idx >= 0) {
+                    const _r = window._rankCache[idx];
+                    // cookie/usedCookie는 다했니 API(_syncAllLevelsSilent)가 관리 → 무조건 보존
+                    const _savedCookie = _r.cookie;
+                    const _savedUsedCookie = _r.usedCookie;
+                    const _prevEq    = JSON.stringify(_r.eq);
+                    const _prevPets  = JSON.stringify(_r.displayPets);
+                    const _prevProps = JSON.stringify(_r.displayProps);
+                    Object.assign(_r, v);
+                    _r.cookie = _savedCookie;           // Firebase /rank 쿠키 무시 (항상 스테일)
+                    _r.usedCookie = _savedUsedCookie;
+                    if(JSON.stringify(_r.eq) !== _prevEq ||
+                       JSON.stringify(_r.displayPets) !== _prevPets ||
+                       JSON.stringify(_r.displayProps) !== _prevProps) _avatarChanged = true;
+                } else {
+                    // 새 항목: Firebase 쿠키로 초기화 (_syncAllLevelsSilent가 이후 교정)
+                    window._rankCache.push(Object.assign({ cd }, v));
+                    _avatarChanged = true;
+                }
+            } catch(_){}
+        }));
+        return _avatarChanged;
+    };
 
     // 전역 툴팁 (data-tooltip 속성, overflow:hidden 부모도 정상 표시)
     document.addEventListener('mouseover', e => {
@@ -3673,6 +3723,17 @@ let _renderLock = false; // 재진입 방지
                 db[p] = v || {};
             } else {
                 db[p] = v;
+            }
+            // cfg 로드 직후 광장 방 배경 이미지 선점 preload (탭 진입 전에 캐시 적재)
+            if(p === 'cfg' && db.cfg && db.cfg.plzRooms) {
+                try {
+                    Object.values(db.cfg.plzRooms).forEach(meta => {
+                        const bg = meta && meta.plz && meta.plz.customBg;
+                        if(bg && typeof bg === 'string' && bg.startsWith('http')) {
+                            const _img = new Image(); _img.decoding = 'async'; _img.src = bg;
+                        }
+                    });
+                } catch(_){}
             }
             // 초기 fetch 직후 hash 동기화 — sv()가 변경 없는 데이터를 불필요하게 첫 write하는 사고 방지
             // (sv()는 첫 호출 시 lazy-init 하므로 여기서 미리 객체를 생성해야 동기화가 유효함)
@@ -5288,10 +5349,10 @@ let _renderLock = false; // 재진입 방지
     // 본인 보유분은 _preloadAvatarImages가 즉시, 미보유분은 여기서 유휴 시 → 상점이 예전처럼 즉시 표시.
     // 초기 로딩/렌더 경로를 막지 않음(requestIdleCallback). 불변 URL이라 기기당 최초 1회만 실제 다운로드.
     let _catalogIdleWarmed = false;
-    function _idlePrefetchCatalog() {
-        if(_catalogIdleWarmed) return;
+    function _idlePrefetchCatalog(immediate) {
+        if(_catalogIdleWarmed) return; // 최초 1회만
         const _avt = db.avt || [];
-        if(!_avt.length) return; // 카탈로그 미로드 — 다음 호출에서 재시도
+        if(!_avt.length) return; // 데이터 없으면 항상 스킵 (다음 호출에서 재시도)
         _catalogIdleWarmed = true;
         const _warm = () => {
             _avt.forEach(a => {
@@ -5306,9 +5367,11 @@ let _renderLock = false; // 재진입 방지
                 });
             });
         };
+        if(immediate) { _warm(); return; }
         if(typeof requestIdleCallback === 'function') requestIdleCallback(_warm, { timeout: 4000 });
         else setTimeout(_warm, 2500);
     }
+    window._idlePrefetchCatalog = _idlePrefetchCatalog;
 
     // ===== 골든티켓·달고나 도착 알림 팝업 (한 세션당 1회) =====
     window._showCouponArrivalPopup = function() {
@@ -7406,7 +7469,7 @@ let _renderLock = false; // 재진입 방지
             d.setDate(d.getDate() + 1);
         }
 
-        const cellsHtml = days.map(dt => {
+        const cellsHtml = days.map((dt, idx) => {
             const isChecked = checkedDates.includes(dt);
             const isHoliday = _holsModal.has(dt);
             const isFuture = dt > today;
@@ -7414,13 +7477,18 @@ let _renderLock = false; // 재진입 방지
             const _dObj = new Date(dt + 'T12:00:00');
             const _label = `${_dObj.getMonth()+1}/${_dObj.getDate()}`;
             const _dow = ['일','월','화','수','목','금','토'][_dObj.getDay()];
+            // 이전 영업일(공휴일 제외)이 모두 체크됐어야 현재 날짜 체크 가능
+            const _prevAllChecked = days.slice(0, idx)
+                .filter(d => !_holsModal.has(d) && d <= today)
+                .every(d => checkedDates.includes(d));
             let bg, color, content;
             if(isChecked) { bg = '#43A047'; color = 'white'; content = `<div style="font-size:24px;">✅</div><div style="font-size:11px;">${_label} (${_dow})</div>`; }
             else if(isHoliday) { bg = '#F5F5F5'; color = '#BDBDBD'; content = `<div style="font-size:18px;">🚩</div><div style="font-size:11px;">${_label} (${_dow})</div>`; }
             else if(isFuture) { bg = '#F5F5F5'; color = '#BDBDBD'; content = `<div style="font-size:18px;">⏳</div><div style="font-size:11px;">${_label} (${_dow})</div>`; }
+            else if(!_prevAllChecked) { bg = '#F5F5F5'; color = '#BDBDBD'; content = `<div style="font-size:18px;">🔐</div><div style="font-size:11px;">${_label} (${_dow})</div>`; }
             else { bg = isToday ? '#FFF3E0' : '#FFEBEE'; color = isToday ? '#E65100' : '#C62828'; content = `<div style="font-size:18px;">${isToday?'🔥':'📅'}</div><div style="font-size:11px;font-weight:bold;">${_label} (${_dow})</div>`; }
-            // 공휴일·미래는 클릭 불가
-            const _clickable = !isFuture && !isHoliday;
+            // 공휴일·미래·이전 미체크 시 클릭 불가
+            const _clickable = !isFuture && !isHoliday && (isChecked || _prevAllChecked);
             const _onclick = _clickable
                 ? (isChecked
                     ? `window._lockMissionUndoConfirm(${invIdx}, '${dt}')`
@@ -10890,7 +10958,16 @@ let _renderLock = false; // 재진입 방지
                     }
                 }
             } catch(_){}
-            // /rank 미러링 제거 — 레벨은 다했니 API 로컬 캐시(_localLevelCache)로만 관리
+            // /rank 아바타 미러링 — cookie는 다했니 API가 관리, 아바타 필드만 선택 동기화
+            try {
+                const _rankAvtFields = ['eq','displayPets','displayProps','equippedTit','nm'];
+                const _rankUpd = {};
+                _rankAvtFields.forEach(f => { if(f in updates) _rankUpd[f] = (_safeWithoutShopLog[f] ?? null); });
+                if(Object.keys(_rankUpd).length) {
+                    _rankUpd.cd = _safeWithoutShopLog.cd || String(key);
+                    dbRef.child('rank/' + key).update(_rankUpd);
+                }
+            } catch(_){}
             window._upMeLastHash[me.cd] = newHash;
         } catch(e) {
             console.error('[upMe] partial 실패 — 저장 건너뜀:', e);
@@ -11106,20 +11183,28 @@ let _renderLock = false; // 재진입 방지
             if(window._ensureLazyPaths) {
                 window._ensureLazyPaths(['avt','bdg','tit']).then(() => {
                     if(!document.getElementById('s_char')?.classList.contains('hidden')) {
-                        const _scI = document.getElementById('s_char_inner');
-                        const _fresh = _scI && _scI.hasChildNodes() && (Date.now() - (window._rCharLastRun||0)) < 30000;
-                        if(!_fresh) window._debouncedRChar();
+                        // time-based 체크 제거 — 해시 기반 _debouncedRChar가 변경 없으면 자동 스킵
+                        window._debouncedRChar();
                     }
                 }).catch(()=>{ window._debouncedRChar(); });
             } else {
-                const _scI2 = document.getElementById('s_char_inner');
-                const _fresh2 = _scI2 && _scI2.hasChildNodes() && (Date.now() - (window._rCharLastRun||0)) < 30000;
-                if(!_fresh2) window._debouncedRChar();
+                window._debouncedRChar();
             }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
             // 용사 탭: 전체 학생 레벨도 즉시 동기화 (랭킹 정확도) + 1분 폴링 확인
             try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(); } catch(_){}
             try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){}
+            // 랭킹 상위 5명 아바타 데이터 백그라운드 갱신 (다른 학생 캐릭터 변경 반영)
+            if(window._fetchRankForCds && window._computeRankedStudents) {
+                (async () => {
+                    const _top5 = window._computeRankedStudents().slice(0,5).map(s=>s&&s.cd).filter(Boolean);
+                    const _rankChanged = await window._fetchRankForCds(_top5);
+                    if(_rankChanged && !document.getElementById('s_char')?.classList.contains('hidden')) {
+                        window._rCharVisualHash = ''; // 실제 아바타 변경 시에만 해시 무효화
+                        window._debouncedRChar();
+                    }
+                })();
+            }
         }
         if(id==='s_bg') {
             try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){}
@@ -11138,6 +11223,7 @@ let _renderLock = false; // 재진입 방지
                 }
             } else { rBg(); }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
+            try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){}
         }
 
         if(id==='s_sh') {
@@ -11159,7 +11245,11 @@ let _renderLock = false; // 재진입 방지
                     if (_iv) { const _ip = JSON.parse(_iv); if (Array.isArray(_ip) && _ip.length) db.itm = _ip; }
                 }
             } catch(_) {}
-            try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){} try { window._ensureItmLive && window._ensureItmLive(); } catch(_){} try { window._ensureGacLive && window._ensureGacLive(); } catch(_){} rSh();
+            try { window._ensurePetSkinsLive && window._ensurePetSkinsLive(); } catch(_){} try { window._ensureItmLive && window._ensureItmLive(); } catch(_){} try { window._ensureGacLive && window._ensureGacLive(); } catch(_){}
+            try { _idlePrefetchCatalog(true); } catch(_){} // 상점 탭 진입 시 아이템 이미지 즉시 캐시 워밍
+            try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
+            try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){}
+            rSh();
         }
         if(id==='s_gababo') { try { window._ensureEventCfg && _ensureEventCfg('gababoEvent').then(()=>rGababoS()); } catch(_) { rGababoS(); } }
         if(id==='s_fashion') { try { window._ensureEventCfg && _ensureEventCfg('fashionShow').then(()=>{ try { _renderStudentFashion(); } catch(_){} try { window._fsAttachNotiListener && _fsAttachNotiListener(); } catch(_){} }); } catch(_){} }
@@ -21908,7 +21998,7 @@ window.addCharRow = function() {
 
     // 용사 랭킹: + 클릭 → 새 창(모달)으로 캐릭터 그리드 (1위부터, 가로 스크롤)
     window._openRankModal = function() {
-        const _render = () => {
+        const _render = (restorePage) => {
             const ranked = window._computeRankedStudents();
             // [타겟 프리로드] 랭킹에 뜨는 학생들의 아바타 이미지만 미리 받아 SW 캐시에 → 페이지 넘김 즉시화 (전체 카탈로그 X)
             try {
@@ -21934,7 +22024,7 @@ window.addCharRow = function() {
             const medals = ['🥇','🥈','🥉'];
             const PAGE = 5;
             const totalPages = Math.max(1, Math.ceil(ranked.length / PAGE));
-            let page = 0;
+            let page = Math.min(restorePage || 0, totalPages - 1);
             // 한 명 카드 HTML (페이지 단위로 5명만 렌더 → 스크롤·페인팅 부하 없음)
             const _cardHtml = (s, idx) => {
                 const rank = idx + 1;
@@ -21963,7 +22053,7 @@ window.addCharRow = function() {
             modal.innerHTML = `<div style="background:white;border-radius:24px;padding:22px 20px;width:min(1080px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 10px 44px rgba(0,0,0,0.25);font-family:'Jua',sans-serif;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;">
                     <div style="font-size:22px;font-weight:bold;color:#5D4037;">🏆 용사 랭킹</div>
-                    <button onclick="this.closest('[data-rank-modal]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#bbb;line-height:1;">✕</button>
+                    <button onclick="clearInterval(window._rankModalPollTimer);window._rankModalPollTimer=null;this.closest('[data-rank-modal]').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#bbb;line-height:1;">✕</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;">
                     <button id="_rkPrev" style="${_arrow}">‹</button>
@@ -21982,35 +22072,84 @@ window.addCharRow = function() {
                 pageEl.innerHTML = slice.length ? slice.map((s,i)=>_cardHtml(s, start+i)).join('') : '<div style="color:#ccc;padding:30px;text-align:center;">학생 정보가 없습니다.</div>';
                 prevBtn.style.visibility = page>0 ? 'visible' : 'hidden';
                 nextBtn.style.visibility = page<totalPages-1 ? 'visible' : 'hidden';
+                modal.dataset.currentPage = page; // 폴링 재렌더 시 페이지 복원용
             };
-            prevBtn.onclick = ()=>{ if(page>0){ page--; _draw(); } };
-            nextBtn.onclick = ()=>{ if(page<totalPages-1){ page++; _draw(); } };
+            const _navPage = async (newPage) => {
+                page = newPage; _draw(); // 캐시로 즉시 표시
+                // _computeRankedStudents()로 재계산 — 이전 ranked 클로저 의존 방지
+                const _cds = window._computeRankedStudents().slice(page*PAGE, page*PAGE+PAGE).map(s=>s&&s.cd).filter(Boolean);
+                const _changed = await window._fetchRankForCds(_cds); // 아바타 타겟 fetch
+                // 실제 변경 시에만 재빌드 (변경 없으면 _draw()로 표시한 캐시 화면 유지)
+                if(_changed && document.querySelector('[data-rank-modal]')) _render(page);
+            };
+            prevBtn.onclick = ()=>{ if(page>0) _navPage(page-1); };
+            nextBtn.onclick = ()=>{ if(page<totalPages-1) _navPage(page+1); };
             _draw();
         };
         // 용사 랭킹 클릭 시: 다했니 API로 전체 학생 레벨 즉시 갱신 후 렌더
         const _isLightStudent = !window._isTeacherSession && !window._rpgStudentStuFull;
-        // sync 완료 후 모달이 열려있으면 현재 페이지 유지하며 카드만 갱신
-        const _refreshOpenModal = () => {
+
+        // window._fetchRankForCds 공유 함수 사용 (navS s_char와 동일 로직)
+
+        // 모달 재렌더 (현재 페이지 유지)
+        const _refreshOpenModal = (pg) => {
             const _modal = document.querySelector('[data-rank-modal]');
-            if(!_modal) return; // 사용자가 닫았으면 무시
-            _render(); // 재렌더 (모달 내부에서 page 변수는 새로 시작하지만 사용자가 1페이지면 무방)
+            if(!_modal) return;
+            const _pg = pg != null ? pg : parseInt(_modal.dataset.currentPage||'0');
+            _render(_pg);
         };
+
+        // 1분 폴링 — 현재 페이지 학생 아바타 + 전체 쿠키 갱신
+        const _startModalPoll = () => {
+            clearInterval(window._rankModalPollTimer);
+            window._rankModalPollTimer = setInterval(async () => {
+                const _existingModal = document.querySelector('[data-rank-modal]');
+                if(!_existingModal) { clearInterval(window._rankModalPollTimer); window._rankModalPollTimer = null; return; }
+                const _curPage = parseInt(_existingModal.dataset.currentPage||'0');
+                const _ranked = window._computeRankedStudents();
+                const _visCds = _ranked.slice(_curPage*5, _curPage*5+5).map(s=>s&&s.cd).filter(Boolean);
+                // 현재 페이지 학생 아바타·장비 갱신 (타겟 fetch)
+                let _avatarCh = false;
+                if(_isLightStudent) {
+                    _avatarCh = await window._fetchRankForCds(_visCds);
+                } else if(window._refreshAllStu && !window._rankRefreshing) {
+                    window._rankRefreshing = true;
+                    try { await window._refreshAllStu(); _avatarCh = true; } catch(_){} finally { window._rankRefreshing = false; }
+                }
+                // 쿠키 갱신
+                let _cookieCh = false;
+                try { _cookieCh = !!(window._syncAllLevelsSilent && await window._syncAllLevelsSilent()); } catch(_){}
+                // 아바타 또는 쿠키 변경 시에만 재렌더
+                if((_avatarCh || _cookieCh) && document.querySelector('[data-rank-modal]')) _refreshOpenModal(_curPage);
+            }, 60000);
+        };
+
+        // 모달 오픈 공통 로직 — 캐시 즉시 렌더 후 현재 페이지(0) 아바타 fetch + 쿠키 갱신
+        const _openAndRefresh = () => {
+            _render(0);
+            (async () => {
+                // 1페이지(상위 5명) 아바타 즉시 갱신
+                const _top5 = window._computeRankedStudents().slice(0,5).map(s=>s&&s.cd).filter(Boolean);
+                const _avtCh = await window._fetchRankForCds(_top5);
+                // 쿠키 갱신
+                let _ckCh = false;
+                try { _ckCh = !!(window._syncAllLevelsSilent && await window._syncAllLevelsSilent()); } catch(_){}
+                // 변경 있을 때만 재렌더 (첫 오픈 시 새 항목은 _avatarChanged=true라 항상 반영됨)
+                if(_avtCh || _ckCh) _refreshOpenModal();
+            })();
+            _startModalPoll();
+        };
+
         if(!_isLightStudent && window._refreshAllStu && !window._rankFetchedThisSession) {
             try {
                 window._refreshAllStu().finally(async () => {
                     window._rankFetchedThisSession = true;
                     window._lastStuRefresh = Date.now();
-                    _render();
-                    try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
-                    _refreshOpenModal();
+                    _openAndRefresh();
                 });
-            } catch(_){ _render(); }
+            } catch(_){ _openAndRefresh(); }
         } else {
-            _render();
-            (async () => {
-                try { window._syncAllLevelsSilent && await window._syncAllLevelsSilent(); } catch(_){}
-                _refreshOpenModal();
-            })();
+            _openAndRefresh();
         }
     };
 
@@ -52294,7 +52433,7 @@ window.addCharRow = function() {
 
 
     // ============================================================
-    // 🏦 은행 (Bank) 기능
+    // 💰️ 은행 (Bank) 기능
     // ============================================================
 
     function _bankToday() {
@@ -53189,7 +53328,7 @@ window.addCharRow = function() {
         const cfg = _bankGetCfg();
         const _today_b = _bankToday();
         if (!cfg.startDate || _today_b < cfg.startDate) {
-            el.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;">🏦 은행이 아직 운영 전입니다.</div>';
+            el.innerHTML = '<div style="text-align:center;padding:40px;color:#aaa;">💰️ 은행이 아직 운영 전입니다.</div>';
             return;
         }
         const _bankExpired = !!(cfg.endDate && _today_b > cfg.endDate);
