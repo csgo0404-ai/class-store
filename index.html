@@ -1408,7 +1408,7 @@
                         <h4 style="margin:0; font-size:14px; flex:1;">📢 학급 공지</h4>
                         <button id="t_notice_toggle_btn" onclick="toggleBroadcastNotice()" style="font-size:12px;padding:4px 12px;border:none;border-radius:8px;cursor:pointer;font-family:'Jua';background:#BDBDBD;color:white;">방송 OFF</button>
                     </div>
-                    <textarea id="t_notice_input" rows="3" placeholder="공지 내용..." style="width:100%; box-sizing:border-box; font-family:'Jua'; resize:none; font-size:13px;"></textarea>
+                    <textarea id="t_notice_input" rows="2" placeholder="공지 내용..." style="width:100%; box-sizing:border-box; font-family:'Jua'; resize:none; font-size:13px;"></textarea>
                     <div id="t_notice_status" style="font-size:11px; color:#888; margin-top:4px;"></div>
                 </div>
             </div>
@@ -1424,7 +1424,7 @@
                     <button class="btn btn-blue" onclick="showPlzTeacherRoomPicker()">🏫 입장</button>
                 </div>
             </div>
-            <div style="display:flex; gap:16px; height:calc(100vh - 200px); min-height:480px;">
+            <div style="display:flex; gap:16px; height:37vh; min-height:300px;">
                 <!-- 배경 설정 -->
                 <div style="width:240px; flex-shrink:0; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
                     <!-- 게임 설정 (접힘) -->
@@ -1493,7 +1493,7 @@
                     </div>
                 </div>
                 <!-- 채팅 로그 -->
-                <div style="flex:1; display:flex; flex-direction:column; min-width:0; max-height:45vh;">
+                <div style="flex:1; display:flex; flex-direction:column; min-width:0; max-height:36vh;">
                     <div class="card" style="flex:1; display:flex; flex-direction:column; padding:14px; min-height:0; overflow:hidden;">
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                             <h4 style="margin:0;font-size:14px;flex:1;">💬 채팅 로그</h4>
@@ -2721,6 +2721,31 @@ let _renderLock = false; // 재진입 방지
             _sfOk=_sf1&&_sf2&&_sf3&&_sf4;
         }
         _chgRes.push({n:'⑩ 이동 제한(자리 고정) 판정 (자리有+잠금ON+학생→고정 / 자리無·잠금OFF·교사→자유)', ok:_sfOk, d:_sfOk?'4케이스 정확 ✅':(typeof _sfD!=='function'?'❌ _lmSeatFreezeDecide 미정의':'❌ 실패')});
+        // ⑪ 광장 채팅 프루닝 — 방별 최근 5개만 유지 (실제 _plzChatPushPrune와 공유하는 순수함수)
+        const _po = window._plzPruneOverflowKeys;
+        let _poOk = typeof _po === 'function';
+        if(_poOk){
+            const _mkKeys = n => Array.from({length:n},(_,i)=>'k'+i);
+            const _p1 = _po(_mkKeys(8), 5).length===3 && _po(_mkKeys(8),5)[0]==='k0' && _po(_mkKeys(8),5)[2]==='k2'; // 8개→앞 3개(k0,k1,k2) 삭제
+            const _p2 = _po(_mkKeys(5), 5).length===0;   // 정확히 5개 → 삭제 없음
+            const _p3 = _po(_mkKeys(3), 5).length===0;   // 5개 미만 → 삭제 없음
+            const _p4 = _po([], 5).length===0 && _po(null,5).length===0; // 빈/비배열 → 안전
+            _poOk = _p1&&_p2&&_p3&&_p4;
+            _chgRes.push({n:'⑪ 광장 채팅 프루닝 _plzPruneOverflowKeys (최근 5개 유지·오래된 것부터 삭제)', ok:_poOk, d:_poOk?'8개→앞3개 삭제 / 5개·3개·빈값→삭제없음 ✅':'❌ 실패: '+[!_p1&&'초과',!_p2&&'경계5',!_p3&&'미만',!_p4&&'빈값'].filter(Boolean).join('/')});
+        } else { _chgRes.push({n:'⑪ 광장 채팅 프루닝', ok:false, d:'❌ _plzPruneOverflowKeys 미정의'}); }
+        // ⑫ 빈 방 chatArchive 이동 — 비-sys 메시지만 보관 (실제 _plzCheckEmptyAndArchiveChat와 공유)
+        const _an = window._plzArchiveNonSys;
+        let _anOk = typeof _an === 'function';
+        if(_anOk){
+            const _sample = { a:{msg:'안녕',sys:false}, b:{msg:'🎰 잭팟!',sys:true}, c:{msg:'ㅎㅇ'}, d:{msg:'📖 입장',sys:true} };
+            const _r = _an(_sample);
+            const _a1 = !!_r.a && !!_r.c;              // 일반 메시지(sys:false / sys없음) 보존
+            const _a2 = !_r.b && !_r.d;                // sys 공지 제외
+            const _a3 = Object.keys(_r).length===2;    // 정확히 2개
+            const _a4 = Object.keys(_an({})).length===0 && Object.keys(_an(null)).length===0; // 빈/null 안전
+            _anOk = _a1&&_a2&&_a3&&_a4;
+            _chgRes.push({n:'⑫ 빈 방 채팅 아카이브 _plzArchiveNonSys (sys 공지 제외·일반 메시지만 보관)', ok:_anOk, d:_anOk?'일반 2개 보존 / sys 2개 제외 / 빈값 안전 ✅':'❌ 실패: '+[!_a1&&'보존',!_a2&&'sys제외',!_a3&&'개수',!_a4&&'빈값'].filter(Boolean).join('/')});
+        } else { _chgRes.push({n:'⑫ 빈 방 채팅 아카이브', ok:false, d:'❌ _plzArchiveNonSys 미정의'}); }
         const _chgAllPass = _chgRes.every(r=>r.ok);
 
         // 결과 모달 출력
@@ -2782,7 +2807,7 @@ let _renderLock = false; // 재진입 방지
                 <div style="margin:10px 0;border:2px solid ${_chgAllPass?'#A5D6A7':'#FFCC80'};border-radius:12px;overflow:hidden;">
                     <div style="padding:8px 14px;background:${_chgAllPass?'#E8F5E9':'#FFF3E0'};display:flex;align-items:center;gap:8px;">
                         <span style="font-size:16px;">${_chgAllPass?'✅':'❌'}</span>
-                        <span style="font-weight:bold;font-size:14px;color:#37474F;">🔧 이번 변경 검증 (광장 게임·락·화폐·HB·클린업)</span>
+                        <span style="font-weight:bold;font-size:14px;color:#37474F;">🔧 이번 변경 검증 (광장 게임·락·화폐·HB·채팅·클린업)</span>
                         <span style="font-size:12px;color:#78909C;margin-left:auto;">${_chgRes.filter(r=>r.ok).length}/${_chgRes.length} 통과</span>
                     </div>
                     <div style="padding:8px 10px;display:flex;flex-direction:column;gap:6px;">${_rowHtml(_chgRes)}</div>
@@ -3230,7 +3255,7 @@ let _renderLock = false; // 재진입 방지
     // 변경된 학생만 _rankCache 갱신 (Firebase /rank 저장 없음)
     window._localLevelCache = window._localLevelCache || {}; // { cd: { cookie, usedCookie } }
     let _globalLevelPollTimer = null;
-    async function _syncAllLevelsSilent() {
+    async function _syncAllLevelsSilent(_force) {
         if(!me || me.cd === 'teacher_main') return;
         const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
         if(!isStudentView) return;
@@ -3240,6 +3265,12 @@ let _renderLock = false; // 재진입 방지
         const _rankSrc = (Array.isArray(window._rankCache) && window._rankCache.length) ? window._rankCache : _rawStu;
         const targets = _rankSrc.filter(s => s && s.cd && s.cd !== 'teacher_main');
         if(!targets.length) return;
+        // 공유 스로틀 — 폴링(전역+순위모달)이 둘 다 호출해도 55초 내 중복 fetch는 직전 결과 재사용해 다했니 N² 2배 호출 제거.
+        //   _force=true(모달 오픈·탭 진입 등 즉시 갱신)는 스로틀 우회해 항상 신선하게 fetch (단, ts는 갱신해 인접 폴 억제).
+        if(!_force && window._lastLevelSyncTs && Date.now() - window._lastLevelSyncTs < 55000) {
+            return window._lastLevelSyncChanged || false;
+        }
+        window._lastLevelSyncTs = Date.now();
         let _anyChanged = false;
         for(const s of targets) {
             try {
@@ -3277,6 +3308,7 @@ let _renderLock = false; // 재진입 방지
             const _sc = document.getElementById('s_char');
             if(_sc && !_sc.classList.contains('hidden')) { try { window._debouncedRChar(); } catch(_){} }
         }
+        window._lastLevelSyncChanged = _anyChanged; // 공유 스로틀 캐시 — 다른 폴링이 55초 내 호출 시 재사용
         return _anyChanged; // 호출자가 재렌더 여부 판단에 사용
     }
     window._syncAllLevelsSilent = _syncAllLevelsSilent;
@@ -4465,6 +4497,10 @@ let _renderLock = false; // 재진입 방지
                     const _prevCookieReqCount = _prevInvArr.filter(it => it && it.type === 'cookie_req' && it.locked).length;
                     if(v.titNotify) console.log('[STUOWN-cd] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    // 외부(교사) 갱신만 시퀀스 증가 — 자기 write echo는 제외(정상 요청이 병합으로 되돌려지는 회귀 방지)
+                    if(!(v && v.updatedAt && window._myWrittenTs && window._myWrittenTs.includes(v.updatedAt))) {
+                        window._meSyncSeq = (window._meSyncSeq || 0) + 1;
+                    }
                     console.log('[STUOWN-cd] me 업데이트 me.titNotify=', me.titNotify);
                     if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
                     if(v.aucWin && (!_prevAucWin || _prevAucWin.id !== v.aucWin.id)) {
@@ -4534,6 +4570,10 @@ let _renderLock = false; // 재진입 방지
                     const _prevPetSkinSale2 = me.petSkinSale;
                     if(v.titNotify) console.log('[STUOWN-idx] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    // 외부(교사) 갱신만 시퀀스 증가 — 자기 write echo는 제외(정상 요청이 병합으로 되돌려지는 회귀 방지)
+                    if(!(v && v.updatedAt && window._myWrittenTs && window._myWrittenTs.includes(v.updatedAt))) {
+                        window._meSyncSeq = (window._meSyncSeq || 0) + 1;
+                    }
                     console.log('[STUOWN-idx] me 업데이트 me.titNotify=', me.titNotify);
                     if(v.aucWin === undefined && me.aucWin !== undefined) me.aucWin = undefined;
                     // 월요 쿠키 잠금 아이템이 새로 추가됐을 때 배너 표시
@@ -10702,18 +10742,20 @@ let _renderLock = false; // 재진입 방지
             if(!Array.isArray(aStu.tchrMsg)) aStu.tchrMsg = [];
             aStu.tchrMsg.push(_declineMsg);
             if(window._svStuByCd) window._svStuByCd(aStu.cd); else sv();
-            // reqCnt 즉시 업데이트 (교사 배지 새로고침 없이 반영)
-            if(window._computeReqCnt && typeof dbRef !== 'undefined') {
-                const _aKey = _cdMigDecline ? String(aStu.cd) : (Array.isArray(db.stu) ? db.stu.indexOf(aStu) : -1);
-                if(_aKey !== -1 && _aKey != null) try { dbRef.child(`reqCnt/${_aKey}`).set(window._computeReqCnt(aStu)); } catch(_){}
+            // reqCnt 즉시 업데이트 — 표준 함수 사용: Firebase 쓰기 + _reqCntMap 동기화 + 요청 0이면 노드 제거
+            // (직접 .set()만 하면 _reqCntMap이 갱신되지 않아 invReq 유령 카운트가 남음)
+            if(window._teacherSyncReqCnt) {
+                try { window._teacherSyncReqCnt(_declineStuArr, aStu.cd); } catch(_){}
             }
         } else if(req.coUseGroupId && typeof dbRef !== 'undefined' && _cdMigDecline) {
             // inv 없는 경우 (스플릿 모드) — Firebase 직접 읽고 수정
             const aFbKey = String(req.fromCd);
-            dbRef.child(`stu/${aFbKey}/inv`).once('value').then(snap => {
-                const raw = snap.val();
-                if(!raw) return Promise.resolve();
-                const inv = (Array.isArray(raw) ? [...raw] : Object.values(raw)).map(it => {
+            // ⚠️ inv만 읽으면 reqCnt 재계산 시 bugReqs/printReqs/avtReqs/nm/no가 누락돼 다른 요청 배지가 0으로 덮임.
+            //    전체 레코드를 읽어 수정된 inv를 합쳐 계산 (요청 0이면 노드 제거).
+            dbRef.child(`stu/${aFbKey}`).once('value').then(snap => {
+                const sFull = snap.val();
+                if(!sFull || !sFull.inv) return Promise.resolve();
+                const inv = (Array.isArray(sFull.inv) ? [...sFull.inv] : Object.values(sFull.inv)).map(it => {
                     if(it && it.coUseGroupId === req.coUseGroupId && it.st === 'req' && !it.reqApproved) {
                         const n = {...it, st:'active'};
                         delete n.coUseGroupId; delete n.coUsePartners;
@@ -10722,13 +10764,16 @@ let _renderLock = false; // 재진입 방지
                     }
                     return it;
                 });
-                // inv + reqCnt 동시 업데이트 (nm/no 유지를 위해 aStu 기반으로 병합)
-                const _fakeStu = aStu ? {...aStu, inv} : { inv };
                 const updates = {};
                 updates[`stu/${aFbKey}/inv`] = inv;
-                if(window._computeReqCnt) updates[`reqCnt/${aFbKey}`] = window._computeReqCnt(_fakeStu);
+                if(window._computeReqCnt) {
+                    const cnt = window._computeReqCnt({ ...sFull, inv });
+                    const hasAny = (cnt.invReq||0)>0||(cnt.avtReq||0)>0||(cnt.bug||0)>0||(cnt.print||0)>0||Object.keys(cnt.invAppr||{}).length>0;
+                    updates[`reqCnt/${aFbKey}`] = hasAny ? cnt : null;
+                    if(window._reqCntMap) { if(hasAny) window._reqCntMap[aFbKey] = cnt; else delete window._reqCntMap[aFbKey]; }
+                }
                 return dbRef.update(updates);
-            }).catch(e => console.warn('[CoUse] A inv 복구 실패', e));
+            }).catch(e => console.warn('[CoUse] A inv/reqCnt 복구 실패', e));
             // tchrMsg 알림 별도 push
             dbRef.child(`stu/${aFbKey}/tchrMsg`).once('value').then(snap => {
                 const raw = snap.val();
@@ -10901,17 +10946,21 @@ let _renderLock = false; // 재진입 방지
             if(changed) changedCds.push(s.cd);
         });
         if(changedCds.length && window._svStuByCd) window._svStuByCd([...new Set(changedCds)]);
-        // split 모드 — Firebase 직접 복구
+        // B의 reqCnt 동기화 — req→active 복구 후 남는 유령 invReq 카운트 제거 (Firebase 쓰기 + _reqCntMap + 0이면 노드 제거)
+        [...new Set(changedCds)].forEach(c => window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuArr, c));
+        // split 모드 — Firebase 직접 복구 (B가 교사 로컬 db.stu에 없는 원격 학생인 경우)
         if(partnerCds && partnerCds.length && typeof dbRef !== 'undefined' && db.cfg && db.cfg.stuKeyCdMigrated) {
             const localCdSet = new Set(stuArr.map(s => s && String(s.cd)).filter(Boolean));
             partnerCds.forEach(cd => {
                 if(localCdSet.has(String(cd))) return;
                 const fbKey = String(cd);
-                dbRef.child(`stu/${fbKey}/inv`).once('value').then(snap => {
-                    const raw = snap.val();
-                    if(!raw) return;
+                // ⚠️ inv만 읽으면 안 됨 — reqCnt 재계산에 bugReqs/printReqs/avtReqs/nm/no가 필요.
+                //    전체 레코드를 읽어 수정된 inv를 합쳐 계산해야 다른 요청 배지가 0으로 덮이지 않음.
+                dbRef.child(`stu/${fbKey}`).once('value').then(snap => {
+                    const sFull = snap.val();
+                    if(!sFull || !sFull.inv) return;
                     let changed = false;
-                    const inv = (Array.isArray(raw) ? [...raw] : Object.values(raw)).map(it => {
+                    const inv = (Array.isArray(sFull.inv) ? [...sFull.inv] : Object.values(sFull.inv)).map(it => {
                         if(it && it.coUseGroupId === groupId && it.st === 'req' && !it.reqApproved) {
                             changed = true;
                             const n = {...it, st: 'active'};
@@ -10922,8 +10971,19 @@ let _renderLock = false; // 재진입 방지
                         return it;
                     });
                     if(!changed) return;
-                    return dbRef.child(`stu/${fbKey}/inv`).set(inv);
-                }).catch(e => console.warn('[CoUse] B inv 복구 실패', e));
+                    const updates = {};
+                    updates[`stu/${fbKey}/inv`] = inv;
+                    // reqCnt 미러 동기화 — 전체 레코드 + 수정된 inv로 안전 재계산. 요청 0이면 노드 제거(null).
+                    if(window._computeReqCnt) {
+                        const cnt = window._computeReqCnt({ ...sFull, inv });
+                        const hasAny = (cnt.invReq||0)>0||(cnt.avtReq||0)>0||(cnt.bug||0)>0||(cnt.print||0)>0||Object.keys(cnt.invAppr||{}).length>0;
+                        updates[`reqCnt/${fbKey}`] = hasAny ? cnt : null;
+                        if(window._reqCntMap) { if(hasAny) window._reqCntMap[fbKey] = cnt; else delete window._reqCntMap[fbKey]; }
+                    }
+                    return dbRef.update(updates);
+                }).then(() => {
+                    if(typeof window.updateMenuBadges === 'function') window.updateMenuBadges();
+                }).catch(e => console.warn('[CoUse] B inv/reqCnt 복구 실패', e));
             });
         }
     };
@@ -11017,10 +11077,45 @@ let _renderLock = false; // 재진입 방지
         // 🛡️ me 스냅샷을 호출 시점에 캡처 — 300ms 대기 중 Firebase 리스너가 me를 덮어써도 손실 방지
         // (뽑기 결과 후 새로고침 시 쿠키/아이템 날아가는 버그 수정)
         let _safe; try { _safe = JSON.parse(JSON.stringify(me)); } catch(_){ _safe = me; }
+        // 캡처 시점의 서버 동기화 시퀀스 — flush 직전 값과 다르면 대기 중 교사 등 서버 갱신이 도착한 것
+        const _seqAtCapture = window._meSyncSeq || 0;
         // Firebase write는 300ms debounce — 연속 구매 시 마지막 상태만 전송 (reqCnt/rank 다중 write 방지)
         clearTimeout(_upMeDebounce);
         _upMeDebounce = setTimeout(() => {
             if (!me || !me.cd) return;
+            // 🛡️ 잔여 레이스 방어: 캡처 후 외부(교사) 갱신이 도착했으면 stale _safe.inv 로 덮어쓰지 않도록 병합.
+            //    inv엔 고유 id가 없어 통째 교체는 위험(라운드트립 전 신규 구매/통화 손실) → 손실 없는 보수적 규칙:
+            //      · _safe가 'req'/'shop_req'인 아이템만 서버와 대조
+            //         - 서버에 '해결된 상태'(non-req: 반려 active / 승인 used 등)로 존재 → 교사 결정 채택
+            //         - 서버에 없거나 아직 req/shop_req → 학생 요청 유지 (절대 드롭 안 함)
+            //      · 그 외(active/used/보유/신규 구매)는 _safe 그대로 보존 → 학생 정상 동작 미변경
+            //    다른 필드는 _safe 유지 → 캡처 시 로컬 쿠키/통화 변경 보호 그대로.
+            if((window._meSyncSeq || 0) !== _seqAtCapture && me.inv != null) {
+                try {
+                    const _serverInv = (Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {})).filter(Boolean);
+                    const _safeInv = (Array.isArray(_safe.inv) ? _safe.inv : Object.values(_safe.inv || {})).filter(Boolean);
+                    const _ikey = it => `${(it && it.n) || ''}|${(it && it.g) || ''}|${(it && it.type) || ''}|${(it && it.skillId) || ''}`;
+                    const _usedServer = new Array(_serverInv.length).fill(false);
+                    const _result = [];
+                    _safeInv.forEach(si => {
+                        if(si && (si.st === 'req' || si.st === 'shop_req')) {
+                            const j = _serverInv.findIndex((vi, idx) => !_usedServer[idx] && _ikey(vi) === _ikey(si));
+                            if(j >= 0 && _serverInv[j].st !== 'req' && _serverInv[j].st !== 'shop_req') {
+                                // 서버에 '해결된 상태'(반려 active / 승인 used 등)로 존재 → 교사 결정 채택
+                                _usedServer[j] = true;
+                                _result.push(JSON.parse(JSON.stringify(_serverInv[j])));
+                            } else {
+                                // 서버에 없거나 아직 req/shop_req → 학생 요청 유지 (절대 드롭 안 함 → 통화·구매 손실 차단)
+                                if(j >= 0) _usedServer[j] = true;
+                                _result.push(si);
+                            }
+                        } else {
+                            _result.push(si); // active/used/보유 등 — 학생 의도 그대로
+                        }
+                    });
+                    _safe.inv = _result;
+                } catch(_){ /* 병합 실패 시 _safe.inv 원본 유지 */ }
+            }
             const _cdMigrated = !!(db.cfg && db.cfg.stuKeyCdMigrated);
             if(!_cdMigrated) {
                 const _li = db.stu.findIndex(x => x && String(x.cd).trim() === String(me.cd).trim());
@@ -11099,6 +11194,11 @@ let _renderLock = false; // 재진입 방지
                 const _ts = Date.now();
                 _safeWithoutShopLog.updatedAt = _ts;
                 updates.updatedAt = _ts;
+                // 자기 write 타임스탬프 기록 — self-listener가 이 echo를 외부(교사) 갱신으로 오인해
+                //   _meSyncSeq를 올리고 upMe 병합이 정상 요청을 되돌리는 것을 방지 (최근 몇 개 유지)
+                if(!window._myWrittenTs) window._myWrittenTs = [];
+                window._myWrittenTs.push(_ts);
+                if(window._myWrittenTs.length > 8) window._myWrittenTs.shift();
                 if('shopUsed' in updates && _pendingDelta > 0) {
                     updates.shopUsed = firebase.database.ServerValue.increment(_pendingDelta);
                 }
@@ -11367,7 +11467,7 @@ let _renderLock = false; // 재진입 방지
             }
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){}
             // 용사 탭: 전체 학생 레벨도 즉시 동기화 (랭킹 정확도) + 1분 폴링 확인
-            try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(); } catch(_){}
+            try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(true); } catch(_){} // 탭 진입 즉시 갱신 — 스로틀 우회
             try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){}
             // 랭킹 상위 5명 아바타 데이터 백그라운드 갱신 (다른 학생 캐릭터 변경 반영)
             if(window._fetchRankForCds && window._computeRankedStudents) {
@@ -14046,7 +14146,8 @@ let _renderLock = false; // 재진입 방지
                     // baseCookie 누락 시 승인 시점 쿠키로 보정 (학생 제출 전 fix 미적용 케이스 대응)
                     if(inv[k].baseCookie == null) inv[k].baseCookie = s.cookie || 0;
                 });
-                s.inv = inv; db.stu = stuList; sv();
+                s.updatedAt = Date.now();
+                s.inv = inv; db.stu = stuList; if(window._svStuByCd) window._svStuByCd(cd); else sv();
                 window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
                 _renderReqDate(); rAs(); updateMenuBadges();
                 if(typeof _syncRequestViews==='function') _syncRequestViews();
@@ -14136,7 +14237,8 @@ let _renderLock = false; // 재진입 방지
                 // 정산 완료: 당일 스냅샷 초기화 (다음날 교사 접속 시 재기록)
                 if (s.xpBoost) { delete s.xpBoost.dailyStartCookie; delete s.xpBoost.dailySnapDate; }
                 delete s.xpBoost;
-                s.inv = inv; db.stu = stuList; sv();
+                s.updatedAt = Date.now();
+                s.inv = inv; db.stu = stuList; if(window._svStuByCd) window._svStuByCd(cd); else sv();
                 window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
                 _renderReqDate(); rAs(); updateMenuBadges();
                 if(typeof _syncRequestViews==='function') _syncRequestViews();
@@ -14152,7 +14254,8 @@ let _renderLock = false; // 재진입 방지
                     delete it.currentDay; delete it.totalDays; delete it.baseCookie;
                 });
                 delete s.xpBoost;
-                s.inv = inv; db.stu = stuList; sv();
+                s.updatedAt = Date.now();
+                s.inv = inv; db.stu = stuList; if(window._svStuByCd) window._svStuByCd(cd); else sv();
                 window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
                 _renderReqDate(); rAs(); updateMenuBadges();
                 if(typeof _syncRequestViews==='function') _syncRequestViews();
@@ -14228,7 +14331,11 @@ let _renderLock = false; // 재진입 방지
                 if(inv[k] && inv[k]._pendingRemove) inv.splice(k, 1);
             });
         }
-        s.inv = inv; db.stu = stuList; sv();
+        // 권위적 write: updatedAt 갱신(온라인 학생의 동시 write가 stale-write로 이겨 되살아나는 것 방지)
+        //  + 즉시 타깃 write(_svStuByCd) — sv()의 1500ms 디바운스 유실 + 캐시 미갱신으로 새로고침 시 부활하던 버그 수정
+        s.updatedAt = Date.now();
+        s.inv = inv; db.stu = stuList;
+        if(window._svStuByCd) window._svStuByCd(cd); else sv();
         window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
         _renderReqDate(); rAs(); updateMenuBadges();
         if(typeof _syncRequestViews==='function') _syncRequestViews();
@@ -15184,11 +15291,23 @@ window.appU = function(y, si, k) {
         const itemPrice = itmDef?.p || 0;
         const itemCur = itmDef?.c || 'kc';
         const _toDelete = []; // {si, k, y}
+        // 공동사용(co-use) 그룹 수집 — 반려 시 파트너(B)들의 pendingCoUseReqs·req 아이템도 정리해야 재출현 방지
+        const _coGroupIds = new Set();
+        const _coPartnerCdMap = new Map();
         targets.forEach(x => {
             const s = stuList[x.si];
             if(!s) return;
             if(x.y==='c' && s.inv && s.inv[x.k]) {
                 const it = s.inv[x.k];
+                // co-use 그룹/파트너 수집 (아이템 수정 전)
+                if(it.coUseGroupId) {
+                    _coGroupIds.add(it.coUseGroupId);
+                    if(Array.isArray(it.coUsePartnerCds)) {
+                        const existing = _coPartnerCdMap.get(it.coUseGroupId) || [];
+                        it.coUsePartnerCds.forEach(c => { if(!existing.includes(c)) existing.push(c); });
+                        _coPartnerCdMap.set(it.coUseGroupId, existing);
+                    }
+                }
                 if(it.st === 'shop_req') {
                     // 구매 요청 반려 → 비용 환불 + 인벤토리에서 제거
                     const refund = it.paid || itemPrice || 0;
@@ -15199,11 +15318,12 @@ window.appU = function(y, si, k) {
                     }
                     _toDelete.push({si:x.si, k:x.k, y:'inv'});
                 } else {
-                    // 사용 요청 반려 → 인벤토리 복귀 + 모든 req 관련 필드 정리
+                    // 사용 요청 반려 → 인벤토리 복귀 + 모든 req 관련 필드 정리 (co-use 필드 포함)
                     it.st = 'active';
                     delete it.reqApproved; delete it.reqDone;
                     delete it.useDate; delete it.useEndDate;
                     delete it.currentDay; delete it.totalDays; delete it.baseCookie;
+                    delete it.coUseGroupId; delete it.coUsePartners; delete it.coUsePartnerCds;
                 }
             } else if(x.y==='l' && s.ibx && s.ibx[x.k]) {
                 s.ibx[x.k].st = 'new';
@@ -15223,6 +15343,11 @@ window.appU = function(y, si, k) {
         const _affectedCds = [...new Set(targets.map(x => stuList[x.si]?.cd).filter(Boolean))];
         _affectedCds.forEach(c => window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, c));
         _syncRequestViews();
+        // 공동사용 반려 시 파트너(B)들의 pendingCoUseReqs 정리 + B의 'req' 아이템 복구 (정식 'rej' 경로와 동일)
+        if(_coGroupIds.size) _coGroupIds.forEach(gid => {
+            window._cleanCoUsePending && window._cleanCoUsePending(gid, _coPartnerCdMap.get(gid));
+            window._revertCoUseGroup && window._revertCoUseGroup(gid, _coPartnerCdMap.get(gid));
+        });
         } finally { window._rejectGrpBusy = false; }
     };
 
@@ -22361,6 +22486,9 @@ window.addCharRow = function() {
                 let _avatarCh = false;
                 if(_isLightStudent) {
                     _avatarCh = await window._fetchRankForCds(_visCds);
+                } else if(window._stuFullAttached) {
+                    // 라이브 전체 stu 리스너 활성 → db.stu가 이미 최신(변경 학생 증분 수신). 전체 once read 불필요 → 최신 데이터로 재렌더만 (Firebase 트래픽 절감)
+                    _avatarCh = true;
                 } else if(window._refreshAllStu && !window._rankRefreshing) {
                     window._rankRefreshing = true;
                     try { await window._refreshAllStu(); _avatarCh = true; } catch(_){} finally { window._rankRefreshing = false; }
@@ -22382,7 +22510,7 @@ window.addCharRow = function() {
                 const _avtCh = await window._fetchRankForCds(_top5);
                 // 쿠키 갱신
                 let _ckCh = false;
-                try { _ckCh = !!(window._syncAllLevelsSilent && await window._syncAllLevelsSilent()); } catch(_){}
+                try { _ckCh = !!(window._syncAllLevelsSilent && await window._syncAllLevelsSilent(true)); } catch(_){} // 오픈 즉시 갱신 — 스로틀 우회
                 // 변경 있을 때만 재렌더 (첫 오픈 시 새 항목은 _avatarChanged=true라 항상 반영됨)
                 if(_avtCh || _ckCh) _refreshOpenModal();
             })();
@@ -46353,7 +46481,7 @@ window.addCharRow = function() {
             _writePresenceWithSeat(_plzPos.x, _plzPos.y);
         }
 
-        // presence 안정성: 30초마다 누락 재작성 (재연결·탭복귀는 .info/connected·visibilitychange 핸들러가 즉시 처리하므로 폴링은 보조 → 빈도 절반으로 트래픽 절감)
+        // presence 안정성: 60초마다 누락 재작성 (재연결·탭복귀는 .info/connected·visibilitychange 핸들러가 즉시 처리하므로 폴링은 보조 → 빈도 완화로 트래픽 절감)
         if(window._plzPresenceTimer) clearInterval(window._plzPresenceTimer);
         window._plzPresenceTimer = setInterval(() => {
             if(!plzMyRef || !window._plzActive || !_presenceData) return;
@@ -46363,7 +46491,7 @@ window.addCharRow = function() {
                     plzMyRef.onDisconnect().remove();
                 }
             });
-        }, 30000);
+        }, 60000);
         // 게임용 heartbeat — 게임 활성 시에만 2초 간격, 평상 시 OFF (트래픽 절감)
         if(window._plzHbTimer) clearInterval(window._plzHbTimer);
         let _hbLastSent = 0;
@@ -46759,11 +46887,7 @@ window.addCharRow = function() {
             if(uSnap.numChildren() !== 0) return;
             const chatRef = ref.child('chat');
             chatRef.once('value', cSnap => {
-                const all = cSnap.val() || {};
-                const filtered = {};
-                Object.entries(all).forEach(([k, msg]) => {
-                    if(msg && !msg.sys) filtered[k] = msg;
-                });
+                const filtered = window._plzArchiveNonSys(cSnap.val() || {});
                 const finishCleanup = () => { try { chatRef.remove(); } catch(_){} };
                 if(Object.keys(filtered).length){
                     ref.child('chatArchive').update(filtered).then(finishCleanup, finishCleanup);
@@ -48550,6 +48674,22 @@ window.addCharRow = function() {
     };
 
     // 광장 채팅 push + 자동 정리 (방당 최근 30개만 보관)
+    // ── 광장 채팅 순수함수 (실제 핸들러와 자가테스트 시뮬레이터가 공유) ──
+    // 보관 개수 초과분의 키 목록 반환 — 오래된(앞쪽) 키부터 삭제 대상. push 키는 시간순이므로 정렬 불필요.
+    window._plzPruneOverflowKeys = function(keys, keep) {
+        keep = (typeof keep === 'number' && keep >= 0) ? keep : 5;
+        if(!Array.isArray(keys) || keys.length <= keep) return [];
+        return keys.slice(0, keys.length - keep);
+    };
+    // 빈 방 정리 시 chatArchive로 옮길 비-sys 메시지만 추린 객체 반환 (sys 공지는 제외)
+    window._plzArchiveNonSys = function(chatObj) {
+        const out = {};
+        Object.entries(chatObj || {}).forEach(([k, msg]) => {
+            if(msg && !msg.sys) out[k] = msg;
+        });
+        return out;
+    };
+
     window._plzChatPushPrune = function(chatRef, entry) {
         chatRef.push(entry);
         // prune 빈도 제한: 룸별로 10번 push마다 1회만 정리 (이전엔 매 push마다 once read)
@@ -48559,10 +48699,10 @@ window.addCharRow = function() {
         if(window._plzPruneCount[key] >= 10) {
             window._plzPruneCount[key] = 0;
             chatRef.once('value', snap => {
-                const keys = Object.keys(snap.val()||{});
-                if(keys.length > 5) {
+                const overflow = window._plzPruneOverflowKeys(Object.keys(snap.val()||{}), 5);
+                if(overflow.length) {
                     const toDelete = {};
-                    keys.slice(0, keys.length - 5).forEach(k => { toDelete[k] = null; });
+                    overflow.forEach(k => { toDelete[k] = null; });
                     chatRef.update(toDelete);
                 }
             });
