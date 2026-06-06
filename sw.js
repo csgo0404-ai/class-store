@@ -1,7 +1,7 @@
 // 우리반 매니저 Service Worker — 트래픽 절감 캐시
 // 전략: stale-while-revalidate (캐시 우선 즉시 응답 + 백그라운드 갱신)
 
-const CACHE_VERSION = 'v29';
+const CACHE_VERSION = 'v30';
 const CACHE_NAME = `wclass-${CACHE_VERSION}`;
 
 // 미리 캐시할 자원 (로컬 우선, CDN은 폴백 시 후처리됨)
@@ -64,9 +64,10 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Firebase Storage 이미지 캐시 (아바타·뱃지·펫 등)
+    // Firebase Storage 이미지 캐시 (아바타·뱃지·펫 등) — URL이 불변이므로 cache-first.
+    // 한 번 받으면 재검증 네트워크 요청도 생략 → 즉시 표시 + 트래픽 절감.
     if (url.hostname === 'firebasestorage.googleapis.com' || url.hostname.endsWith('.firebasestorage.app')) {
-        event.respondWith(staleWhileRevalidate(req));
+        event.respondWith(cacheFirst(req));
         return;
     }
 
@@ -114,6 +115,20 @@ async function networkFirst(req) {
         return res;
     } catch (e) {
         const cached = await cache.match(req);
+        return cached || Response.error();
+    }
+}
+
+// 캐시 우선, 없을 때만 네트워크 (불변 URL 전용 — 재검증 요청 없음)
+async function cacheFirst(req) {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(req);
+    if (cached) return cached;
+    try {
+        const res = await fetch(req);
+        if (res && (res.status === 200 || res.type === 'opaque')) cache.put(req, res.clone()).catch(() => {});
+        return res;
+    } catch (e) {
         return cached || Response.error();
     }
 }
