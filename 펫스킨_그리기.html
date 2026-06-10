@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>펫 스킨 그리기</title>
+<style>
+  :root{ --bg:#1f2230; --panel:#2a2e40; --panel2:#343a52; --accent:#5b6ee1; --accent2:#3b82f6; --green:#22c55e; --txt:#e7e9f3; --muted:#9aa0b8; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; background:var(--bg); color:var(--txt); font-family:"Pretendard","맑은 고딕","Malgun Gothic",sans-serif; overflow:hidden; }
+  .app{ display:flex; height:100vh; }
+
+  /* ===== Left toolbar (빙고 그림 도구 스타일) ===== */
+  .toolbar{ width:112px; background:#fff; margin:10px 0 10px 10px; border-radius:14px; box-shadow:0 6px 24px #0005; display:flex; flex-direction:column; align-items:stretch; padding:8px; gap:5px; flex-shrink:0; overflow-y:auto; }
+  .tool{ position:relative; padding:7px 9px; border-radius:9px; background:#fff; border:2px solid #ddd; color:#333; cursor:pointer; display:flex; align-items:center; gap:6px; font-size:13px; transition:.15s; white-space:nowrap; font-family:inherit; text-align:left; }
+  .tool:hover{ border-color:#aaa; }
+  .tool.active, .tool.toggle.on{ background:linear-gradient(135deg,#FFCA28,#F9A825); color:#fff; border-color:#F9A825; }
+  .tool .ic{ font-size:16px; line-height:1; width:18px; text-align:center; }
+  .tb-sep{ height:1px; background:#eee; margin:3px 2px; }
+  /* 툴바 팝오버 (색상) */
+  .tb-menu{ position:relative; }
+  .tb-pop{ background:#fff; border:2px solid #FFC1D9; border-radius:10px; padding:8px; display:none; flex-direction:column; gap:3px; z-index:200; box-shadow:0 6px 20px #0004; }
+  .tb-pop.open{ display:flex; }
+  /* 색상 팝오버는 툴바 overflow에 가리지 않게 화면 기준(fixed)으로 우측에 띄움 */
+  #colorPop{ position:fixed; }
+  /* 색상/굵기/줌 컨트롤 */
+  .tb-field{ display:flex; flex-direction:column; gap:3px; }
+  .tb-label{ font-size:10px; color:#999; }
+  .tb-ctl{ display:flex; align-items:center; justify-content:center; gap:6px; }
+  .tb-ctl #brushLabel, .tb-ctl #zoomLabel{ font-size:13px; color:#333; min-width:14px; text-align:center; }
+  .swatchbox input[type=color]{ width:100%; height:32px; border:2px solid #ddd; border-radius:8px; background:#fff; cursor:pointer; padding:2px; }
+  .zbtn{ width:28px; height:28px; border-radius:7px; border:2px solid #ddd; background:#fff; color:#333; cursor:pointer; font-size:15px; }
+  .zbtn:hover{ border-color:#aaa; }
+
+  /* ===== Center canvas ===== */
+  .stage{ flex:1; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+  /* A4 세로 뷰포트: 정사각 캔버스의 좌우 여백을 잘라 캐릭터가 세로 틀에 꽉 차게 보이도록(변형 없이) */
+  .canvas-viewport{ position:relative; overflow:hidden; box-shadow:0 8px 40px #0007; flex-shrink:0; }
+  .canvas-wrap{ position:absolute; }
+  /* checkerboard transparency bg */
+  #refLayer, #drawCanvas{ position:absolute; top:0; left:0; image-rendering:pixelated; }
+  #bgCanvas{ display:block; image-rendering:pixelated; }
+  #refLayer{ pointer-events:none; transition:opacity .15s; opacity:1; overflow:hidden; isolation:isolate; }
+  #refLayer img{ position:absolute; left:0; top:0; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+  #drawCanvas{ cursor:crosshair; touch-action:none; }
+  /* 이미지 불러오기 메뉴 */
+  .refmenu{ position:relative; }
+  .refmenu-pop{ position:absolute; top:100%; left:0; right:0; margin-top:6px; background:var(--panel2); border-radius:10px; padding:6px; display:none; flex-direction:column; gap:4px; z-index:20; box-shadow:0 8px 24px #0008; }
+  .refmenu-pop.open{ display:flex; }
+  .refmenu-pop button{ background:transparent; border:none; color:var(--txt); text-align:left; padding:9px 10px; border-radius:7px; cursor:pointer; font-size:13px; }
+  .refmenu-pop button:hover{ background:var(--accent); }
+  /* 색상 팔레트 — 색상 버튼 아래 팝오버 안 */
+  .tb-pop .palette{ display:flex; flex-wrap:wrap; gap:4px; width:140px; }
+  .palette .p{ width:22px; height:22px; border-radius:5px; border:2px solid #0002; cursor:pointer; }
+  .palette .p.sel{ border-color:#333; }
+  #colorChip{ display:inline-block; width:16px; height:16px; border-radius:4px; border:1px solid #0003; background:#000; }
+  .tb-custom{ display:flex; align-items:center; gap:6px; font-size:11px; color:#666; margin-top:5px; cursor:pointer; }
+  .tb-custom input[type=color]{ width:34px; height:24px; border:1px solid #ccc; border-radius:5px; padding:0; cursor:pointer; }
+
+  /* ===== Right panel ===== */
+  .side{ width:300px; background:#171a24; padding:20px 18px; display:flex; flex-direction:column; gap:14px; flex-shrink:0; overflow-y:auto; }
+  .side h2{ font-size:15px; margin:0 0 2px; }
+  .btn{ border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:600; cursor:pointer; color:#fff; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .btn:disabled{ opacity:.5; cursor:default; }
+  .btn.green{ background:var(--green); }
+  .btn.blue{ background:var(--accent2); }
+  .btn.grey{ background:var(--panel2); }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field label{ font-size:12px; color:var(--muted); }
+  .field input{ background:#0f1118; border:1px solid #ffffff1a; border-radius:8px; padding:9px 10px; color:var(--txt); font-size:14px; }
+  .field input[type=range]{ padding:0; width:100%; }
+  .ref-info{ font-size:12px; color:var(--muted); line-height:1.5; }
+  .divider{ height:1px; background:#ffffff12; margin:2px 0; }
+  .toast{ position:fixed; left:50%; top:24px; transform:translateX(-50%); background:#111827ee; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; z-index:99; opacity:0; pointer-events:none; transition:.2s; box-shadow:0 6px 24px #0008; }
+  .toast.show{ opacity:1; }
+  .small{ font-size:11px; color:var(--muted); }
+
+  /* ===== 로그인 / 교사 화면 오버레이 ===== */
+  .overlay{ position:fixed; inset:0; background:var(--bg); z-index:200; display:flex; align-items:center; justify-content:center; }
+  .overlay.hidden{ display:none; }
+  .card-box{ background:var(--panel); border-radius:18px; padding:34px 30px; width:380px; max-width:92vw; box-shadow:0 20px 60px #0009; }
+  .card-box h1{ font-size:22px; margin:0 0 6px; text-align:center; }
+  .card-box .sub{ font-size:13px; color:var(--muted); text-align:center; margin-bottom:22px; }
+  .card-box input{ width:100%; background:#0f1118; border:1px solid #ffffff1a; border-radius:10px; padding:13px 14px; color:var(--txt); font-size:16px; margin-bottom:12px; }
+  .userbar{ display:flex; align-items:center; gap:8px; background:var(--panel2); border-radius:10px; padding:8px 10px; font-size:13px; }
+  .userbar .role{ background:var(--accent); color:#fff; border-radius:6px; padding:2px 7px; font-size:11px; }
+  .userbar button{ margin-left:auto; background:transparent; border:1px solid #ffffff33; color:var(--muted); border-radius:7px; padding:4px 9px; font-size:12px; cursor:pointer; }
+  .toggle-btn{ background:var(--panel2); color:var(--txt); border:1px solid #ffffff1a; border-radius:9px; padding:9px; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; width:100%; }
+  .toggle-btn.on{ background:var(--accent); color:#fff; border-color:transparent; }
+  /* 교사: 기본 캐릭터 등록 */
+  .tchpanel{ width:560px; max-width:94vw; }
+  .basechar-row{ display:flex; gap:16px; margin:18px 0; }
+  .basechar-slot{ flex:1; background:#0f1118; border:1px dashed #ffffff22; border-radius:12px; padding:14px; text-align:center; }
+  .basechar-slot .ttl{ font-weight:700; margin-bottom:8px; }
+  .basechar-slot .thumb{ background:#fff; border-radius:8px; height:150px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+  .basechar-slot .thumb img{ max-width:100%; max-height:100%; image-rendering:pixelated; object-fit:contain; }
+  .basechar-slot .thumb .empty{ color:#999; font-size:12px; }
+</style>
+</head>
+<body>
+<!-- ===== 로그인 화면 ===== -->
+<div class="overlay" id="loginOverlay">
+  <div class="card-box">
+    <h1>🎨 펫 스킨 그리기</h1>
+    <div class="sub">학생은 학생 코드, 선생님은 교사 코드를 입력하세요.</div>
+    <input id="loginCode" placeholder="코드 입력" autocomplete="off">
+    <button class="btn blue" id="loginBtn" style="width:100%;">로그인</button>
+    <div class="small" id="loginMsg" style="text-align:center;margin-top:10px;color:#ff8a8a;"></div>
+  </div>
+</div>
+
+<!-- ===== 교사 화면: 기본 캐릭터 등록 ===== -->
+<div class="overlay hidden" id="teacherOverlay">
+  <div class="card-box tchpanel">
+    <h1>🧍 기본 캐릭터 등록</h1>
+    <div class="sub">학생이 그릴 때 배경으로 깔리는 기본 캐릭터입니다. 남·여 2개를 등록하세요.</div>
+    <div class="basechar-row">
+      <div class="basechar-slot">
+        <div class="ttl">👦 남자 캐릭터</div>
+        <div class="thumb" id="tchThumbM"><span class="empty">없음</span></div>
+        <button class="btn green" style="width:100%;font-size:13px;padding:9px;" data-sex="m">📁 이미지 업로드</button>
+      </div>
+      <div class="basechar-slot">
+        <div class="ttl">👧 여자 캐릭터</div>
+        <div class="thumb" id="tchThumbF"><span class="empty">없음</span></div>
+        <button class="btn green" style="width:100%;font-size:13px;padding:9px;" data-sex="f">📁 이미지 업로드</button>
+      </div>
+    </div>
+    <div class="small" id="tchMsg" style="text-align:center;margin-bottom:12px;"></div>
+    <button class="btn grey" id="teacherLogout" style="width:100%;">로그아웃</button>
+    <input type="file" id="tchFile" accept="image/*" hidden>
+  </div>
+</div>
+
+<div class="app">
+  <!-- LEFT TOOLBAR -->
+  <div class="toolbar">
+    <button class="tool active" data-tool="pen"><span class="ic">✏️</span>그리기</button>
+    <button class="tool" data-tool="fill"><span class="ic">🪣</span>채우기</button>
+    <button class="tool" data-tool="erase"><span class="ic">🧽</span>지우기</button>
+    <button class="tool" data-tool="pick"><span class="ic">💧</span>스포이드</button>
+    <button class="tool" data-tool="move"><span class="ic">✥</span>옮기기</button>
+    <div class="tb-sep"></div>
+    <button class="tool" id="undoBtn"><span class="ic">↶</span>되돌리기</button>
+    <button class="tool" id="redoBtn"><span class="ic">↷</span>다시실행</button>
+    <button class="tool" id="clearBtn"><span class="ic">🗑️</span>전체삭제</button>
+    <div class="tb-sep"></div>
+    <div class="tb-menu">
+      <button class="tool" id="colorBtn"><span class="ic"><span id="colorChip"></span></span>색상</button>
+      <div class="tb-pop" id="colorPop">
+        <div class="palette" id="palette"></div>
+        <label class="tb-custom">직접<input type="color" id="colorPick" value="#000000"></label>
+      </div>
+    </div>
+    <div class="tb-field">
+      <span class="tb-label">굵기</span>
+      <div class="tb-ctl">
+        <button class="zbtn" id="brushDown">−</button>
+        <span id="brushLabel">1</span>
+        <button class="zbtn" id="brushUp">＋</button>
+      </div>
+    </div>
+    <div class="tb-field">
+      <span class="tb-label">화면 확대</span>
+      <div class="tb-ctl">
+        <button class="zbtn" id="zoomOut">−</button>
+        <span id="zoomLabel">2</span>
+        <button class="zbtn" id="zoomIn">＋</button>
+      </div>
+    </div>
+    <button class="tool" id="panBtn" data-tool="pan" title="확대 시 화면 이동"><span class="ic">✋️</span>이동하기</button>
+  </div>
+
+  <!-- CENTER STAGE -->
+  <div class="stage">
+    <div class="canvas-viewport" id="canvasViewport">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="bgCanvas"></canvas>
+        <div id="refLayer"></div>
+        <canvas id="drawCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDE -->
+  <div class="side">
+    <div>
+      <h2>배경 이미지</h2>
+    </div>
+    <div class="refmenu">
+      <button class="btn green" id="loadRefBtn" style="width:100%;">🖼️ 이미지 불러오기 ▾</button>
+      <div class="refmenu-pop" id="refMenuPop">
+        <button data-ref="base_m">🧍 기본 캐릭터 (남)</button>
+        <button data-ref="base_f">🧍 기본 캐릭터 (여)</button>
+        <button data-ref="mine">🙋 내 캐릭터</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>배경 이미지 투명도</label>
+      <input type="range" id="refOpacity" min="0" max="100" value="100">
+    </div>
+
+    <button class="toggle-btn on" id="refToggleBtn">💡 배경 이미지 켜짐</button>
+
+    <div class="divider"></div>
+
+    <h2>아이템 제출</h2>
+    <div class="field">
+      <label>아이템 이름</label>
+      <input id="inName" placeholder="예: 무지개 망토" maxlength="20">
+    </div>
+    <div class="field">
+      <label>희망 가격</label>
+      <input id="inPrice" type="number" min="0" value="10">
+    </div>
+    <button class="btn blue" id="submitBtn">📨 선생님께 제출하기</button>
+    <button class="btn grey" id="downloadBtn">⬇️ 다운로드</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- Firebase (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* ============ CONFIG (이벤트 상점과 동일 스택 재사용) ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCzsI9FW3bga1V73lCR7pNgfPLdcqcbsgM",
+  authDomain: "class-manager-bad00.firebaseapp.com",
+  databaseURL: "https://class-manager-bad00-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "class-manager-bad00",
+  storageBucket: "class-manager-bad00.firebasestorage.app",
+  messagingSenderId: "436830301778",
+  appId: "1:436830301778:web:d3da11a5ac0e6c252d798b"
+};
+const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dtzknm7gz/image/upload';
+const SIGN_WORKER    = 'https://donghwa-api.csgo0404.workers.dev';
+const BASE_CHAR_SRC  = '기본 캐릭터.png';    // 용사탭과 동일한 베이스(420×594, A4 비율 0.707)
+/* 캔버스를 이벤트 상점 renderAvatar와 동일한 '정사각'으로 통일. 베이스는 정사각 안에 contain(가운데 정렬+
+   좌우 여백)으로 깔리고, 제출 좌표 ps:100으로 올리면 정사각↔정사각이라 베이스 비율과 무관하게 1:1 일치. */
+const GRID_W = 90, GRID_H = 90;             // 아바타 정사각 좌표계
+const EXPORT_SCALE = 8;                      // 출력 배율 → 720×720
+/* 캔버스 비율 = 베이스 비율이라 스킨을 0/0/100으로 오버레이하면 이벤트 상점에서 그린 그대로 정렬됨 */
+const DEFAULT_OVERLAY = { px:0, py:0, ps:100, rot:0 };
+
+firebase.initializeApp(firebaseConfig);
+const dbRef = firebase.database().ref('ClassData/EventShop');
+
+/* ============ STATE ============ */
+let tool = 'pen';
+let brushSize = 1;                           // 펜/지우개 굵기(px), 1~5
+let color = '#000000';
+let zoomLevel = 2;                           // 화면 확대 1~10
+let cell = 4 + zoomLevel*2;                  // 화면상 셀 크기(px) = 4+레벨*2 → L2=8
+let pixels = Array.from({length:GRID_H}, ()=>Array(GRID_W).fill(null));
+let undoStack = [];
+let redoStack = [];
+const MAX_UNDO = 40;
+let drawing = false;
+let moveStart = null;                        // 옮기기용
+let panning = false, panStart = null;        // 손바닥(화면 이동)용
+let panX = 0, panY = 0;
+
+const PALETTE = ['#000000','#ffffff','#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c',
+                 '#3498db','#9b59b6','#e84393','#fab1a0','#fdcb6e','#a29bfe','#636e72',
+                 '#b2bec3','#d63031','#00b894','#0984e3','#6c5ce7','#fd79a8'];
+
+/* ============ ELEMENTS ============ */
+const bgCanvas = document.getElementById('bgCanvas');
+const drawCanvas = document.getElementById('drawCanvas');
+const refLayer = document.getElementById('refLayer');
+const wrap = document.getElementById('canvasWrap');
+const viewport = document.getElementById('canvasViewport');
+const A4_RATIO = 0.7071;                      // 세로 틀 가로/세로 비율 (A4)
+const bgCtx = bgCanvas.getContext('2d');
+const ctx = drawCanvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+/* ============ INIT ============ */
+function resizeCanvases(){
+  const W = GRID_W*cell, H = GRID_H*cell;     // 정사각 (W===H)
+  [bgCanvas, drawCanvas].forEach(c=>{ c.width = W; c.height = H; });
+  refLayer.style.width = W+'px'; refLayer.style.height = H+'px';
+  wrap.style.width = W+'px'; wrap.style.height = H+'px';
+  // A4 세로 뷰포트: 높이=정사각 높이, 너비=높이×A4비율 → 캐릭터(가운데 세로열)가 틀에 꽉 참
+  const vpW = Math.round(H * A4_RATIO), vpH = H;
+  viewport.style.width = vpW+'px'; viewport.style.height = vpH+'px';
+  wrap.style.left = Math.round((vpW - W)/2)+'px';   // 정사각을 뷰포트 가운데로(좌우 여백은 잘림, 손바닥으로 이동)
+  wrap.style.top  = '0px';
+  ctx.imageSmoothingEnabled = false;
+  drawCheckerboard();
+  render();
+}
+function drawCheckerboard(){
+  const s = cell;
+  bgCtx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+  for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++){
+    bgCtx.fillStyle = ((x+y)%2===0) ? '#dcdce4' : '#c7c7d2';
+    bgCtx.fillRect(x*s, y*s, s, s);
+  }
+}
+function render(){
+  const s = cell, W = GRID_W*s, H = GRID_H*s;
+  ctx.clearRect(0,0,drawCanvas.width,drawCanvas.height);
+  for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++){
+    const c = pixels[y][x];
+    if(c){ ctx.fillStyle = c; ctx.fillRect(x*s, y*s, s, s); }
+  }
+  // light grid lines
+  ctx.strokeStyle = '#00000016'; ctx.lineWidth = 1;
+  for(let i=0;i<=GRID_W;i++){ ctx.beginPath(); ctx.moveTo(i*s,0); ctx.lineTo(i*s,H); ctx.stroke(); }
+  for(let i=0;i<=GRID_H;i++){ ctx.beginPath(); ctx.moveTo(0,i*s); ctx.lineTo(W,i*s); ctx.stroke(); }
+  if(typeof scheduleSaveDraft==='function') scheduleSaveDraft();   // 픽셀 변경 자동 임시저장
+}
+
+/* ============ UNDO / REDO ============ */
+function pushUndo(){
+  undoStack.push(pixels.map(r=>r.slice()));
+  if(undoStack.length>MAX_UNDO) undoStack.shift();
+  redoStack.length = 0;                       // 새 작업 → 다시실행 스택 비움
+}
+function undo(){
+  if(!undoStack.length) return;
+  redoStack.push(pixels.map(r=>r.slice()));
+  pixels = undoStack.pop();
+  render();
+}
+function redo(){
+  if(!redoStack.length) return;
+  undoStack.push(pixels.map(r=>r.slice()));
+  pixels = redoStack.pop();
+  render();
+}
+
+/* ============ DRAW HELPERS ============ */
+// 굵기(brushSize)만큼 정사각 블록을 찍음
+function setPixel(x,y,c){
+  const off = Math.floor((brushSize-1)/2);
+  for(let dy=0;dy<brushSize;dy++) for(let dx=0;dx<brushSize;dx++){
+    const px = x-off+dx, py = y-off+dy;
+    if(px>=0&&py>=0&&px<GRID_W&&py<GRID_H) pixels[py][px] = c;
+  }
+}
+function floodFill(x,y,newC){
+  const target = pixels[y][x];
+  if(target === newC) return;
+  const stack = [[x,y]];
+  while(stack.length){
+    const [cx,cy] = stack.pop();
+    if(cx<0||cy<0||cx>=GRID_W||cy>=GRID_H) continue;
+    if(pixels[cy][cx] !== target) continue;
+    pixels[cy][cx] = newC;
+    stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
+  }
+}
+function lineTo(x0,y0,x1,y1,fn){
+  // Bresenham
+  let dx=Math.abs(x1-x0), dy=Math.abs(y1-y0);
+  let sx=x0<x1?1:-1, sy=y0<y1?1:-1, err=dx-dy;
+  while(true){
+    fn(x0,y0);
+    if(x0===x1&&y0===y1) break;
+    let e2=2*err;
+    if(e2>-dy){ err-=dy; x0+=sx; }
+    if(e2<dx){ err+=dx; y0+=sy; }
+  }
+}
+function evXY(e){ const t = e.touches ? e.touches[0] : e; return { cx:t.clientX, cy:t.clientY }; }
+function cellOf(e){
+  const r = drawCanvas.getBoundingClientRect();
+  const {cx,cy} = evXY(e);
+  return { x: Math.floor((cx-r.left)/cell), y: Math.floor((cy-r.top)/cell) };
+}
+function applyPan(){ wrap.style.transform = `translate(${panX}px,${panY}px)`; }
+
+// 스포이드: 한 번 클릭으로 그 위치의 색을 즉시 추출
+//  1) 내가 그린 픽셀이 있으면 그 색  2) 없으면 참고 이미지의 색(오프스크린 렌더 후 샘플링)
+//  3) 참고 이미지가 교차출처(CORS)라 샘플링이 막히면 네이티브 EyeDropper로 폴백
+const _refImgCache = new Map();               // src -> Promise<HTMLImageElement|null>
+function _loadRefImg(src){
+  if(_refImgCache.has(src)) return _refImgCache.get(src);
+  const p = new Promise(res=>{
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = ()=>res(im);
+    im.onerror = ()=>res(null);
+    im.src = src;
+  });
+  _refImgCache.set(src, p);
+  return p;
+}
+function _containRect(box, iw, ih){           // object-fit:contain 박스 계산
+  const s = Math.min(box.w/iw, box.h/ih);
+  const w = iw*s, h = ih*s;
+  return { x: box.x+(box.w-w)/2, y: box.y+(box.h-h)/2, w, h };
+}
+// clientX/clientY 위치의 참고 이미지 색을 샘플링 (hex 또는 null)
+async function sampleRefColor(clientX, clientY){
+  if(refLayer.style.display==='none') return null;
+  const base = drawCanvas.getBoundingClientRect();
+  const scale = drawCanvas.width / base.width;
+  const off = document.createElement('canvas');
+  off.width = drawCanvas.width; off.height = drawCanvas.height;
+  const o = off.getContext('2d'); o.imageSmoothingEnabled = false;
+  const imgs = [...refLayer.querySelectorAll('img')];
+  for(const el of imgs){                       // DOM 순서 = 아래→위로 쌓임
+    const im = await _loadRefImg(el.src);
+    if(!im || !im.naturalWidth) continue;
+    const r = el.getBoundingClientRect();
+    const box = { x:(r.left-base.left)*scale, y:(r.top-base.top)*scale, w:r.width*scale, h:r.height*scale };
+    const fit = _containRect(box, im.naturalWidth, im.naturalHeight);
+    const flip = /matrix\(-1,|scaleX\(-1\)/.test(getComputedStyle(el).transform) ;
+    o.save();
+    if(flip){ o.translate(fit.x*2+fit.w, 0); o.scale(-1,1); }
+    o.drawImage(im, fit.x, fit.y, fit.w, fit.h);
+    o.restore();
+  }
+  const sx = Math.floor((clientX-base.left)*scale), sy = Math.floor((clientY-base.top)*scale);
+  if(sx<0||sy<0||sx>=off.width||sy>=off.height) return null;
+  let d;
+  try{ d = o.getImageData(sx,sy,1,1).data; }
+  catch(_){ return undefined; }                // CORS 오염 → 폴백 신호
+  if(d[3] < 8) return null;                     // 투명 → 색 없음
+  const h = n => n.toString(16).padStart(2,'0');
+  return '#'+h(d[0])+h(d[1])+h(d[2]);
+}
+async function pickColorAt(x,y,e){
+  const drawn = pixels[y]?.[x];                 // 그린 픽셀이 맨 위
+  if(drawn){ setColor(drawn); return; }
+  const {cx,cy} = evXY(e);
+  const ref = await sampleRefColor(cx,cy);
+  if(ref){ setColor(ref); return; }
+  if(ref===null) return;                         // 그 위치에 색 없음(투명)
+  // ref===undefined: CORS로 샘플링 불가 → 네이티브 EyeDropper 폴백
+  if(window.EyeDropper){
+    const prevOp = refLayer.style.opacity;
+    refLayer.style.opacity = '1';
+    try{
+      new EyeDropper().open()
+        .then(r=>{ if(r&&r.sRGBHex) setColor(r.sRGBHex); })
+        .catch(()=>{})
+        .finally(()=>{ refLayer.style.opacity = prevOp; });
+    }catch(_){ refLayer.style.opacity = prevOp; }
+  }
+}
+
+let lastCell = null;
+function pointerDown(e){
+  e.preventDefault();
+  if(tool==='pan'){ panning=true; const {cx,cy}=evXY(e); panStart={sx:cx,sy:cy,px:panX,py:panY}; updateCursor(); return; }
+  const {x,y} = cellOf(e);
+  if(tool==='pick'){ pickColorAt(x,y,e); return; }
+  if(tool==='fill'){
+    pushUndo(); floodFill(x,y,color); render(); return;
+  }
+  if(tool==='move'){
+    pushUndo(); moveStart = {x,y, snapshot:pixels.map(r=>r.slice())}; drawing=true; return;
+  }
+  pushUndo();
+  drawing = true; lastCell = {x,y};
+  applyPen(x,y);
+  render();
+}
+function pointerMove(e){
+  if(tool==='pan'){
+    if(!panning) return;
+    e.preventDefault();
+    const {cx,cy}=evXY(e);
+    panX = panStart.px + (cx-panStart.sx); panY = panStart.py + (cy-panStart.sy);
+    applyPan(); return;
+  }
+  if(!drawing) return;
+  e.preventDefault();
+  const {x,y} = cellOf(e);
+  if(tool==='move'){
+    const dx = x-moveStart.x, dy = y-moveStart.y;
+    const snap = moveStart.snapshot;
+    pixels = Array.from({length:GRID_H},()=>Array(GRID_W).fill(null));
+    for(let yy=0;yy<GRID_H;yy++) for(let xx=0;xx<GRID_W;xx++){
+      const nx=xx+dx, ny=yy+dy;
+      if(nx>=0&&ny>=0&&nx<GRID_W&&ny<GRID_H) pixels[ny][nx]=snap[yy][xx];
+    }
+    render(); return;
+  }
+  if(lastCell && (lastCell.x!==x||lastCell.y!==y)){
+    lineTo(lastCell.x,lastCell.y,x,y,(px,py)=>applyPen(px,py));
+  } else applyPen(x,y);
+  lastCell = {x,y};
+  render();
+}
+function pointerUp(){
+  if(panning){ panning=false; updateCursor(); return; }
+  const wasEditing = drawing || moveStart;
+  drawing=false; lastCell=null; moveStart=null;
+  // 획이 끝나면 즉시 저장(디바운스 대기 없이) — 연속 드로잉 후 바로 새로고침해도 보존
+  if(wasEditing && typeof saveDraftNow==='function') saveDraftNow();
+}
+function applyPen(x,y){
+  if(tool==='erase') setPixel(x,y,null);
+  else setPixel(x,y,color);
+}
+
+drawCanvas.addEventListener('mousedown', pointerDown);
+window.addEventListener('mousemove', pointerMove);
+window.addEventListener('mouseup', pointerUp);
+drawCanvas.addEventListener('touchstart', pointerDown, {passive:false});
+drawCanvas.addEventListener('touchmove', pointerMove, {passive:false});
+window.addEventListener('touchend', pointerUp);
+
+/* ============ TOOLBAR WIRING ============ */
+function selectToolBtn(btn){
+  document.querySelectorAll('.tool').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+}
+function resetTransient(){ drawing=false; lastCell=null; moveStart=null; panning=false; }
+document.querySelectorAll('.tool[data-tool]').forEach(b=>{
+  b.addEventListener('click',()=>{ selectToolBtn(b); tool = b.dataset.tool; resetTransient(); updateCursor(); scheduleSaveDraft(); });
+});
+
+/* ===== 커서 모양 (빙고 그림 도구 이식): 그리기=원, 지우기=사각, 채우기/스포이드=십자, 손바닥=grab ===== */
+function makeBrushCursor(sizePx, col, isEraser){
+  const d = Math.max(8, Math.min(96, Math.round(sizePx)+2));
+  const stroke = isEraser ? '#888' : (col || '#333');
+  const fill = isEraser ? 'rgba(255,255,255,0.45)' : 'transparent';
+  const r = Math.round(d*0.12);
+  const shape = `<rect x='1' y='1' width='${d-2}' height='${d-2}' rx='${r}' ry='${r}' stroke='${stroke}' stroke-width='1.5' fill='${fill}'/>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${d}' height='${d}' viewBox='0 0 ${d} ${d}'>${shape}</svg>`;
+  return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}") ${d/2} ${d/2}, crosshair`;
+}
+function updateCursor(){
+  let c = 'crosshair';
+  const sz = brushSize * cell;
+  if(tool==='pen')        c = makeBrushCursor(sz, color, false);
+  else if(tool==='erase') c = makeBrushCursor(sz, '#888', true);
+  else if(tool==='move')  c = 'move';
+  else if(tool==='pan')   c = (panning ? 'grabbing' : 'grab');
+  drawCanvas.style.cursor = c;
+}
+
+/* 색상 팝오버 — 툴바 우측에 띄움 (툴바 overflow에 가리지 않게 position:fixed + JS 위치) */
+const colorBtn = document.getElementById('colorBtn');
+const colorPop = document.getElementById('colorPop');
+function positionColorPop(){
+  const tb = document.querySelector('.toolbar').getBoundingClientRect();
+  const r = colorBtn.getBoundingClientRect();
+  colorPop.style.left = (tb.right + 12) + 'px';   // 툴바 오른쪽 끝 기준 → 겹침 방지
+  colorPop.style.top  = r.top + 'px';
+}
+colorBtn.addEventListener('click',()=>{
+  const willOpen = !colorPop.classList.contains('open');
+  colorPop.classList.toggle('open', willOpen);
+  if(willOpen) positionColorPop();
+});
+document.addEventListener('click',e=>{ if(!e.target.closest('#colorBtn') && !e.target.closest('#colorPop')) colorPop.classList.remove('open'); });
+window.addEventListener('resize',()=>{ if(colorPop.classList.contains('open')) positionColorPop(); });
+
+document.getElementById('undoBtn').addEventListener('click', undo);
+document.getElementById('redoBtn').addEventListener('click', redo);
+document.getElementById('clearBtn').addEventListener('click',()=>{
+  pushUndo(); pixels = Array.from({length:GRID_H},()=>Array(GRID_W).fill(null)); render();
+});
+
+/* 색상 선택 통합 헬퍼 */
+function setColor(c){
+  color = c;
+  document.getElementById('colorPick').value = c;
+  selectSwatch(c);
+  const chip = document.getElementById('colorChip'); if(chip) chip.style.background = c;
+  updateCursor();
+  scheduleSaveDraft();
+}
+document.getElementById('colorPick').addEventListener('input',e=>setColor(e.target.value));
+
+/* 굵기 (1~5px) */
+const brushLabel = document.getElementById('brushLabel');
+document.getElementById('brushUp').addEventListener('click',()=>{ brushSize=Math.min(5,brushSize+1); brushLabel.textContent=brushSize; updateCursor(); scheduleSaveDraft(); });
+document.getElementById('brushDown').addEventListener('click',()=>{ brushSize=Math.max(1,brushSize-1); brushLabel.textContent=brushSize; updateCursor(); scheduleSaveDraft(); });
+
+/* 화면 확대 (레벨 1~10) */
+const zoomLabel = document.getElementById('zoomLabel');
+function applyZoom(){ cell = 4 + zoomLevel*2; zoomLabel.textContent = zoomLevel; panX=0; panY=0; applyPan(); resizeCanvases(); updateCursor(); }
+document.getElementById('zoomIn').addEventListener('click',()=>{ zoomLevel=Math.min(10,zoomLevel+1); applyZoom(); });
+document.getElementById('zoomOut').addEventListener('click',()=>{ zoomLevel=Math.max(1,zoomLevel-1); applyZoom(); });
+window.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); undo(); }
+  else if((e.ctrlKey||e.metaKey)&&(e.key==='y'||e.key==='Y'||((e.shiftKey)&&(e.key==='z'||e.key==='Z')))){ e.preventDefault(); redo(); }
+});
+
+/* palette — 색상 버튼 아래 팝오버 안에 표시 */
+const paletteEl = document.getElementById('palette');
+PALETTE.forEach(c=>{
+  const d=document.createElement('div'); d.className='p'; d.style.background=c; d.dataset.c=c;
+  d.addEventListener('click',()=>{ setColor(c); colorPop.classList.remove('open'); });
+  paletteEl.appendChild(d);
+});
+function selectSwatch(c){
+  paletteEl.querySelectorAll('.p').forEach(p=>p.classList.toggle('sel', p.dataset.c.toLowerCase()===c.toLowerCase()));
+}
+setColor(color);
+updateCursor();
+
+/* ============ 이벤트 상점 데이터 로드 (참고 캐릭터용) ============ */
+const shopDb = { cfg:{}, avt:[], petSkins:[], stu:[] };
+var _shopLoaded = false;   // 아바타 카탈로그 로드 완료 여부 (var: TDZ 회피)
+var _refShownHtml = null;  // 참고 레이어에 현재 표시 중인 아바타 HTML (중복 setRefHTML/이미지 재로딩 방지)
+const SHOP_CACHE_KEY = 'skinTool_shop';
+const _arr = v => Array.isArray(v)?v:Object.values(v||{}).filter(Boolean);
+function _saveShopCache(){
+  try{ localStorage.setItem(SHOP_CACHE_KEY, JSON.stringify({
+    avt: shopDb.avt, petSkins: shopDb.petSkins,
+    drawBaseChar: (shopDb.cfg&&shopDb.cfg.drawBaseChar)||{}, baseChar: (shopDb.cfg&&shopDb.cfg.baseChar)||'',
+    avtRev: (shopDb.cfg&&shopDb.cfg.avtRev) ?? null, petSkinsRev: (shopDb.cfg&&shopDb.cfg.petSkinsRev) ?? null
+  })); }catch(_){}
+}
+// 시간 제한 없음 — 무조건 로컬 캐시 사용. 변경(rev)된 노드만 부분 수신.
+async function loadShopData(force){
+  let cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(SHOP_CACHE_KEY)||'null'); }catch(_){}
+  if(cached && !force){
+    // 캐시 즉시 적용
+    shopDb.cfg = { drawBaseChar: cached.drawBaseChar||{}, baseChar: cached.baseChar||'', avtRev: cached.avtRev, petSkinsRev: cached.petSkinsRev };
+    shopDb.avt = _arr(cached.avt); shopDb.petSkins = _arr(cached.petSkins);
+    _shopLoaded = true;
+    try{
+      // 작은 값만 읽어 변경 확인 (avtRev/petSkinsRev + base char URL은 작아서 항상 최신화)
+      const [arv, prv, dbc, bc] = await Promise.all([
+        dbRef.child('cfg/avtRev').get(), dbRef.child('cfg/petSkinsRev').get(),
+        dbRef.child('cfg/drawBaseChar').get(), dbRef.child('cfg/baseChar').get()
+      ]);
+      const avtRev = arv.val() ?? null, petSkinsRev = prv.val() ?? null;          // null/undefined 동일 취급
+      const cAvtRev = cached.avtRev ?? null, cPsRev = cached.petSkinsRev ?? null;
+      shopDb.cfg.drawBaseChar = dbc.val()||{}; shopDb.cfg.baseChar = bc.val()||'';
+      if(avtRev !== cAvtRev){ shopDb.avt = _arr((await dbRef.child('avt').get()).val()); }                  // 바뀐 노드만 수신
+      if(petSkinsRev !== cPsRev){ shopDb.petSkins = _arr((await dbRef.child('petSkins').get()).val()); }
+      shopDb.cfg.avtRev = avtRev; shopDb.cfg.petSkinsRev = petSkinsRev;
+      _saveShopCache();
+    }catch(_){ /* 오프라인 등 → 캐시 유지(안전) */ }
+    return;
+  }
+  // 캐시 없음/강제 → 최초 1회 전체 수신
+  try{
+    const [cfg, avt, ps] = await Promise.all([
+      dbRef.child('cfg').get(), dbRef.child('avt').get(), dbRef.child('petSkins').get()
+    ]);
+    const c = cfg.val() || {};
+    shopDb.cfg = { drawBaseChar: c.drawBaseChar||{}, baseChar: c.baseChar||'', avtRev: c.avtRev, petSkinsRev: c.petSkinsRev };
+    shopDb.avt = _arr(avt.val()); shopDb.petSkins = _arr(ps.val());
+    _shopLoaded = true;
+    _saveShopCache();
+  }catch(e){ console.error('[shopData]', e); }
+}
+/* 성별별 기본 캐릭터(교사가 이 도구에서 등록). 없으면 이벤트 상점 baseChar → 로컬 파일 순 */
+function gdrKey(g){ return (g==='여'||g==='f'||g==='female') ? 'f' : 'm'; }
+function baseCharUrl(sex){
+  const k = gdrKey(sex);
+  const dbc = (shopDb.cfg && shopDb.cfg.drawBaseChar) || {};
+  return dbc[k] || (shopDb.cfg && shopDb.cfg.baseChar) || BASE_CHAR_SRC;
+}
+/* 용사탭(renderAvatar)이 쓰는 공용 베이스 — 내 캐릭터/미리보기를 용사탭과 동일하게 맞추기 위해 사용 */
+function heroBaseUrl(){ return (shopDb.cfg && shopDb.cfg.baseChar) || '기본 캐릭터.png'; }
+
+/* renderAvatar 이식 (이벤트 상점.html 22519~) — HTML 레이어 반환. % 좌표 기반이라 정사각 박스에 그대로 적용 */
+const AVT_Z = ['back','outfit','shoes','face','hair','face_deco','hat','hair_deco','prop','pet'];
+const getEqId   = v => (v && typeof v === 'object') ? v.id   : (v || '');
+const getEqFlip = v => (v && typeof v === 'object') ? (v.flip || 'right') : 'right';
+function buildAvatarHTML(eq, displayPetsArr, displayPropsArr, sex){
+  eq = eq || {};
+  // 용사탭(renderAvatar)과 동일하게 성별 구분 없는 공용 베이스 사용 → '그대로' 일치
+  const baseUrl = heroBaseUrl();
+  const renderLyr = (cat, zi) => {
+    const id = getEqId(eq[cat]); if(!id) return '';
+    const item = (shopDb.avt||[]).find(a=>a.id===id); if(!item||!item.img) return '';
+    const flip = getEqFlip(eq[cat]);
+    const px=item.px||0, py=item.py||0, ps=item.ps||100, rot=item.rot||0;
+    const px2=item.px2??px, py2=item.py2??py, ps2=item.ps2??ps, rot2=item.rot2??rot;
+    const mirrorPx = 100-px-ps; const isLeft = flip==='left';
+    const sty=(left,fx,r,top,w)=>{
+      const parts=[fx?'scaleX(-1)':'', r?`rotate(${r}deg)`:''].filter(Boolean);
+      return `position:absolute;left:${left}%;top:${top}%;width:${w}%;height:${w}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${parts.length?`transform:${parts.join(' ')};`:''}`;
+    };
+    let html=`<img src="${item.img}" style="${sty(isLeft?mirrorPx:px,isLeft,rot,py,ps)}">`;
+    if(item.img2) html+=`<img src="${item.img2}" style="${sty(isLeft?(100-px2-ps2):px2,isLeft,rot2,py2,ps2)}">`;
+    return html;
+  };
+  const _renderItemById = (pid, zi, isRight) => {
+    if(!pid) return '';
+    let item=(shopDb.avt||[]).find(a=>a.id===pid);
+    if(!item && String(pid).startsWith('ps_')){
+      const _sk=(shopDb.petSkins||[]).find(s=>String(s.id)===String(pid).slice(3));
+      if(_sk&&_sk.img) item={img:_sk.img,px:_sk.px??0,py:_sk.py??0,ps:_sk.ps??100,rot:_sk.rot??0};
+    }
+    if(!item||!item.img) return '';
+    const px=item.px||0,py=item.py||0,ps=item.ps||100,rot=item.rot||0;
+    const left=isRight?Math.max(0,100-px-ps):px;
+    const t=[isRight?'scaleX(-1)':'',rot?`rotate(${rot}deg)`:''].filter(Boolean);
+    let html=`<img src="${item.img}" style="position:absolute;left:${left}%;top:${py}%;width:${ps}%;height:${ps}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t.length?`transform:${t.join(' ')};`:''}">`;
+    if(item.img2){
+      const px2=item.px2??px,py2=item.py2??py,ps2=item.ps2??ps,rot2=item.rot2??rot;
+      const left2=isRight?Math.max(0,100-px2-ps2):px2;
+      const t2=[isRight?'scaleX(-1)':'',rot2?`rotate(${rot2}deg)`:''].filter(Boolean);
+      html+=`<img src="${item.img2}" style="position:absolute;left:${left2}%;top:${py2}%;width:${ps2}%;height:${ps2}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t2.length?`transform:${t2.join(' ')};`:''}">`;
+    }
+    return html;
+  };
+  const norm = a => Array.isArray(a)?a.filter(Boolean):(a&&typeof a==='object'?Object.values(a).filter(Boolean):null);
+  const propIds = (norm(displayPropsArr)&&norm(displayPropsArr).length)?norm(displayPropsArr):(getEqId(eq.prop)?[getEqId(eq.prop)]:[]);
+  const pets = norm(displayPetsArr);
+  const backLayer = renderLyr('back',0);
+  const baseEl = `<img src="${baseUrl}" style="position:absolute;left:0;top:0;z-index:1;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;">`;
+  const petLayers = (pets&&pets.length)?pets.map((pid,i)=>pid?_renderItemById(pid,3,i===0):'').join(''):'';
+  const front = AVT_Z.filter(c=>c!=='back'&&c!=='prop'&&c!=='pet').map(c=>renderLyr(c,2)).join('')
+    + propIds.map((pid,i)=>_renderItemById(pid,2,i===1)).join('') + petLayers;
+  return backLayer + baseEl + front;
+}
+
+/* ============ REFERENCE LAYER ============ */
+// 참고 캐릭터는 그리기 캔버스를 꽉 채워야(=정사각 한 변이 캔버스 높이) 학생이 따라 그린 스킨이
+// 적용(ps:100 오버레이) 시 캐릭터와 1:1로 정렬됨. 시각 배율은 아이템 수정 미리보기와 같은 정사각+contain.
+function refSquareWrap(inner){
+  const sidePct = (GRID_H/GRID_W*100).toFixed(4);           // 정사각 한 변 = 캔버스 높이
+  const leftPct = ((GRID_W-GRID_H)/(2*GRID_W)*100).toFixed(4);
+  return `<div style="position:absolute;top:0;left:${leftPct}%;width:${sidePct}%;height:100%;transform-origin:center;">${inner}</div>`;
+}
+function setRefSingle(src){
+  // 단일 이미지(기본 캐릭터)도 내 캐릭터와 동일한 박스/축소로 배치
+  refLayer.innerHTML = src ? refSquareWrap(`<img src="${src}" style="position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;">`) : '';
+  _refShownHtml = null;   // 아바타가 아닌 단일 이미지로 교체됨 → 다음 loadMyCharRef가 다시 그리도록
+}
+function setRefHTML(html){ refLayer.innerHTML = html; }
+document.getElementById('refOpacity').addEventListener('input',e=>{ setRefOpacity(+e.target.value); scheduleSaveDraft(); });
+function setRefOpacity(v){ refLayer.style.opacity = v/100; }
+
+// 참고 이미지 켜기/끄기 토글 (미리보기 하단)
+let refVisible = true;
+const refToggleBtn = document.getElementById('refToggleBtn');
+function applyRefVisibility(){
+  refLayer.style.display = refVisible ? '' : 'none';
+  refToggleBtn.classList.toggle('on', refVisible);
+  refToggleBtn.textContent = refVisible ? '💡 배경 이미지 켜짐' : '🚫 배경 이미지 꺼짐';
+}
+refToggleBtn.addEventListener('click',()=>{ refVisible=!refVisible; applyRefVisibility(); scheduleSaveDraft(); });
+
+// 메뉴 토글
+const refPop = document.getElementById('refMenuPop');
+document.getElementById('loadRefBtn').addEventListener('click',()=>refPop.classList.toggle('open'));
+document.addEventListener('click',e=>{ if(!e.target.closest('.refmenu')) refPop.classList.remove('open'); });
+refPop.addEventListener('click', async e=>{
+  const kind = e.target.dataset?.ref; if(!kind) return;
+  refPop.classList.remove('open');
+  if(kind==='base_m'){ setRefSingle(baseCharUrl('m')); ensureRefVisible(); return; }
+  if(kind==='base_f'){ setRefSingle(baseCharUrl('f')); ensureRefVisible(); return; }
+  if(kind==='mine'){ loadMyCharRef(); }
+});
+
+// 내 캐릭터를 참고 이미지로 합성 (기본값) — 0.95배 축소
+async function loadMyCharRef(silent){
+  const code = currentUser && currentUser.code;
+  if(!code){ if(!silent) toast('로그인이 필요합니다.'); return; }
+  const cacheKey = 'skinTool_avatar_' + code;
+  let cached = null; try{ cached = localStorage.getItem(cacheKey); }catch(_){}
+  // 1) 카탈로그(shopData) 미로드 = 빠른 진입 단계 → 캐시(또는 기본캐릭터)만 즉시 표시하고 종료.
+  //    네트워크 대기 없음. 백그라운드 로드 완료 후 다시 호출되어 최신본으로 갱신됨.
+  if(!_shopLoaded){
+    if(cached){ setRefHTML(cached); _refShownHtml = cached; ensureRefVisible(); }
+    else setRefSingle(baseCharUrl(currentUser && currentUser.sex));
+    return;
+  }
+  // 2) 카탈로그 로드됨 → 최신 아바타 합성. 캐시 표시는 생략(아래에서 변경 시에만 setRefHTML → 이미지 재로딩 방지)
+  if(!cached){
+    setRefHTML('<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#555;font-size:13px;">불러오는 중…</div>');
+  }
+  const fallback = ()=>{ if(!cached){ if(silent) setRefSingle(baseCharUrl(currentUser && currentUser.sex)); else setRefSingle(''); } };
+  try{
+    // 로그인 때 받은 학생 레코드 재사용 → stu 통째 재조회 생략(주 지연 원인 제거)
+    let me = window._petMyStu;
+    if(!me || String(me.cd) !== String(code)){
+      const snap = await dbRef.child('stu').get();
+      const val = snap.val()||{}; const list = Array.isArray(val)?val:Object.values(val);
+      me = list.find(s=>s&&String(s.cd)===String(code));
+    }
+    if(!me){ fallback(); if(!silent && !cached) toast('학생 정보를 찾을 수 없어요.'); return; }
+    // 아바타 합성을 기본 캐릭터와 동일한 정사각 박스 + 축소로 배치 → 굵기 일치
+    const html = refSquareWrap(buildAvatarHTML(me.eq, me.displayPets, me.displayProps, me.gdr));
+    // 현재 표시 중인 것과 다를 때만 재설정 — 이미 캐시로 띄운 동일 아바타면 이미지 재로딩 안 함
+    if(html !== _refShownHtml){
+      setRefHTML(html);
+      _refShownHtml = html;
+      ensureRefVisible();                                    // 내용이 실제로 (재)렌더될 때만 — 복원된 표시설정 존중
+    }
+    try{ localStorage.setItem(cacheKey, html); }catch(_){}   // 다음 진입 시 즉시 표시용(최신본 유지)
+  }catch(err){ console.error(err); fallback(); if(!silent && !cached) toast('내 캐릭터 불러오기 실패'); }
+}
+function ensureRefVisible(){
+  if(window._skipRefAutoShow){ window._skipRefAutoShow=false; return; }  // 복원된 off/투명 설정 1회 존중
+  if(!refVisible){ refVisible=true; applyRefVisibility(); }
+  const sl=document.getElementById('refOpacity');
+  if(+sl.value===0){ sl.value=40; setRefOpacity(40); }
+}
+
+/* ============ EXPORT WEBP ============ */
+function exportCanvas(scale){
+  const off = document.createElement('canvas');
+  off.width = GRID_W*scale; off.height = GRID_H*scale;
+  const o = off.getContext('2d'); o.imageSmoothingEnabled=false;
+  for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++){
+    const c=pixels[y][x]; if(c){ o.fillStyle=c; o.fillRect(x*scale,y*scale,scale,scale); }
+  }
+  return off;
+}
+function toWebpBlob(){
+  return new Promise(resolve=>{
+    const off = exportCanvas(EXPORT_SCALE);
+    off.toBlob(b=>{
+      if(b && b.type==='image/webp' && b.size>100*1024){
+        // 너무 크면 품질 낮춰 재시도
+        off.toBlob(b2=>resolve(b2||b),'image/webp',0.7);
+      } else resolve(b);
+    },'image/webp',0.92);
+  });
+}
+function hasPixels(){ return pixels.some(r=>r.some(c=>c)); }
+
+document.getElementById('downloadBtn').addEventListener('click', async ()=>{
+  if(!hasPixels()){ toast('그림을 먼저 그려주세요.'); return; }
+  const b = await toWebpBlob();
+  const url = URL.createObjectURL(b);
+  const a = document.createElement('a'); a.href=url; a.download='펫스킨.webp'; a.click();
+  URL.revokeObjectURL(url);
+});
+// 공용 예쁜 메시지창 (모달)
+function _prettyMsg(opts){
+  document.getElementById('_prettyModal')?.remove();
+  const o = opts||{};
+  const emoji=o.emoji||'✨', title=o.title||'', html=o.html||'',
+        accent=o.accent||'#6c8cff', bg=o.bg||'linear-gradient(135deg,#eef2ff,#e6ecff)', auto=o.auto||0;
+  const wrap=document.createElement('div');
+  wrap.id='_prettyModal';
+  wrap.style.cssText='position:fixed;inset:0;background:rgba(20,20,30,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  wrap.innerHTML=`<div id="_prettyCard" style="background:${bg};border-radius:20px;padding:28px 26px;max-width:340px;width:100%;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.3);transform:scale(.82);opacity:0;transition:transform .22s cubic-bezier(.2,1.4,.4,1),opacity .22s;">
+      <div style="font-size:54px;line-height:1;margin-bottom:10px;">${emoji}</div>
+      <div style="font-size:19px;font-weight:800;color:#333;margin-bottom:8px;">${title}</div>
+      <div style="font-size:14px;color:#555;line-height:1.6;margin-bottom:18px;">${html}</div>
+      <button id="_prettyOk" style="background:${accent};color:#fff;border:none;border-radius:12px;padding:11px 28px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;">확인</button>
+    </div>`;
+  document.body.appendChild(wrap);
+  const card=document.getElementById('_prettyCard');
+  requestAnimationFrame(()=>{ card.style.transform='scale(1)'; card.style.opacity='1'; });
+  const close=()=>wrap.remove();
+  document.getElementById('_prettyOk').addEventListener('click',close);
+  wrap.addEventListener('click',e=>{ if(e.target===wrap) close(); });
+  if(auto>0) setTimeout(close, auto);
+}
+
+/* ============ SUBMIT ============ */
+async function uploadToCloudinary(blob, creatorCd){
+  const publicId = `petskin_${creatorCd}_${Date.now()}`;
+  const signRes = await fetch(SIGN_WORKER,{method:'POST',body:JSON.stringify({action:'signUpload', publicId})});
+  const sign = await signRes.json();
+  const fd = new FormData();
+  fd.append('file', blob);
+  fd.append('public_id', sign.publicId);
+  fd.append('overwrite','true');
+  fd.append('invalidate','true');
+  fd.append('timestamp', String(sign.timestamp));
+  fd.append('signature', sign.signature);
+  fd.append('api_key', sign.apiKey);
+  const res = await fetch(CLOUDINARY_URL,{method:'POST',body:fd});
+  const j = await res.json();
+  if(!j.secure_url) throw new Error(j.error?.message || '업로드 실패');
+  return j.secure_url;
+}
+
+['inName','inPrice'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input', scheduleSaveDraft); });
+
+let _submitting = false;   // 중복 제출 방지
+document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  if(_submitting) return;   // 처리 중 추가 클릭 무시
+  const name = document.getElementById('inName').value.trim();
+  const price = Math.max(0, parseInt(document.getElementById('inPrice').value||'0')||0);
+  const btn = document.getElementById('submitBtn');
+  if(!currentUser || currentUser.role!=='student'){ toast('학생으로 로그인해주세요.'); return; }
+  const code = currentUser.code;
+  if(!name){ toast('아이템 이름을 입력해주세요.'); return; }
+  if(!hasPixels()){ toast('그림을 먼저 그려주세요.'); return; }
+
+  _submitting = true;
+  btn.disabled = true; btn.textContent = '⏳ 제출 중…';
+  try{
+    btn.textContent = '🖼️ 이미지 만드는 중…';
+    const blob = await toWebpBlob();
+    btn.textContent = '☁️ 업로드 중…';
+    const imgUrl = await uploadToCloudinary(blob, code);
+
+    btn.textContent = '📨 제출 중…';
+    const sub = {
+      img: imgUrl,
+      proposedName: name,
+      proposedPrice: price,
+      creatorCd: String(code),
+      creatorNm: currentUser.name || '',
+      px: DEFAULT_OVERLAY.px, py: DEFAULT_OVERLAY.py, ps: DEFAULT_OVERLAY.ps, rot: DEFAULT_OVERLAY.rot,
+      ts: firebase.database.ServerValue.TIMESTAMP,
+      status: 'pending'
+    };
+    const _subRef = await dbRef.child('skinSubmissions').push(sub);
+    try{ if(_subRef && _subRef.key){ _addMySubKey(_subRef.key); _watchMySub(_subRef.key); } }catch(_){}
+    _prettyMsg({
+      emoji:'📨', title:'제출되었어요!',
+      html:`<b style="color:#22c55e">${name}</b> 아이템을 선생님께 보냈어요.<br>승인 결과를 기다려주세요! 🙌`,
+      accent:'#22c55e', bg:'linear-gradient(135deg,#e7f9ee,#d6f5e3)'
+    });
+    btn.textContent = '✅ 제출됨';
+    setTimeout(()=>{ btn.disabled=false; btn.textContent='📨 선생님께 제출하기'; _submitting=false; }, 2500);
+  }catch(err){
+    console.error(err);
+    _prettyMsg({ emoji:'⚠️', title:'제출 실패', html:'잠시 후 다시 시도해주세요.<br><span style="color:#999;font-size:12px;">'+(err.message||'')+'</span>', accent:'#fb7185', bg:'linear-gradient(135deg,#fdeef0,#ffe1e6)' });
+    btn.disabled=false; btn.textContent='📨 선생님께 제출하기'; _submitting=false;
+  }
+});
+
+/* ============ TOAST ============ */
+let toastT;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+/* ============ 제출 결과 알림 (승인/거절) — 내 제출 노드만 감시(트래픽 최소) ============ */
+const _subWatchers = {};   // key -> ref (해제용)
+function _mySubKeyName(){ return 'skinTool_subs_' + (currentUser && currentUser.code ? currentUser.code : 'anon'); }
+function _getMySubKeys(){ try{ return JSON.parse(localStorage.getItem(_mySubKeyName())||'[]')||[]; }catch(_){ return []; } }
+function _setMySubKeys(arr){ try{ localStorage.setItem(_mySubKeyName(), JSON.stringify(arr)); }catch(_){} }
+function _addMySubKey(k){ const a=_getMySubKeys(); if(!a.includes(k)){ a.push(k); _setMySubKeys(a); } }
+function _removeMySubKey(k){ _setMySubKeys(_getMySubKeys().filter(x=>x!==k)); }
+function _unwatchMySub(k){ const r=_subWatchers[k]; if(r){ try{ r.off(); }catch(_){} delete _subWatchers[k]; } }
+function _watchMySub(key){
+  if(_subWatchers[key]) return;
+  const ref = dbRef.child('skinSubmissions/'+key);
+  _subWatchers[key] = ref;
+  ref.on('value', snap=>{
+    const v = snap.val();
+    if(!v){ _unwatchMySub(key); _removeMySubKey(key); return; }   // 삭제됨
+    if(v.status==='approved' || v.status==='rejected'){
+      _unwatchMySub(key); _removeMySubKey(key);                   // 1회 알림 후 감시 종료
+      showSubResult(v.status, v);
+    }
+  });
+}
+// 로그인/진입 시 보류 중인 내 제출들 다시 감시 (자리비운 사이 처리된 결과도 잡힘)
+function _initSubWatch(){ _getMySubKeys().forEach(k=>_watchMySub(k)); }
+
+// 승인/거절 결과 메시지창
+function showSubResult(status, v){
+  const ok = status==='approved';
+  const name = (v && v.proposedName) ? v.proposedName : '내 아이템';
+  _prettyMsg({
+    emoji: ok ? '🎉' : '🥲',
+    title: ok ? '아이템이 승인됐어요!' : '아쉽지만 반려됐어요',
+    html: ok
+      ? `<b style="color:#22c55e">${name}</b> 아이템이 상점에 등록됐어요.<br>멋진 작품이에요! 👏`
+      : `<b style="color:#fb7185">${name}</b> 아이템이 이번엔 반려됐어요.<br>조금 더 다듬어서 다시 도전해봐요! 💪`,
+    accent: ok ? '#22c55e' : '#fb7185',
+    bg: ok ? 'linear-gradient(135deg,#e7f9ee,#d6f5e3)' : 'linear-gradient(135deg,#fdeef0,#ffe1e6)'
+  });
+}
+
+/* ============ 세션 / 로그인 ============ */
+const TEACHER_CODE = 'csgo10';
+const SESSION_KEY = 'skinTool_session';
+let currentUser = null;   // {role:'student'|'teacher', code, name, sex}
+
+function saveSession(){ try{ localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser)); }catch(_){}}
+function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(_){}}
+
+function showLogin(){
+  document.getElementById('loginOverlay').classList.remove('hidden');
+  document.getElementById('teacherOverlay').classList.add('hidden');
+}
+function enterStudent(){
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('teacherOverlay').classList.add('hidden');
+  loadDraft();                                  // 로컬 임시저장 복원(그림+설정)
+  // 기본값: 내 캐릭터를 참고로 표시 (실패 시 본인 성별 기본 캐릭터로 폴백)
+  setRefSingle(baseCharUrl(currentUser.sex));
+  setRefOpacity(+document.getElementById('refOpacity').value);
+  applyRefVisibility();
+  loadMyCharRef(true);
+  _initSubWatch();   // 보류 중인 내 제출의 승인/거절 감시 재개
+}
+function enterTeacher(){
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('teacherOverlay').classList.remove('hidden');
+  renderTeacherThumbs();
+}
+
+// 이벤트 상점에서 ?cd= 로 열 때: 네트워크 대기 없이 캐시로 즉시 진입 → 백그라운드로 최신 데이터 갱신
+async function autoEnterStudent(cd){
+  cd = String(cd);
+  // 이벤트 상점이 넘긴 학생 데이터(핸드오프) — 있으면 stu 전체 조회를 아예 생략(가장 큰 읽기 제거)
+  let handoff=null; try{ handoff = JSON.parse(localStorage.getItem('skinTool_stu_'+cd)||'null'); }catch(_){}
+  let sess=null; try{ sess = JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(_){}
+  if(handoff && String(handoff.cd)===cd){
+    window._petMyStu = handoff;   // 아바타 합성에 재사용
+    currentUser = { role:'student', code:cd, name:handoff.nm||'', sex:gdrKey(handoff.gdr) };
+  } else {
+    currentUser = (sess && sess.role==='student' && String(sess.code)===cd)
+      ? sess : { role:'student', code:cd, name:'', sex:'m' };
+  }
+  enterStudent();   // 캐시 아바타/그림 즉시 표시 (shopData 미로드 시 loadMyCharRef가 캐시만 표시)
+  // 백그라운드 갱신
+  try{
+    await loadShopData();   // 카탈로그 캐시 신선하면 네트워크 생략
+    if(!window._petMyStu){
+      // 핸드오프 없을 때만 stu 조회 (수동 새로고침 등)
+      const snap = await dbRef.child('stu').get();
+      const val = snap.val()||{}; const list = Array.isArray(val)?val:Object.values(val);
+      const me = list.find(s=>s&&String(s.cd)===cd);
+      if(!me){ showLogin(); const m=document.getElementById('loginMsg'); if(m){ m.style.color='#ff8a8a'; m.textContent='코드를 찾을 수 없어요.'; } return; }
+      window._petMyStu = me;
+      currentUser = { role:'student', code:cd, name:me.nm||'', sex:gdrKey(me.gdr) };
+    }
+    saveSession();
+    loadMyCharRef(true);   // 최신 아바타로 갱신 + 캐시 저장 (핸드오프/캐시 사용 시 추가 읽기 없음)
+  }catch(e){ console.error('[autoEnter]', e); }   // 캐시로 이미 화면 떠 있으므로 조용히 무시
+}
+
+async function doLogin(codeRaw){
+  const code = (codeRaw||'').trim();
+  const msg = document.getElementById('loginMsg');
+  if(!code){ msg.textContent='코드를 입력하세요.'; return; }
+  await loadShopData();
+  if(code === TEACHER_CODE){
+    currentUser = { role:'teacher', code, name:'선생님' };
+    saveSession(); enterTeacher(); return;
+  }
+  // 학생 조회
+  try{
+    const snap = await dbRef.child('stu').get();
+    const val = snap.val()||{}; const list = Array.isArray(val)?val:Object.values(val);
+    const me = list.find(s=>s&&String(s.cd)===String(code));
+    if(!me){ showLogin(); msg.style.color='#ff8a8a'; msg.textContent='코드를 찾을 수 없어요.'; return; }
+    window._petMyStu = me;   // 참고 이미지(내 캐릭터) 합성에 재사용 → stu 재조회 생략
+    currentUser = { role:'student', code:String(code), name:me.nm||'', sex:gdrKey(me.gdr) };
+    saveSession(); enterStudent();
+  }catch(e){ console.error(e); showLogin(); msg.style.color='#ff8a8a'; msg.textContent='로그인 오류: '+e.message; }
+}
+document.getElementById('loginBtn').addEventListener('click',()=>doLogin(document.getElementById('loginCode').value));
+document.getElementById('loginCode').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(e.target.value); });
+
+function logout(){ currentUser=null; clearSession(); document.getElementById('loginCode').value=''; showLogin(); }
+const _logoutBtnEl = document.getElementById('logoutBtn'); if(_logoutBtnEl) _logoutBtnEl.addEventListener('click', logout);
+document.getElementById('teacherLogout').addEventListener('click', logout);
+
+/* ============ 교사: 기본 캐릭터(남/여) 등록 ============ */
+function renderTeacherThumbs(){
+  const dbc = (shopDb.cfg && shopDb.cfg.drawBaseChar) || {};
+  [['m','tchThumbM'],['f','tchThumbF']].forEach(([k,id])=>{
+    const el = document.getElementById(id);
+    el.innerHTML = dbc[k] ? `<img src="${dbc[k]}">` : '<span class="empty">없음</span>';
+  });
+}
+let _tchSex = 'm';
+document.querySelectorAll('#teacherOverlay [data-sex]').forEach(b=>{
+  b.addEventListener('click',()=>{ _tchSex = b.dataset.sex; document.getElementById('tchFile').click(); });
+});
+document.getElementById('tchFile').addEventListener('change', async e=>{
+  const f = e.target.files[0]; e.target.value=''; if(!f) return;
+  const msg = document.getElementById('tchMsg');
+  msg.style.color = '#9aa0b8'; msg.textContent = '업로드 중…';
+  try{
+    // WebP로 변환(저용량) 후 업로드
+    const blob = await fileToWebp(f);
+    const url = await uploadToCloudinary(blob, 'basechar_'+_tchSex);
+    if(!shopDb.cfg) shopDb.cfg = {};
+    if(!shopDb.cfg.drawBaseChar) shopDb.cfg.drawBaseChar = {};
+    shopDb.cfg.drawBaseChar[_tchSex] = url;
+    await dbRef.child('cfg/drawBaseChar/'+_tchSex).set(url);
+    renderTeacherThumbs();
+    msg.style.color = '#22c55e'; msg.textContent = '✅ 저장되었습니다.';
+  }catch(err){ console.error(err); msg.style.color='#ff8a8a'; msg.textContent='❌ '+err.message; }
+});
+// 임의 이미지 파일 → WebP Blob
+function fileToWebp(file){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const c = document.createElement('canvas');
+      const max = 512, sc = Math.min(1, max/Math.max(img.width,img.height));
+      c.width = Math.round(img.width*sc); c.height = Math.round(img.height*sc);
+      const cx = c.getContext('2d'); cx.imageSmoothingEnabled=false; cx.drawImage(img,0,0,c.width,c.height);
+      c.toBlob(b=>b?resolve(b):reject(new Error('변환 실패')),'image/webp',0.9);
+    };
+    img.onerror = ()=>reject(new Error('이미지 로드 실패'));
+    const rd = new FileReader(); rd.onload=()=>img.src=rd.result; rd.readAsDataURL(file);
+  });
+}
+
+/* ============ 로컬 임시저장 (그림+설정, 트래픽 0 · 로컬 전용) ============ */
+// pixels는 Firebase 수신(loadShopData/참고이미지)에 절대 건드려지지 않으므로
+// 로컬 복원이 수신 데이터에 덮어써질 일이 없음. 복원 완료 전에는 저장을 막아
+// '빈 그림이 진짜 작업물을 덮어쓰는' 사고도 차단한다.
+var _draftLoaded = false;   // var: 호이스팅으로 TDZ 회피 — 초기화 전 호출돼도 undefined로 안전 평가
+var _draftT = null;
+function draftKey(){ return 'skinTool_draft_' + (currentUser && currentUser.code ? currentUser.code : 'anon'); }
+function saveDraftNow(){
+  if(!_draftLoaded) return;
+  try{
+    // 희소 인코딩: 색칠된 셀만 [index,color]로 저장 → 빈/성긴 그림은 수백 바이트.
+    // (90×90 전체 배열은 빈 그림도 ~40KB라 공유 PC에서 용량 초과 사고 위험)
+    const cells=[];
+    for(let y=0;y<GRID_H;y++){ const row=pixels[y]; for(let x=0;x<GRID_W;x++){ const c=row[x]; if(c) cells.push([y*GRID_W+x, c]); } }
+    localStorage.setItem(draftKey(), JSON.stringify({
+      v:2, w:GRID_W, h:GRID_H, cells, color, brushSize, zoomLevel, tool,
+      refOpacity:+document.getElementById('refOpacity').value,
+      refVisible,
+      name: document.getElementById('inName').value,
+      price: document.getElementById('inPrice').value
+    }));
+  }catch(_){}
+}
+function scheduleSaveDraft(){ if(!_draftLoaded) return; clearTimeout(_draftT); _draftT=setTimeout(saveDraftNow,400); }
+// 새로고침/탭 닫기/탭 전환 직전 강제 저장 — 디바운스 대기 중인 변경분 유실 방지
+window.addEventListener('beforeunload', ()=>{ try{ if(_draftLoaded) saveDraftNow(); }catch(_){} });
+window.addEventListener('pagehide',     ()=>{ try{ if(_draftLoaded) saveDraftNow(); }catch(_){} });
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden){ try{ if(_draftLoaded) saveDraftNow(); }catch(_){} } });
+function loadDraft(){
+  let d=null;
+  try{ d = JSON.parse(localStorage.getItem(draftKey())||'null'); }catch(_){}
+  // 픽셀 복원: v2(희소 cells) 우선, v1(전체 pixels 배열) 하위호환
+  let restored=null;
+  if(d && Array.isArray(d.cells)){
+    restored = Array.from({length:GRID_H},()=>Array(GRID_W).fill(null));
+    d.cells.forEach(pair=>{
+      if(!Array.isArray(pair)) return;
+      const idx=pair[0], c=pair[1];
+      const y=Math.floor(idx/GRID_W), x=idx%GRID_W;
+      if(typeof c==='string' && y>=0&&y<GRID_H&&x>=0&&x<GRID_W) restored[y][x]=c;
+    });
+  } else if(d && Array.isArray(d.pixels) && d.pixels.length===GRID_H){
+    restored = d.pixels.map(r=> (Array.isArray(r)&&r.length===GRID_W) ? r.slice() : Array(GRID_W).fill(null));
+  }
+  if(d && restored){
+    pixels = restored;
+    if(typeof d.color==='string') color = d.color;
+    if(typeof d.brushSize==='number') brushSize = Math.max(1,Math.min(5,d.brushSize));
+    if(typeof d.zoomLevel==='number') zoomLevel = Math.max(1,Math.min(10,d.zoomLevel));
+    if(typeof d.tool==='string') tool = d.tool;
+    if(typeof d.name==='string') document.getElementById('inName').value = d.name;
+    if(d.price!=null) document.getElementById('inPrice').value = d.price;
+    if(typeof d.refOpacity==='number') document.getElementById('refOpacity').value = d.refOpacity;
+    if(typeof d.refVisible==='boolean') refVisible = d.refVisible;
+    if(d.refVisible===false || d.refOpacity===0) window._skipRefAutoShow = true;  // 진입 시 자동표시 1회 건너뜀
+    brushLabel.textContent = brushSize;
+    setColor(color);
+    const tb = document.querySelector(`.tool[data-tool="${tool}"]`); if(tb) selectToolBtn(tb);
+    applyZoom();                 // cell 재계산 + resize + render (그린 픽셀 표시)
+  }
+  _draftLoaded = true;
+  saveDraftNow();                // 키 생성 보장
+}
+
+/* ============ START ============ */
+resizeCanvases();
+(function boot(){
+  // 이벤트 상점에서 외부 창으로 열 때 ?cd=학생코드 자동 전달 → 자동 로그인 (재입력 불필요)
+  let urlCd = '';
+  try{ urlCd = new URLSearchParams(location.search).get('cd') || ''; }catch(_){}
+  if(urlCd){
+    // 접속 화면을 즉시 숨기고 캐시로 바로 진입 — 네트워크 대기/깜빡임 없음
+    document.getElementById('loginOverlay').classList.add('hidden');
+    const _ci = document.getElementById('loginCode'); if(_ci) _ci.value = urlCd;
+    autoEnterStudent(urlCd);
+    return;
+  }
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(SESSION_KEY)||'null'); }catch(_){}
+  if(saved && saved.role){
+    currentUser = saved;
+    loadShopData().then(()=>{ currentUser.role==='teacher' ? enterTeacher() : enterStudent(); });
+  } else {
+    showLogin();
+  }
+})();
+</script>
+</body>
+</html>
