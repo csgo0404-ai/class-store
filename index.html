@@ -14001,11 +14001,32 @@ let _renderLock = false; // 재진입 방지
     };
 
     // 파일 다운로드용 — log 포함 전체 스냅샷
+    // 은행 완료내역 아카이브 병합 — Firebase에서 prune된 완료 레코드를 백업/내보내기에 복원(쿠키 무관, 표시/보존용).
+    // live 객체를 변형하지 않도록 해당 학생만 얕은 복제 후 bank.deposits/loans에 중복제거 append.
+    window._bankMergeArchiveIntoStu = function(stuArr) {
+        if (!Array.isArray(stuArr)) return stuArr;
+        let archive;
+        try { archive = JSON.parse(localStorage.getItem('_bankCompletedArchive') || '{}'); } catch(_) { archive = null; }
+        if (!archive || !Object.keys(archive).length) return stuArr;
+        return stuArr.map(s => {
+            if (!s || !s.cd || !archive[s.cd]) return s;
+            const arc = archive[s.cd];
+            const b = s.bank || {};
+            const deps = Array.isArray(b.deposits) ? b.deposits.slice() : (b.deposits ? Object.values(b.deposits).filter(Boolean) : []);
+            const loans = Array.isArray(b.loans) ? b.loans.slice() : (b.loans ? Object.values(b.loans).filter(Boolean) : []);
+            const _dIds = new Set(deps.map(d => d && d.id));
+            const _lIds = new Set(loans.map(l => l && l.id));
+            (arc.deposits || []).forEach(d => { if (d && d.id && !_dIds.has(d.id)) deps.push(d); });
+            (arc.loans || []).forEach(l => { if (l && l.id && !_lIds.has(l.id)) loans.push(l); });
+            return Object.assign({}, s, { bank: { deposits: deps, loans: loans } });
+        });
+    };
+
     window._makeFullSnapshot = function() {
         return {
             ts: new Date().toISOString(),
             leagueConfig: window._leagueCfgCache || undefined,
-            stu:      db.stu,
+            stu:      window._bankMergeArchiveIntoStu(db.stu),
             itm:      db.itm,
             gac:      db.gac,
             avt:      db.avt,
@@ -14062,7 +14083,7 @@ let _renderLock = false; // 재진입 방지
             const _real = _full.filter(s => s && (s.cd||s.nm));
             const _memCnt = (db.stu||[]).filter(s => s && (s.cd||s.nm)).length;
             if(_real.length) {
-                backup.stu = _cdMig ? _real : _full;
+                backup.stu = window._bankMergeArchiveIntoStu(_cdMig ? _real : _full); // 은행 완료 아카이브 병합
                 if(_real.length !== _memCnt) console.warn('[backupDB] 메모리', _memCnt, '명 vs Firebase', _real.length, '명 — Firebase 전체로 백업');
             }
         } catch(e) { console.warn('[backupDB] stu 전체 fetch 실패 — 메모리로 백업', e); }
@@ -57716,6 +57737,47 @@ window.addCharRow = function() {
         return s.bank;
     }
 
+    // 완료(교사 관리 불필요) 레코드 판정 — 예금: settled||cancelled / 대출: 잔액0 & 활성 상점제한 없음
+    function _bankDepClosed(d) { return !!(d && (d.settled || d.cancelled)); }
+    function _bankLoanClosed(l, today) {
+        if (!l) return false;
+        const banActive = l.shopBanUntil && l.shopBanUntil >= today;
+        return !banActive && (l.remaining || 0) <= 0;
+    }
+    // 완료 + closedAt(없으면 dueDate 폴백)이 today 이전 → Firebase에서 삭제 대상으로 분리.
+    // 같은 날(closedAt===today) 완료분은 유지 → 학생이 최소 1정산일 동안 관찰·로컬보관 가능.
+    // 활성 레코드는 절대 제거하지 않음(레거시 _bankRecordsOffset 폴백 보호).
+    function _bankPruneCompleted(bank, today) {
+        const keptDep = [], keptLoan = [], removed = [];
+        const _ripe = (rec) => { const c = rec.closedAt || rec.dueDate; return c && c < today; };
+        for (const d of (bank.deposits || [])) {
+            if (_bankDepClosed(d) && _ripe(d)) removed.push({ kind: 'deposit', rec: d });
+            else keptDep.push(d);
+        }
+        for (const l of (bank.loans || [])) {
+            if (_bankLoanClosed(l, today) && _ripe(l)) removed.push({ kind: 'loan', rec: l });
+            else keptLoan.push(l);
+        }
+        return { kept: { deposits: keptDep, loans: keptLoan }, removed };
+    }
+
+    // 교사 측: 삭제 직전 완료 레코드를 로컬 아카이브에 적립(cd별, id 중복제거) — 백업/내보내기에 전체내역 보존
+    function _bankArchiveCompleted(cd, removed) {
+        if (!cd || !removed || !removed.length) return;
+        try {
+            const key = '_bankCompletedArchive';
+            const all = JSON.parse(localStorage.getItem(key) || '{}');
+            const cur = all[cd] || { deposits: [], loans: [] };
+            const _merge = (arr, rec) => { if (rec && rec.id && !arr.some(x => x && x.id === rec.id)) arr.push(rec); };
+            for (const r of removed) {
+                if (r.kind === 'deposit') _merge(cur.deposits, r.rec);
+                else _merge(cur.loans, r.rec);
+            }
+            all[cd] = cur;
+            localStorage.setItem(key, JSON.stringify(all));
+        } catch(_) {}
+    }
+
     // 은행 가용 잔액 = cookie - usedCookie - shopUsed (예금 한도 및 상환 시 사용)
     function _bankGetMyCookieBalance() {
         if (typeof me === 'undefined' || !me) return 0;
@@ -57820,6 +57882,7 @@ window.addCharRow = function() {
                     s.bankAdj += _add;
                     updates[`stu/${fbKey}/cookie`] = s.cookie;
                     dep.settled = true;
+                    dep.closedAt = today;
                     changed = true;
                     interestCount++;
                 }
@@ -57849,10 +57912,22 @@ window.addCharRow = function() {
                     }
                     ln.remaining = 0;
                     ln.interestPaid = true;
+                    ln.closedAt = today;
                     updates[`stu/${fbKey}/cookie`] = s.cookie;
                     changed = true;
                 }
             }
+
+            // 완료 레코드 prune — 교사 관리 불필요분을 Firebase에서 제거(쿠키 무관: bankAdj가 진실의 원천,
+            // 활성 레코드는 보존). bankAdj는 위에서 이미 부트스트랩/갱신됨.
+            const _pr = _bankPruneCompleted(bank, today);
+            if(_pr.removed.length) {
+                _bankArchiveCompleted(s.cd, _pr.removed); // 삭제 전 교사 로컬 아카이브 적립
+                bank.deposits = _pr.kept.deposits;
+                bank.loans = _pr.kept.loans;
+                changed = true;
+            }
+
             if(changed) { updates[`stu/${fbKey}/bank`] = bank; updates[`stu/${fbKey}/bankAdj`] = s.bankAdj; }
         });
 
@@ -58021,6 +58096,7 @@ window.addCharRow = function() {
                     s.bankAdj += _add;
                     updates[`stu/${fbKey}/cookie`] = s.cookie;
                     dep.settled = true;
+                    dep.closedAt = today;
                     changed = true;
                     count++;
                 }
@@ -58067,6 +58143,7 @@ window.addCharRow = function() {
                     }
                     ln.remaining = 0;
                     ln.interestPaid = true;
+                    ln.closedAt = today;
                     updates[`stu/${fbKey}/cookie`] = s.cookie;
                     changed = true;
                 }
@@ -58299,6 +58376,7 @@ window.addCharRow = function() {
                     itemGained += interest;
                 }
                 dep.settled = true;
+                dep.closedAt = today;
                 count++;
             }
         }
@@ -58322,8 +58400,9 @@ window.addCharRow = function() {
         if(!active.length) { _bankManualShowStatus('취소할 예금이 없습니다.', '#888'); return; }
         if(!confirm(`${s.nm}의 미결제 예금 ${active.length}건을 모두 취소(원금 반환)하시겠습니까?`)) return;
         window._bankAdjInit(s); // cancelled 표시 전 bankAdj 부트스트랩
+        const _todayMC = _bankToday();
         let refund = 0;
-        active.forEach(dep => { dep.cancelled = true; refund += dep.amount || 0; });
+        active.forEach(dep => { dep.cancelled = true; dep.closedAt = _todayMC; refund += dep.amount || 0; });
         s.cookie = (s.cookie || 0) + refund;
         s.bankAdj += refund;
         const updates = {};
@@ -58346,7 +58425,8 @@ window.addCharRow = function() {
         const totalRem = active.reduce((a, l) => a + (l.remaining || 0), 0);
         if(!confirm(`${s.nm}의 대출 ${active.length}건(잔여 🍪${totalRem})을 탕감하시겠습니까?\n빌린 원금 🍪${totalRem}을 쿠키에서 회수해 상환 처리합니다.`)) return;
         window._bankAdjInit(s); // remaining=0 처리 전 bankAdj 부트스트랩
-        active.forEach(l => { l.remaining = 0; l.overdue = false; l.shopBanUntil = null; l.interestPaid = true; });
+        const _todayFL = _bankToday();
+        active.forEach(l => { l.remaining = 0; l.overdue = false; l.shopBanUntil = null; l.interestPaid = true; l.closedAt = _todayFL; });
         s.cookie = (s.cookie || 0) - totalRem; // 빌린 원금 회수(상환 처리) — 대출 시 더해졌던 쿠키 차감
         s.bankAdj -= totalRem;
         const updates = {};
@@ -58373,7 +58453,7 @@ window.addCharRow = function() {
         const hasBan = bank.loans.some(l => l.shopBanUntil && l.shopBanUntil >= today);
         if(!hasBan) { _bankManualShowStatus('이미 상점 제한이 없는 상태입니다.', '#888'); return; }
         if(!confirm(`${s.nm}의 상점 제한을 해제하시겠습니까?`)) return;
-        bank.loans.forEach(l => { if(l.shopBanUntil) l.shopBanUntil = null; });
+        bank.loans.forEach(l => { if(l.shopBanUntil) { l.shopBanUntil = null; if((l.remaining||0) <= 0 && !l.closedAt) l.closedAt = today; } });
         await dbRef.child(`stu/${fbKey}/bank`).set(bank);
         _bankManualShowStatus(`✅ ${s.nm} — 상점 제한 해제`, '#1565c0');
         _renderBankTeacher();
@@ -58523,6 +58603,35 @@ window.addCharRow = function() {
             }));
         } catch(_) {}
     }
+
+    // ─── 학생 로컬 원장 — 본인 예금/대출을 생성 시점에 영구 기록(표시 전용, 쿠키 무관) ───
+    // Firebase에서 완료 레코드가 삭제돼도 학생 "완료된 예금" 히스토리가 유지되도록 보장.
+    function _bankLedgerKey() { return (me && me.cd) ? '_bankLedger_' + me.cd : null; }
+    function _bankLedgerRead() {
+        const k = _bankLedgerKey(); if (!k) return { deposits: [], loans: [] };
+        try { const v = JSON.parse(localStorage.getItem(k) || 'null'); if (v && typeof v === 'object') { v.deposits = v.deposits || []; v.loans = v.loans || []; return v; } } catch(_) {}
+        return { deposits: [], loans: [] };
+    }
+    function _bankLedgerWrite(led) {
+        const k = _bankLedgerKey(); if (!k) return;
+        try { localStorage.setItem(k, JSON.stringify(led)); } catch(_) {}
+    }
+    // 신규 레코드 추가(id 중복제거). kind: 'deposit' | 'loan'
+    function _bankLedgerAdd(kind, rec) {
+        if (!rec || !rec.id) return;
+        const led = _bankLedgerRead();
+        const arr = kind === 'loan' ? led.loans : led.deposits;
+        if (!arr.some(x => x && x.id === rec.id)) { arr.push(Object.assign({}, rec)); _bankLedgerWrite(led); }
+    }
+    // 원장 레코드 상태 갱신(예: 취소)
+    function _bankLedgerUpdate(kind, id, patch) {
+        if (!id) return;
+        const led = _bankLedgerRead();
+        const arr = kind === 'loan' ? led.loans : led.deposits;
+        const rec = arr.find(x => x && x.id === id);
+        if (rec) { Object.assign(rec, patch); _bankLedgerWrite(led); }
+    }
+
     // 액션 공통: 로컬 저장 + 즉시 렌더(낙관적) + Firebase write(await) + 완료 후 재렌더
     async function _bankCommit(fbKey, updates) {
         _bankSaveLocal();
@@ -58605,7 +58714,16 @@ window.addCharRow = function() {
             ? 'border:2px solid #c62828;border-radius:14px;background:#c62828;color:#fff;font-size:15px;cursor:pointer;transition:0.15s;white-space:nowrap;padding:13px 6px;'
             : 'border:2px solid #ffab40;border-radius:14px;background:#fff;font-size:15px;cursor:pointer;transition:0.15s;white-space:nowrap;padding:13px 6px;';
         const activeDeposits = bank.deposits.filter(d => !d.settled && !d.cancelled);
-        const settledDeposits = bank.deposits.filter(d => d.settled || d.cancelled).slice(-10).reverse();
+        // 완료된 예금 = Firebase 완료분 ∪ 로컬 원장 완료분(취소 or 만기경과). id 중복제거 → Firebase 삭제 후에도 히스토리 유지(표시 전용, 쿠키 무관)
+        const _fbCompleted = bank.deposits.filter(d => d.settled || d.cancelled);
+        // Firebase에 아직 존재하는 모든 예금(활성+완료) id는 원장에서 제외 → 미정산(만기경과·미sweep) 예금이
+        // "완료"로 잘못 표시·중복표시되는 것 방지. 원장은 Firebase에서 prune된 레코드만 채움.
+        const _fbAllDepIds = new Set(bank.deposits.map(d => d && d.id));
+        const _ledgerDeps = _bankLedgerRead().deposits || [];
+        const _ledgerCompleted = _ledgerDeps.filter(d => d && d.id && !_fbAllDepIds.has(d.id) && (d.cancelled || (d.dueDate && d.dueDate <= today)));
+        const settledDeposits = _fbCompleted.concat(_ledgerCompleted)
+            .sort((a, b) => ((a.closedAt || a.dueDate || a.date || '') < (b.closedAt || b.dueDate || b.date || '') ? -1 : 1))
+            .slice(-10).reverse();
         const activeLoans = bank.loans.filter(l => (l.remaining || 0) > 0);
 
         // 예금 거래내역 — 통장식 단일 컨테이너 (취소 버튼 없음)
@@ -59039,6 +59157,7 @@ window.addCharRow = function() {
         window._bankAdjInit(me); // 레코드 push 전 bankAdj 부트스트랩
         const dep = { id: 'd' + Date.now(), amount: amt, date: today, dueDate, periodDays, settled: false };
         bank.deposits.push(dep);
+        _bankLedgerAdd('deposit', { id: dep.id, amount: amt, date: today, dueDate, periodDays, expectInterest: interest }); // 로컬 원장 영구기록(표시용)
         me.cookie = (me.cookie || 0) - amt;
         me.bankAdj -= amt;
         await _bankCommit(fbKey, { [`stu/${fbKey}/bank`]: bank, [`stu/${fbKey}/cookie`]: me.cookie, [`stu/${fbKey}/bankAdj`]: me.bankAdj });
@@ -59080,7 +59199,10 @@ window.addCharRow = function() {
             const fbKey = _getMyFbKey();
             if (fbKey == null || fbKey === -1) return;
             window._bankAdjInit(me); // 레코드 변경 전 bankAdj 부트스트랩
+            const _todaySC = _bankToday();
             dep.cancelled = true;
+            dep.closedAt = _todaySC;
+            _bankLedgerUpdate('deposit', dep.id, { cancelled: true, closedAt: _todaySC }); // 로컬 원장 상태 갱신
             me.cookie = (me.cookie || 0) + dep.amount;
             me.bankAdj += dep.amount;
             await _bankCommit(fbKey, { [`stu/${fbKey}/bank`]: bank, [`stu/${fbKey}/cookie`]: me.cookie, [`stu/${fbKey}/bankAdj`]: me.bankAdj });
@@ -59175,6 +59297,7 @@ window.addCharRow = function() {
         window._bankAdjInit(me); // 레코드 push 전 bankAdj 부트스트랩
         const ln = { id: 'l' + Date.now(), amount: amt, date: today, dueDate, periodDays: loanPeriod, remaining: amt, interest, interestPaid: false, overdue: false, shopBanUntil: null };
         _freshBank.loans.push(ln);
+        _bankLedgerAdd('loan', { id: ln.id, amount: amt, date: today, dueDate, periodDays: loanPeriod, interest }); // 로컬 원장 영구기록(표시용)
         me.cookie = (me.cookie || 0) + amt;
         me.bankAdj += amt;
         await _bankCommit(fbKey, { [`stu/${fbKey}/bank`]: _freshBank, [`stu/${fbKey}/cookie`]: me.cookie, [`stu/${fbKey}/bankAdj`]: me.bankAdj });
@@ -59319,6 +59442,7 @@ window.addCharRow = function() {
         let payLeft = pay;
         if (_interestDue > 0 && !ln.interestPaid) { payLeft -= _interestDue; ln.interestPaid = true; }
         ln.remaining = Math.max(0, ln.remaining - payLeft);
+        if (ln.remaining <= 0 && !(ln.shopBanUntil && ln.shopBanUntil >= _bankToday())) ln.closedAt = _bankToday(); // 완전상환 → 완료 마킹(다음 정산서 정리)
 
         const _updates = { [`stu/${fbKey}/bank`]: bank, [`stu/${fbKey}/cookie`]: me.cookie, [`stu/${fbKey}/bankAdj`]: me.bankAdj };
         if (tkUse > 0) _updates[`stu/${fbKey}/inv`] = me.inv;
