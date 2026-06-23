@@ -1603,6 +1603,8 @@
                                 <label oncontextmenu="event.preventDefault();window._omokSettings&&window._omokSettings();return false;" title="우클릭: 오목 설정" style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;"><input type="checkbox" id="plz_room_omok_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">⚫ 오목 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 단어 관리" oncontextmenu="event.preventDefault();window._catchMindWordEditor&&window._catchMindWordEditor();return false;"><input type="checkbox" id="plz_room_catchmind_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🎨 캐치마인드 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 토픽 추가" oncontextmenu="event.preventDefault();window._bombTopicsEditor&&window._bombTopicsEditor();return false;"><input type="checkbox" id="plz_room_bombgame_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">💣 폭탄게임 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
+                                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="실시간 그리드 액션 — 교사가 시작하는 6명 대기방"><input type="checkbox" id="plz_room_crazyarcade_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">💥 크레이지 아케이드</label>
+                                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#F5F5F5;" title="우클릭: 몬스터·단어·보상 설정" oncontextmenu="event.preventDefault();window._tpAdminPanel&&window._tpAdminPanel();return false;"><input type="checkbox" id="plz_room_typing_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">⌨️ 타자 연습 <span style="font-size:9px;color:#aaa;margin-left:auto;">우클릭</span></label>
                                 <label title="자리 세팅(🪑)이 있는 방에서, 학생이 이 방에 있는 동안 이동을 제한합니다 (게임과 무관)." style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;padding:5px 8px;border-radius:7px;background:#FFF3E0;border:1px solid #FFCC80;margin-top:4px;"><input type="checkbox" id="plz_room_seatlock_on" onchange="savePlzRoomGames()" style="flex:0 0 18px;width:18px;height:18px;margin:0;padding:0;">🔒 이동 제한 (자리 고정) <span style="font-size:9px;color:#aaa;margin-left:auto;">자리 세팅 필요</span></label>
                             </div>
                         </div>
@@ -1891,9 +1893,25 @@
                         <span style="font-size:11px;color:#999;">아이템 10종(얼굴·머리·옷·신발·모자·머리장식·얼굴장식·등장식·소품·펫) 모두 착용 시 추가 지급 (기본 3). 슬롯별 착용은 자동 +1. (펫은 이름에 '펫' 포함만 인정, 기본 지급 아이템 제외)</span>
                     </div>
                     <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                        <label style="font-size:11px;color:#666;">⚔ 능력치 N당 추가 스킬 +1</label>
-                        <input id="ge_skillPer" type="number" min="1" max="99" value="5" onchange="window._geSaveSkillPer&&window._geSaveSkillPer()" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:6px;font-family:'Jua';">
-                        <span style="font-size:11px;color:#999;">가위 N당 공격력 +1, 바위 N당 회복력 +1, 보 N당 피해감소 +1 (기본 5). 체력은 1포인트당 +1 고정.</span>
+                        <label style="font-size:11px;color:#666;">✌ 가위 N당 추가 스킬 +1</label>
+                        <input id="ge_skillPerS" type="number" min="1" max="99" value="4" onchange="window._geSaveSkillPer&&window._geSaveSkillPer()" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:6px;font-family:'Jua';">
+                        <span style="font-size:11px;color:#999;">가위 N당 공격력 +1 (기본 4). 체력은 1포인트당 +1 고정.</span>
+                    </div>
+                    <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <label style="font-size:11px;color:#666;">✊ 바위 N당 추가 스킬 +1</label>
+                        <input id="ge_skillPerR" type="number" min="1" max="99" value="4" onchange="window._geSaveSkillPer&&window._geSaveSkillPer()" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:6px;font-family:'Jua';">
+                        <input id="ge_skillPer" type="hidden" value="4">
+                        <span style="font-size:11px;color:#999;">바위 N당 회복력 +1 (기본 4).</span>
+                    </div>
+                    <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <label style="font-size:11px;color:#666;">🛡 보 N당 추가 스킬 +1</label>
+                        <input id="ge_skillPerDef" type="number" min="1" max="99" value="5" onchange="window._geSaveSkillPerDef&&window._geSaveSkillPerDef()" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:6px;font-family:'Jua';">
+                        <span style="font-size:11px;color:#999;">보 N당 피해감소 +1 (기본 5).</span>
+                    </div>
+                    <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <label style="font-size:11px;color:#666;">📈 경험치 배수</label>
+                        <input id="ge_expMult" type="number" min="1" max="5" step="0.5" value="1" onchange="window._geSaveExpMult&&window._geSaveExpMult()" style="width:70px;padding:5px;border:1px solid #ddd;border-radius:6px;font-family:'Jua';">
+                        <span style="font-size:11px;color:#999;">레벨 환산 포인트(⌊경험치/10⌋)에 곱하는 배수 (기본 1). <b>1학기엔 2</b>로 설정 → 가용 포인트 2배. (특별·칭호 보너스는 별도, 배수 미적용)</span>
                     </div>
                     <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;">
                         <label style="font-size:11px;color:#666;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;"><input type="checkbox" id="ge_suddenDeath" checked onchange="window._geSaveSuddenDeath&&window._geSaveSuddenDeath()" style="margin:0;">⚔ 서든데스</label>
@@ -10147,9 +10165,22 @@ let _renderLock = false; // 재진입 방지
                 const s = db.stu[i]; if(!s) return;
                 // 🛡️ schema validation
                 if(!s.cd || !s.nm) { _skipped.push({idx:i, reason:'invalid-schema', cd:s.cd, nm:s.nm}); return; }
-                // 🛡️ stale write 방지
                 if(!window._remoteStuTs) window._remoteStuTs = {};
                 const _tsKey = _cdMigrated ? s.cd : i;
+                // 🛡️ [재발방지] 호출자가 updatedAt 갱신을 깜빡해도 변경된 레코드는 stale로 오인돼
+                //   silent-drop 되지 않도록, 실제 내용이 바뀐 경우 여기서 updatedAt를 now로 stamp.
+                //   (givMulti 화폐 미지급 버그처럼 "지급기록엔 +1, 실제 미반영" 류 사고 차단)
+                //   내용이 그대로면 stamp 안 함 → 아래 stale 가드가 신규 원격 데이터를 보호.
+                try {
+                    if(!window._stuPerHash) window._stuPerHash = {};
+                    const { updatedAt: _ua0, ...restForHash } = s;
+                    const _curH = JSON.stringify(restForHash);
+                    if(window._stuPerHash[_tsKey] !== _curH) {
+                        s.updatedAt = Date.now();
+                        window._stuPerHash[_tsKey] = _curH;
+                    }
+                } catch(_) {}
+                // 🛡️ stale write 방지
                 const _remoteTs = window._remoteStuTs[_tsKey] || 0;
                 const _localTs = s.updatedAt || 0;
                 if(_remoteTs > 0 && _localTs > 0 && _localTs < _remoteTs) {
@@ -12688,7 +12719,12 @@ let _renderLock = false; // 재진입 방지
             const _sm = document.getElementById('ge_statMax'); if (_sm) _sm.value = (parseInt(cfg.statMax) || 30);
             const _tp = document.getElementById('ge_titlePer'); if (_tp) _tp.value = (parseInt(cfg.titlePer) || 3);
             const _ab = document.getElementById('ge_allItemBonus'); if (_ab) _ab.value = (cfg.allItemBonus != null ? parseInt(cfg.allItemBonus) : 3);
-            const _sp = document.getElementById('ge_skillPer'); if (_sp) _sp.value = (parseInt(cfg.skillPer) || 5);
+            const _sp = document.getElementById('ge_skillPer'); if (_sp) _sp.value = (parseInt(cfg.skillPer) || 4);
+            const _spFb = parseInt(cfg.skillPer) || 4;
+            const _spS = document.getElementById('ge_skillPerS'); if (_spS) _spS.value = (parseInt(cfg.skillPerS) || _spFb);
+            const _spR = document.getElementById('ge_skillPerR'); if (_spR) _spR.value = (parseInt(cfg.skillPerR) || _spFb);
+            const _spd = document.getElementById('ge_skillPerDef'); if (_spd) _spd.value = (parseInt(cfg.skillPerDef) || 5);
+            const _em = document.getElementById('ge_expMult'); if (_em) _em.value = (parseFloat(cfg.expMult) >= 1 ? parseFloat(cfg.expMult) : 1);
             const _sd = document.getElementById('ge_suddenDeath'); if (_sd) _sd.checked = (cfg.suddenDeath !== false);
             const _sdr = document.getElementById('ge_suddenDeathRound'); if (_sdr) _sdr.value = (parseInt(cfg.suddenDeathRound) >= 2 ? parseInt(cfg.suddenDeathRound) : 16);
             const _iuc = document.getElementById('ge_itemUseCap'); if (_iuc) _iuc.value = (cfg.itemUseCap != null ? parseInt(cfg.itemUseCap) : 3);
@@ -12984,18 +13020,43 @@ let _renderLock = false; // 재진입 방지
             const st = document.getElementById('ge_status'); if (st) { st.textContent = '아이템 보너스 저장 ✓'; setTimeout(()=>{ st.textContent=''; }, 2000); }
         } catch(e) { alert('아이템 보너스 저장 실패: ' + (e && e.message || e)); }
     };
-    // 능력치 N당 추가 스킬 +1 기준 저장 → 가바보 DB league/config/skillPer (체력은 1포인트당 +1 고정 — 설정 없음)
+    // 가위(공격)·바위(회복) N당 추가 스킬 +1 기준 저장 → league/config/skillPerS·R (체력은 1포인트당 +1 고정)
     window._geSaveSkillPer = async function() {
         try {
-            let v = parseInt(document.getElementById('ge_skillPer').value);
+            const _clamp = (id, dflt) => { let v = parseInt(document.getElementById(id).value); if (!(v >= 1)) v = dflt; v = Math.min(99, v); document.getElementById(id).value = v; return v; };
+            const vS = _clamp('ge_skillPerS', 4), vR = _clamp('ge_skillPerR', 4);
+            const g = await _rGababoGetRef();
+            await g.set(g.path(g.db, 'league/config/skillPerS'), vS);
+            await g.set(g.path(g.db, 'league/config/skillPerR'), vR);
+            if (window._leagueCfgCache) { window._leagueCfgCache.skillPerS = vS; window._leagueCfgCache.skillPerR = vR; }
+            const st = document.getElementById('ge_status'); if (st) { st.textContent = '추가 스킬 기준 저장 ✓ (가위'+vS+'/바위'+vR+')'; setTimeout(()=>{ st.textContent=''; }, 2000); }
+        } catch(e) { alert('추가 스킬 기준 저장 실패: ' + (e && e.message || e)); }
+    };
+    // 보 N당 추가 스킬 +1(피해감소) 기준 저장 → 가바보 DB league/config/skillPerDef
+    window._geSaveSkillPerDef = async function() {
+        try {
+            let v = parseInt(document.getElementById('ge_skillPerDef').value);
             if (!(v >= 1)) v = 5;
             v = Math.min(99, v);
-            document.getElementById('ge_skillPer').value = v;
+            document.getElementById('ge_skillPerDef').value = v;
             const g = await _rGababoGetRef();
-            await g.set(g.path(g.db, 'league/config/skillPer'), v);
-            if (window._leagueCfgCache) window._leagueCfgCache.skillPer = v;
-            const st = document.getElementById('ge_status'); if (st) { st.textContent = '추가 스킬 기준 저장 ✓'; setTimeout(()=>{ st.textContent=''; }, 2000); }
-        } catch(e) { alert('추가 스킬 기준 저장 실패: ' + (e && e.message || e)); }
+            await g.set(g.path(g.db, 'league/config/skillPerDef'), v);
+            if (window._leagueCfgCache) window._leagueCfgCache.skillPerDef = v;
+            const st = document.getElementById('ge_status'); if (st) { st.textContent = '보(피해감소) 기준 저장 ✓'; setTimeout(()=>{ st.textContent=''; }, 2000); }
+        } catch(e) { alert('보 기준 저장 실패: ' + (e && e.message || e)); }
+    };
+    // 경험치 배수 저장 → 가바보 DB league/config/expMult (레벨 환산 포인트 ⌊경험치/10⌋에 곱함, 기본 1. 1학기엔 2)
+    window._geSaveExpMult = async function() {
+        try {
+            let v = parseFloat(document.getElementById('ge_expMult').value);
+            if (!(v >= 1)) v = 1;
+            v = Math.min(5, v);
+            document.getElementById('ge_expMult').value = v;
+            const g = await _rGababoGetRef();
+            await g.set(g.path(g.db, 'league/config/expMult'), v);
+            if (window._leagueCfgCache) window._leagueCfgCache.expMult = v;
+            const st = document.getElementById('ge_status'); if (st) { st.textContent = '경험치 배수 저장 ✓'; setTimeout(()=>{ st.textContent=''; }, 2000); }
+        } catch(e) { alert('경험치 배수 저장 실패: ' + (e && e.message || e)); }
     };
     // 경기당 아이템 사용 횟수 제한 저장 → 가바보 DB league/config/itemUseCap (기본 3, 0=무제한)
     window._geSaveItemUseCap = async function() {
@@ -13012,7 +13073,7 @@ let _renderLock = false; // 재진입 방지
     };
 
     // ===== PvP 아이템 등록 (이벤트 카드 → 가바보 DB league/pvpItems) =====
-    const _GE_EFFECT_LABELS = { atkbuff:'이번 턴 공격력 1.5배', shield:'이번 턴 받는 피해 절반', reflect:'패배 시 피해0+50% 반사', lifesteal:'2턴 내 승리 시 50% 확률 흡혈', heal:'즉시 최대HP 20% 회복', revive:'사망 시 최대HP 20%로 1회 부활', respec:'능력치 재분배(구매 즉시)' };
+    const _GE_EFFECT_LABELS = { atkbuff:'이번 턴 공격력 2배', shield:'이번 턴 받는 피해 0', reflect:'패배 시 피해0+50% 반사', lifesteal:'2턴 내 승리 시 50% 확률 흡혈', heal:'즉시 최대HP 20% 회복', revive:'사망 시 최대HP 20%로 1회 부활', respec:'능력치 재분배(구매 즉시)' };
     window._geItemReg = {};
     window._geItemRefresh = async function() {
         try {
@@ -13100,7 +13161,7 @@ let _renderLock = false; // 재진입 방지
             + '<input id="geit_desc" value="' + esc(it.desc) + '" placeholder="효과 설명 (선택)" style="width:100%;box-sizing:border-box;margin:3px 0 8px;padding:7px;border:1px solid #ddd;border-radius:6px;">'
             + '<label style="font-size:12px;color:#666;">효과 타입</label>'
             + '<select id="geit_effect" onchange="window._geItemToggleDmg()" style="width:100%;box-sizing:border-box;margin:3px 0 8px;padding:7px;border:1px solid #ddd;border-radius:6px;">'
-            + opt('atkbuff','이번 턴 공격력 1.5배') + opt('shield','이번 턴 받는 피해 절반') + opt('reflect','패배 시 피해0+50% 반사') + opt('lifesteal','2턴 내 승리 시 50% 확률 흡혈') + opt('heal','즉시 최대HP 20% 회복') + opt('revive','사망 시 최대HP 20%로 1회 부활') + opt('respec','능력치 재분배(구매 즉시)')
+            + opt('atkbuff','이번 턴 공격력 2배') + opt('shield','이번 턴 받는 피해 0') + opt('reflect','패배 시 피해0+50% 반사') + opt('lifesteal','2턴 내 승리 시 50% 확률 흡혈') + opt('heal','즉시 최대HP 20% 회복') + opt('revive','사망 시 최대HP 20%로 1회 부활') + opt('respec','능력치 재분배(구매 즉시)')
             + '</select>'
             + '<div id="geit_dmgRow" style="' + (it.effect==='damage'?'':'display:none;') + '"><label style="font-size:12px;color:#666;">피해량</label>'
             + '<input id="geit_dmg" type="number" min="1" max="20" value="' + (it.dmg||3) + '" style="width:100%;box-sizing:border-box;margin:3px 0 8px;padding:7px;border:1px solid #ddd;border-radius:6px;"></div>'
@@ -15621,8 +15682,8 @@ let _renderLock = false; // 재진입 방지
                 <label style="font-size:13px;color:#795548;align-self:center;">종류:</label>
                 <select id="_giveCoinType" style="flex:1;padding:6px;border-radius:8px;border:1px solid #DDD;font-size:14px;">
                     <option value="c">🍪 쿠키</option>
-                    <option value="cn">🍯 꿀</option>
-                    <option value="cd">🍭 캔디</option>
+                    <option value="co">🍯 꿀</option>
+                    <option value="cn">🍭 캔디</option>
                 </select>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:16px;">
@@ -15727,7 +15788,7 @@ let _renderLock = false; // 재진입 방지
             window._svStu([si]);
         }
         document.getElementById('_giveCoinModal')?.remove();
-        const typeLabel = type==='c'?'🍪 쿠키':type==='cn'?'🍯 꿀':'🍭 캔디';
+        const typeLabel = type==='c'?'🍪 쿠키':type==='co'?'🍯 꿀':'🍭 캔디';
         showToast(`✅ ${s.nm}에게 ${typeLabel} ${amt}개 지급 완료`);
         // 해당 학생 패널이 열려있으면 cd로 재오픈 (정렬 영향 없이)
         if(window._stuPanelStates && window._stuPanelStates.has(stuCd)) {
@@ -18663,6 +18724,9 @@ window.appU = function(y, si, k) {
             }
         }
         // 타깃 저장 — 변경된 학생 인덱스만 업데이트 (inv/col 쿠폰 포함 상태로 한번에 저장)
+        // (화폐·아이템 누락 버그: 예전엔 여기서 updatedAt를 안 올려 _svStu stale-write 가드가
+        //  통째 write를 silent-drop → "지급기록엔 +1, 실제 미반영". 이제 _svStu가 내용이 바뀐
+        //  레코드에 한해 updatedAt를 자동 stamp하므로 여기서 별도 stamp 불필요.)
         window._svStu(checked); rAs(); rColT();
         if(_couponGranted) showToast('🎁 펫 스킬 쿠폰 자동 지급 완료!');
         if(_holidaySkipCount > 0) showToast(`🚩 공휴일 절반 이상 — ${_holidaySkipCount}명 잠금 아이템 미지급`);
@@ -37578,9 +37642,11 @@ window.addCharRow = function() {
         const snap = await _trackedOnce(firebase.database().ref('ClassData/EventShop/plaza'));
         const allRids = Object.keys(snap.val() || {});
         try {
-            await Promise.all(allRids.map(rid =>
-                firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/chat').remove()
-            ));
+            // chat + chatArchive 양쪽 모두 삭제 — 아카이브를 안 지우면 새로고침 시 교사 화면에 다시 뜸
+            await Promise.all(allRids.flatMap(rid => [
+                firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/chat').remove(),
+                firebase.database().ref('ClassData/EventShop/plaza/' + rid + '/chatArchive').remove()
+            ]));
         } catch(e) { alert('일부 방 삭제 실패: '+e.message); }
         // 로컬 캐시 강제 클리어
         if(typeof _plzTAllData === 'object') {
@@ -37840,6 +37906,10 @@ window.addCharRow = function() {
         if(cmChk) cmChk.checked = !!plzC.catchMindOn;
         const bgChk = document.getElementById('plz_room_bombgame_on');
         if(bgChk) bgChk.checked = !!plzC.bombGameOn;
+        const caChk = document.getElementById('plz_room_crazyarcade_on');
+        if(caChk) caChk.checked = !!plzC.crazyArcadeOn;
+        const tpChk = document.getElementById('plz_room_typing_on');
+        if(tpChk) tpChk.checked = !!plzC.typingGameOn;
         const slChk = document.getElementById('plz_room_seatlock_on');
         if(slChk) slChk.checked = !!plzC.seatLockOn;
         // 배경 카드에 현재 편집 중인 방 명시 (잘못된 방에 업로드 방지)
@@ -37989,6 +38059,7 @@ window.addCharRow = function() {
             omokOn: !!copy.plz?.omokOn,
             catchMindOn: !!copy.plz?.catchMindOn,
             bombGameOn: !!copy.plz?.bombGameOn,
+            crazyArcadeOn: !!copy.plz?.crazyArcadeOn,
             seatLockOn: !!copy.plz?.seatLockOn
         });
         _renderPlzRoomTabs();
@@ -38030,6 +38101,8 @@ window.addCharRow = function() {
         const om = document.getElementById('plz_room_omok_on')?.checked;
         const cm = document.getElementById('plz_room_catchmind_on')?.checked;
         const bg = document.getElementById('plz_room_bombgame_on')?.checked;
+        const ca = document.getElementById('plz_room_crazyarcade_on')?.checked;
+        const tp = document.getElementById('plz_room_typing_on')?.checked;
         const sl = document.getElementById('plz_room_seatlock_on')?.checked;
         if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
         if(!db.cfg.plzRooms[_plzCurRoom]) db.cfg.plzRooms[_plzCurRoom] = {};
@@ -38043,6 +38116,8 @@ window.addCharRow = function() {
         rp.omokOn = !!om;
         rp.catchMindOn = !!cm;
         rp.bombGameOn = !!bg;
+        rp.crazyArcadeOn = !!ca;
+        rp.typingGameOn = !!tp;
         rp.seatLockOn = !!sl;
         // 바인딩 재동기화 (현재 방 데이터를 db.cfg.plz가 정확히 가리키도록)
         db.cfg.plz = rp;
@@ -38050,7 +38125,7 @@ window.addCharRow = function() {
         // 게임 플래그 + 배경 + 비율 + 장애물까지 모두 한 번에 푸시 (다른 코드 경로의 불일치 방지)
         const _capturedRoom = _plzCurRoom;
         firebase.database().ref('ClassData/EventShop/plaza/' + _capturedRoom + '/cfg').update({
-            iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr, omokOn: !!om, catchMindOn: !!cm, bombGameOn: !!bg, seatLockOn: !!sl,
+            iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr, omokOn: !!om, catchMindOn: !!cm, bombGameOn: !!bg, crazyArcadeOn: !!ca, typingGameOn: !!tp, seatLockOn: !!sl,
             customBg: rp.customBg || null,
             customBgs: rp.customBgs || null,
             bgAspect: rp.bgAspect || null,
@@ -38076,6 +38151,8 @@ window.addCharRow = function() {
             omokOn: rp.omokOn === true,
             catchMindOn: rp.catchMindOn === true,
             bombGameOn: rp.bombGameOn === true,
+            crazyArcadeOn: rp.crazyArcadeOn === true,
+            typingGameOn: rp.typingGameOn === true,
             seatLockOn: rp.seatLockOn === true,
             customBg: rp.customBg || null,
             customBgs: rp.customBgs || null,
@@ -38438,6 +38515,8 @@ window.addCharRow = function() {
                 omokOn: rp.omokOn === true,
                 catchMindOn: rp.catchMindOn === true,
             bombGameOn: rp.bombGameOn === true,
+            crazyArcadeOn: rp.crazyArcadeOn === true,
+            typingGameOn: rp.typingGameOn === true,
             seatLockOn: rp.seatLockOn === true,
                 customBg: rp.customBg || null,
                 customBgs: rp.customBgs || null,
@@ -39977,14 +40056,14 @@ window.addCharRow = function() {
         };
     }
 
-    // 인원수에 따른 역할 추천 (최소 6명 시작):
-    //  6명:    마피아1, 의사1, 경찰1, 시민3
-    //  7명:    마피아2, 의사1, 경찰1, 시민3
-    //  8-9명:  마피아2, 의사1, 경찰1, 시민(N-4)
-    //  10+명:  마피아3, 의사1, 경찰1, 시민(N-5)
+    // 인원수에 따른 역할 추천 (최소 4명 시작):
+    //  4~5명:  마피아1, (의사·경찰 없음), 시민 나머지
+    //  6~7명:  마피아1, 의사1, 경찰1, 시민 나머지
+    //  8명+:   마피아2, 의사1, 경찰1, 시민 나머지
     function _mafiaRecommendRoles(N){
         let mafia, doctor, police;
-        if(N <= 8){ mafia = 1; doctor = 1; police = 1; }
+        if(N <= 5){ mafia = 1; doctor = 0; police = 0; }
+        else if(N <= 7){ mafia = 1; doctor = 1; police = 1; }
         else { mafia = 2; doctor = 1; police = 1; }
         const citizen = Math.max(0, N - mafia - doctor - police);
         return { mafia, doctor, police, citizen };
@@ -40060,18 +40139,19 @@ window.addCharRow = function() {
                 <div style="font-size:22px;margin-bottom:6px;color:#5E35B1;">🕵️ 마피아 시작</div>
                 <div style="font-size:11px;color:#888;margin-bottom:12px;">인원수에 따라 자동 분배</div>
                 <div style="background:#F3E5F5;border-radius:12px;padding:14px 16px;font-size:13px;color:#5D4037;line-height:2;margin-bottom:14px;">
-                    👥 인원: <b>${N}명</b> ${N<6?'<span style="color:#C62828;">(6명 이상 필요)</span>':''}<br>
-                    🔪 마피아 <b>${rec.mafia}명</b> · 💊 의사 <b>${rec.doctor}명</b>${rec.police?` · 🔍 경찰 <b>${rec.police}명</b>`:''} · 🙋 시민 <b>${rec.citizen}명</b><br>
-                    <span style="font-size:11px;color:#888;">분배 룰: 6~8명=마피아1·의사1·경찰1 / 9명+=마피아2</span>
+                    👥 인원: <b>${N}명</b> ${N<4?'<span style="color:#C62828;">(4명 이상 필요)</span>':''}<br>
+                    🔪 마피아 <b>${rec.mafia}명</b>${rec.doctor?` · 💊 의사 <b>${rec.doctor}명</b>`:''}${rec.police?` · 🔍 경찰 <b>${rec.police}명</b>`:''} · 🙋 시민 <b>${rec.citizen}명</b><br>
+                    <span style="font-size:11px;color:#888;">분배 룰: 4~5명=마피아1(의사·경찰 없음) / 6~7명=마피아1·의사1·경찰1 / 8명+=마피아2</span>
                 </div>
                 <div style="background:#FFF8E1;border-radius:12px;padding:12px 14px;font-size:12px;color:#5D4037;line-height:1.85;margin-bottom:14px;">
+                    👥 <b>인원 구성</b>: 4~5명=마피아1·시민 (의사·경찰 없음) / 6~7명=마피아1·의사1·경찰1·시민 / 8명+=마피아2·의사1·경찰1·시민<br>
                     📜 <b>진행</b>: 역할 공개 → 자기소개·자유토론 → 절반 동의 시 밤 → 결과 발표 → 다시 토론 → ...<br>
                     🌙 <b>밤</b>: 모두 1명 이름 입력
-                    <br>&nbsp;&nbsp;🔪 마피아=죽일 사람 · 💊 의사=살릴 사람 · 🔍 경찰=조사할 사람 · 🙋 시민=의심자
+                    <br>&nbsp;&nbsp;🔪 마피아=죽일 사람 · 💊 의사=살릴 사람 · 🔍 경찰=조사할 사람 · 🙋 시민=의심자 <span style="color:#888;">(의사·경찰은 6명부터)</span>
                     <br>마피아 N명일 때, 마피아가 N명 살해 + 시민도 다수결로 N명 처형
                     <br>🏆 마피아 0=시민 승 / 마피아≥시민=마피아 승
                 </div>
-                <button class="btn btn-blue" style="width:100%;padding:11px;font-size:15px;${N<6?'opacity:0.5;pointer-events:none;':''}" onclick="window._mafiaSaveCfgAndStart();">▶ 게임 시작</button>
+                <button class="btn btn-blue" style="width:100%;padding:11px;font-size:15px;${N<4?'opacity:0.5;pointer-events:none;':''}" onclick="window._mafiaSaveCfgAndStart();">▶ 게임 시작</button>
                 <button class="btn btn-gray" style="width:100%;padding:8px;margin-top:8px;font-size:12px;" onclick="document.getElementById('_mafMenu').remove();">닫기</button>
             </div>
         </div>`;
@@ -40148,8 +40228,8 @@ window.addCharRow = function() {
         window._mafiaLocalEnded = false; // 신규 게임 시작 시 flag 리셋
         const allUids = Object.keys(_plzUserCache||{}).filter(u => u !== 'teacher_main');
         console.log('[mafia] start clicked. 학생 수:', allUids.length, allUids);
-        if(allUids.length < 6){
-            alert('마피아 게임은 학생 6명 이상이 필요해요 (현재 '+allUids.length+'명)\n\n학생들이 같은 광장에 입장했는지 확인해주세요.');
+        if(allUids.length < 4){
+            alert('마피아 게임은 학생 4명 이상이 필요해요 (현재 '+allUids.length+'명)\n\n학생들이 같은 광장에 입장했는지 확인해주세요.');
             return;
         }
         // getPlzRef로 lazy init 트리거 (plzRef가 null이어도 자동 생성)
@@ -40229,6 +40309,8 @@ window.addCharRow = function() {
             : '<span style="color:#999;">행동 없음</span>';
         // 경찰: 결과만 공개 (대상 이름 비공개) — fullRolesCache로 정확한 역할 조회
         const _fullR = window._mafiaFullRolesCache || g.roles || {};
+        // 4~5명 게임은 의사·경찰이 없음 → 해당 결과 행 자체를 숨김(있을 때만 표시)
+        const _hasDoc = Object.values(_fullR).includes('doctor');
         const policeTxt = (ad.police||[]).length
             ? (ad.police||[]).map(a => {
                 const tgtRole = _fullR[a.t];
@@ -40279,10 +40361,11 @@ window.addCharRow = function() {
                     <div style="font-size:13px;font-weight:bold;color:#C62828;margin-bottom:4px;">🔪 마피아</div>
                     <div style="font-size:13px;color:#5D4037;line-height:1.6;">${mafiaTargetsTxt}</div>
                 </div>
+                ${_hasDoc ? `
                 <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #66BB6A;">
                     <div style="font-size:13px;font-weight:bold;color:#2E7D32;margin-bottom:4px;">💊 의사</div>
                     <div style="font-size:13px;color:#5D4037;line-height:1.6;">${doctorTxt}</div>
-                </div>
+                </div>` : ''}
                 ${(ad.police||[]).length ? `
                 <div style="background:white;border-radius:12px;padding:12px 14px;margin-bottom:10px;border-left:4px solid #42A5F5;">
                     <div style="font-size:13px;font-weight:bold;color:#1565C0;margin-bottom:4px;">🔍 경찰</div>
@@ -47391,6 +47474,414 @@ window.addCharRow = function() {
     };
 
     // ───── 단어 편집 UI (교사) ─────
+    /* ===== ⌨️ 타자 연습 (몬스터 헌터) — 싱글플레이어 ===== */
+    let _tpState = null; // {monster,mode,cat,maxHp,hp,timeLeft,timerId,queue,qi,curWord,dmgPer}
+    const _TP_CATS = ['한글단어','영어단어','한글문장','영어문장'];
+    const _TP_LABELS = {'한글단어':'가 한글 단어','영어단어':'A 영어 단어','한글문장':'가 한글 문장','영어문장':'A 영어 문장'};
+    const _TP_BTN = "padding:11px;border-radius:12px;border:none;color:#fff;font-family:'Jua';font-size:14px;cursor:pointer;";
+    const _TP_AIN = "padding:4px 6px;border-radius:6px;border:1px solid #bbb;font-family:Jua;font-size:12px;box-sizing:border-box;";
+    const _TP_GEMINI_KEY = 'AIzaSyC1fNsqO8aMOup0Co3cEp4dTitZJbYB3jg';
+    const _TP_GEMINI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash'];
+    const _TP_PROMPTS = {
+        '한글단어':'초등학생 타자 연습용 한국어 낱말 40개를 만들어줘. 각 낱말은 2~5글자, 받침 포함 가능.',
+        '영어단어':'초등학생 타자 연습용 쉬운 영어 단어 40개를 만들어줘. 각 단어는 3~8글자, 모두 소문자.',
+        '한글문장':'초등학생 타자 연습용 짧고 쉬운 한국어 문장 30개를 만들어줘. 각 문장은 10~25자.',
+        '영어문장':'초등학생 타자 연습용 짧고 쉬운 영어 문장 30개를 만들어줘. 각 문장은 단어 4~8개.'
+    };
+    function _tpEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function _tpToday(){ return new Date().toLocaleDateString('sv-SE'); }
+    function _tpDefaultCfg(){
+        return {
+            on:true, exchangeRate:10, dailyLimit:3, damagePerChar:10,
+            monsters:[
+                {key:'slime', name:'슬라임',   emoji:'🟢', diff:'초급', hp:300,  timeSec:60, reward:5},
+                {key:'golem', name:'스톤골렘', emoji:'🪨', diff:'중급', hp:600,  timeSec:60, reward:12},
+                {key:'dragon',name:'레드드래곤',emoji:'🐲', diff:'고급', hp:1000, timeSec:60, reward:25},
+                {key:'demon', name:'마왕',     emoji:'👹', diff:'보스', hp:1800, timeSec:90, reward:60}
+            ],
+            words:{'한글단어':[],'영어단어':[],'한글문장':[],'영어문장':[]},
+            wordsUpdatedAt:0
+        };
+    }
+    window._tpEnsureCfg = function(){
+        if(!db.cfg) db.cfg = {};
+        if(!db.cfg.typingGame) db.cfg.typingGame = _tpDefaultCfg();
+        const g = db.cfg.typingGame;
+        if(!Array.isArray(g.monsters) || !g.monsters.length) g.monsters = _tpDefaultCfg().monsters;
+        if(!g.words || typeof g.words !== 'object') g.words = {};
+        if(g.on === undefined || g.on === null) g.on = true; // 미설정=활성 (명시적 false만 비활성)
+        _TP_CATS.forEach(c => { if(!Array.isArray(g.words[c])) g.words[c] = Array.isArray(g.words[c]) ? g.words[c] : (g.words[c] ? Object.values(g.words[c]) : []); });
+        if(typeof g.exchangeRate !== 'number' || g.exchangeRate < 1) g.exchangeRate = 10;
+        if(typeof g.dailyLimit !== 'number' || g.dailyLimit < 1) g.dailyLimit = 3;
+        if(typeof g.damagePerChar !== 'number' || g.damagePerChar < 1) g.damagePerChar = 10;
+        return g;
+    };
+    // 일일 제한 / 게임머니 (전 몬스터 합산)
+    window._tpCheckDaily = function(){
+        const g = window._tpEnsureCfg();
+        const d = me && me.tpDaily;
+        if(!d || d.date !== _tpToday()) return g.dailyLimit;
+        return Math.max(0, g.dailyLimit - (d.count||0));
+    };
+    window._tpIncDaily = function(){
+        const t = _tpToday();
+        if(!me.tpDaily || me.tpDaily.date !== t) me.tpDaily = {date:t, count:0};
+        me.tpDaily.count = (me.tpDaily.count||0) + 1;
+        upMe();
+    };
+    window._tpGrantMoney = function(n){ me.tpMoney = (me.tpMoney||0) + n; upMe(); };
+
+    window._tpCat = window._tpCat || '한글단어';
+    window._tpSwitchTab = function(cat){ window._tpCat = cat; window._tpMenu(); };
+
+    // 학생 진입점 — 몬스터 선택 화면
+    window._tpMenu = async function(){
+        if(!me){ alert('학생만 이용할 수 있어요.'); return; }
+        // 학생은 전역 cfg를 지연 로드하므로 typingGame 설정/단어를 한 번 fetch
+        if(!db.cfg || !db.cfg.typingGame){
+            try{ const snap = await dbRef.child('cfg/typingGame').once('value'); const v = snap.val(); if(v){ if(!db.cfg) db.cfg = {}; db.cfg.typingGame = v; } }catch(_){}
+        }
+        const g = window._tpEnsureCfg();
+        if(!g.on){ alert('지금은 타자 연습을 이용할 수 없어요.'); return; }
+        if(_tpState && _tpState.timerId){ clearInterval(_tpState.timerId); _tpState.timerId = null; }
+        _tpState = null;
+        document.getElementById('_tpPlayOv')?.remove();
+        document.getElementById('_tpOv')?.remove();
+        if(!_TP_CATS.includes(window._tpCat)) window._tpCat = '한글단어';
+        const cat = window._tpCat;
+        const lim = g.dailyLimit, remain = window._tpCheckDaily();
+        const wordsN = (g.words[cat]||[]).filter(w => String(w==null?'':w).trim()).length;
+        const tabsHtml = _TP_CATS.map(c => { const on = c === cat;
+            return `<button onclick="window._tpSwitchTab('${c}')" style="flex:1;padding:9px 4px;border-radius:10px;border:none;font-family:'Jua';font-size:12px;cursor:pointer;background:${on?'#ffc107':'#3a3a44'};color:${on?'#222':'#ccc'};font-weight:${on?'bold':'normal'};">${_TP_LABELS[c]}</button>`;
+        }).join('');
+        const rows = g.monsters.map(m => { const can = wordsN > 0 && remain > 0;
+            return `<div style="display:flex;align-items:center;gap:10px;background:#2c2c35;border-radius:14px;padding:12px 14px;margin-bottom:8px;">
+                <div style="font-size:34px;line-height:1;">${_tpEsc(m.emoji)}</div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:15px;font-weight:bold;color:#fff;">${_tpEsc(m.name)}(${_tpEsc(m.diff)})</div>
+                    <div style="font-size:11px;color:#9e9e9e;">${_TP_LABELS[cat]} · ⏱${m.timeSec}초 · 💰${m.reward}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:stretch;">
+                    <button ${can?'':'disabled'} onclick="window._tpStart('${m.key}','daily')" style="padding:7px 12px;border-radius:10px;border:none;font-family:'Jua';font-size:12px;cursor:${can?'pointer':'not-allowed'};background:${can?'#ffc107':'#555'};color:${can?'#222':'#888'};font-weight:bold;">${remain>0?'도전':'완료'}</button>
+                    <button ${wordsN>0?'':'disabled'} onclick="window._tpStart('${m.key}','practice')" style="padding:4px 12px;border-radius:9px;border:none;font-family:'Jua';font-size:10px;cursor:${wordsN>0?'pointer':'not-allowed'};background:#444;color:#bbb;">연습</button>
+                </div>
+            </div>`;
+        }).join('');
+        const warn = wordsN > 0 ? '' : `<div style="text-align:center;color:#ff8a65;font-size:12px;margin:10px 0;">이 종류의 단어가 아직 없어요.<br>선생님께 단어 생성을 요청하세요!</div>`;
+        const html = `<div id="_tpOv" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99000;display:flex;align-items:center;justify-content:center;font-family:'Jua';" onclick="if(event.target===this)this.remove();">
+            <div style="width:min(420px,94vw);max-height:92vh;overflow-y:auto;background:#1f1f26;border-radius:20px;padding:18px;" onclick="event.stopPropagation()">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <div style="font-size:18px;font-weight:bold;color:#fff;">⌨️ 몬스터 헌터</div>
+                    <button onclick="document.getElementById('_tpOv').remove()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;">✕</button>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:12px;color:#ddd;margin-bottom:12px;">
+                    <span>🍪 ${me.cookie||0}</span><span style="color:#555;">·</span><span>💰 ${me.tpMoney||0}</span>
+                    <button onclick="window._tpExchangeUI()" style="padding:4px 10px;border-radius:9px;border:none;background:#66bb6a;color:#fff;font-family:'Jua';font-size:11px;cursor:pointer;">환전</button>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:6px;">${tabsHtml}</div>
+                <div style="text-align:right;font-size:11px;color:#9e9e9e;margin-bottom:10px;">오늘 남은 도전: ${remain} / ${lim}</div>
+                ${warn}
+                ${rows}
+            </div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+
+    window._tpStart = function(key, mode){
+        const g = window._tpEnsureCfg();
+        const m = g.monsters.find(x => x.key === key);
+        if(!m){ alert('몬스터 정보를 찾을 수 없어요.'); return; }
+        const cat = window._tpCat;
+        const words = (g.words[cat]||[]).map(w => String(w==null?'':w).trim()).filter(Boolean);
+        if(!words.length){ alert('이 종류의 단어가 아직 없어요. 선생님께 단어 생성을 요청하세요!'); return; }
+        if(mode === 'daily'){
+            if(window._tpCheckDaily() <= 0){ alert('오늘 도전 횟수를 모두 사용했어요! 연습 모드로 즐겨보세요.'); return; }
+            window._tpIncDaily(); // 시작 시점 차감 (중도포기/새로고침 악용 방지)
+        }
+        for(let i=words.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=words[i]; words[i]=words[j]; words[j]=t; }
+        _tpState = { monster:m, mode:mode, cat:cat, maxHp:m.hp, hp:m.hp, timeLeft:m.timeSec, queue:words, qi:0, curWord:'', timerId:null, dmgPer:g.damagePerChar };
+        document.getElementById('_tpOv')?.remove();
+        _tpNextWord();
+        window._tpRenderPlay();
+    };
+
+    function _tpNextWord(){
+        const s = _tpState; if(!s) return;
+        if(s.qi >= s.queue.length){
+            for(let i=s.queue.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); const t=s.queue[i]; s.queue[i]=s.queue[j]; s.queue[j]=t; }
+            s.qi = 0;
+        }
+        s.curWord = s.queue[s.qi++] || '';
+    }
+    function _tpWordHtml(typed){
+        const s = _tpState; if(!s) return '';
+        const w = s.curWord || ''; let out = '';
+        for(let i=0;i<w.length;i++){
+            const ch = w[i]; const esc = ch === ' ' ? '&nbsp;' : _tpEsc(ch);
+            if(i < typed.length){ const ok = typed[i] === ch; out += `<span style="color:${ok?'#69f0ae':'#ff5252'};">${esc}</span>`; }
+            else out += `<span style="color:#fff;">${esc}</span>`;
+        }
+        return out;
+    }
+    window._tpRenderPlay = function(){
+        const s = _tpState; if(!s) return;
+        document.getElementById('_tpPlayOv')?.remove();
+        if(!s.curWord) _tpNextWord();
+        const html = `<div id="_tpPlayOv" style="position:fixed;inset:0;background:#1c1c22;z-index:99000;display:flex;align-items:center;justify-content:center;font-family:'Jua';">
+            <div style="width:min(440px,94vw);padding:20px;color:#eee;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#bbb;">
+                    <span>${_tpEsc(s.monster.name)}(${_tpEsc(s.monster.diff)})</span>
+                    <span id="_tpTimer" style="font-weight:bold;">⏱ ${s.timeLeft}초</span>
+                    <button onclick="window._tpClose()" style="background:none;border:none;color:#888;font-size:18px;cursor:pointer;">✕</button>
+                </div>
+                <div id="_tpEmoji" style="text-align:center;font-size:90px;margin:18px 0 6px;line-height:1;transition:transform .08s;">${_tpEsc(s.monster.emoji)}</div>
+                <div style="background:#333;border-radius:12px;height:22px;overflow:hidden;position:relative;margin-bottom:4px;">
+                    <div id="_tpHpFill" style="height:100%;width:${s.hp/s.maxHp*100}%;background:linear-gradient(90deg,#ff5252,#ff1744);transition:width .15s;"></div>
+                    <div id="_tpHpTxt" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#fff;">HP: ${s.hp} / ${s.maxHp}</div>
+                </div>
+                <div id="_tpWord" style="text-align:center;font-size:30px;font-weight:bold;margin:22px 0;min-height:40px;word-break:break-all;">${_tpWordHtml('')}</div>
+                <input id="_tpInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="단어 입력" style="width:100%;box-sizing:border-box;padding:14px;border-radius:14px;border:none;font-size:18px;font-family:'Jua';text-align:center;" oninput="window._tpOnInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();window._tpOnSubmit();}">
+                <div style="text-align:center;font-size:11px;color:#888;margin-top:8px;">${s.mode==='practice'?'연습 모드 · 보상 없음':'도전 모드'}</div>
+            </div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        setTimeout(() => { const i = document.getElementById('_tpInput'); if(i) i.focus(); }, 50);
+        if(s.timerId) clearInterval(s.timerId);
+        s.endAt = Date.now() + s.timeLeft * 1000;     // 마감 시각 기준 → 드리프트 없는 실시간 카운트다운
+        window._tpTick();                              // 즉시 1회 갱신(시작 1초 지연 제거)
+        s.timerId = setInterval(window._tpTick, 100);  // 0.1초마다 실시간 갱신
+    };
+    window._tpOnInput = function(){
+        const s = _tpState; if(!s) return;
+        const inp = document.getElementById('_tpInput'); if(!inp) return;
+        const typed = inp.value;
+        const wd = document.getElementById('_tpWord'); if(wd) wd.innerHTML = _tpWordHtml(typed);
+        if(s.curWord && typed === s.curWord) _tpHit();
+    };
+    window._tpOnSubmit = function(){
+        const s = _tpState; if(!s) return;
+        const inp = document.getElementById('_tpInput');
+        if(inp && s.curWord && inp.value === s.curWord) _tpHit();
+    };
+    function _tpHit(){
+        const s = _tpState; if(!s) return;
+        const dmg = Math.max(1, (s.curWord.length) * s.dmgPer);
+        s.hp = Math.max(0, s.hp - dmg);
+        const fill = document.getElementById('_tpHpFill'); if(fill) fill.style.width = (s.hp/s.maxHp*100) + '%';
+        const txt = document.getElementById('_tpHpTxt'); if(txt) txt.textContent = `HP: ${s.hp} / ${s.maxHp}`;
+        const em = document.getElementById('_tpEmoji'); if(em){ em.style.transform = 'translateX(-6px)'; setTimeout(() => { if(em) em.style.transform = ''; }, 80); }
+        // 입력 비우기 + 한글 IME 조합버퍼 비우기(value='' 만으로는 조합중 글자가 남아 다음 단어에 끼어듦)
+        const inp = document.getElementById('_tpInput'); if(inp){ inp.value = ''; inp.blur(); inp.focus(); }
+        if(s.hp <= 0){ window._tpFinish(true); return; }
+        _tpNextWord();
+        const wd = document.getElementById('_tpWord'); if(wd) wd.innerHTML = _tpWordHtml('');
+    }
+    window._tpTick = function(){
+        const s = _tpState; if(!s) return;
+        const remain = Math.max(0, (s.endAt - Date.now()) / 1000);
+        s.timeLeft = remain;
+        const t = document.getElementById('_tpTimer');
+        if(t){
+            // 10초 이하에서는 0.1초 단위로 보여 실시간 감소가 또렷하게 보이도록
+            t.textContent = '⏱ ' + (remain > 10 ? Math.ceil(remain) : remain.toFixed(1)) + '초';
+            t.style.color = remain <= 10 ? '#ff5252' : '#fff';
+        }
+        if(remain <= 0) window._tpFinish(false);
+    };
+    window._tpFinish = function(win){
+        const s = _tpState; if(!s) return;
+        if(s.timerId){ clearInterval(s.timerId); s.timerId = null; }
+        let gained = 0;
+        if(win && s.mode === 'daily'){ gained = s.monster.reward || 0; if(gained > 0) window._tpGrantMoney(gained); }
+        document.getElementById('_tpPlayOv')?.remove();
+        window._tpResult(win, gained);
+    };
+    window._tpResult = function(win, gained){
+        const s = _tpState;
+        document.getElementById('_tpResOv')?.remove();
+        const m = s ? s.monster : null;
+        const mode = s ? s.mode : 'daily';
+        const key = m ? m.key : '';
+        const remain = window._tpCheckDaily();
+        const head = win ? `${m?_tpEsc(m.name):''} 처치 성공!` : '시간 초과...';
+        const sub = win
+            ? (mode === 'daily' ? (gained > 0 ? `+💰 ${gained} 게임머니 획득!` : '보상 없음') : '연습 성공! (보상 없음)')
+            : (s ? `남은 HP: ${s.hp} / ${s.maxHp}` : '');
+        const html = `<div id="_tpResOv" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99100;display:flex;align-items:center;justify-content:center;font-family:'Jua';" onclick="if(event.target===this)this.remove();">
+            <div style="background:#2a2a33;color:#eee;border-radius:18px;padding:26px 22px;width:min(340px,90vw);text-align:center;" onclick="event.stopPropagation()">
+                <div style="font-size:46px;margin-bottom:8px;">${win?'🏆':'💥'}</div>
+                <div style="font-size:20px;font-weight:bold;margin-bottom:6px;">${head}</div>
+                <div style="font-size:14px;color:#ffd54f;margin-bottom:18px;">${sub}</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${(mode==='daily'&&remain>0&&key)?`<button onclick="document.getElementById('_tpResOv').remove();window._tpStart('${key}','daily')" style="${_TP_BTN}background:#ff7043;">다시 도전 (남은 ${remain})</button>`:''}
+                    ${key?`<button onclick="document.getElementById('_tpResOv').remove();window._tpStart('${key}','practice')" style="${_TP_BTN}background:#5c6bc0;">연습하기</button>`:''}
+                    <button onclick="document.getElementById('_tpResOv').remove();window._tpMenu()" style="${_TP_BTN}background:#66bb6a;">메뉴로</button>
+                    <button onclick="document.getElementById('_tpResOv').remove()" style="${_TP_BTN}background:#555;">닫기</button>
+                </div>
+            </div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+        _tpState = null;
+    };
+    window._tpClose = function(){
+        const s = _tpState;
+        if(s && s.timerId){ clearInterval(s.timerId); s.timerId = null; }
+        _tpState = null;
+        document.getElementById('_tpPlayOv')?.remove();
+        window._tpMenu();
+    };
+    window._tpExchangeUI = function(){
+        if(!me) return;
+        const g = window._tpEnsureCfg();
+        const rate = g.exchangeRate;
+        const maxC = Math.floor((me.tpMoney||0) / rate);
+        document.getElementById('_tpExOv')?.remove();
+        const html = `<div id="_tpExOv" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99100;display:flex;align-items:center;justify-content:center;font-family:'Jua';" onclick="if(event.target===this)this.remove();">
+            <div style="background:#2a2a33;color:#eee;border-radius:18px;padding:24px 22px;width:min(320px,90vw);text-align:center;" onclick="event.stopPropagation()">
+                <div style="font-size:18px;font-weight:bold;margin-bottom:12px;">💰 → 🍪 환전</div>
+                <div style="font-size:13px;color:#ddd;margin-bottom:4px;">보유 게임머니: 💰 ${me.tpMoney||0}</div>
+                <div style="font-size:13px;color:#ddd;margin-bottom:4px;">환전 비율: 💰 ${rate} = 🍪 1</div>
+                <div style="font-size:12px;color:#9e9e9e;margin-bottom:14px;">최대 ${maxC} 쿠키 교환 가능</div>
+                <input id="_tpExN" type="number" min="1" max="${maxC}" value="${maxC>0?1:0}" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:none;font-size:16px;font-family:'Jua';text-align:center;margin-bottom:12px;">
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <button onclick="window._tpDoExchange(document.getElementById('_tpExN').value)" style="${_TP_BTN}background:#66bb6a;">환전하기</button>
+                    <button ${maxC>0?'':'disabled'} onclick="window._tpDoExchange(${maxC})" style="${_TP_BTN}background:#26a69a;${maxC>0?'':'opacity:0.5;'}">전부 환전 (🍪${maxC})</button>
+                    <button onclick="document.getElementById('_tpExOv').remove()" style="${_TP_BTN}background:#555;">닫기</button>
+                </div>
+            </div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+    window._tpDoExchange = function(n){
+        n = parseInt(n, 10) || 0;
+        if(n <= 0){ alert('1 이상 입력해 주세요.'); return; }
+        const g = window._tpEnsureCfg();
+        const need = n * g.exchangeRate;
+        if((me.tpMoney||0) < need){ alert('게임머니가 부족해요.'); return; }
+        me.tpMoney = (me.tpMoney||0) - need;
+        me.cookie = (me.cookie||0) + n;
+        upMe();
+        try{ rSh && rSh(); }catch(_){}
+        document.getElementById('_tpExOv')?.remove();
+        alert(`🍪 ${n} 쿠키로 환전했어요!`);
+        window._tpMenu();
+    };
+
+    /* ── 교사 관리 패널 + Gemini 단어 생성 ── */
+    window._tpAdminPanel = function(){
+        if(me && me.cd !== 'teacher_main') return;
+        const g = window._tpEnsureCfg();
+        document.getElementById('_tpAdmin')?.remove();
+        const monRows = g.monsters.map((m, idx) => `<div style="display:flex;gap:4px;align-items:center;margin-bottom:5px;flex-wrap:wrap;font-size:12px;color:#5D4037;">
+            <input id="_tpA_emoji_${idx}" value="${_tpEsc(m.emoji)}" style="width:40px;${_TP_AIN}">
+            <input id="_tpA_name_${idx}" value="${_tpEsc(m.name)}" style="width:84px;${_TP_AIN}">
+            <input id="_tpA_diff_${idx}" value="${_tpEsc(m.diff)}" style="width:48px;${_TP_AIN}">
+            HP<input id="_tpA_hp_${idx}" type="number" value="${m.hp}" style="width:62px;${_TP_AIN}">
+            초<input id="_tpA_time_${idx}" type="number" value="${m.timeSec}" style="width:50px;${_TP_AIN}">
+            💰<input id="_tpA_reward_${idx}" type="number" value="${m.reward}" style="width:50px;${_TP_AIN}">
+        </div>`).join('');
+        const wordRows = _TP_CATS.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:4px;">
+            <span style="color:#5D4037;font-size:12px;">${c}: <b>${(g.words[c]||[]).length}</b>개</span>
+            <button onclick="window._tpGenWords('${c}')" id="_tpGenBtn_${c}" style="background:#42A5F5;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-family:Jua;font-size:11px;cursor:pointer;">생성</button>
+        </div>`).join('');
+        const html = `<div id="_tpAdmin" class="modal-overlay">
+            <div class="modal-window" style="width:560px;max-height:88vh;overflow-y:auto;" onclick="event.stopPropagation()">
+                <button class="modal-close-btn" onclick="document.getElementById('_tpAdmin').remove()">X</button>
+                <div class="modal-inner" style="text-align:left;">
+                    <h3 style="margin:0 0 10px;color:#5D4037;text-align:center;">⌨️ 타자 연습(몬스터 헌터) 설정</h3>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#5D4037;margin-bottom:10px;"><input type="checkbox" id="_tpA_on" ${g.on?'checked':''}> 게임 활성화</label>
+                    <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;font-size:12px;color:#5D4037;align-items:center;">
+                        <label>환전비율(💰→🍪1) <input id="_tpA_rate" type="number" value="${g.exchangeRate}" style="width:60px;${_TP_AIN}"></label>
+                        <label>하루 도전 <input id="_tpA_limit" type="number" value="${g.dailyLimit}" style="width:52px;${_TP_AIN}"></label>
+                        <label>글자당 데미지 <input id="_tpA_dmg" type="number" value="${g.damagePerChar}" style="width:58px;${_TP_AIN}"></label>
+                    </div>
+                    <h4 style="margin:8px 0 6px;color:#5D4037;">몬스터 (이모지·이름·난이도·HP·시간·보상)</h4>
+                    ${monRows}
+                    <h4 style="margin:14px 0 6px;color:#5D4037;">단어은행 (Gemini AI 생성)</h4>
+                    <div style="font-size:11px;color:#8D6E63;margin-bottom:6px;">생성 버튼을 누르면 AI가 단어/문장을 만들어 저장합니다 (덮어쓰기).</div>
+                    ${wordRows}
+                    <button onclick="window._tpGenAllWords()" id="_tpGenAllBtn" style="width:100%;background:#7E57C2;color:#fff;border:none;border-radius:8px;padding:8px;font-family:Jua;font-size:12px;cursor:pointer;margin:6px 0 14px;">✨ 전체 생성</button>
+                    <button onclick="window._tpSaveAdmin()" style="width:100%;background:#43A047;color:#fff;border:none;border-radius:10px;padding:11px;font-family:Jua;font-size:14px;cursor:pointer;">저장</button>
+                </div>
+            </div></div>`;
+        document.body.insertAdjacentHTML('beforeend', html);
+    };
+    window._tpSaveAdmin = function(){
+        if(me && me.cd !== 'teacher_main') return;
+        const g = window._tpEnsureCfg();
+        const onChk = document.getElementById('_tpA_on');
+        g.on = onChk ? !!onChk.checked : true;
+        g.exchangeRate = Math.max(1, parseInt(document.getElementById('_tpA_rate')?.value, 10) || 10);
+        g.dailyLimit = Math.max(1, parseInt(document.getElementById('_tpA_limit')?.value, 10) || 3);
+        g.damagePerChar = Math.max(1, parseInt(document.getElementById('_tpA_dmg')?.value, 10) || 10);
+        g.monsters.forEach((m, idx) => {
+            const ge = id => document.getElementById(id);
+            m.emoji = (ge('_tpA_emoji_'+idx)?.value || m.emoji).trim();
+            m.name = (ge('_tpA_name_'+idx)?.value || m.name).trim();
+            m.diff = (ge('_tpA_diff_'+idx)?.value || m.diff).trim();
+            m.hp = Math.max(1, parseInt(ge('_tpA_hp_'+idx)?.value, 10) || m.hp);
+            m.timeSec = Math.max(5, parseInt(ge('_tpA_time_'+idx)?.value, 10) || m.timeSec);
+            m.reward = Math.max(0, parseInt(ge('_tpA_reward_'+idx)?.value, 10) || 0);
+        });
+        sv();
+        try{ dbRef.child('cfg/typingGame').set(g); }catch(_){}
+        alert('저장했어요!');
+    };
+    async function _tpCallGemini(prompt){
+        const body = { contents:[{parts:[{text: prompt + ' 결과는 JSON 문자열 배열로만 출력하고, 설명·번호·마크다운·코드블록은 절대 넣지 마.'}]}], generationConfig:{temperature:0.9, responseMimeType:'application/json'} };
+        let lastErr = null;
+        for(const model of _TP_GEMINI_MODELS){
+            try{
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${_TP_GEMINI_KEY}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+                const j = await res.json();
+                if(!res.ok || (j && j.error)){ lastErr = new Error((j && j.error && j.error.message) || ('HTTP ' + res.status)); continue; }
+                const txt = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts[0] && j.candidates[0].content.parts[0].text) || '';
+                const arr = _tpParseArr(txt);
+                if(arr.length) return arr;
+                lastErr = new Error('빈 응답');
+            }catch(e){ lastErr = e; }
+        }
+        throw lastErr || new Error('생성 실패');
+    }
+    function _tpParseArr(txt){
+        let t = String(txt || '').trim();
+        t = t.replace(/```json/gi, '').replace(/```/g, '').trim();
+        let arr = null;
+        try{ arr = JSON.parse(t); }catch(_){
+            const a = t.indexOf('['), b = t.lastIndexOf(']');
+            if(a >= 0 && b > a){ try{ arr = JSON.parse(t.slice(a, b+1)); }catch(__){} }
+        }
+        if(!Array.isArray(arr)) arr = t.split(/\r?\n/).map(s => s.replace(/^[-*\d.\s"'\[\]]+/, '').replace(/["',\]]+$/, ''));
+        return arr.map(s => String(s).trim()).filter(Boolean);
+    }
+    window._tpGenWords = async function(cat){
+        if(me && me.cd !== 'teacher_main') return;
+        const g = window._tpEnsureCfg();
+        const btn = document.getElementById('_tpGenBtn_' + cat);
+        if(btn){ btn.disabled = true; btn.textContent = '생성중...'; }
+        try{
+            const arr = await _tpCallGemini(_TP_PROMPTS[cat] || ('타자 연습용 ' + cat + ' 30개'));
+            if(!arr.length) throw new Error('빈 결과');
+            g.words[cat] = arr; g.wordsUpdatedAt = Date.now();
+            sv();
+            try{ dbRef.child('cfg/typingGame').set(g); }catch(_){}
+            if(document.getElementById('_tpAdmin')) window._tpAdminPanel();
+            return arr.length;
+        }catch(e){
+            alert('"' + cat + '" 단어 생성 실패: ' + (e && e.message || e));
+            if(btn){ btn.disabled = false; btn.textContent = '생성'; }
+            throw e;
+        }
+    };
+    window._tpGenAllWords = async function(){
+        if(me && me.cd !== 'teacher_main') return;
+        const allBtn = document.getElementById('_tpGenAllBtn');
+        if(allBtn){ allBtn.disabled = true; allBtn.textContent = '생성중...'; }
+        let ok = 0;
+        for(const c of _TP_CATS){
+            try{ await window._tpGenWords(c); ok++; }catch(_){ /* 개별 실패는 건너뜀 */ }
+        }
+        const allBtn2 = document.getElementById('_tpGenAllBtn');
+        if(allBtn2){ allBtn2.disabled = false; allBtn2.textContent = '✨ 전체 생성'; }
+        alert(`전체 단어 생성 완료! (${ok}/${_TP_CATS.length} 종류 성공)`);
+    };
+
     window._catchMindWordEditor = function() {
         if(me && me.cd !== 'teacher_main') return;
         document.getElementById('_cmWordEditor')?.remove();
@@ -47499,6 +47990,817 @@ window.addCharRow = function() {
             if(allWords.length === 0) return '사과';
             return allWords[Math.floor(Math.random()*allWords.length)];
         } catch(_) { return '사과'; }
+    }
+
+    /* ============================================================
+       💥 크레이지 아케이드 (Bomberman / Crazy Arcade 클론)
+       - 교사 = 단일 권위 호스트(심판). 학생 = 플레이어(최대 6).
+       - 호스트 루프(10Hz)가 입력→이동/폭탄/폭발/아이템/HP/사망 시뮬→state write.
+       - 학생은 meta/map/state 구독 + 자기 입력만 inputs/<uid>에 write + 로컬 예측.
+       ============================================================ */
+    const CA_W = 13, CA_H = 11;          // 그리드 크기 (홀수: 체커보드 고정벽)
+    const CA_MAXP = 6;                    // 정원
+    const CA_DUR = 180000;                // 3분
+    const CA_FUSE = 2000;                 // 폭탄 퓨즈
+    const CA_HIT = 30;                    // 피격 데미지 (3~4회 아웃)
+    const CA_IFRAME = 1000;               // 무적 프레임
+    const CA_TICK = 100;                  // 호스트 루프 주기 ms
+    const CA_MOVE_BASE = 200;             // 1칸 이동 시간(ms) — 신발로 단축
+    const CA_SPAWNS = [[1,1],[CA_W-2,1],[1,CA_H-2],[CA_W-2,CA_H-2],[(CA_W-1)/2,1],[(CA_W-1)/2,CA_H-2]]; // [col,row]
+
+    function _caRef()       { return getPlzRef().child('crazyArcade'); }
+    function _caMetaRef()    { return _caRef().child('meta'); }
+    function _caMapRef()     { return _caRef().child('map'); }
+    function _caStateRef()   { return _caRef().child('state'); }
+    function _caRosterRef()  { return _caRef().child('roster'); }   // 정적: uid→이름 (1회)
+    function _caLobbyRef()    { return _caRef().child('lobby'); }
+    function _caInputsRef()  { return _caRef().child('inputs'); }
+    function _caHbRef()      { return _caRef().child('hb'); }
+    // bombs/blasts는 host=배열, client=객체(child) 둘 다 지원
+    function _caBombList(st){ const b=st&&st.bombs; return Array.isArray(b)?b:Object.values(b||{}); }
+    function _caBlastList(st){ const b=st&&st.blasts; return Array.isArray(b)?b:Object.values(b||{}); }
+    // broadcast용 동적 필드만(이름/내부필드 제외) — 트래픽 절감
+    const _CA_PUB = ['x','y','fx','fy','mt','hp','alive','power','bombs','speed','iframe'];
+    function _caPubPlayer(p){ const o={}; _CA_PUB.forEach(f=>{ o[f]=p[f]; }); return o; }
+
+    const _caIsTeacher = () => !!(me && me.cd === 'teacher_main');
+    const _caIsSpectator = () => !!(me && window._isPlzSpectator && window._isPlzSpectator(me.cd));
+    const _caIsStarter = () => !!(window._caMeta && me && window._caMeta.starter === me.cd);
+    const _caCanControl = () => _caIsStarter() || _caIsTeacher();   // 시작/종료 권한 = 방장(시작한 사람) 또는 교사
+    const CA_MINP = 3;             // 최소 인원
+    // 방에 있는 자동 참가 대상(교사·참관자 제외) — 시작 시점 스냅샷
+    function _caEligibleUids(){
+        const set = {};
+        try {
+            Object.keys(_plzUserCache||{}).forEach(uid=>{
+                if(uid==='teacher_main') return;
+                if(window._isPlzSpectator && window._isPlzSpectator(uid)) return;
+                set[uid] = (_plzUserCache[uid] && _plzUserCache[uid].nm) || uid;
+            });
+        } catch(_){}
+        if(me && me.cd!=='teacher_main' && !_caIsSpectator() && !set[me.cd]) set[me.cd] = me.nm || '학생';
+        return set;
+    }
+    function _caMoveMs(speed){ return Math.max(90, CA_MOVE_BASE - (speed||0)*22); }
+    function _caKey(c,r){ return r + '_' + c; }
+
+    // ── 스폰 위치 생성 (인원수만큼, 서로 멀리) ────────────────
+    function _caGenSpawns(n){
+        const seen = new Set(), out = [];
+        const push = (c,r) => { const k=c+','+r; if(c>0&&c<CA_W-1&&r>0&&r<CA_H-1 && !(r%2===0&&c%2===0) && !seen.has(k)){ seen.add(k); out.push([c,r]); } };
+        const mc=(CA_W-1)/2, mr=(CA_H-1)/2;
+        // 우선순위: 모서리 → 변 중앙 (최대한 분산)
+        [[1,1],[CA_W-2,1],[1,CA_H-2],[CA_W-2,CA_H-2],[mc,1],[mc,CA_H-2],[1,mr],[CA_W-2,mr]].forEach(([c,r])=>push(c,r));
+        // 나머지: 홀수×홀수 칸(고정 돌 아님)으로 채움
+        for(let r=1;r<CA_H-1;r+=2) for(let c=1;c<CA_W-1;c+=2) push(c,r);
+        return out.slice(0, Math.max(1, n));
+    }
+
+    // ── 맵 생성 (매 판 랜덤) ─────────────────────────────────
+    function _caGenMap(spawns){
+        const cells = new Array(CA_W*CA_H).fill(0);
+        for(let r=0;r<CA_H;r++) for(let c=0;c<CA_W;c++){
+            const i = r*CA_W+c;
+            if(r===0||c===0||r===CA_H-1||c===CA_W-1) cells[i] = 1;          // 테두리 벽
+            else if(r%2===0 && c%2===0) cells[i] = 1;                        // 내부 고정 돌
+        }
+        const clear = new Set();
+        (spawns||CA_SPAWNS).forEach(([sc,sr])=>{
+            [[0,0],[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+                const cc=sc+dx, rr=sr+dy;
+                if(cc>=0&&cc<CA_W&&rr>=0&&rr<CA_H) clear.add(rr*CA_W+cc);
+            });
+        });
+        const items = {};
+        for(let r=1;r<CA_H-1;r++) for(let c=1;c<CA_W-1;c++){
+            const i = r*CA_W+c;
+            if(cells[i]!==0 || clear.has(i)) continue;
+            if(Math.random() < 0.72){
+                cells[i] = 2;                                                // 파괴가능 박스
+                const roll = Math.random();
+                if(roll < 0.21) items[_caKey(c,r)] = 'potion';
+                else if(roll < 0.42) items[_caKey(c,r)] = 'shoe';
+            }
+        }
+        return { w:CA_W, h:CA_H, cells, items };
+    }
+
+    // 효과 셀 값(파괴된 박스는 빈칸 취급)
+    function _caEff(map, state, c, r){
+        if(c<0||c>=map.w||r<0||r>=map.h) return 1;
+        const v = map.cells[r*map.w+c];
+        if(v===2 && state.boxesGone && state.boxesGone[_caKey(c,r)]) return 0;
+        return v;
+    }
+    function _caBombAt(state, c, r){
+        return _caBombList(state).find(b => b.x===c && b.y===r) || null;
+    }
+
+    // ── 모달 (상태별) ─────────────────────────────────────────
+    window._crazyArcadeMenu = function(){
+        if(!me) return;
+        const g = window._caMeta;
+        const active = !!(g && g.on && g.phase!=='done');   // done(끝난 게임)은 비활성 취급 → 새 판 시작 화면
+        document.getElementById('_caMenu')?.remove();
+        const el = document.createElement('div');
+        el.id = '_caMenu';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Jua;';
+        let body = '';
+        if(!active){
+            // 게임 없음 — 진행자가 시작하면 방 안 사람 자동 참가 (얼음땡 방식)
+            if(!_caIsSpectator()){
+                const n = Object.keys(_caEligibleUids()).length;
+                const canStart = n >= CA_MINP;
+                body = `<div style="font-size:12px;color:#555;background:rgba(255,255,255,0.65);border-radius:10px;padding:12px;line-height:1.6;margin-bottom:14px;">💣 폭탄으로 박스를 부수고 아이템을 먹으며 3분 안에 최후의 1인이 되세요!<br><span style="color:#aaa;">시작하면 <b>지금 광장 방에 있는 친구들이 모두 자동 참가</b>해요 (${CA_MINP}명 이상). 나중에 들어온 학생은 관전 후 다음 판부터 참여할 수 있어요.</span></div>
+                <button id="_caStartBtn" ${canStart?'':'disabled'} style="width:100%;padding:12px;border:none;border-radius:12px;background:${canStart?'linear-gradient(135deg,#FF5252,#C62828)':'#ccc'};color:white;font-family:Jua;font-size:15px;cursor:${canStart?'pointer':'not-allowed'};">💥 게임 시작 (${n}명)${canStart?'':' · '+CA_MINP+'명 이상 필요'}</button>`;
+            } else {
+                body = `<div style="font-size:13px;color:#555;text-align:center;padding:18px;">👻 참관자는 게임을 열 수 없어요.</div>`;
+            }
+        } else { // playing / done
+            const amPlayer = !!(window._caState && window._caState.players && window._caState.players[me.cd]);
+            body = `<div style="font-size:13px;color:#C62828;font-weight:bold;text-align:center;padding:8px;margin-bottom:10px;">📌 게임 진행 중</div>
+                <button id="_caOpenBtn" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#FF5252,#C62828);color:white;font-family:Jua;font-size:15px;cursor:pointer;margin-bottom:8px;">🎯 게임 화면 ${amPlayer?'열기':'관전하기'}</button>`;
+            if(!amPlayer) body += `<div style="font-size:11px;color:#888;text-align:center;padding:4px 0 8px;">이번 판은 관전이에요. 게임이 끝나면 다음 판부터 참여할 수 있어요!</div>`;
+            if(_caCanControl()) body += `<button id="_caEndBtn" style="width:100%;padding:9px;border:2px solid #EF5350;border-radius:12px;background:white;color:#C62828;font-family:Jua;font-size:13px;cursor:pointer;">🛑 게임 종료</button>`;
+        }
+        el.innerHTML = `
+        <div style="background:linear-gradient(160deg,#FFEBEE,#FFCDD2);border-radius:22px;width:min(380px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.4);overflow:hidden;border:3px solid #C62828;">
+            <div style="background:linear-gradient(135deg,#FF5252,#C62828);padding:18px;text-align:center;color:white;">
+                <div style="font-size:46px;line-height:1;">💥</div>
+                <div style="font-size:20px;font-weight:bold;margin-top:4px;">크레이지 아케이드</div>
+            </div>
+            <div style="padding:20px;">
+                ${body}
+                <button onclick="document.getElementById('_caMenu').remove()" style="width:100%;padding:9px;border:2px solid #ccc;border-radius:12px;background:white;font-family:Jua;cursor:pointer;font-size:13px;margin-top:8px;">닫기</button>
+            </div>
+        </div>`;
+        el.onclick = e => { if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
+        const bind = (id, fn) => { const b = el.querySelector('#'+id); if(b) b.onclick = fn; };
+        bind('_caStartBtn',  ()=>{ el.remove(); _caStartGame(); });
+        bind('_caOpenBtn',   ()=>{ el.remove(); window._crazyArcadeOpenPanel(); });
+        bind('_caEndBtn',    ()=>{ if(!confirm('게임을 종료할까요?')) return; el.remove(); _caEnd(); });
+    };
+
+    // ── 게임 시작 (진행자: 학생 누구나 또는 교사) ─────────────
+    async function _caStartGame(){
+        if(!me) return;
+        if(_caIsSpectator()) { alert('👻 참관자는 시작할 수 없어요.'); return; }
+        if(window._caMeta && window._caMeta.on) { window._crazyArcadeMenu(); return; }   // 이미 진행 중
+        const roster = _caEligibleUids();                 // 방에 있는 사람 자동 참가
+        const uids = Object.keys(roster);
+        if(uids.length < CA_MINP) { alert('최소 '+CA_MINP+'명이 필요해요 (현재 '+uids.length+'명).'); return; }
+        const spawns = _caGenSpawns(uids.length);
+        const map = _caGenMap(spawns);
+        const now = Date.now();
+        const players = {};
+        uids.forEach((uid, i)=>{
+            const [c,r] = spawns[i % spawns.length];
+            players[uid] = { nm:roster[uid], x:c, y:r, fx:c, fy:r, mt:now, hp:100, alive:true, power:1, bombs:1, speed:0, iframe:0, dir:'none' };
+        });
+        const state = { t:now, players, bombs:[], blasts:[], boxesGone:{}, ground:{} };   // host 메모리(권위)
+        const pubPlayers = {};   // roster(uid→이름)는 _caEligibleUids() 결과 그대로 재사용
+        Object.keys(players).forEach(uid=>{ pubPlayers[uid]=_caPubPlayer(players[uid]); });
+        const meta = { on:true, phase:'playing', hostUid:me.cd, hostNm:me.nm||'방장', starter:me.cd, startedAt:now, endsAt:now+CA_DUR, winner:null };
+        window._caIsHost = true;   // echo 가드 먼저
+        try {
+            await Promise.all([
+                _caMapRef().set(map),
+                _caRosterRef().set(roster),
+                _caStateRef().set({ players:pubPlayers, bombs:{}, boxes:{}, ground:{}, blasts:{} }),
+                _caInputsRef().set(null),
+                _caMetaRef().set(meta)
+            ]);
+            window._caMap = map; window._caState = state; window._caRoster = roster; window._caMeta = meta;
+            _caStartHost();
+            _caPrerenderHeads(Object.keys(players));
+            window._crazyArcadeOpenPanel();
+        } catch(err){ window._caIsHost=false; console.error('[CA] 시작 실패', err); alert('시작 실패: '+(err.message||err)); }
+    }
+
+    // ── 호스트 시뮬레이션 ─────────────────────────────────────
+    function _caStartHost(){
+        _caStopHost();
+        window._caIsHost = true;
+        window._caInputCache = window._caInputCache || {};
+        const inRef = _caInputsRef();
+        const inFn = snap => { window._caInputCache = snap.val() || {}; };
+        inRef.on('value', inFn);
+        window._caHostListeners = [{ ref:inRef, type:'value', fn:inFn }];
+        plzListeners.push({ ref:inRef, type:'value', fn:inFn, who:'student' });
+        window._caLastWrite = 0;
+        window._caHostTimer = setInterval(_caHostLoop, CA_TICK);
+        window._caHbTimer = setInterval(()=>{ try{ _caHbRef().set({ host:me.cd, ts:Date.now() }); }catch(_){} }, 3000);
+        try{ _caHbRef().set({ host:me.cd, ts:Date.now() }); }catch(_){}
+    }
+    function _caStopHost(){
+        window._caIsHost = false;
+        if(window._caHostTimer){ clearInterval(window._caHostTimer); window._caHostTimer = null; }
+        if(window._caHbTimer){ clearInterval(window._caHbTimer); window._caHbTimer = null; }
+        (window._caHostListeners||[]).forEach(l=>{ try{ l.ref.off(l.type, l.fn); }catch(_){} });
+        window._caHostListeners = null;
+    }
+
+    function _caHostLoop(){
+        const meta = window._caMeta, map = window._caMap, st = window._caState;
+        if(!meta || meta.phase!=='playing' || !map || !st){ return; }
+        const now = Date.now();
+        const inputs = window._caInputCache || {};
+        const P = st.players;
+        // 델타 수집(child 단위 전송 → 트래픽 최소화)
+        const pDirty = new Set();        // 동적 필드가 바뀐 플레이어 uid
+        const bombsAdd = [], bombsDel = [], boxAdd = [], groundDel = [], blastDel = [], blastAdd = [];
+        const groundAdd = {};
+
+        // 이탈(bye) 처리 → 즉시 탈락
+        Object.keys(P).forEach(uid=>{
+            if(P[uid].alive && typeof _plzHasBye==='function' && _plzHasBye(uid)){ P[uid].alive = false; pDirty.add(uid); }
+        });
+
+        // 이동
+        Object.keys(P).forEach(uid=>{
+            const p = P[uid]; if(!p.alive) return;
+            const moveMs = _caMoveMs(p.speed);
+            if(now < p.mt + moveMs) return;        // 이동 중
+            const inp = inputs[uid];
+            const dir = inp && inp.dir || 'none';
+            p.dir = dir;
+            if(dir==='none') return;
+            let nc = p.x, nr = p.y;
+            if(dir==='left') nc--; else if(dir==='right') nc++; else if(dir==='up') nr--; else if(dir==='down') nr++;
+            if(_caEff(map, st, nc, nr)!==0) return;          // 벽/박스
+            if(_caBombAt(st, nc, nr)) return;                // 폭탄
+            p.fx = p.x; p.fy = p.y; p.x = nc; p.y = nr; p.mt = now; pDirty.add(uid);
+            // 아이템 획득
+            const gk = _caKey(nc, nr);
+            if(st.ground[gk]){
+                const it = st.ground[gk]; delete st.ground[gk]; groundDel.push(gk);
+                if(it==='shoe') p.speed = p.speed+1;          // 먹을 때마다 중첩(이동속도 ↑)
+                else if(it==='potion') p.power = p.power+1;    // 먹을 때마다 중첩(폭발범위 ↑)
+            }
+        });
+
+        // 아이템 획득 보정 — 현재 서 있는 칸에 아이템이 있으면 획득(이동 타이밍/박스 파괴 직후 못 먹는 경우 방지)
+        Object.keys(P).forEach(uid=>{
+            const p = P[uid]; if(!p.alive) return;
+            const gk = _caKey(p.x, p.y);
+            if(st.ground[gk]){
+                const it = st.ground[gk]; delete st.ground[gk]; groundDel.push(gk);
+                if(it==='shoe') p.speed = p.speed+1;
+                else if(it==='potion') p.power = p.power+1;
+                pDirty.add(uid);
+            }
+        });
+
+        // 폭탄 설치
+        Object.keys(P).forEach(uid=>{
+            const p = P[uid]; if(!p.alive) return;
+            const inp = inputs[uid]; if(!inp || !inp.dropAt) return;
+            if(inp.dropAt <= (p._lastDrop||0)) return;
+            p._lastDrop = inp.dropAt;
+            const active = (st.bombs||[]).filter(b=>b.owner===uid).length;
+            if(active >= p.bombs) return;
+            // 클라이언트가 보고한 "내가 서 있는 칸"을 우선 사용 — 지연으로 호스트 좌표가 뒤처져 엉뚱한 칸에 놓이는 문제 방지.
+            // (단, 호스트 좌표와 2칸 이내 + 빈 바닥일 때만 신뢰 → stale/치트 방지)
+            let bx = p.x, by = p.y;
+            if(typeof inp.dropX==='number' && typeof inp.dropY==='number'
+               && Math.abs(inp.dropX-p.x)+Math.abs(inp.dropY-p.y) <= 2
+               && _caEff(map, st, inp.dropX, inp.dropY)===0){ bx = inp.dropX; by = inp.dropY; }
+            if(_caBombAt(st, bx, by)) return;
+            const nb = { id:'b'+now+'_'+uid, x:bx, y:by, owner:uid, explodesAt:now+CA_FUSE, power:p.power };
+            st.bombs.push(nb); bombsAdd.push(nb);
+        });
+
+        // 폭발 처리 (연쇄)
+        let blSeq = 0;
+        st.blasts = (st.blasts||[]).filter(bl => { if(bl.until > now) return true; blastDel.push(bl.id); return false; });
+        let exploded = true;
+        while(exploded){
+            exploded = false;
+            for(let i=0;i<st.bombs.length;i++){
+                const b = st.bombs[i];
+                if(b.explodesAt > now) continue;
+                exploded = true;
+                st.bombs.splice(i,1); i--; bombsDel.push(b.id);
+                const cells = [_caKey(b.x,b.y)];
+                const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+                dirs.forEach(([dx,dy])=>{
+                    for(let k=1;k<=b.power;k++){
+                        const cc=b.x+dx*k, rr=b.y+dy*k;
+                        const v = _caEff(map, st, cc, rr);   // 파괴된 박스는 0(통과)
+                        if(v===1) break;                 // 고정벽: 차단
+                        cells.push(_caKey(cc,rr));
+                        if(v===2){                       // 현존 박스 → 1겹 파괴 후 차단
+                            const bk = _caKey(cc,rr);
+                            st.boxesGone[bk] = 1; boxAdd.push(bk);
+                            if(map.items[bk]){ st.ground[bk] = map.items[bk]; groundAdd[bk] = map.items[bk]; }
+                            break;
+                        }
+                        // 연쇄: 폭탄 만나면 즉시 점화
+                        const ob = _caBombAt(st, cc, rr);
+                        if(ob) ob.explodesAt = now;
+                    }
+                });
+                const blast = { id:'x'+now+'_'+(blSeq++), cells, until: now+400 };
+                st.blasts.push(blast); blastAdd.push(blast);
+                // 피격 판정
+                const hitSet = new Set(cells);
+                Object.keys(P).forEach(uid=>{
+                    const p = P[uid]; if(!p.alive) return;
+                    if(now < (p.iframe||0)) return;
+                    // 렌더와 동일한 보간 위치(시각적 칸)로 판정 — 이동 애니메이션 중에는 p.x,p.y가
+                    // 이미 목적지 칸이라, 출발 칸에 보이는데도 목적지에서 터진 폭발에 맞는 오판정 방지.
+                    let _hx = p.x, _hy = p.y;
+                    if(p.mt){ const _t = Math.min(1, (now - p.mt) / _caMoveMs(p.speed)); _hx = Math.round(p.fx + (p.x - p.fx) * _t); _hy = Math.round(p.fy + (p.y - p.fy) * _t); }
+                    if(hitSet.has(_caKey(_hx,_hy))){
+                        p.hp = Math.max(0, p.hp - CA_HIT);
+                        p.iframe = now + CA_IFRAME;
+                        if(p.hp<=0) p.alive = false;
+                        pDirty.add(uid);
+                    }
+                });
+            }
+        }
+
+        // 승리/타이머 판정
+        const alive = Object.keys(P).filter(uid=>P[uid].alive);
+        let done = false, winner = null;
+        if(alive.length<=1){
+            done = true;
+            winner = alive[0] || null;
+        } else if(now >= meta.endsAt){
+            done = true;
+            let best = -1; const tops = [];
+            alive.forEach(uid=>{ const hp=P[uid].hp; if(hp>best){ best=hp; tops.length=0; tops.push(uid);} else if(hp===best) tops.push(uid); });
+            winner = tops.length===1 ? tops[0] : null;   // 동률 → 무승부
+        }
+
+        // 델타만 child 단위로 전송 (전체 state set 안 함 → 트래픽 대폭 절감)
+        const upd = {};
+        pDirty.forEach(uid=>{ const pub=_caPubPlayer(P[uid]); for(const f in pub) upd['players/'+uid+'/'+f]=pub[f]; });
+        bombsAdd.forEach(b=>{ upd['bombs/'+b.id]={ id:b.id, x:b.x, y:b.y, owner:b.owner, explodesAt:b.explodesAt, power:b.power }; });
+        bombsDel.forEach(id=>{ upd['bombs/'+id]=null; });
+        boxAdd.forEach(k=>{ upd['boxes/'+k]=1; });
+        for(const k in groundAdd) upd['ground/'+k]=groundAdd[k];
+        groundDel.forEach(k=>{ upd['ground/'+k]=null; });
+        blastAdd.forEach(bl=>{ upd['blasts/'+bl.id]={ id:bl.id, cells:bl.cells, until:bl.until }; });
+        blastDel.forEach(id=>{ upd['blasts/'+id]=null; });
+        if(Object.keys(upd).length){ _caStateRef().update(upd); }
+        if(done){
+            const _endTs = Date.now();
+            const fin = Object.assign({}, meta, { phase:'done', winner, endedAt:_endTs });
+            window._caMeta = fin;
+            _caMetaRef().update({ phase:'done', winner, endedAt:_endTs });
+            _caStopHost();
+            // 결과 표시 후 노드 자동 정리 → 다음 판을 새로 시작할 수 있음(끝난 게임이 안 남음)
+            setTimeout(()=>{ try{ _caRef().remove(); }catch(_){} }, 6000);
+        }
+    }
+
+    // ── 호스트 승계 (교사 이탈 시) ────────────────────────────
+    function _caCheckHostTakeover(){
+        const meta = window._caMeta, st = window._caState;
+        if(!meta || meta.phase!=='playing' || !st) return;
+        if(window._caIsHost) return;
+        if(window._plzFbConnected === false) return;
+        const host = meta.hostUid;
+        const hostGone = (typeof _plzHasBye==='function' && _plzHasBye(host)) ||
+                         (window._caHb && (Date.now() - (window._caHb.ts||0) > 7000));
+        if(!hostGone) return;
+        // 승계자: 생존 플레이어 중 가장 작은 uid (교사가 빠진 경우)
+        const aliveUids = Object.keys(st.players||{}).filter(u=>st.players[u].alive && !(typeof _plzHasBye==='function' && _plzHasBye(u))).sort();
+        if(aliveUids[0] !== me.cd) return;     // 내가 승계 대상 아님
+        console.log('[CA] 호스트 승계 →', me.cd);
+        // 클라이언트 형태(객체) → 호스트 권위 형태(배열)로 변환
+        const cs = window._caState || {};
+        window._caState = {
+            t: Date.now(),
+            players: cs.players || {},
+            bombs: _caBombList(cs).slice(),
+            blasts: _caBlastList(cs).slice(),
+            boxesGone: cs.boxesGone || {},
+            ground: cs.ground || {}
+        };
+        _caMetaRef().update({ hostUid:me.cd, hostNm:me.nm||'학생' });
+        window._caMeta.hostUid = me.cd;
+        _caPrerenderHeads(Object.keys(window._caState.players||{}));
+        _caStartHost();
+    }
+
+    // ── 구독 ─────────────────────────────────────────────────
+    function _caSubscribe(){
+        if(window._caSubs && (!Array.isArray(window._caSubs) || window._caSubs.length===0)) window._caSubs = null;
+        if(window._caSubs){ return; }
+        window._caSubs = [];
+        const _push = (ref, type, fn) => { ref.on(type, fn); plzListeners.push({ ref, type, fn, who:'student' }); window._caSubs.push({ ref, type, fn }); };
+        _push(_caMetaRef(), 'value', snap => {
+            const m = snap.val();
+            const prev = window._caMeta;
+            window._caMeta = m;
+            if(!m || !m.on){
+                // 게임 제거 → 정리
+                if(prev && prev.on){ _caTeardownLocal(); window._caState=null; window._caMap=null; window._caLobby=null; }
+                return;
+            }
+            // stale 안전장치: 10분 넘게 남아있는 게임(전원 이탈 등으로 방치)은 제거 → 새 판 시작 가능
+            if(m.startedAt && Date.now() - m.startedAt > 10*60*1000 && window._plzFbConnected !== false){
+                try{ _caRef().remove(); }catch(_){}
+                return;
+            }
+            // 끝난 게임(done) 정리 — 호스트가 6초 정리 타이머 전에 나가면 노드가 남아 재입장 시 잔존.
+            // 어느 클라든 endedAt 기준 8초 지나면 제거(재입장 시 즉시 제거), 막 끝났으면 예약.
+            if(m.phase==='done'){
+                if(prev && prev.phase==='playing'){ _caShowResult(m); _caStopHost(); }
+                if(window._plzFbConnected !== false){
+                    const age = Date.now() - (m.endedAt || m.startedAt || 0);
+                    if(age > 8000){ try{ _caRef().remove(); }catch(_){} }
+                    else if(!window._caDoneCleanupT){ window._caDoneCleanupT = setTimeout(()=>{ window._caDoneCleanupT=null; try{ if(window._caMeta && window._caMeta.phase==='done') _caRef().remove(); }catch(_){} }, 8500); }
+                }
+                _caRefreshMenu();
+                return;
+            }
+            // 진행 중: 내 플레이어가 있으면 게임 화면 자동 열기(메타가 플레이어 child보다 늦게 도착하는 레이스 보정)
+            _caMaybeAutoOpen();
+            _caRefreshMenu();
+        });
+        _push(_caMapRef(), 'value', snap => { if(window._caIsHost && window._caMap) return; window._caMap = snap.val(); });
+        _push(_caRosterRef(), 'value', snap => { window._caRoster = snap.val() || {}; });
+        // state: child 단위 구독 → 바뀐 조각만 수신 (전체 다운로드 회피). 호스트는 자기 echo 무시.
+        const sp = _caStateRef();
+        const pRef = sp.child('players');
+        const fnPUp = s => { if(window._caIsHost) return; _caEnsureState().players[s.key] = s.val(); _caAfterPlayer(s.key); };
+        const fnPRem = s => { if(window._caIsHost) return; delete _caEnsureState().players[s.key]; };
+        _push(pRef, 'child_added', fnPUp); _push(pRef, 'child_changed', fnPUp); _push(pRef, 'child_removed', fnPRem);
+        const bRef = sp.child('bombs');
+        _push(bRef, 'child_added',   s => { if(window._caIsHost) return; _caEnsureState().bombs[s.key] = s.val(); });
+        _push(bRef, 'child_removed', s => { if(window._caIsHost) return; delete _caEnsureState().bombs[s.key]; });
+        const boxRef = sp.child('boxes');
+        _push(boxRef, 'child_added', s => { if(window._caIsHost) return; _caEnsureState().boxesGone[s.key] = 1; });
+        const gRef = sp.child('ground');
+        _push(gRef, 'child_added',   s => { if(window._caIsHost) return; _caEnsureState().ground[s.key] = s.val(); });
+        _push(gRef, 'child_removed', s => { if(window._caIsHost) return; delete _caEnsureState().ground[s.key]; });
+        const blRef = sp.child('blasts');
+        _push(blRef, 'child_added',   s => { if(window._caIsHost) return; _caEnsureState().blasts[s.key] = s.val(); });
+        _push(blRef, 'child_removed', s => { if(window._caIsHost) return; delete _caEnsureState().blasts[s.key]; });
+        _push(_caHbRef(), 'value', snap => { window._caHb = snap.val(); });
+        // 승계 감시
+        if(window._caTakeoverInt) clearInterval(window._caTakeoverInt);
+        window._caTakeoverInt = setInterval(_caCheckHostTakeover, 3000);
+    }
+
+    function _caRefreshMenu(){ if(document.getElementById('_caMenu')) window._crazyArcadeMenu(); }
+
+    // 클라이언트 로컬 state(객체 형태) 보장
+    function _caEnsureState(){
+        let st = window._caState;
+        if(!st || window._caIsHost){ if(!st){ st = window._caState = { players:{}, bombs:{}, boxesGone:{}, ground:{}, blasts:{} }; } }
+        if(!st.players) st.players = {};
+        if(!st.bombs) st.bombs = {};
+        if(!st.boxesGone) st.boxesGone = {};
+        if(!st.ground) st.ground = {};
+        if(!st.blasts) st.blasts = {};
+        return st;
+    }
+    // 게임 화면 자동 열기 — 내 플레이어가 있고 진행 중이면 1회 자동 오픈(메타/플레이어 도착 순서 무관)
+    function _caMaybeAutoOpen(){
+        const meta = window._caMeta;
+        if(!meta || meta.phase!=='playing' || !me) return;
+        const sp = window._caState && window._caState.players && window._caState.players[me.cd];
+        if(!sp) return;   // 관전자이거나 아직 내 플레이어 미수신 → 자동 오픈 안 함
+        const panel = document.getElementById('_caPanel');
+        if(!panel && window._caAutoOpenedFor !== meta.startedAt){
+            window._caAutoOpenedFor = meta.startedAt;
+            try{ window._crazyArcadeOpenPanel(); }catch(_){}
+        } else if(panel && !window._caLocalMe){
+            // 관전 모드로 열렸지만 사실은 플레이어(레이스) → 조작 가능하게 재오픈
+            try{ window._crazyArcadeClosePanel(); window._crazyArcadeOpenPanel(); }catch(_){}
+        }
+    }
+    // 플레이어 child 수신 후: 머리 프리렌더 + 본인이면 자동열기/예측보정
+    function _caAfterPlayer(uid){
+        // 최초 1회만 — null(아바타 없음/실패)도 '시도함'으로 보고 매 이동마다 재시도하지 않음
+        if(!window._caHeadImg || window._caHeadImg[uid] === undefined) _caPrerenderHeads([uid]);
+        if(uid !== (me && me.cd)) return;
+        _caMaybeAutoOpen();
+        const lp = window._caLocalMe;
+        if(lp && sp){
+            if(!sp.alive || Math.abs(sp.x-lp.x)+Math.abs(sp.y-lp.y) > 1){ lp.x=sp.x; lp.y=sp.y; lp.fx=sp.x; lp.fy=sp.y; lp.mt=Date.now(); }
+            lp.alive = sp.alive; lp.speed = sp.speed;
+        }
+    }
+
+    // ── 아바타 머리 프리렌더 ──────────────────────────────────
+    async function _caPrerenderHeads(uids){
+        window._caHeadImg = window._caHeadImg || {};
+        await Promise.all((uids||[]).map(async uid=>{
+            if(window._caHeadImg[uid] !== undefined || uid==='teacher_main') return;   // null(실패)도 완료로 간주
+            window._caHeadImg[uid] = 'pending';
+            try {
+                const png = (typeof window._geFlattenAvatarPng==='function') ? await window._geFlattenAvatarPng({ code:uid }, 256) : null;
+                if(png){ const img = new Image(); img.src = png; window._caHeadImg[uid] = img; }
+                else window._caHeadImg[uid] = null;
+            } catch(_){ window._caHeadImg[uid] = null; }
+        }));
+    }
+
+    // ── 게임 화면 (캔버스 오버레이) ───────────────────────────
+    window._crazyArcadeOpenPanel = function(){
+        if(document.getElementById('_caPanel')) return;
+        const amPlayer = !!(window._caState && window._caState.players && me && window._caState.players[me.cd]);
+        const el = document.createElement('div');
+        el.id = '_caPanel';
+        el.style.cssText = 'position:fixed;inset:0;z-index:99998;background:#1b2a1b;display:flex;flex-direction:column;align-items:center;font-family:Jua;touch-action:none;user-select:none;';
+        // 태블릿 가로 등 넓은 화면: 조작 버튼을 양옆 여백으로 띄워 보드가 화면을 꽉 채우도록.
+        // 좁은/세로 화면(휴대폰)은 기존 세로 레이아웃 유지.
+        const wide = window.innerWidth >= 900 && window.innerWidth > window.innerHeight;
+        const ctrlStyle = wide
+            ? 'position:absolute;left:0;right:0;bottom:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 40px 32px;box-sizing:border-box;pointer-events:none;z-index:5;'
+            : 'width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between;padding:10px 24px 24px;box-sizing:border-box;';
+        const pe = wide ? 'pointer-events:auto;' : '';
+        el.innerHTML = `
+            <div style="width:100%;${wide?'':'max-width:560px;'}display:flex;align-items:center;justify-content:space-between;padding:8px 16px;color:#fff;box-sizing:border-box;">
+                <div style="font-size:15px;font-weight:bold;">💥 크레이지 아케이드</div>
+                <div id="_caTimer" style="font-size:17px;font-weight:bold;color:#FFD54F;">03:00</div>
+                <button id="_caCloseBtn" style="border:none;background:rgba(255,255,255,0.18);color:#fff;border-radius:10px;padding:5px 12px;font-family:Jua;font-size:13px;cursor:pointer;">✕</button>
+            </div>
+            <div style="position:relative;width:100%;${wide?'':'max-width:560px;'}flex:1;min-height:0;display:flex;align-items:center;justify-content:center;">
+                <canvas id="_caCanvas" style="background:#3a5a3a;max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 0 0 4px #5d9c5d;"></canvas>
+            </div>
+            <div id="_caHud" style="width:100%;${wide?'':'max-width:560px;'}color:#fff;font-size:12px;padding:4px 12px 2px;box-sizing:border-box;text-align:center;min-height:18px;"></div>
+            ${_caGuideHtml(wide)}
+            ${amPlayer ? `<div id="_caCtrls" style="${ctrlStyle}">
+                <div style="position:relative;width:170px;height:170px;${pe}">
+                    <div id="_caJoyBase" style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0.25);border:2px solid rgba(255,255,255,0.35);touch-action:none;"></div>
+                    <div id="_caJoyKnob" style="position:absolute;left:50%;top:50%;width:66px;height:66px;margin:-33px 0 0 -33px;border-radius:50%;background:rgba(255,159,67,0.85);border:2px solid rgba(255,255,255,0.6);box-shadow:0 2px 8px rgba(0,0,0,0.35);transition:transform 0.05s;pointer-events:none;"></div>
+                </div>
+                <button id="_caBombBtn" style="width:96px;height:96px;border-radius:50%;border:none;background:radial-gradient(circle at 35% 30%,#FF7043,#C62828);color:#fff;font-size:38px;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,0.4);${pe}">💣</button>
+            </div>` : `<div style="color:#bbb;font-size:12px;padding:14px;">👀 관전 중 — 게임을 지켜보세요!</div>`}
+        `;
+        document.body.appendChild(el);
+        el.querySelector('#_caCloseBtn').onclick = ()=>{ window._crazyArcadeClosePanel(); };
+
+        // 로컬 예측 초기화
+        if(amPlayer){
+            const sp = window._caState.players[me.cd];
+            window._caLocalMe = { x:sp.x, y:sp.y, fx:sp.x, fy:sp.y, mt:Date.now(), alive:sp.alive, speed:sp.speed };
+            window._caInput = { dir:'none', dropAt:0 };
+            _caBindControls(el);
+        }
+        _caStartRender();
+    };
+    window._crazyArcadeClosePanel = function(){
+        _caStopRender();
+        window._caLocalBombs = [];
+        try{ document.removeEventListener('keydown', window._caKeyDown); document.removeEventListener('keyup', window._caKeyUp); }catch(_){}
+        // 패널을 닫아도 마지막 방향이 남아 호스트가 계속 이동시키는 것 방지 — 진행 중일 때만 정지 입력 1회
+        try{ if(me && window._caInput && window._caInput.dir!=='none' && window._caMeta && window._caMeta.on){ window._caInput.dir='none'; _caInputsRef().child(me.cd).update({dir:'none'}).catch(()=>{}); } }catch(_){}
+        document.getElementById('_caPanel')?.remove();
+    };
+
+    function _caBtnCss(){ return 'width:50px;height:50px;border-radius:12px;border:none;background:rgba(255,255,255,0.22);color:#fff;font-size:20px;cursor:pointer;'; }
+
+    // ── 우측 안내 패널 (조작법 + 아이템 설명) — 게임 내내 표시 ─────
+    function _caGuideHtml(wide){
+        // 넓은 화면(태블릿 가로): 우측에 큰 세로 카드. 좁은 화면(폰): 우상단에 작은 카드.
+        const pos = wide
+            ? 'top:58px;right:22px;width:194px;padding:14px 15px;font-size:12.5px;'
+            : 'top:46px;right:7px;width:118px;padding:9px 10px;font-size:10px;';
+        const titleSz = wide ? '13.5px' : '11px';
+        const subSz   = wide ? '11px'   : '9px';
+        const row = (icon, name, desc) => `<div style="display:flex;align-items:baseline;gap:5px;margin:3px 0;"><span>${icon}</span><b style="white-space:nowrap;">${name}</b><span style="color:#cfd8c4;font-size:${subSz};">${desc}</span></div>`;
+        return `<div id="_caGuide" style="position:absolute;${pos}background:rgba(20,32,20,0.62);border:2px solid rgba(255,255,255,0.16);border-radius:14px;color:#fff;line-height:1.45;z-index:6;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,0.35);">
+            <div style="font-size:${titleSz};font-weight:bold;color:#FFD54F;text-align:center;margin-bottom:6px;">🎮 조작법</div>
+            ${row('⬆️⬇️⬅️➡️', '방향키', '이동')}
+            ${row('🕹️', '조이스틱', '이동')}
+            ${row('␣', '스페이스바', '폭탄')}
+            ${row('💣', '버튼', '폭탄')}
+            <div style="font-size:${titleSz};font-weight:bold;color:#FFD54F;text-align:center;margin:9px 0 6px;border-top:1px solid rgba(255,255,255,0.15);padding-top:8px;">🎁 아이템</div>
+            ${row('👟', '신발', '이동속도 ↑(중첩)')}
+            ${row('🧪', '물약', '폭발범위 ↑(중첩)')}
+        </div>`;
+    }
+
+    function _caBindControls(el){
+        // 같은 방향 재전송 금지 → 키 홀드(auto-repeat)로 인한 입력 write 폭주 방지
+        const setDir = d => { if(!window._caInput || window._caInput.dir===d) return; window._caInput.dir = d; _caSendInput(); };
+        // 폭탄: 내가 화면에서 서 있는 칸(로컬 예측 위치)을 함께 보내 호스트가 그 칸에 설치 → 지연으로 엉뚱한 곳에 놓이는 문제 방지
+        const dropBomb = () => {
+            if(!window._caInput) return;
+            const lp = window._caLocalMe; if(!lp || !lp.alive) return;
+            const st = window._caState;
+            // 즉시 로컬 표시(예측) — 호스트 왕복을 기다리지 않고 내 폭탄은 내 위치에 바로 보이게.
+            window._caLocalBombs = window._caLocalBombs || [];
+            const myReal = st ? _caBombList(st).filter(b=>b.owner===(me&&me.cd)).length : 0;
+            const cap = (st && st.players && st.players[me.cd] && st.players[me.cd].bombs) || 1;
+            const occupied = (st && _caBombAt(st, lp.x, lp.y)) || window._caLocalBombs.some(b=>b.x===lp.x && b.y===lp.y);
+            if(!occupied && (myReal + window._caLocalBombs.length) < cap){
+                window._caLocalBombs.push({ x:lp.x, y:lp.y, at:Date.now() });
+            }
+            window._caInput.dropX = lp.x; window._caInput.dropY = lp.y;
+            window._caInput.dropAt = Date.now();
+            _caSendInput();
+        };
+        // 원형 아날로그 조이스틱 (광장 게임과 동일 스타일) — 4방향 단일 dir로 변환
+        (function _caJoyAttach(){
+            const base = el.querySelector('#_caJoyBase'), knob = el.querySelector('#_caJoyKnob');
+            if(!base || !knob) return;
+            const DEAD = 12, MAX = 52;
+            let active = false, pid = null;
+            const setKnob = (dx,dy)=>{ const r=Math.min(Math.sqrt(dx*dx+dy*dy),MAX), a=Math.atan2(dy,dx); knob.style.transform = `translate(${Math.cos(a)*r}px,${Math.sin(a)*r}px)`; };
+            const reset  = ()=>{ knob.style.transform='translate(0,0)'; };
+            const move = (cx,cy)=>{
+                const r = base.getBoundingClientRect();
+                const dx = cx-(r.left+r.width/2), dy = cy-(r.top+r.height/2);
+                setKnob(dx,dy);
+                if(Math.sqrt(dx*dx+dy*dy) < DEAD){ setDir('none'); return; }
+                setDir(Math.abs(dx) > Math.abs(dy) ? (dx<0?'left':'right') : (dy<0?'up':'down'));
+            };
+            base.addEventListener('pointerdown', e=>{ e.preventDefault(); active=true; pid=e.pointerId; try{base.setPointerCapture(pid);}catch(_){}; move(e.clientX,e.clientY); });
+            base.addEventListener('pointermove', e=>{ if(!active||e.pointerId!==pid) return; e.preventDefault(); move(e.clientX,e.clientY); });
+            const end = e=>{ if(e.pointerId!==pid && pid!==null) return; active=false; pid=null; reset(); setDir('none'); };
+            base.addEventListener('pointerup', end); base.addEventListener('pointercancel', end); base.addEventListener('pointerleave', e=>{ if(active) end(e); });
+        })();
+        const bb = el.querySelector('#_caBombBtn');
+        if(bb) bb.addEventListener('pointerdown', e=>{ e.preventDefault(); dropBomb(); });
+        // 키보드 — 방향키만(WASD 제거). 눌린 방향키 추적(동시 누름 대응), auto-repeat는 무시해 write 폭주 방지.
+        const KM = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right' };
+        const held = [];   // 현재 눌려있는 방향(최근 누름이 뒤)
+        window._caKeyDown = e=>{
+            if(e.repeat) return;   // OS 키 반복 무시 — 누르고 있어도 write 1회(이동은 dir 유지로 지속)
+            if(e.key===' '||e.code==='Space'){ e.preventDefault(); dropBomb(); return; }
+            const d = KM[e.key]; if(!d) return;
+            e.preventDefault();
+            const i = held.indexOf(d); if(i>=0) held.splice(i,1);
+            held.push(d);            // 최근 누른 방향이 우선
+            setDir(d);
+        };
+        window._caKeyUp = e=>{
+            const d = KM[e.key]; if(!d) return;
+            e.preventDefault();
+            const i = held.indexOf(d); if(i>=0) held.splice(i,1);
+            // 다른 방향키가 아직 눌려있으면 그쪽으로 전환, 없으면 정지
+            setDir(held.length ? held[held.length-1] : 'none');
+        };
+        document.addEventListener('keydown', window._caKeyDown);
+        document.addEventListener('keyup', window._caKeyUp);
+    }
+
+    function _caSendInput(){
+        if(!me || !window._caInput) return;
+        const now = Date.now();
+        if(window._caInput.dropAt && window._caInput.dropAt > (window._caLastDropSent||0)){
+            window._caLastDropSent = window._caInput.dropAt;
+            const _dp = { dir:window._caInput.dir, dropAt:window._caInput.dropAt };
+            if(typeof window._caInput.dropX==='number'){ _dp.dropX = window._caInput.dropX; _dp.dropY = window._caInput.dropY; }
+            _caInputsRef().child(me.cd).update(_dp).catch(()=>{});
+            window._caLastDirSent = now; return;
+        }
+        // dir 변경은 throttle (40ms)
+        if(now - (window._caLastDirSent||0) < 40 && window._caInput.dir==='none'){ /* none은 즉시 보냄 */ }
+        window._caLastDirSent = now;
+        _caInputsRef().child(me.cd).update({ dir:window._caInput.dir }).catch(()=>{});
+    }
+
+    // ── 렌더 루프 ─────────────────────────────────────────────
+    function _caStartRender(){ _caStopRender(); const loop = ()=>{ _caRender(); window._caRaf = requestAnimationFrame(loop); }; window._caRaf = requestAnimationFrame(loop); }
+    function _caStopRender(){ if(window._caRaf){ cancelAnimationFrame(window._caRaf); window._caRaf = null; } }
+
+    function _caRender(){
+        const cv = document.getElementById('_caCanvas'); if(!cv) return;
+        const map = window._caMap, st = window._caState; if(!map || !st) return;
+        const wrap = cv.parentElement;
+        // 가용 영역을 가로·세로 각각 칸 수로 나눠 더 작은 값을 사용 → 보드가 영역을 꽉 채움(정사각 칸 유지)
+        const cell = Math.max(16, Math.floor(Math.min((wrap.clientWidth-8)/map.w, (wrap.clientHeight-8)/map.h)));
+        const W = cell*map.w, H = cell*map.h;
+        if(cv.width!==W || cv.height!==H){ cv.width=W; cv.height=H; }
+        const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = true;
+        ctx.clearRect(0,0,W,H);
+        const now = Date.now();
+        // 타일
+        for(let r=0;r<map.h;r++) for(let c=0;c<map.w;c++){
+            const x=c*cell, y=r*cell, v=map.cells[r*map.w+c], gone=st.boxesGone&&st.boxesGone[_caKey(c,r)];
+            ctx.fillStyle = ((r+c)%2===0) ? '#4a7a3a' : '#446e36';
+            ctx.fillRect(x,y,cell,cell);
+            if(v===1){ ctx.fillStyle='#2e2117'; ctx.fillRect(x+1,y+1,cell-2,cell-2); ctx.strokeStyle='rgba(120,90,60,0.5)'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x+4,y+4); ctx.lineTo(x+cell-4,y+cell-4); ctx.moveTo(x+cell-4,y+4); ctx.lineTo(x+4,y+cell-4); ctx.stroke(); }
+            else if(v===2 && !gone){ ctx.fillStyle='#6d4220'; ctx.fillRect(x+2,y+2,cell-4,cell-4); ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(x+2,y+2,cell-4,4); }
+        }
+        // 바닥 아이템
+        ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font = Math.floor(cell*0.6)+'px serif';
+        Object.keys(st.ground||{}).forEach(k=>{ const [r,c]=k.split('_').map(Number); const em = st.ground[k]==='shoe'?'👟':'🧪'; ctx.fillText(em, c*cell+cell/2, r*cell+cell/2); });
+        // 폭발
+        _caBlastList(st).forEach(bl=>{ if(!bl||bl.until<now) return; const a = Math.max(0.25, (bl.until-now)/400); ctx.fillStyle='rgba(255,152,0,'+a+')'; (bl.cells||[]).forEach(k=>{ const [r,c]=k.split('_').map(Number); ctx.fillRect(c*cell+1, r*cell+1, cell-2, cell-2); }); });
+        // 폭탄
+        const _drawBomb = (bx,by)=>{ const pulse = 0.5+0.5*Math.sin(now/120); const rad = cell*0.32*(0.85+0.15*pulse); ctx.fillStyle='#1a1a1a'; ctx.beginPath(); ctx.arc(bx*cell+cell/2, by*cell+cell/2, rad, 0, 7); ctx.fill(); ctx.fillStyle='#FF5252'; ctx.fillRect(bx*cell+cell/2-2, by*cell+cell*0.18, 4, 5); };
+        _caBombList(st).forEach(b=>{ if(!b) return; _drawBomb(b.x,b.y); });
+        // 내 폭탄 로컬 예측(즉시 표시) — 호스트 권위 폭탄이 같은 칸에 도착하면 제거, 1.6초 내 미반영도 제거
+        if(window._caLocalBombs && window._caLocalBombs.length){
+            const realCells = new Set(_caBombList(st).map(b=>b.x+','+b.y));
+            window._caLocalBombs = window._caLocalBombs.filter(lb => (now-lb.at < 1600) && !realCells.has(lb.x+','+lb.y));
+            window._caLocalBombs.forEach(b=> _drawBomb(b.x,b.y));
+        }
+        // 플레이어
+        const P = st.players||{};
+        Object.keys(P).forEach((uid, idx)=>{
+            const p = P[uid]; if(!p.alive) return;
+            let px, py;
+            if(uid===(me&&me.cd) && window._caLocalMe){ const lp=window._caLocalMe; const t=Math.min(1,(now-lp.mt)/_caMoveMs(lp.speed)); px=(lp.fx+(lp.x-lp.fx)*t); py=(lp.fy+(lp.y-lp.fy)*t); }
+            else { const t=Math.min(1,(now-(p.mt||now))/_caMoveMs(p.speed)); px=(p.fx+(p.x-p.fx)*t); py=(p.fy+(p.y-p.fy)*t); }
+            const cx = px*cell+cell/2, cy = py*cell+cell/2;
+            // 무적 깜빡임
+            if(p.iframe && now<p.iframe && Math.floor(now/120)%2===0) ctx.globalAlpha = 0.4;
+            const img = window._caHeadImg && window._caHeadImg[uid];
+            const sz = cell*0.92*1.5;   // 캐릭터 1.5배 크게
+            if(img && img!=='pending' && img.complete && img.naturalWidth){
+                ctx.drawImage(img, 0, 10, 256, 150, cx-sz/2, cy-sz/2-cell*0.22, sz, sz*150/256*1.3);
+            } else {
+                ctx.fillStyle = ['#FF7043','#42A5F5','#66BB6A','#FFCA28','#AB47BC','#26C6DA'][idx%6];
+                ctx.beginPath(); ctx.arc(cx, cy-cell*0.05, cell*0.48, 0, 7); ctx.fill();
+                ctx.fillStyle='#fff'; ctx.font='bold '+Math.floor(cell*0.6)+'px Jua'; ctx.fillText(String(idx+1), cx, cy-cell*0.05);
+            }
+            ctx.globalAlpha = 1;
+            // HP 바
+            const bw=cell*0.7, bh=4, bx=cx-bw/2, by=cy+cell*0.42;
+            ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(bx,by,bw,bh);
+            ctx.fillStyle = p.hp>50?'#66BB6A':p.hp>25?'#FFCA28':'#EF5350'; ctx.fillRect(bx,by,bw*Math.max(0,p.hp)/100,bh);
+            // 이름 (정적 roster에서)
+            const nm = (window._caRoster && window._caRoster[uid]) || p.nm || '';
+            ctx.fillStyle='#fff'; ctx.font=Math.floor(cell*0.22)+'px Jua'; ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=3;
+            ctx.strokeText(nm, cx, by+8); ctx.fillText(nm, cx, by+8);
+        });
+        // 타이머 + HUD
+        const meta = window._caMeta;
+        const tEl = document.getElementById('_caTimer');
+        if(tEl && meta && meta.endsAt){ const rem=Math.max(0, meta.endsAt-now); const mm=Math.floor(rem/60000), ss=Math.floor((rem%60000)/1000); tEl.textContent = (mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss; }
+        const hud = document.getElementById('_caHud');
+        if(hud && me){ const mp=P[me.cd]; hud.textContent = mp ? `❤️ ${Math.max(0,mp.hp)}   🧪 범위 ${mp.power}   👟 속도 ${mp.speed}` : ''; }
+
+        // 로컬 예측 진행 (내 플레이어)
+        _caTickLocal();
+    }
+
+    function _caTickLocal(){
+        const lp = window._caLocalMe, inp = window._caInput, map = window._caMap, st = window._caState;
+        if(!lp || !inp || !map || !st || !lp.alive) return;
+        const now = Date.now();
+        if(now < lp.mt + _caMoveMs(lp.speed)) return;
+        if(inp.dir==='none') return;
+        let nc=lp.x, nr=lp.y;
+        if(inp.dir==='left') nc--; else if(inp.dir==='right') nc++; else if(inp.dir==='up') nr--; else if(inp.dir==='down') nr++;
+        if(_caEff(map, st, nc, nr)!==0) return;
+        if(_caBombAt(st, nc, nr)) return;
+        lp.fx=lp.x; lp.fy=lp.y; lp.x=nc; lp.y=nr; lp.mt=now;
+    }
+
+    // ── 결과 모달 ─────────────────────────────────────────────
+    function _caShowResult(meta){
+        document.getElementById('_caResult')?.remove();
+        const st = window._caState || {};
+        const P = st.players || {};
+        const R = window._caRoster || {};
+        const _nm = uid => R[uid] || (P[uid] && P[uid].nm) || '?';
+        const rows = Object.keys(P).map(uid=>({ uid, nm:_nm(uid), hp:Math.max(0,P[uid].hp), alive:P[uid].alive }))
+            .sort((a,b)=> (b.alive-a.alive) || (b.hp-a.hp));
+        const winName = meta.winner ? _nm(meta.winner) : null;
+        const el = document.createElement('div');
+        el.id = '_caResult';
+        el.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100000;display:flex;align-items:center;justify-content:center;font-family:Jua;';
+        const list = rows.map((r,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:${i===0?'#FFF8E1':'#fafafa'};margin:3px 0;">
+            <span style="font-size:14px;width:24px;">${i===0?'🏆':(i+1)+'위'}</span>
+            <span style="flex:1;font-size:13px;color:#333;">${r.nm}</span>
+            <span style="font-size:12px;color:${r.alive?'#388E3C':'#999'};">${r.alive?'❤️ '+r.hp:'💀 탈락'}</span></div>`).join('');
+        el.innerHTML = `
+        <div style="background:linear-gradient(160deg,#FFFDE7,#FFE082);border-radius:22px;width:min(360px,92vw);box-shadow:0 16px 48px rgba(0,0,0,0.4);overflow:hidden;border:3px solid #FBC02D;">
+            <div style="background:linear-gradient(135deg,#FFB300,#F57F17);padding:18px;text-align:center;color:white;">
+                <div style="font-size:44px;line-height:1;">${winName?'🏆':'🤝'}</div>
+                <div style="font-size:19px;font-weight:bold;margin-top:4px;">${winName ? winName+' 승리!' : '무승부!'}</div>
+            </div>
+            <div style="padding:18px;">
+                ${list}
+                <button onclick="document.getElementById('_caResult').remove()" style="width:100%;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,#FFB300,#F57F17);color:white;font-family:Jua;font-size:14px;cursor:pointer;margin-top:10px;">확인</button>
+            </div>
+        </div>`;
+        el.onclick = e=>{ if(e.target===el) el.remove(); };
+        document.body.appendChild(el);
+        _caStopRender();
+        setTimeout(()=>{ try{ window._crazyArcadeClosePanel(); }catch(_){} }, 300);
+    }
+
+    // ── 종료 / 정리 ───────────────────────────────────────────
+    function _caEnd(){
+        _caStopHost();
+        try{ _caRef().remove(); }catch(_){}
+        _caTeardownLocal();
+    }
+    function _caTeardownLocal(){
+        _caStopHost();
+        _caStopRender();
+        if(window._caTakeoverInt){ clearInterval(window._caTakeoverInt); window._caTakeoverInt = null; }
+        if(window._caDoneCleanupT){ clearTimeout(window._caDoneCleanupT); window._caDoneCleanupT = null; }
+        window._caLocalBombs = [];
+        window._caLocalMe = null; window._caInput = null; window._caAutoOpenedFor = null;
+        window._caRoster = null; window._caHeadImg = null; window._caInputCache = null;
+        try{ window._crazyArcadeClosePanel(); }catch(_){}
+        document.getElementById('_caMenu')?.remove();
     }
 
     function _bombGameRef() { return getPlzRef().child('bombGame'); }
@@ -50420,6 +51722,10 @@ window.addCharRow = function() {
                     if(cmOn && me) html += `<button id="plzCatchMindBtn" onclick="window._catchMindMenu()" style="position:absolute;top:290px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(233,30,99,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">🎨 캐치마인드</button>`;
                     const bgOn = cfg.bombGameOn === true;
                     if(bgOn && me) html += `<button id="plzBombGameBtn" onclick="window._bombGameMenu()" style="position:absolute;top:330px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(230,81,0,0.92);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">💣 폭탄게임</button>`;
+                    const caOn = cfg.crazyArcadeOn === true;
+                    if(caOn && me) html += `<button id="plzCrazyArcadeBtn" onclick="window._crazyArcadeMenu()" style="position:absolute;top:370px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(244,67,54,0.94);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">💥 크레이지 아케이드</button>`;
+                    const tpOn = cfg.typingGameOn === true;
+                    if(tpOn && me) html += `<button id="plzTypingBtn" onclick="window._tpMenu()" style="position:absolute;top:410px;right:10px;z-index:30;padding:6px 14px;border-radius:16px;border:none;background:rgba(255,160,0,0.94);color:white;font-family:'Jua';font-size:12px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">⌨️ 몬스터 헌터</button>`;
                     return html;
                 })()}
                 <div id="liarHud" style="display:none;position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:36;pointer-events:none;"></div>
@@ -50800,6 +52106,8 @@ window.addCharRow = function() {
             if(typeof _catchMindSubscribe === 'function') _catchMindSubscribe();
             // 폭탄게임 상태 구독
             if(typeof _bombGameSubscribe === 'function') _bombGameSubscribe();
+            // 크레이지 아케이드 상태 구독 (광장 진입 시 — 교사가 연 대기방/게임 감지)
+            if(typeof _caSubscribe === 'function') _caSubscribe();
         }
         // 종료 투표 구독 — 모든 학생이 토스트 알림 받음
         // child_added/removed로 분리: value 전체 객체 다운로드 대신 변경분(uid 1개)만 받음
@@ -51106,7 +52414,8 @@ window.addCharRow = function() {
             //  (재진입 시 종료된 게임이 활성으로 오인되어 모달이 뜨는 문제 예방. remove는 멱등.)
             ['game','hideseek','liar','liarPriv','liarVotes','oxQuiz','omok','omokDir',
              'catchMind','catchMindStrokes','catchMindGuesses','catchMindCycle','catchMindScores','catchMindVotes','catchMindParticipants','catchMindHb','catchMindSpectators',
-             'bombGame','bombGameTurn','bombGameHb','wordGame','mafia','mafiaRoles','mafiaMates','mafiaHb','endVote','plzBye','lmSeatClaims']
+             'bombGame','bombGameTurn','bombGameHb','wordGame','mafia','mafiaRoles','mafiaMates','mafiaHb','endVote','plzBye','lmSeatClaims',
+             'crazyArcade']
               .forEach(k => { try { ref.child(k).remove(); } catch(_){} });
             const chatRef = ref.child('chat');
             chatRef.once('value', cSnap => {
@@ -54340,6 +55649,13 @@ window.addCharRow = function() {
             window._bombGameSubs.forEach(s => { try { s.ref.off(s.type, s.fn); } catch(_){} });
             window._bombGameSubs = null;
         }
+        // 크레이지 아케이드 정리 — 호스트 루프/hb/승계감시/RAF/패널 모두 해제
+        try { if(typeof _caTeardownLocal==='function') _caTeardownLocal(); } catch(_){}
+        if(window._caSubs){
+            window._caSubs.forEach(s => { try { s.ref.off(s.type, s.fn); } catch(_){} });
+            window._caSubs = null;
+        }
+        window._caMeta = null; window._caState = null; window._caMap = null; window._caLobby = null;
         // Unsubscribe Firebase listeners
         plzListeners.filter(l=>l.who==='student').forEach(l=>l.ref.off(l.type, l.fn));
         plzListeners = plzListeners.filter(l=>l.who!=='student');
@@ -56793,6 +58109,8 @@ window.addCharRow = function() {
         const om = document.getElementById('plz_room_omok_on')?.checked;
         const cm = document.getElementById('plz_room_catchmind_on')?.checked;
         const bg = document.getElementById('plz_room_bombgame_on')?.checked;
+        const ca = document.getElementById('plz_room_crazyarcade_on')?.checked;
+        const tp = document.getElementById('plz_room_typing_on')?.checked;
         const sl = document.getElementById('plz_room_seatlock_on')?.checked;
         if(!db.cfg.plzRooms) db.cfg.plzRooms = {};
         if(!db.cfg.plzRooms[_plzCurRoom]) db.cfg.plzRooms[_plzCurRoom] = {};
@@ -56806,6 +58124,8 @@ window.addCharRow = function() {
         rp.omokOn = !!om;
         rp.catchMindOn = !!cm;
         rp.bombGameOn = !!bg;
+        rp.crazyArcadeOn = !!ca;
+        rp.typingGameOn = !!tp;
         rp.seatLockOn = !!sl;
         // 바인딩 재동기화 (현재 방 데이터를 db.cfg.plz가 정확히 가리키도록)
         db.cfg.plz = rp;
@@ -56813,7 +58133,7 @@ window.addCharRow = function() {
         // 게임 플래그 + 배경 + 비율 + 장애물까지 모두 한 번에 푸시 (다른 코드 경로의 불일치 방지)
         const _capturedRoom = _plzCurRoom;
         firebase.database().ref('ClassData/EventShop/plaza/' + _capturedRoom + '/cfg').update({
-            iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr, omokOn: !!om, catchMindOn: !!cm, bombGameOn: !!bg, seatLockOn: !!sl,
+            iceTagOn: !!ic, hideSeekOn: !!hs, oxQuizOn: !!ox, mafiaOn: !!mf, liarOn: !!lr, omokOn: !!om, catchMindOn: !!cm, bombGameOn: !!bg, crazyArcadeOn: !!ca, typingGameOn: !!tp, seatLockOn: !!sl,
             customBg: rp.customBg || null,
             customBgs: rp.customBgs || null,
             bgAspect: rp.bgAspect || null,
@@ -62525,7 +63845,7 @@ window._EJ = {
                     extra: parseInt(dbUser.extra) || 0 
                 };
 
-                targetTotal = Math.floor(currentUser.cookie / 10) + currentUser.extra;
+                targetTotal = Math.floor(Math.floor(currentUser.cookie / 10) * _lgExpMult()) + currentUser.extra;
                 document.getElementById('stNameDisplay').innerText = currentUser.name;
                 const piEl = document.getElementById('pointInfo');
                 if (piEl) piEl.textContent = '가용 포인트: ' + targetTotal + ' (Lv.' + Math.floor(currentUser.cookie/10) + ' + 특별 ' + currentUser.extra + ')';
@@ -62690,7 +64010,7 @@ window._EJ = {
             upG('s', s); upG('r', r); upG('p', p); upG('h', h);
 
             // 배지 업데이트
-            const _N=_lgSkillPer(); const atk = 1+Math.floor(s/_N); const rec = 1.5*Math.floor(r/_N); const def = Math.floor(p/_N);
+            const atk = 1+Math.floor(s/_lgSkillPerS()); const rec = Math.floor(r/_lgSkillPerR()); const def = Math.floor(p/_lgSkillPerDef());
             const bs = document.getElementById('badge_s'); if(bs) bs.innerText = `⚔공격 +${atk}`;
             const br = document.getElementById('badge_r'); if(br) br.innerText = `✨회복 +${rec}`;
             const bp = document.getElementById('badge_p'); if(bp) bp.innerText = `🛡방어 -${def}`;
@@ -62845,7 +64165,7 @@ window._EJ = {
                 const stat = user.stats || {s:0, r:0, p:0, h:1};
                 const lv = Math.floor(user.cookie/10);
                 const ex = parseInt(user.extra)||0;
-                const _N=_lgSkillPer(), atk = 1+Math.floor((stat.s||0)/_N), rec = 1.5*Math.floor((stat.r||0)/_N), def = Math.floor((stat.p||0)/_N);
+                const atk = 1+Math.floor((stat.s||0)/_lgSkillPerS()), rec = Math.floor((stat.r||0)/_lgSkillPerR()), def = Math.floor((stat.p||0)/_lgSkillPerDef());
                 const checkMark = (lv+ex === stat.s+stat.r+stat.p+stat.h) ? "○" : "×";
                 
                 body.innerHTML += `<tr>
@@ -62907,7 +64227,6 @@ window._EJ = {
             {id:'flash', name:'섬광탄 💥', desc:'전투 시작 시 적을 1턴 기절', cost:50}
         ];
         const SHOP_BUFF = [
-            {id:'tiger', name:'호랑이 기운 🐯', desc:'다음 1번의 전투 내내 공격력 1.5배', cost:50},
             {id:'thorn', name:'가시 오라 🌵', desc:'다음 1번의 전투 내내 반사 피해 +5', cost:45},
             {id:'magic', name:'마력 폭주 ⚡', desc:'다음 1번의 전투 내내 스킬 기력 소모 0', cost:80}
         ];
@@ -62931,9 +64250,9 @@ window._EJ = {
         function getStatBadges() {
             const st = (currentUser && currentUser.stats) || {s:0,r:0,p:0,h:1};
             return {
-                atkBonus: 1+Math.floor((st.s||0)/_lgSkillPer()),
-                recBonus: 1.5*Math.floor((st.r||0)/_lgSkillPer()),
-                defBonus: Math.floor((st.p||0)/_lgSkillPer()),
+                atkBonus: 1+Math.floor((st.s||0)/_lgSkillPerS()),
+                recBonus: Math.floor((st.r||0)/_lgSkillPerR()),
+                defBonus: Math.floor((st.p||0)/_lgSkillPerDef()),
                 hp: st.h
             };
         }
@@ -62958,7 +64277,7 @@ window._EJ = {
                 maxEn: 5, en: 0,
                 equip: {sword:0, armor:0, ring:0},
                 inv: {orb:0, mant:0, bomb:0, flash:0},
-                buffs: {tiger:0, thorn:0, magic:0},
+                buffs: {thorn:0, magic:0},
                 skill: {chargedAt: 0},
                 seenMons: {}, ach: {},
                 stats: {wins:0, ties:0, losses:0, maxStreakWin:0, maxStreakTie:0, curWin:0, curTie:0, noHitThisFight:true},
@@ -63111,7 +64430,6 @@ window._EJ = {
 
             // 버프 표시
             const buffs = [];
-            if(G.buffs.tiger>0) buffs.push(`🐯x${G.buffs.tiger}`);
             if(G.buffs.thorn>0) buffs.push(`🌵x${G.buffs.thorn}`);
             if(G.buffs.magic>0) buffs.push(`⚡x${G.buffs.magic}`);
             document.getElementById('buffRow').innerText = buffs.join(' ');
@@ -63165,7 +64483,6 @@ window._EJ = {
 
             if(result==='win') {
                 let dmg = G.atk;
-                if(G.buffs.tiger>0) dmg = Math.floor(dmg*1.5);
                 if(G.useSkill) {
                     const cost = G.buffs.magic>0 ? 0 : 3;
                     G.en = Math.max(0, G.en - cost);
@@ -63241,7 +64558,7 @@ window._EJ = {
             const stageCleared = G.stage;
             G.stage++;
             // 버프 1전투 카운트 감소
-            for(const k of ['tiger','thorn','magic']) if(G.buffs[k]>0) G.buffs[k]--;
+            for(const k of ['thorn','magic']) if(G.buffs[k]>0) G.buffs[k]--;
 
             saveProgressToServer();
 
@@ -63633,8 +64950,15 @@ window._EJ = {
         function pvpMaxHp(stats) { return Math.max(1, stats.h || 1); }
         // 능력치 1개당 최대치 (교사가 league/config/statMax로 설정, 기본 30)
         function _lgStatMax() { return (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG && parseInt(LEAGUE_CONFIG.statMax)) || 30; }
-        // 능력치 N당 추가 스킬 +1 (교사가 league/config/skillPer로 설정, 기본 5)
-        function _lgSkillPer(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPer) : NaN; return v>=1 ? v : 5; }
+        // 가위·바위 N당 추가 스킬 +1 (교사가 league/config/skillPer로 설정, 기본 4)
+        function _lgSkillPer(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPer) : NaN; return v>=1 ? v : 4; }
+        // 가위(공격)·바위(회복) 개별 분모. 미설정 시 공통 skillPer(기본 4)로 폴백.
+        function _lgSkillPerS(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPerS) : NaN; return v>=1 ? v : _lgSkillPer(); }
+        function _lgSkillPerR(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPerR) : NaN; return v>=1 ? v : _lgSkillPer(); }
+        // 보 N당 추가 스킬 +1 (교사가 league/config/skillPerDef로 설정, 기본 5)
+        function _lgSkillPerDef(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPerDef) : NaN; return v>=1 ? v : 5; }
+        // 경험치 배수(교사 설정 league/config/expMult, 기본 1) — 레벨 환산 가용포인트 ⌊경험치/10⌋에 곱함. 1학기엔 2.
+        function _lgExpMult(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseFloat(LEAGUE_CONFIG.expMult) : NaN; return v>=1 ? v : 1; }
         // 칭호 N개당 +1 보너스 기준 (교사가 league/config/titlePer로 설정, 기본 3)
         function _lgTitlePer(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.titlePer) : NaN; return v>=1 ? v : 3; }
         // 아이템 10종 전부 착용 시 추가 보너스 (교사가 league/config/allItemBonus로 설정, 기본 3)
@@ -63642,13 +64966,15 @@ window._EJ = {
         // 체력은 1포인트당 +1 고정 (교사 설정 제거) — _hpPts(h)=h, 최대체력=h
         function _lgHpStep(){ return 1; } // 체력은 1포인트당 +1 고정 (교사 설정 제거)
         function _lgItemUseCap(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.itemUseCap) : NaN; return (Number.isFinite(v) && v>=0) ? v : 3; } // 경기당 아이템 사용 제한(기본 3, 0=무제한)
+        // 🪞 반전의 거울 반사율(교사 설정 league/config/reflectPct, 0~1, 기본 1.0=전액 반사)
+        function _lgReflectPct(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseFloat(LEAGUE_CONFIG.reflectPct) : NaN; return (Number.isFinite(v) && v>=0 && v<=1) ? v : 1.0; }
         // 체력값 h가 실제로 쓰는 포인트 = ⌈h / 증가량⌉ (체력은 포인트당 _lgHpStep()만큼 오르므로)
         function _hpPts(h){ const st = _lgHpStep(); const _h = parseInt(h) || 0; return st > 0 ? Math.ceil(_h / st) : _h; }
-        // 파생 스탯 공식 (로비 표시와 동일): 공격력=1+⌊가위/5⌋, 회복력=1.5×⌊바위/5⌋, 피해감소=⌊보/5⌋ (공격·감소 5당 +1, 회복 5당 +1.5)
-        function pvpAtk(stats)   { return 1 + Math.floor((stats.s||0)/_lgSkillPer()); }
-        function pvpRec(stats)   { return 1.5 * Math.floor((stats.r||0)/_lgSkillPer()); } // 회복력 1.5배(5당 +1.5, 소수 .5 허용)
+        // 파생 스탯 공식 (로비 표시와 동일): 공격력=1+⌊가위/4⌋, 회복력=⌊바위/4⌋, 피해감소=⌊보/5⌋ (가위·바위 기본 4당 +1, 보 기본 5당 +1)
+        function pvpAtk(stats)   { return 1 + Math.floor((stats.s||0)/_lgSkillPerS()); }
+        function pvpRec(stats)   { return Math.floor((stats.r||0)/_lgSkillPerR()); } // 회복력 1배(바위 N당 +1)
         function _fmtHp(x){ x = Math.max(0, x); return Number.isInteger(x) ? String(x) : x.toFixed(1); } // HP/회복 소수 한 자리 표시(1.5/4.5 등)
-        function pvpDef(stats)   { return Math.floor((stats.p||0)/_lgSkillPer()); }
+        function pvpDef(stats)   { return Math.floor((stats.p||0)/_lgSkillPerDef()); }
         // 최대 라운드 수 (교착 방지). 도달 시 HP 우세 판정.
         const PVP_MAX_ROUNDS = 20;
         // 🩸 흡혈(lifesteal): 사용 후 N턴 창 동안, 승리 시 매번 일정 확률로 공격력만큼 회복
@@ -64160,7 +65486,7 @@ window._EJ = {
             // 상대 클라이언트의 statReady 갱신을 기다리지 않고 도전창에서 직접 판정(쿠키레벨 기준 — 오탐 없음).
             const _isUnderAlloc = (code, u) => {
                 if (!u || !u.stats) return false;
-                const _tgt = Math.floor((_rankedCookieMap[String(code)] || 0) / 10);
+                const _tgt = Math.floor(Math.floor((_rankedCookieMap[String(code)] || 0) / 10) * _lgExpMult());   // 경험치 배수 반영 — 배수 시 기대 배분량도 배수
                 const _sum = (u.stats.s||0) + (u.stats.r||0) + (u.stats.p||0) + _hpPts(u.stats.h||0);
                 return _sum < _tgt;
             };
@@ -64332,10 +65658,10 @@ window._EJ = {
             const _L = Object.assign({}, _LDEF, (LEAGUE_CONFIG && LEAGUE_CONFIG.layout) || {});
             const _pos = (k) => { const c = _L[k] || _LDEF[k]; return `position:absolute;left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%;`; };
 
-            const _atk0 = 1 + Math.floor((_work.s||0)/_lgSkillPer());
+            const _atk0 = 1 + Math.floor((_work.s||0)/_lgSkillPerS());
             // 회복력은 '같은 모양' 시에만 발동(전투 피해와 분리) → 상호 캡 없이 원시값 표시. 전투 규칙(pvpEff)과 동일. (5포인트당 +1)
-            const _ddr0 = Math.floor((_work.p||0)/_lgSkillPer());
-            const _rec0 = 1.5*Math.floor((_work.r||0)/_lgSkillPer());
+            const _ddr0 = Math.floor((_work.p||0)/_lgSkillPerDef());
+            const _rec0 = Math.floor((_work.r||0)/_lgSkillPerR());
             const _cmStat = currentUser && currentUser.stats;
             const _pendStat = !_cmStat || _cmStat.s!==_work.s || _cmStat.r!==_work.r || _cmStat.p!==_work.p || _cmStat.h!==_work.h;
             const _canSubmit = (_work.h>=1) && (_ptRemain===0) && _pendStat;
@@ -64587,9 +65913,9 @@ window._EJ = {
                 const f = document.getElementById('llob_fill_'+k); if (f) f.style.width = Math.max(4, Math.min(100, (w[k]/_lgStatMax())*100))+'%';
             });
             const rEl = document.getElementById('llob_remain'); if (rEl) { rEl.textContent = rem; rEl.style.color = rem < 0 ? '#c0392b' : ''; }
-            const _atk = 1 + Math.floor(w.s/_lgSkillPer());
+            const _atk = 1 + Math.floor(w.s/_lgSkillPerS());
             // 회복력은 '같은 모양' 시에만 발동(전투 피해와 분리) → 상호 캡 없이 원시값 표시. 전투 규칙(pvpEff)과 동일. (5포인트당 +1)
-            const _ddr = Math.floor(w.p/_lgSkillPer()), _rec = 1.5*Math.floor(w.r/_lgSkillPer());
+            const _ddr = Math.floor(w.p/_lgSkillPerDef()), _rec = Math.floor(w.r/_lgSkillPerR());
             const ea = document.getElementById('llob_atk'); if (ea) ea.textContent = _atk;
             const er = document.getElementById('llob_rec'); if (er) er.textContent = _rec;
             const ed = document.getElementById('llob_ddr'); if (ed) ed.textContent = _ddr>0?('-'+_ddr):'0';
@@ -64752,11 +66078,11 @@ window._EJ = {
 
         // ─── 매치 구독 ──────────────────────────────────────
         // ─── 아이템 정의 ─────────────────────────────────────
-        // 기본 로스터(2종): atkbuff(전설의 검) / shield(불굴의 방패) — 둘 다 '이번 턴' 단발
-        //   ※ lifesteal/reflect/heal/revive/damage 효과는 엔진엔 그대로 있고 교사가 등록할 때만 사용. respec(천사의날개)는 판매 전용.
+        // 기본 로스터(2종): atkbuff(전설의 검·공격력 2배) / shield(철벽·받는 피해 0) — 둘 다 '이번 턴' 단발
+        //   ※ reflect/lifesteal/heal/revive/damage 효과는 엔진엔 그대로 있고 교사가 등록할 때만 사용. respec(천사의날개)는 판매 전용.
         const PVP_ITEM_DEFAULTS = {
-            sword: { emoji:'⚔️', name:'전설의 검',   desc:'이번 턴 공격력 1.5배',  effect:'atkbuff' },
-            guard: { emoji:'🛡', name:'불굴의 방패', desc:'이번 턴 받는 피해 절반', effect:'shield' }
+            sword: { emoji:'⚔️', name:'전설의 검', desc:'이번 턴 공격력 2배',  effect:'atkbuff' },
+            guard: { emoji:'🛡️', name:'철벽',     desc:'이번 턴 받는 피해 0', effect:'shield' }
         };
         let PVP_ITEM_DEFS = Object.assign({}, PVP_ITEM_DEFAULTS);
         // 📉 league/pvpItems 캐시(2분 TTL) — 매치 시작·상점 열기·도전 수락에서 중복 다운로드 제거(트래픽 절감).
@@ -65441,19 +66767,21 @@ window._EJ = {
                     const _sdR = (typeof LEAGUE_CONFIG==='object'&&LEAGUE_CONFIG&&parseInt(LEAGUE_CONFIG.suddenDeathRound)>=2)?parseInt(LEAGUE_CONFIG.suddenDeathRound):16;
                     const _sdM = ((typeof LEAGUE_CONFIG==='object'&&LEAGUE_CONFIG&&LEAGUE_CONFIG.suddenDeath!==false)&&match.round>=_sdR)?2:1;
                     if (res === 'win')  { _dmgSide='opp';
-                        const a=(_ef(_myUsed)==='atkbuff'?Math.round(pvpAtk(myStats)*_sdM*1.5):pvpAtk(myStats)*_sdM);
-                        const _df=pvpEff(oppStats).def*_sdM;
+                        const a=(_ef(_myUsed)==='atkbuff'?pvpAtk(myStats)*_sdM*2:pvpAtk(myStats)*_sdM);
+                        const _df=pvpEff(oppStats).def;   // 서든데스: 피해감소 그대로(×1)
                         let d=Math.max(_sdM>1?1:0, a - _df);
+                        let _atkBase=a;   // 표시용 공격력 — 방패 시 절반된 공격력(서든데스 배수 포함)으로 대체
                         if(_ef(_oppUsed)==='reflect') d=0;
-                        else if(_ef(_oppUsed)==='shield'){ const _ba=(_ef(_myUsed)==='atkbuff'?Math.round(pvpAtk(myStats)*1.5):pvpAtk(myStats)); d=Math.max(0,Math.floor(Math.max(0,_ba-pvpEff(oppStats).def)*0.5)); }
-                        _dmgAmt=d; _atkShow=a; _defShow=Math.max(0, a-d);   // 표시 감소량 = 공격−실피해(피해감소+방패+반사 모두 반영)
+                        else if(_ef(_oppUsed)==='shield'){ d=0; }   // 🛡️ 철벽: 받는 피해 0 (공격 전액 막음)
+                        _dmgAmt=d; _atkShow=_atkBase; _defShow=Math.max(0, _atkBase-d);   // 표시 감소량 = 공격−실피해(피해감소+방패+반사 모두 반영)
                     } else if (res === 'lose') { _dmgSide='me';
-                        const a=(_ef(_oppUsed)==='atkbuff'?Math.round(pvpAtk(oppStats)*_sdM*1.5):pvpAtk(oppStats)*_sdM);
-                        const _df=pvpEff(myStats).def*_sdM;
+                        const a=(_ef(_oppUsed)==='atkbuff'?pvpAtk(oppStats)*_sdM*2:pvpAtk(oppStats)*_sdM);
+                        const _df=pvpEff(myStats).def;   // 서든데스: 피해감소 그대로(×1)
                         let d=Math.max(_sdM>1?1:0, a - _df);
+                        let _atkBase=a;   // 표시용 공격력 — 방패 시 절반된 공격력(서든데스 배수 포함)으로 대체
                         if(_ef(_myUsed)==='reflect') d=0;
-                        else if(_ef(_myUsed)==='shield'){ const _ba=(_ef(_oppUsed)==='atkbuff'?Math.round(pvpAtk(oppStats)*1.5):pvpAtk(oppStats)); d=Math.max(0,Math.floor(Math.max(0,_ba-pvpEff(myStats).def)*0.5)); }
-                        _dmgAmt=d; _atkShow=a; _defShow=Math.max(0, a-d);
+                        else if(_ef(_myUsed)==='shield'){ d=0; }   // 🛡️ 철벽: 받는 피해 0 (공격 전액 막음)
+                        _dmgAmt=d; _atkShow=_atkBase; _defShow=Math.max(0, _atkBase-d);
                     }
                     // 같은 모양(클래시) → 양쪽 회복(바위) 발동. processRound와 동일하게 표시용으로 계산.
                     const _sameShape  = (myC === oppC);
@@ -65580,7 +66908,7 @@ window._EJ = {
             ov.innerHTML = `
                 <div class="pvp-sd-stripes"></div>
                 <div class="pvp-sd-title">⚔ SUDDEN<br>DEATH ⚔</div>
-                <div class="pvp-sd-sub">지금부터 공격·회복·피해감소 <b>2배</b>! 단숨에 끝낸다!</div>`;
+                <div class="pvp-sd-sub">지금부터 공격력 <b>2배</b>! 단숨에 끝낸다!</div>`;
             document.body.appendChild(ov);
             // 경고(사이렌 2회) + 강한 저음 슬램 + 노이즈
             const ctx = _pvpAudio();
@@ -65730,19 +67058,19 @@ window._EJ = {
             const _bombDmg = parseInt(match.pendingBombDmg) || 3;
             if (match.pendingBomb === 'p1') { np2hp -= _bombDmg; logs.push(`💣 p1 폭탄! p2 -${_bombDmg}`); }
             if (match.pendingBomb === 'p2') { np1hp -= _bombDmg; logs.push(`💣 p2 폭탄! p1 -${_bombDmg}`); }
-            // ⚔ 서든데스: 지정 라운드(기본 16R)부터 공격력·회복력·피해감소 모두 2배 (교사 league/config/suddenDeath ON/OFF, suddenDeathRound 시작R)
+            // ⚔ 서든데스: 지정 라운드(기본 16R)부터 공격력만 2배 (피해감소·회복은 그대로 1배). 전설의 검은 ×2와 중첩(→×4). (교사 league/config/suddenDeath ON/OFF, suddenDeathRound 시작R)
             const _sdR = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG && parseInt(LEAGUE_CONFIG.suddenDeathRound) >= 2) ? parseInt(LEAGUE_CONFIG.suddenDeathRound) : 16;
             const _sdOn = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG && LEAGUE_CONFIG.suddenDeath !== false) && match.round >= _sdR;
             const _m = _sdOn ? 2 : 1;
             const _p1atk = pvpAtk(p1s)*_m, _p2atk = pvpAtk(p2s)*_m;
-            const _p1def = pvpEff(p1s).def*_m, _p2def = pvpEff(p2s).def*_m;
-            const _p1rec = pvpEff(p1s).rec*_m, _p2rec = pvpEff(p2s).rec*_m;
+            const _p1def = pvpEff(p1s).def, _p2def = pvpEff(p2s).def;   // 서든데스: 피해감소는 그대로(×1)
+            const _p1rec = pvpEff(p1s).rec, _p2rec = pvpEff(p2s).rec;   // 서든데스: 회복도 그대로(×1)
             const _sdTag = _sdOn ? ' ⚔서든데스×2' : '';
             // 신규 아이템 효과 — 즉발(reflect/lifesteal/heal/revive) + 충전형(호랑이 2턴 첫승리×2 / 방패 2턴 첫피해무효)
             const _effOf = id => (PVP_ITEM_DEFS[id]||{}).effect;
             const p1eff = _effOf(match.p1usedItem), p2eff = _effOf(match.p2usedItem);
             const effectiveR1 = r1;
-            // ⚔️ 전설의 검(atkbuff)·🛡 불굴의 방패(shield) — 이번 턴만 적용되는 단발 효과(창·충전 없음)
+            // ⚔️ 전설의 검(atkbuff)·🛡️ 철벽(shield) — 이번 턴만 적용되는 단발 효과(창·충전 없음)
             const _a1 = _p1atk, _a2 = _p2atk;
             // 🩸 흡혈의 인장: 사용 라운드부터 N라운드 창, 창 안 승리마다 확률 흡혈 — 매치에 p?drainUntil 유지(호랑이/방패와 대칭)
             const _p1drainUntil = (p1eff==='lifesteal') ? match.round+(PVP_DRAIN_WINDOW-1) : (match.p1drainUntil||0);
@@ -65750,26 +67078,24 @@ window._EJ = {
             if (p1eff==='lifesteal') updates.p1drainUntil = _p1drainUntil;
             if (p2eff==='lifesteal') updates.p2drainUntil = _p2drainUntil;
             if (effectiveR1 === 'win') {
-                // 피해 = 공격력 − 피해감소. 평상 최소0(방어가 약공격 차단), 서든데스부터 최소1. ⚔️ 전설의 검: 이번 턴 공격력 1.5배(올림)
-                let dmg = (p1eff==='atkbuff') ? Math.max(_sdOn?1:0, Math.round(_a1*1.5) - _p2def) : Math.max(_sdOn?1:0, _a1 - _p2def);
-                if (p1eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p1.name} 전설의 검! 공격력 1.5배`);
+                // 피해 = 공격력 − 피해감소. 평상 최소0(방어가 약공격 차단), 서든데스부터 최소1. ⚔️ 전설의 검: 이번 턴 공격력 2배
+                let dmg = (p1eff==='atkbuff') ? Math.max(_sdOn?1:0, _a1*2 - _p2def) : Math.max(_sdOn?1:0, _a1 - _p2def);
+                if (p1eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p1.name} 전설의 검! 공격력 2배`);
                 if (p2eff === 'reflect') {  // 패자(p2) 반전의 거울 → 피해 0 + 전액 반사
-                    const ref = Math.max(0, Math.ceil(dmg*0.5)); if (ref>0) np1hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p2.name} 반전의 거울! 피해 0·${ref} 반사(50%)`); dmg = 0;
-                } else if (p2eff === 'shield') {  // 🛡 불굴의 방패 → '서든데스 배수 미적용' 기본 피해의 절반(내림) → 약공격(1)은 0까지
-                    const _ba=(p1eff==='atkbuff')?Math.round(pvpAtk(p1s)*1.5):pvpAtk(p1s);
-                    dmg = Math.max(0, Math.floor(Math.max(0, _ba - pvpEff(p2s).def)*0.5)); logs.push(`R${match.round}: 🛡 ${match.p2.name} 불굴의 방패! 피해 절반 → ${dmg}`);
+                    const _rp=_lgReflectPct(); const ref = Math.max(0, Math.ceil(dmg*_rp)); if (ref>0) np1hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p2.name} 반전의 거울! 피해 0·${ref} 반사(${Math.round(_rp*100)}%)`); dmg = 0;
+                } else if (p2eff === 'shield') {  // 🛡️ 철벽 → 이번 턴 받는 피해 0
+                    dmg = 0; logs.push(`R${match.round}: 🛡️ ${match.p2.name} 철벽! 받는 피해 0`);
                 }
                 if (dmg > 0) { np2hp -= dmg; logs.push(`R${match.round}: ${match.p1.name}(${RPS_EMOJI_PVP[p1c]}) 승 → -${dmg}${_sdTag}`); }
                 if (dmg > 0 && _p1drainUntil > 0 && match.round <= _p1drainUntil && Math.random() < PVP_DRAIN_CHANCE) { const hl = Math.max(1, _a1); np1hp = Math.min(pvpMaxHp(p1s), np1hp + hl); logs.push(`R${match.round}: 🩸 ${match.p1.name} 흡혈 발동! +${hl}`); }
                 drawStreak=0;
             } else if (effectiveR1 === 'lose') {
-                let dmg = (p2eff==='atkbuff') ? Math.max(_sdOn?1:0, Math.round(_a2*1.5) - _p1def) : Math.max(_sdOn?1:0, _a2 - _p1def);
-                if (p2eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p2.name} 전설의 검! 공격력 1.5배`);
+                let dmg = (p2eff==='atkbuff') ? Math.max(_sdOn?1:0, _a2*2 - _p1def) : Math.max(_sdOn?1:0, _a2 - _p1def);
+                if (p2eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p2.name} 전설의 검! 공격력 2배`);
                 if (p1eff === 'reflect') {  // 패자(p1) 반전의 거울 → 피해 0 + 전액 반사
-                    const ref = Math.max(0, Math.ceil(dmg*0.5)); if (ref>0) np2hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p1.name} 반전의 거울! 피해 0·${ref} 반사(50%)`); dmg = 0;
-                } else if (p1eff === 'shield') {  // 🛡 불굴의 방패 → '서든데스 배수 미적용' 기본 피해의 절반(내림) → 약공격(1)은 0까지
-                    const _ba=(p2eff==='atkbuff')?Math.round(pvpAtk(p2s)*1.5):pvpAtk(p2s);
-                    dmg = Math.max(0, Math.floor(Math.max(0, _ba - pvpEff(p1s).def)*0.5)); logs.push(`R${match.round}: 🛡 ${match.p1.name} 불굴의 방패! 피해 절반 → ${dmg}`);
+                    const _rp=_lgReflectPct(); const ref = Math.max(0, Math.ceil(dmg*_rp)); if (ref>0) np2hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p1.name} 반전의 거울! 피해 0·${ref} 반사(${Math.round(_rp*100)}%)`); dmg = 0;
+                } else if (p1eff === 'shield') {  // 🛡️ 철벽 → 이번 턴 받는 피해 0
+                    dmg = 0; logs.push(`R${match.round}: 🛡️ ${match.p1.name} 철벽! 받는 피해 0`);
                 }
                 if (dmg > 0) { np1hp -= dmg; logs.push(`R${match.round}: ${match.p2.name}(${RPS_EMOJI_PVP[p2c]}) 승 → -${dmg}${_sdTag}`); }
                 if (dmg > 0 && _p2drainUntil > 0 && match.round <= _p2drainUntil && Math.random() < PVP_DRAIN_CHANCE) { const hl = Math.max(1, _a2); np2hp = Math.min(pvpMaxHp(p2s), np2hp + hl); logs.push(`R${match.round}: 🩸 ${match.p2.name} 흡혈 발동! +${hl}`); }
@@ -66506,10 +67832,10 @@ window._EJ = {
                 const _autoBonus = _itemBonus + _titleBonus;
                 currentUser.autoBonus = _autoBonus;
 
-                targetTotal = Math.floor(currentUser.cookie / 10) + currentUser.extra + _autoBonus;
+                targetTotal = Math.floor(Math.floor(currentUser.cookie / 10) * _lgExpMult()) + currentUser.extra + _autoBonus;
 
                 document.getElementById('stNameDisplay').innerText = currentUser.name;
-                document.getElementById('pointInfo').innerText = `가용 포인트: ${targetTotal} (Lv.${Math.floor(currentUser.cookie/10)} + 특별 ${currentUser.extra} + 자동 ${_autoBonus})`;
+                document.getElementById('pointInfo').innerText = `가용 포인트: ${targetTotal} (Lv.${Math.floor(currentUser.cookie/10)}${_lgExpMult()>1?'×'+_lgExpMult():''} + 특별 ${currentUser.extra} + 자동 ${_autoBonus})`;
                 
                 // 3. Firebase에서 저장된 스탯 가져와서 UI 적용
                 if(dbUser.stats) {
@@ -66667,7 +67993,7 @@ window._EJ = {
                 if (fill) fill.style.width = (v/_lgStatMax()*100)+'%';
                 if (valEl) valEl.innerText = v;
             });
-            const _N=_lgSkillPer(); const atk = 1+Math.floor(s/_N); const rec = 1.5*Math.floor(r/_N); const def = Math.floor(p/_N);
+            const atk = 1+Math.floor(s/_lgSkillPerS()); const rec = Math.floor(r/_lgSkillPerR()); const def = Math.floor(p/_lgSkillPerDef());
             const bs=document.getElementById('badge_s'); if(bs) bs.innerText=`⚔공격 +${atk}`;
             const br=document.getElementById('badge_r'); if(br) br.innerText=`✨회복 +${rec}`;
             const bp=document.getElementById('badge_p'); if(bp) bp.innerText=`🛡방어 -${def}`;
@@ -66709,7 +68035,7 @@ window._EJ = {
                 else if (sum === targetTotal)  st = `✔ 배분 ${sum}/${targetTotal}`;
                 else if (sum > targetTotal)    st = `⚠ 배분 ${sum}/${targetTotal} (초과)`;
                 else                           st = `배분 ${sum}/${targetTotal} (남은 ${targetTotal - sum})`;
-                pi.innerHTML = `가용 포인트 <b>${targetTotal}</b> (Lv.${lv} + 특별 ${ex} + 자동 ${ab}) &nbsp;·&nbsp; ${st}`;
+                pi.innerHTML = `가용 포인트 <b>${targetTotal}</b> (Lv.${lv}${_lgExpMult()>1?'×'+_lgExpMult():''} + 특별 ${ex} + 자동 ${ab}) &nbsp;·&nbsp; ${st}`;
             }
             // 중앙 합계 바는 상단으로 통합했으므로 숨김
             const bar = document.getElementById('sumBar');
@@ -66942,7 +68268,7 @@ window._EJ = {
                 const stat = user.stats || {s:0, r:0, p:0, h:1};
                 const lv = Math.floor(user.cookie/10);
                 const ex = parseInt(user.extra)||0;
-                const _N=_lgSkillPer(), atk = 1+Math.floor((stat.s||0)/_N), rec = 1.5*Math.floor((stat.r||0)/_N), def = Math.floor((stat.p||0)/_N);
+                const atk = 1+Math.floor((stat.s||0)/_lgSkillPerS()), rec = Math.floor((stat.r||0)/_lgSkillPerR()), def = Math.floor((stat.p||0)/_lgSkillPerDef());
                 const checkMark = (lv+ex === stat.s+stat.r+stat.p+stat.h) ? "○" : "×";
                 
                 body.innerHTML += `<tr>
@@ -67004,7 +68330,6 @@ window._EJ = {
             {id:'flash', name:'섬광탄 💥', desc:'전투 시작 시 적을 1턴 기절', cost:50}
         ];
         const SHOP_BUFF = [
-            {id:'tiger', name:'호랑이 기운 🐯', desc:'다음 1번의 전투 내내 공격력 1.5배', cost:50},
             {id:'thorn', name:'가시 오라 🌵', desc:'다음 1번의 전투 내내 반사 피해 +5', cost:45},
             {id:'magic', name:'마력 폭주 ⚡', desc:'다음 1번의 전투 내내 스킬 기력 소모 0', cost:80}
         ];
@@ -67028,9 +68353,9 @@ window._EJ = {
         function getStatBadges() {
             const st = (currentUser && currentUser.stats) || {s:0,r:0,p:0,h:1};
             return {
-                atkBonus: 1+Math.floor((st.s||0)/_lgSkillPer()),
-                recBonus: 1.5*Math.floor((st.r||0)/_lgSkillPer()),
-                defBonus: Math.floor((st.p||0)/_lgSkillPer()),
+                atkBonus: 1+Math.floor((st.s||0)/_lgSkillPerS()),
+                recBonus: Math.floor((st.r||0)/_lgSkillPerR()),
+                defBonus: Math.floor((st.p||0)/_lgSkillPerDef()),
                 hp: st.h
             };
         }
@@ -67055,7 +68380,7 @@ window._EJ = {
                 maxEn: 5, en: 0,
                 equip: {sword:0, armor:0, ring:0},
                 inv: {orb:0, mant:0, bomb:0, flash:0},
-                buffs: {tiger:0, thorn:0, magic:0},
+                buffs: {thorn:0, magic:0},
                 skill: {chargedAt: 0},
                 seenMons: {}, ach: {},
                 stats: {wins:0, ties:0, losses:0, maxStreakWin:0, maxStreakTie:0, curWin:0, curTie:0, noHitThisFight:true},
@@ -67208,7 +68533,6 @@ window._EJ = {
 
             // 버프 표시
             const buffs = [];
-            if(G.buffs.tiger>0) buffs.push(`🐯x${G.buffs.tiger}`);
             if(G.buffs.thorn>0) buffs.push(`🌵x${G.buffs.thorn}`);
             if(G.buffs.magic>0) buffs.push(`⚡x${G.buffs.magic}`);
             document.getElementById('buffRow').innerText = buffs.join(' ');
@@ -67262,7 +68586,6 @@ window._EJ = {
 
             if(result==='win') {
                 let dmg = G.atk;
-                if(G.buffs.tiger>0) dmg = Math.floor(dmg*1.5);
                 if(G.useSkill) {
                     const cost = G.buffs.magic>0 ? 0 : 3;
                     G.en = Math.max(0, G.en - cost);
@@ -67338,7 +68661,7 @@ window._EJ = {
             const stageCleared = G.stage;
             G.stage++;
             // 버프 1전투 카운트 감소
-            for(const k of ['tiger','thorn','magic']) if(G.buffs[k]>0) G.buffs[k]--;
+            for(const k of ['thorn','magic']) if(G.buffs[k]>0) G.buffs[k]--;
 
             saveProgressToServer();
 
@@ -67730,8 +69053,15 @@ window._EJ = {
         function pvpMaxHp(stats) { return Math.max(1, stats.h || 1); }
         // 능력치 1개당 최대치 (교사가 league/config/statMax로 설정, 기본 30)
         function _lgStatMax() { return (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG && parseInt(LEAGUE_CONFIG.statMax)) || 30; }
-        // 능력치 N당 추가 스킬 +1 (교사가 league/config/skillPer로 설정, 기본 5)
-        function _lgSkillPer(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPer) : NaN; return v>=1 ? v : 5; }
+        // 가위·바위 N당 추가 스킬 +1 (교사가 league/config/skillPer로 설정, 기본 4)
+        function _lgSkillPer(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPer) : NaN; return v>=1 ? v : 4; }
+        // 가위(공격)·바위(회복) 개별 분모. 미설정 시 공통 skillPer(기본 4)로 폴백.
+        function _lgSkillPerS(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPerS) : NaN; return v>=1 ? v : _lgSkillPer(); }
+        function _lgSkillPerR(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPerR) : NaN; return v>=1 ? v : _lgSkillPer(); }
+        // 보 N당 추가 스킬 +1 (교사가 league/config/skillPerDef로 설정, 기본 5)
+        function _lgSkillPerDef(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.skillPerDef) : NaN; return v>=1 ? v : 5; }
+        // 경험치 배수(교사 설정 league/config/expMult, 기본 1) — 레벨 환산 가용포인트 ⌊경험치/10⌋에 곱함. 1학기엔 2.
+        function _lgExpMult(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseFloat(LEAGUE_CONFIG.expMult) : NaN; return v>=1 ? v : 1; }
         // 칭호 N개당 +1 보너스 기준 (교사가 league/config/titlePer로 설정, 기본 3)
         function _lgTitlePer(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.titlePer) : NaN; return v>=1 ? v : 3; }
         // 아이템 10종 전부 착용 시 추가 보너스 (교사가 league/config/allItemBonus로 설정, 기본 3)
@@ -67739,13 +69069,15 @@ window._EJ = {
         // 체력은 1포인트당 +1 고정 (교사 설정 제거) — _hpPts(h)=h, 최대체력=h
         function _lgHpStep(){ return 1; } // 체력은 1포인트당 +1 고정 (교사 설정 제거)
         function _lgItemUseCap(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseInt(LEAGUE_CONFIG.itemUseCap) : NaN; return (Number.isFinite(v) && v>=0) ? v : 3; } // 경기당 아이템 사용 제한(기본 3, 0=무제한)
+        // 🪞 반전의 거울 반사율(교사 설정 league/config/reflectPct, 0~1, 기본 1.0=전액 반사)
+        function _lgReflectPct(){ const v = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG) ? parseFloat(LEAGUE_CONFIG.reflectPct) : NaN; return (Number.isFinite(v) && v>=0 && v<=1) ? v : 1.0; }
         // 체력값 h가 실제로 쓰는 포인트 = ⌈h / 증가량⌉ (체력은 포인트당 _lgHpStep()만큼 오르므로)
         function _hpPts(h){ const st = _lgHpStep(); const _h = parseInt(h) || 0; return st > 0 ? Math.ceil(_h / st) : _h; }
-        // 파생 스탯 공식 (로비 표시와 동일): 공격력=1+⌊가위/5⌋, 회복력=1.5×⌊바위/5⌋, 피해감소=⌊보/5⌋ (공격·감소 5당 +1, 회복 5당 +1.5)
-        function pvpAtk(stats)   { return 1 + Math.floor((stats.s||0)/_lgSkillPer()); }
-        function pvpRec(stats)   { return 1.5 * Math.floor((stats.r||0)/_lgSkillPer()); } // 회복력 1.5배(5당 +1.5, 소수 .5 허용)
+        // 파생 스탯 공식 (로비 표시와 동일): 공격력=1+⌊가위/4⌋, 회복력=⌊바위/4⌋, 피해감소=⌊보/5⌋ (가위·바위 기본 4당 +1, 보 기본 5당 +1)
+        function pvpAtk(stats)   { return 1 + Math.floor((stats.s||0)/_lgSkillPerS()); }
+        function pvpRec(stats)   { return Math.floor((stats.r||0)/_lgSkillPerR()); } // 회복력 1배(바위 N당 +1)
         function _fmtHp(x){ x = Math.max(0, x); return Number.isInteger(x) ? String(x) : x.toFixed(1); } // HP/회복 소수 한 자리 표시(1.5/4.5 등)
-        function pvpDef(stats)   { return Math.floor((stats.p||0)/_lgSkillPer()); }
+        function pvpDef(stats)   { return Math.floor((stats.p||0)/_lgSkillPerDef()); }
         // 최대 라운드 수 (교착 방지). 도달 시 HP 우세 판정.
         const PVP_MAX_ROUNDS = 20;
         // 🩸 흡혈(lifesteal): 사용 후 N턴 창 동안, 승리 시 매번 일정 확률로 공격력만큼 회복
@@ -68233,7 +69565,7 @@ window._EJ = {
             // 상대 클라이언트의 statReady 갱신을 기다리지 않고 도전창에서 직접 판정(쿠키레벨 기준 — 오탐 없음).
             const _isUnderAlloc = (code, u) => {
                 if (!u || !u.stats) return false;
-                const _tgt = Math.floor((_rankedCookieMap[String(code)] || 0) / 10);
+                const _tgt = Math.floor(Math.floor((_rankedCookieMap[String(code)] || 0) / 10) * _lgExpMult());   // 경험치 배수 반영 — 배수 시 기대 배분량도 배수
                 const _sum = (u.stats.s||0) + (u.stats.r||0) + (u.stats.p||0) + _hpPts(u.stats.h||0);
                 return _sum < _tgt;
             };
@@ -68405,10 +69737,10 @@ window._EJ = {
             const _L = Object.assign({}, _LDEF, (LEAGUE_CONFIG && LEAGUE_CONFIG.layout) || {});
             const _pos = (k) => { const c = _L[k] || _LDEF[k]; return `position:absolute;left:${c.x}%;top:${c.y}%;width:${c.w}%;height:${c.h}%;`; };
 
-            const _atk0 = 1 + Math.floor((_work.s||0)/_lgSkillPer());
+            const _atk0 = 1 + Math.floor((_work.s||0)/_lgSkillPerS());
             // 회복력은 '같은 모양' 시에만 발동(전투 피해와 분리) → 상호 캡 없이 원시값 표시. 전투 규칙(pvpEff)과 동일. (5포인트당 +1)
-            const _ddr0 = Math.floor((_work.p||0)/_lgSkillPer());
-            const _rec0 = 1.5*Math.floor((_work.r||0)/_lgSkillPer());
+            const _ddr0 = Math.floor((_work.p||0)/_lgSkillPerDef());
+            const _rec0 = Math.floor((_work.r||0)/_lgSkillPerR());
             const _cmStat = currentUser && currentUser.stats;
             const _pendStat = !_cmStat || _cmStat.s!==_work.s || _cmStat.r!==_work.r || _cmStat.p!==_work.p || _cmStat.h!==_work.h;
             const _canSubmit = (_work.h>=1) && (_ptRemain===0) && _pendStat;
@@ -68660,9 +69992,9 @@ window._EJ = {
                 const f = document.getElementById('llob_fill_'+k); if (f) f.style.width = Math.max(4, Math.min(100, (w[k]/_lgStatMax())*100))+'%';
             });
             const rEl = document.getElementById('llob_remain'); if (rEl) { rEl.textContent = rem; rEl.style.color = rem < 0 ? '#c0392b' : ''; }
-            const _atk = 1 + Math.floor(w.s/_lgSkillPer());
+            const _atk = 1 + Math.floor(w.s/_lgSkillPerS());
             // 회복력은 '같은 모양' 시에만 발동(전투 피해와 분리) → 상호 캡 없이 원시값 표시. 전투 규칙(pvpEff)과 동일. (5포인트당 +1)
-            const _ddr = Math.floor(w.p/_lgSkillPer()), _rec = 1.5*Math.floor(w.r/_lgSkillPer());
+            const _ddr = Math.floor(w.p/_lgSkillPerDef()), _rec = Math.floor(w.r/_lgSkillPerR());
             const ea = document.getElementById('llob_atk'); if (ea) ea.textContent = _atk;
             const er = document.getElementById('llob_rec'); if (er) er.textContent = _rec;
             const ed = document.getElementById('llob_ddr'); if (ed) ed.textContent = _ddr>0?('-'+_ddr):'0';
@@ -68889,11 +70221,11 @@ window._EJ = {
 
         // ─── 매치 구독 ──────────────────────────────────────
         // ─── 아이템 정의 ─────────────────────────────────────
-        // 기본 로스터(2종): atkbuff(전설의 검) / shield(불굴의 방패) — 둘 다 '이번 턴' 단발
-        //   ※ lifesteal/reflect/heal/revive/damage 효과는 엔진엔 그대로 있고 교사가 등록할 때만 사용. respec(천사의날개)는 판매 전용.
+        // 기본 로스터(2종): atkbuff(전설의 검·공격력 2배) / shield(철벽·받는 피해 0) — 둘 다 '이번 턴' 단발
+        //   ※ reflect/lifesteal/heal/revive/damage 효과는 엔진엔 그대로 있고 교사가 등록할 때만 사용. respec(천사의날개)는 판매 전용.
         const PVP_ITEM_DEFAULTS = {
-            sword: { emoji:'⚔️', name:'전설의 검',   desc:'이번 턴 공격력 1.5배',  effect:'atkbuff' },
-            guard: { emoji:'🛡', name:'불굴의 방패', desc:'이번 턴 받는 피해 절반', effect:'shield' }
+            sword: { emoji:'⚔️', name:'전설의 검', desc:'이번 턴 공격력 2배',  effect:'atkbuff' },
+            guard: { emoji:'🛡️', name:'철벽',     desc:'이번 턴 받는 피해 0', effect:'shield' }
         };
         let PVP_ITEM_DEFS = Object.assign({}, PVP_ITEM_DEFAULTS);
         // 📉 league/pvpItems 캐시(2분 TTL) — 매치 시작·상점 열기·도전 수락에서 중복 다운로드 제거(트래픽 절감).
@@ -69261,7 +70593,7 @@ window._EJ = {
             const _capN = _lgItemUseCap();
             const _usedN = parseInt(match[isP1?'p1itemUses':'p2itemUses']) || 0;
             const _capReached = _capN > 0 && _usedN >= _capN;
-            // 아이템 정렬: 전설의 쌍검(공격력1.5배=atkbuff) 최상단, 불굴의 방패(피해절반=shield) 최하단, 나머지 중간. 개수 무관.
+            // 아이템 정렬: 전설의 검(공격력2배=atkbuff) 최상단, 철벽(받는피해0=shield) 최하단, 나머지 중간. 개수 무관.
             const _itemPrio = (id) => { const e=(PVP_ITEM_DEFS[id]||{}).effect; if(e==='atkbuff')return 0; if(e==='shield')return 2; return 1; };
             const _itemSort = (a,b) => (_itemPrio(a)-_itemPrio(b))
                 || (((PVP_ITEM_DEFS[a]||{}).order??9999)-((PVP_ITEM_DEFS[b]||{}).order??9999))
@@ -69765,19 +71097,21 @@ window._EJ = {
                     const _sdR = (typeof LEAGUE_CONFIG==='object'&&LEAGUE_CONFIG&&parseInt(LEAGUE_CONFIG.suddenDeathRound)>=2)?parseInt(LEAGUE_CONFIG.suddenDeathRound):16;
                     const _sdM = ((typeof LEAGUE_CONFIG==='object'&&LEAGUE_CONFIG&&LEAGUE_CONFIG.suddenDeath!==false)&&match.round>=_sdR)?2:1;
                     if (res === 'win')  { _dmgSide='opp';
-                        const a=(_ef(_myUsed)==='atkbuff'?Math.round(pvpAtk(myStats)*_sdM*1.5):pvpAtk(myStats)*_sdM);
-                        const _df=pvpEff(oppStats).def*_sdM;
+                        const a=(_ef(_myUsed)==='atkbuff'?pvpAtk(myStats)*_sdM*2:pvpAtk(myStats)*_sdM);
+                        const _df=pvpEff(oppStats).def;   // 서든데스: 피해감소 그대로(×1)
                         let d=Math.max(_sdM>1?1:0, a - _df);
+                        let _atkBase=a;   // 표시용 공격력 — 방패 시 절반된 공격력(서든데스 배수 포함)으로 대체
                         if(_ef(_oppUsed)==='reflect') d=0;
-                        else if(_ef(_oppUsed)==='shield'){ const _ba=(_ef(_myUsed)==='atkbuff'?Math.round(pvpAtk(myStats)*1.5):pvpAtk(myStats)); d=Math.max(0,Math.floor(Math.max(0,_ba-pvpEff(oppStats).def)*0.5)); }
-                        _dmgAmt=d; _atkShow=a; _defShow=Math.max(0, a-d);   // 표시 감소량 = 공격−실피해(피해감소+방패+반사 모두 반영)
+                        else if(_ef(_oppUsed)==='shield'){ d=0; }   // 🛡️ 철벽: 받는 피해 0 (공격 전액 막음)
+                        _dmgAmt=d; _atkShow=_atkBase; _defShow=Math.max(0, _atkBase-d);   // 표시 감소량 = 공격−실피해(피해감소+방패+반사 모두 반영)
                     } else if (res === 'lose') { _dmgSide='me';
-                        const a=(_ef(_oppUsed)==='atkbuff'?Math.round(pvpAtk(oppStats)*_sdM*1.5):pvpAtk(oppStats)*_sdM);
-                        const _df=pvpEff(myStats).def*_sdM;
+                        const a=(_ef(_oppUsed)==='atkbuff'?pvpAtk(oppStats)*_sdM*2:pvpAtk(oppStats)*_sdM);
+                        const _df=pvpEff(myStats).def;   // 서든데스: 피해감소 그대로(×1)
                         let d=Math.max(_sdM>1?1:0, a - _df);
+                        let _atkBase=a;   // 표시용 공격력 — 방패 시 절반된 공격력(서든데스 배수 포함)으로 대체
                         if(_ef(_myUsed)==='reflect') d=0;
-                        else if(_ef(_myUsed)==='shield'){ const _ba=(_ef(_oppUsed)==='atkbuff'?Math.round(pvpAtk(oppStats)*1.5):pvpAtk(oppStats)); d=Math.max(0,Math.floor(Math.max(0,_ba-pvpEff(myStats).def)*0.5)); }
-                        _dmgAmt=d; _atkShow=a; _defShow=Math.max(0, a-d);
+                        else if(_ef(_myUsed)==='shield'){ d=0; }   // 🛡️ 철벽: 받는 피해 0 (공격 전액 막음)
+                        _dmgAmt=d; _atkShow=_atkBase; _defShow=Math.max(0, _atkBase-d);
                     }
                     // 같은 모양(클래시) → 양쪽 회복(바위) 발동. processRound와 동일하게 표시용으로 계산.
                     const _sameShape  = (myC === oppC);
@@ -69904,7 +71238,7 @@ window._EJ = {
             ov.innerHTML = `
                 <div class="pvp-sd-stripes"></div>
                 <div class="pvp-sd-title">⚔ SUDDEN<br>DEATH ⚔</div>
-                <div class="pvp-sd-sub">지금부터 공격·회복·피해감소 <b>2배</b>! 단숨에 끝낸다!</div>`;
+                <div class="pvp-sd-sub">지금부터 공격력 <b>2배</b>! 단숨에 끝낸다!</div>`;
             document.body.appendChild(ov);
             // 경고(사이렌 2회) + 강한 저음 슬램 + 노이즈
             const ctx = _pvpAudio();
@@ -70054,19 +71388,19 @@ window._EJ = {
             const _bombDmg = parseInt(match.pendingBombDmg) || 3;
             if (match.pendingBomb === 'p1') { np2hp -= _bombDmg; logs.push(`💣 p1 폭탄! p2 -${_bombDmg}`); }
             if (match.pendingBomb === 'p2') { np1hp -= _bombDmg; logs.push(`💣 p2 폭탄! p1 -${_bombDmg}`); }
-            // ⚔ 서든데스: 지정 라운드(기본 16R)부터 공격력·회복력·피해감소 모두 2배 (교사 league/config/suddenDeath ON/OFF, suddenDeathRound 시작R)
+            // ⚔ 서든데스: 지정 라운드(기본 16R)부터 공격력만 2배 (피해감소·회복은 그대로 1배). 전설의 검은 ×2와 중첩(→×4). (교사 league/config/suddenDeath ON/OFF, suddenDeathRound 시작R)
             const _sdR = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG && parseInt(LEAGUE_CONFIG.suddenDeathRound) >= 2) ? parseInt(LEAGUE_CONFIG.suddenDeathRound) : 16;
             const _sdOn = (typeof LEAGUE_CONFIG !== 'undefined' && LEAGUE_CONFIG && LEAGUE_CONFIG.suddenDeath !== false) && match.round >= _sdR;
             const _m = _sdOn ? 2 : 1;
             const _p1atk = pvpAtk(p1s)*_m, _p2atk = pvpAtk(p2s)*_m;
-            const _p1def = pvpEff(p1s).def*_m, _p2def = pvpEff(p2s).def*_m;
-            const _p1rec = pvpEff(p1s).rec*_m, _p2rec = pvpEff(p2s).rec*_m;
+            const _p1def = pvpEff(p1s).def, _p2def = pvpEff(p2s).def;   // 서든데스: 피해감소는 그대로(×1)
+            const _p1rec = pvpEff(p1s).rec, _p2rec = pvpEff(p2s).rec;   // 서든데스: 회복도 그대로(×1)
             const _sdTag = _sdOn ? ' ⚔서든데스×2' : '';
             // 신규 아이템 효과 — 즉발(reflect/lifesteal/heal/revive) + 충전형(호랑이 2턴 첫승리×2 / 방패 2턴 첫피해무효)
             const _effOf = id => (PVP_ITEM_DEFS[id]||{}).effect;
             const p1eff = _effOf(match.p1usedItem), p2eff = _effOf(match.p2usedItem);
             const effectiveR1 = r1;
-            // ⚔️ 전설의 검(atkbuff)·🛡 불굴의 방패(shield) — 이번 턴만 적용되는 단발 효과(창·충전 없음)
+            // ⚔️ 전설의 검(atkbuff)·🛡️ 철벽(shield) — 이번 턴만 적용되는 단발 효과(창·충전 없음)
             const _a1 = _p1atk, _a2 = _p2atk;
             // 🩸 흡혈의 인장: 사용 라운드부터 N라운드 창, 창 안 승리마다 확률 흡혈 — 매치에 p?drainUntil 유지(호랑이/방패와 대칭)
             const _p1drainUntil = (p1eff==='lifesteal') ? match.round+(PVP_DRAIN_WINDOW-1) : (match.p1drainUntil||0);
@@ -70074,26 +71408,24 @@ window._EJ = {
             if (p1eff==='lifesteal') updates.p1drainUntil = _p1drainUntil;
             if (p2eff==='lifesteal') updates.p2drainUntil = _p2drainUntil;
             if (effectiveR1 === 'win') {
-                // 피해 = 공격력 − 피해감소. 평상 최소0(방어가 약공격 차단), 서든데스부터 최소1. ⚔️ 전설의 검: 이번 턴 공격력 1.5배(올림)
-                let dmg = (p1eff==='atkbuff') ? Math.max(_sdOn?1:0, Math.round(_a1*1.5) - _p2def) : Math.max(_sdOn?1:0, _a1 - _p2def);
-                if (p1eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p1.name} 전설의 검! 공격력 1.5배`);
+                // 피해 = 공격력 − 피해감소. 평상 최소0(방어가 약공격 차단), 서든데스부터 최소1. ⚔️ 전설의 검: 이번 턴 공격력 2배
+                let dmg = (p1eff==='atkbuff') ? Math.max(_sdOn?1:0, _a1*2 - _p2def) : Math.max(_sdOn?1:0, _a1 - _p2def);
+                if (p1eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p1.name} 전설의 검! 공격력 2배`);
                 if (p2eff === 'reflect') {  // 패자(p2) 반전의 거울 → 피해 0 + 전액 반사
-                    const ref = Math.max(0, Math.ceil(dmg*0.5)); if (ref>0) np1hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p2.name} 반전의 거울! 피해 0·${ref} 반사(50%)`); dmg = 0;
-                } else if (p2eff === 'shield') {  // 🛡 불굴의 방패 → '서든데스 배수 미적용' 기본 피해의 절반(내림) → 약공격(1)은 0까지
-                    const _ba=(p1eff==='atkbuff')?Math.round(pvpAtk(p1s)*1.5):pvpAtk(p1s);
-                    dmg = Math.max(0, Math.floor(Math.max(0, _ba - pvpEff(p2s).def)*0.5)); logs.push(`R${match.round}: 🛡 ${match.p2.name} 불굴의 방패! 피해 절반 → ${dmg}`);
+                    const _rp=_lgReflectPct(); const ref = Math.max(0, Math.ceil(dmg*_rp)); if (ref>0) np1hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p2.name} 반전의 거울! 피해 0·${ref} 반사(${Math.round(_rp*100)}%)`); dmg = 0;
+                } else if (p2eff === 'shield') {  // 🛡️ 철벽 → 이번 턴 받는 피해 0
+                    dmg = 0; logs.push(`R${match.round}: 🛡️ ${match.p2.name} 철벽! 받는 피해 0`);
                 }
                 if (dmg > 0) { np2hp -= dmg; logs.push(`R${match.round}: ${match.p1.name}(${RPS_EMOJI_PVP[p1c]}) 승 → -${dmg}${_sdTag}`); }
                 if (dmg > 0 && _p1drainUntil > 0 && match.round <= _p1drainUntil && Math.random() < PVP_DRAIN_CHANCE) { const hl = Math.max(1, _a1); np1hp = Math.min(pvpMaxHp(p1s), np1hp + hl); logs.push(`R${match.round}: 🩸 ${match.p1.name} 흡혈 발동! +${hl}`); }
                 drawStreak=0;
             } else if (effectiveR1 === 'lose') {
-                let dmg = (p2eff==='atkbuff') ? Math.max(_sdOn?1:0, Math.round(_a2*1.5) - _p1def) : Math.max(_sdOn?1:0, _a2 - _p1def);
-                if (p2eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p2.name} 전설의 검! 공격력 1.5배`);
+                let dmg = (p2eff==='atkbuff') ? Math.max(_sdOn?1:0, _a2*2 - _p1def) : Math.max(_sdOn?1:0, _a2 - _p1def);
+                if (p2eff==='atkbuff') logs.push(`R${match.round}: ⚔️ ${match.p2.name} 전설의 검! 공격력 2배`);
                 if (p1eff === 'reflect') {  // 패자(p1) 반전의 거울 → 피해 0 + 전액 반사
-                    const ref = Math.max(0, Math.ceil(dmg*0.5)); if (ref>0) np2hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p1.name} 반전의 거울! 피해 0·${ref} 반사(50%)`); dmg = 0;
-                } else if (p1eff === 'shield') {  // 🛡 불굴의 방패 → '서든데스 배수 미적용' 기본 피해의 절반(내림) → 약공격(1)은 0까지
-                    const _ba=(p2eff==='atkbuff')?Math.round(pvpAtk(p2s)*1.5):pvpAtk(p2s);
-                    dmg = Math.max(0, Math.floor(Math.max(0, _ba - pvpEff(p1s).def)*0.5)); logs.push(`R${match.round}: 🛡 ${match.p1.name} 불굴의 방패! 피해 절반 → ${dmg}`);
+                    const _rp=_lgReflectPct(); const ref = Math.max(0, Math.ceil(dmg*_rp)); if (ref>0) np2hp -= ref; logs.push(`R${match.round}: 🪞 ${match.p1.name} 반전의 거울! 피해 0·${ref} 반사(${Math.round(_rp*100)}%)`); dmg = 0;
+                } else if (p1eff === 'shield') {  // 🛡️ 철벽 → 이번 턴 받는 피해 0
+                    dmg = 0; logs.push(`R${match.round}: 🛡️ ${match.p1.name} 철벽! 받는 피해 0`);
                 }
                 if (dmg > 0) { np1hp -= dmg; logs.push(`R${match.round}: ${match.p2.name}(${RPS_EMOJI_PVP[p2c]}) 승 → -${dmg}${_sdTag}`); }
                 if (dmg > 0 && _p2drainUntil > 0 && match.round <= _p2drainUntil && Math.random() < PVP_DRAIN_CHANCE) { const hl = Math.max(1, _a2); np2hp = Math.min(pvpMaxHp(p2s), np2hp + hl); logs.push(`R${match.round}: 🩸 ${match.p2.name} 흡혈 발동! +${hl}`); }
@@ -70264,22 +71596,17 @@ window._EJ = {
             _lgLobbyWanted = false; unsubscribeLeagueData();   // 로비 데이터 구독 중단 (재진입 시 openLeagueLobby가 재구독)
             unsubscribeLeague();
             clearPvpTimeout();
-            // 리그전 활성: 3분할 로비를 먼저 렌더(아래에 깔고) → 그 다음 전투/결과 오버레이 제거
-            //  순서를 반대로 하면 경기 중 뒤에 깔려 있던 옛 능력치 화면이 잠깐 보임(깜빡임)
-            if (currentUser && LEAGUE_CONFIG && LEAGUE_CONFIG.active) {
-                try {
-                    const ss = document.getElementById('studentSection'); if (ss) ss.style.display = 'none';
-                    await openLeagueLobby();
-                    ['pvpModal','pvpResultOv','pvpRevealOverlay','pvpItemPanel']
-                        .forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
-                    return;
-                } catch(_) {}
+            // 항상 가바보 리그 로비(3분할)로 복귀 — 옛 인라인 능력치 허브는 절대 띄우지 않음.
+            //  3분할 로비를 먼저 렌더(아래에 깔고) → 그 다음 전투/결과 오버레이 제거(깜빡임 방지)
+            const ss = document.getElementById('studentSection'); if (ss) ss.style.display = 'none';
+            try {
+                await openLeagueLobby();
+                ['pvpModal','pvpResultOv','pvpRevealOverlay','pvpItemPanel']
+                    .forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
+            } catch(e) {
+                // 실패해도 인라인 허브로 떨어지지 않도록 결과창 유지(재시도 가능) + 로그만
+                console.error('[closeLeagueAll] 리그 로비 진입 실패:', e);
             }
-            // 폴백: 리그전 비활성 등 → 모두 닫고 학생 화면 복귀
-            ['pvpModal','pvpResultOv','pvpRevealOverlay','pvpItemPanel','leagueLobbyModal']
-                .forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
-            if (document.getElementById('studentSection').style.display==='none')
-                document.getElementById('studentSection').style.display='block';
         }
 
         // =====================================================
@@ -70348,7 +71675,7 @@ window._EJ = {
                     <input id="pvit_desc" value="${(it.desc||'').replace(/"/g,'&quot;')}" placeholder="효과 설명 (선택)" style="width:100%;box-sizing:border-box;margin:4px 0 10px;padding:7px;background:#1a0f00;color:#f0d8a0;border:1px solid #8b6914;border-radius:5px;">
                     <label style="font-size:13px;">효과 타입</label>
                     <select id="pvit_effect" onchange="_pvpItemToggleDmg()" style="width:100%;box-sizing:border-box;margin:4px 0 10px;padding:7px;background:#1a0f00;color:#f0d8a0;border:1px solid #8b6914;border-radius:5px;">
-                        ${opt('atkbuff','이번 턴 공격력 1.5배')}${opt('shield','이번 턴 받는 피해 절반')}${opt('reflect','패배 시 피해0+50% 반사')}${opt('lifesteal','2턴 내 승리 시 50% 확률 흡혈')}${opt('heal','즉시 HP20% 회복')}${opt('revive','사망 시 최대HP 20%로 1회 부활')}${opt('respec','능력치 재분배(구매 즉시)')}
+                        ${opt('atkbuff','이번 턴 공격력 2배')}${opt('shield','이번 턴 받는 피해 0')}${opt('reflect','패배 시 피해0+50% 반사')}${opt('lifesteal','2턴 내 승리 시 50% 확률 흡혈')}${opt('heal','즉시 HP20% 회복')}${opt('revive','사망 시 최대HP 20%로 1회 부활')}${opt('respec','능력치 재분배(구매 즉시)')}
                     </select>
                     <div id="pvit_dmgRow" style="${it.effect==='damage'?'':'display:none;'}">
                         <label style="font-size:13px;">피해량</label>
@@ -70825,5 +72152,28 @@ window._EJ = {
         // window._gababoStuCode 가 주입된 경우 (Blob URL 방식) 자동 로그인
 
         </textarea>
+    <script>
+    // ─── 학생일 때 전체 페이지 드래그·우클릭 차단 ───────────────
+    // 교사 화면(#appT)이 실제로 보일 때만 허용 — 학생·가바보·로그인·학생미리보기는 차단.
+    (function () {
+        function blockStudent() {
+            var t = document.getElementById('appT');
+            var teacherActive = t && !t.classList.contains('hidden');
+            return !teacherActive;
+        }
+        document.addEventListener('contextmenu', function (e) {
+            if (blockStudent()) { e.preventDefault(); return false; }
+        }, true);
+        document.addEventListener('dragstart', function (e) {
+            if (blockStudent()) { e.preventDefault(); return false; }
+        }, true);
+        document.addEventListener('selectstart', function (e) {
+            if (!blockStudent()) return;
+            var t = e.target, tag = t && t.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || (t && t.isContentEditable)) return;
+            e.preventDefault();
+        }, true);
+    })();
+    </script>
 </body>
 </html>
