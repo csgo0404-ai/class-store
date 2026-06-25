@@ -6367,8 +6367,7 @@ let _renderLock = false; // 재진입 방지
         document.getElementById('_couponArrivalPopup')?.remove();
         if(me) {
             me.lastCouponView = Date.now();
-            if(typeof upMe === 'function') upMe();
-            // 직접 경로 쓰기 — 교사 _svStu 덮어쓰기 레이스 방지
+            // 직접 경로 쓰기 — 교사 _svStu 덮어쓰기 레이스 방지 (전체 레코드 upMe()는 inv/col 클로버 위험으로 제거)
             const _fk = _getMyFbKey();
             if(_fk != null && _fk !== -1) try { dbRef.child('stu/'+_fk+'/lastCouponView').set(me.lastCouponView); } catch(_){}
             // 본인 records + 본인이 받은 nomination/dalgona 작성자(from) records 모두 ack
@@ -6409,7 +6408,9 @@ let _renderLock = false; // 재진입 방지
         if(window._anyArrivalPopupOpen()) return;
         const pending = Array.isArray(me.tchrMsg) ? me.tchrMsg.filter(n => n && n.msg && !window._tchrMsgSeen.has(n.ts)) : [];
         if(!pending.length) {
-            if(me.tchrMsg && me.tchrMsg.length) { me.tchrMsg = []; if(typeof upMe==='function') upMe(); }
+            // 🛡️ tchrMsg만 필드 단위로 비운다 — 전체 레코드 upMe()는 교사가 방금 지급한 inv/col을
+            //    stale me로 덮어써 "메시지만 가고 아이템 미지급" 사고를 냄. 필드 write로 클로버 차단.
+            if(me.tchrMsg && me.tchrMsg.length) { me.tchrMsg = []; _writeMeField('tchrMsg', []); }
             return;
         }
         const n = pending[0];
@@ -6481,11 +6482,11 @@ let _renderLock = false; // 재진입 방지
                 localStorage.setItem('_tchrMsgSeen', JSON.stringify(_seenArr));
             } catch(_){}
         }
-        // teacherMsgs도 함께 읽음 처리 — _checkTeacherMsgs 중복 팝업 방지
-        if(me && Array.isArray(me.teacherMsgs)) {
-            me.teacherMsgs.forEach(m => { m.read = true; });
-        }
-        if(me) { me.tchrMsg = []; if(typeof upMe==='function') upMe(); }
+        // teacherMsgs 읽음 처리 — _checkTeacherMsgs 중복 팝업 방지 (트랜잭션 머지·공용 헬퍼)
+        _markTeacherMsgsReadTx({ includeManitto: true });
+        // 🛡️ tchrMsg는 필드 단위로만 비운다 — 전체 레코드 upMe()는 교사가 방금 지급한 inv/col을
+        //    아직 동기화 안 된 stale me로 덮어써 "메시지만 가고 아이템 미지급" 버그를 일으킴.
+        if(me) { me.tchrMsg = []; _writeMeField('tchrMsg', []); }
         setTimeout(() => { if(window._showNextArrivalPopup) window._showNextArrivalPopup(); }, 300);
     };
 
@@ -6504,7 +6505,7 @@ let _renderLock = false; // 재진입 방지
         const fresh = pending.filter(n => !n.seen && !window._titSeen.has(String(n.titId)));
         console.log('[TIT-POPUP] fresh=', fresh.length, '_titSeen=', [...window._titSeen]);
         if(!fresh.length) {
-            if(pending.length && me) { console.log('[TIT-POPUP] ❌ fresh 없음 — titNotify 정리'); me.titNotify = []; if(typeof upMe==='function') upMe(); }
+            if(pending.length && me) { console.log('[TIT-POPUP] ❌ fresh 없음 — titNotify 정리'); me.titNotify = []; const _fkT=_getMyFbKey(); if(_fkT!=null&&_fkT!==-1) try{dbRef.child('stu/'+_fkT+'/titNotify').remove();}catch(_){} }
             else { console.log('[TIT-POPUP] ❌ pending 없음'); }
             return;
         }
@@ -6568,9 +6569,8 @@ let _renderLock = false; // 재진입 방지
         }
         window._titPopupClosing = true;
         if(me) {
-            // ① upMe() — 나머지 필드와 함께 저장
-            if(typeof upMe === 'function') upMe();
-            // ② 직접 경로 삭제 — 교사의 _svStu 덮어쓰기 레이스와 독립적으로 즉시 반영
+            // titNotify는 직접 경로로만 삭제 — 전체 레코드 upMe()는 교사가 방금 함께 지급한
+            // inv/col을 아직 동기화 안 된 stale me로 덮어써 "아이템 미지급" 사고를 냄(메시지 팝업과 동일 버그).
             const _fbKey = _getMyFbKey();
             if(_fbKey != null && _fbKey !== -1) {
                 try { dbRef.child('stu/' + _fbKey + '/titNotify').remove(); } catch(_){}
@@ -6616,8 +6616,7 @@ let _renderLock = false; // 재진입 방지
         document.getElementById('_teacherSnackPopup')?.remove();
         if(me) {
             me.lastTeacherSnackView = Date.now();
-            if(typeof upMe === 'function') upMe();
-            // 직접 경로 쓰기 — 교사 _svStu 덮어쓰기 레이스 방지
+            // 직접 경로 쓰기 — 교사 _svStu 덮어쓰기 레이스 방지 (전체 레코드 upMe()는 inv/col 클로버 위험으로 제거)
             const _fk2 = _getMyFbKey();
             if(_fk2 != null && _fk2 !== -1) try { dbRef.child('stu/'+_fk2+'/lastTeacherSnackView').set(me.lastTeacherSnackView); } catch(_){}
         }
@@ -7287,6 +7286,28 @@ let _renderLock = false; // 재진입 방지
             if(fbKey === -1) return;
             dbRef.child(`stu/${fbKey}/${field}`).set(value);
         } catch(e){}
+    }
+    // teacherMsgs 읽음 처리 공용 헬퍼 — 전체 .set()/upMe() 대신 트랜잭션 머지로 동시 추가분 보존.
+    //   학생이 팝업을 닫는 사이 교사가 보낸 신규 메시지가 stale 배열에 덮어써 사라지는 것을 방지하고,
+    //   동시에 전체 레코드 upMe()가 방금 지급된 inv/col을 클로버하는 사고도 막는다.
+    //   opt.includeManitto=false(기본)면 manittoLetter는 건드리지 않음(별도 플로우).
+    function _markTeacherMsgsReadTx(opt) {
+        if(!me || !Array.isArray(me.teacherMsgs)) return;
+        const _incMan = !!(opt && opt.includeManitto);
+        const _match = m => m && (_incMan || m.type !== 'manittoLetter');
+        const _seenTs = new Set(me.teacherMsgs.filter(_match).map(m => m.ts).filter(v => v != null));
+        me.teacherMsgs.forEach(m => { if(_match(m)) m.read = true; }); // 로컬 즉시 반영
+        if(!_seenTs.size) return;
+        const _fk = _getMyFbKey();
+        if(_fk == null || _fk === -1) return;
+        try {
+            dbRef.child('stu/' + _fk + '/teacherMsgs').transaction(cur => {
+                if(cur == null) return cur; // 서버에 없으면 생성하지 않음
+                const arr = Array.isArray(cur) ? cur : Object.values(cur);
+                arr.forEach(m => { if(m && _seenTs.has(m.ts)) m.read = true; }); // 본 것만 표시, 신규는 보존
+                return arr;
+            });
+        } catch(_){}
     }
 
     // ── 레벨업 쿠키 체크 ─────────────────────────────────────────────────────
@@ -48146,7 +48167,7 @@ window.addCharRow = function() {
     async function _caStartGame(){
         if(!me) return;
         if(_caIsSpectator()) { alert('👻 참관자는 시작할 수 없어요.'); return; }
-        if(window._caMeta && window._caMeta.on) { window._crazyArcadeMenu(); return; }   // 이미 진행 중
+        if(window._caMeta && window._caMeta.on && window._caMeta.phase!=='done') { window._crazyArcadeMenu(); return; }   // 이미 진행 중(끝난 게임은 새로 시작 허용)
         const roster = _caEligibleUids();                 // 방에 있는 사람 자동 참가
         const uids = Object.keys(roster);
         if(uids.length < CA_MINP) { alert('최소 '+CA_MINP+'명이 필요해요 (현재 '+uids.length+'명).'); return; }
@@ -48201,6 +48222,12 @@ window.addCharRow = function() {
         window._caHostListeners = null;
     }
 
+    // 끝난(done) 게임 노드 안전 제거 — 서버에 여전히 그 done 게임(startedAt 일치)일 때만 삭제.
+    // 그 사이 새 게임이 시작됐거나 이미 지워졌으면 건드리지 않음(새 게임 삭제·중복 삭제 방지).
+    function _caRemoveStaleDone(sa){
+        try{ _caMetaRef().once('value', s=>{ const v=s.val(); if(v && v.phase==='done' && (sa==null || v.startedAt===sa)){ try{ _caRef().remove(); }catch(_){} } }); }catch(_){}
+    }
+
     function _caHostLoop(){
         const meta = window._caMeta, map = window._caMap, st = window._caState;
         if(!meta || meta.phase!=='playing' || !map || !st){ return; }
@@ -48231,16 +48258,9 @@ window.addCharRow = function() {
             if(_caEff(map, st, nc, nr)!==0) return;          // 벽/박스
             if(_caBombAt(st, nc, nr)) return;                // 폭탄
             p.fx = p.x; p.fy = p.y; p.x = nc; p.y = nr; p.mt = now; pDirty.add(uid);
-            // 아이템 획득
-            const gk = _caKey(nc, nr);
-            if(st.ground[gk]){
-                const it = st.ground[gk]; delete st.ground[gk]; groundDel.push(gk);
-                if(it==='shoe') p.speed = p.speed+1;          // 먹을 때마다 중첩(이동속도 ↑)
-                else if(it==='potion') p.power = p.power+1;    // 먹을 때마다 중첩(폭발범위 ↑)
-            }
         });
 
-        // 아이템 획득 보정 — 현재 서 있는 칸에 아이템이 있으면 획득(이동 타이밍/박스 파괴 직후 못 먹는 경우 방지)
+        // 아이템 획득 — 현재 서 있는 칸에 아이템이 있으면 획득(이동 직후 + 박스 파괴 직후/타이밍으로 못 먹는 경우까지 일괄 처리)
         Object.keys(P).forEach(uid=>{
             const p = P[uid]; if(!p.alive) return;
             const gk = _caKey(p.x, p.y);
@@ -48352,8 +48372,12 @@ window.addCharRow = function() {
             window._caMeta = fin;
             _caMetaRef().update({ phase:'done', winner, endedAt:_endTs });
             _caStopHost();
+            // 호스트는 자기 meta 에코 도착 시 prev가 이미 done이라 결과창이 안 떠서 직접 표시
+            try{ _caShowResult(fin); }catch(_){}
             // 결과 표시 후 노드 자동 정리 → 다음 판을 새로 시작할 수 있음(끝난 게임이 안 남음)
-            setTimeout(()=>{ try{ _caRef().remove(); }catch(_){} }, 6000);
+            // 가드: 그 사이 새 게임이 시작됐으면(startedAt 다름/playing) 지우지 않음(새 게임 삭제 방지)
+            const _sa = meta.startedAt;
+            setTimeout(()=>{ _caRemoveStaleDone(_sa); }, 6000);
         }
     }
 
@@ -48413,8 +48437,13 @@ window.addCharRow = function() {
                 if(prev && prev.phase==='playing'){ _caShowResult(m); _caStopHost(); }
                 if(window._plzFbConnected !== false){
                     const age = Date.now() - (m.endedAt || m.startedAt || 0);
-                    if(age > 8000){ try{ _caRef().remove(); }catch(_){} }
-                    else if(!window._caDoneCleanupT){ window._caDoneCleanupT = setTimeout(()=>{ window._caDoneCleanupT=null; try{ if(window._caMeta && window._caMeta.phase==='done') _caRef().remove(); }catch(_){} }, 8500); }
+                    if(age > 8000){ _caRemoveStaleDone(m.startedAt); }
+                    else if(window._caDoneCleanupFor !== m.startedAt){   // 게임별(startedAt) 1회 예약 — 연속 게임에서도 누락 없음
+                        window._caDoneCleanupFor = m.startedAt;
+                        const _sa2 = m.startedAt;
+                        if(window._caDoneCleanupT) clearTimeout(window._caDoneCleanupT);
+                        window._caDoneCleanupT = setTimeout(()=>{ window._caDoneCleanupT=null; _caRemoveStaleDone(_sa2); }, 8500);
+                    }
                 }
                 _caRefreshMenu();
                 return;
@@ -48796,6 +48825,7 @@ window.addCharRow = function() {
         _caStopRender();
         if(window._caTakeoverInt){ clearInterval(window._caTakeoverInt); window._caTakeoverInt = null; }
         if(window._caDoneCleanupT){ clearTimeout(window._caDoneCleanupT); window._caDoneCleanupT = null; }
+        window._caDoneCleanupFor = null;
         window._caLocalBombs = [];
         window._caLocalMe = null; window._caInput = null; window._caAutoOpenedFor = null;
         window._caRoster = null; window._caHeadImg = null; window._caInputCache = null;
@@ -55300,8 +55330,7 @@ window.addCharRow = function() {
         document.body.appendChild(el);
     }
     window._closeTeacherMsg = function() {
-        (me.teacherMsgs||[]).forEach(m => { if(m.type !== 'manittoLetter') m.read = true; });
-        upMe();
+        _markTeacherMsgsReadTx(); // 트랜잭션 머지 — 전체 upMe()의 inv/col 클로버·신규 메시지 손실 방지
         document.getElementById('_teacherMsgPopup')?.remove();
     };
 
@@ -55337,10 +55366,9 @@ window.addCharRow = function() {
             <div style="flex:1;overflow-y:auto;padding:16px;">${itemsHtml}</div>
         </div>`;
         document.body.appendChild(el);
-        // 읽음 처리
+        // 읽음 처리 — 트랜잭션 머지(전체 upMe() 클로버 방지)
         if((me.teacherMsgs||[]).some(m=>!m.read && m.type!=='manittoLetter')) {
-            me.teacherMsgs.forEach(m=>{ if(m.type!=='manittoLetter') m.read=true; });
-            upMe();
+            _markTeacherMsgsReadTx();
         }
     };
 
