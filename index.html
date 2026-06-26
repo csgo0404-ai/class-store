@@ -3706,6 +3706,21 @@ let _renderLock = false; // 재진입 방지
             me.usedCookie = Math.max((me.usedCookie || 0), o.usedCookie || 0);
         }
     };
+    // me.co/cn/tk(꿀·캔디·바구니): 아직 Firebase에 flush되지 않은 로컬 차감/지급 델타(_curAtomicDelta)를
+    //   stu echo 병합(me[k]=v[k])이 되돌리지 않도록 재적용. (쿠키의 _applyDahaeLive와 동일 취지 — 진행 중 변경 보호)
+    //   델타는 upMe write 시 원자적으로 0으로 리셋되므로, 남아있다는 건 "아직 서버 미반영" → 중복 적용 없음.
+    //   예) 로컬 -3 차감 대기 중 교사 +5 지급 echo(v=원금+5) 도착 → me=v 후 -3 재적용 → 두 변경 모두 보존.
+    window._applyPendingCurDelta = function(){
+        if(!me || me.cd === 'teacher_main') return;
+        const _pd = window._curAtomicDelta;
+        if(_pd) ['co','cn','tk'].forEach(_cf => { if(_pd[_cf]) me[_cf] = Math.max(0, (me[_cf]||0) + _pd[_cf]); });
+        // shopUsed도 동일 취지 — 아직 flush 안 된 구매/환불 델타(_shopUsedAtomicDelta)를 echo가 되돌리지 않게 재적용.
+        //   (delta는 upMe write 시 0으로 리셋되므로 남아있으면 미반영 → 중복 적용 없음)
+        //   ⚠️ shopUsed는 레벨업 보너스로 음수가 될 수 있는 값(7389 '음수 허용') → Math.max(0,…) 클램프 금지.
+        //      클램프하면 음수 보너스가 0으로 깎이고, 음수 델타는 write가 절대값 경로라 영구 손실됨.
+        const _su = window._shopUsedAtomicDelta || 0;
+        if(_su) me.shopUsed = (me.shopUsed||0) + _su;
+    };
     // 용사 레벨용 '순수 다했니 쿠키' — me.cookie는 교사 지급(execGiveCoin 'c')·은행 이자로 오염될 수
     // 있어 레벨 산정에서 제외한다. 다했니 출처(라이브 캐시 + 폴링 캐시)는 누적값이라 단조 증가 →
     // 둘 중 최댓값으로 새로고침 시 stale 깜빡임 방지. 순수 다했니 소스가 전혀 없을 때만 랭크캐시→me.cookie 폴백.
@@ -3833,6 +3848,7 @@ let _renderLock = false; // 재진입 방지
             const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
             if(!isStudentView) { clearInterval(_globalLevelPollTimer); _globalLevelPollTimer = null; return; }
             // 용사(s_char) 탭 또는 랭킹 모달이 열린 경우에만 전교생 레벨 폴링 (다른 탭에선 트래픽 절감)
+            // 이 폴링이 용사 탭 체류 중 me.cookie도 갱신하므로, _startMyCookiePoll은 s_char를 skip해 중복 방지.
             const _scVis = (function(){ const e=document.getElementById('s_char'); return e && !e.classList.contains('hidden'); })();
             const _rankOpen = !!document.querySelector('[data-rank-modal]');
             if(!_scVis && !_rankOpen) return; // 관련 화면 아니면 이번 주기 스킵(타이머는 유지)
@@ -3842,6 +3858,31 @@ let _renderLock = false; // 재진입 방지
     window._startGlobalLevelPoll = _startGlobalLevelPoll;
     window._stopGlobalLevelPoll = function() {
         if(_globalLevelPollTimer) { clearInterval(_globalLevelPollTimer); _globalLevelPollTimer = null; }
+    };
+
+    // 학생 본인 쿠키 전용 1분 폴링 — 어느 학생 탭에 있든 me.cookie를 다했니 최신값으로 갱신.
+    // (전교생 레벨 폴링 _startGlobalLevelPoll은 용사 탭/랭킹 모달에서만 fetch하므로
+    //  다른 탭에선 본인 쿠키가 갱신 안 되던 문제 해결. 본인 1건만 fetch라 트래픽 미미.)
+    let _myCookiePollTimer = null;
+    // 1분 폴링을 끄고 "진입 시 1회"만 둘 탭 — 광장/용사는 실시간 부하가 커서 체류 중 폴링 스킵.
+    // (타이머는 유지하고 fetch만 스킵 → 다른 탭으로 나가면 자동 재개)
+    const _MY_COOKIE_POLL_SKIP_TABS = ['s_plz', 's_char'];
+    window._startMyCookiePoll = function() {
+        if(_myCookiePollTimer) return; // 중복 시작 방지
+        _myCookiePollTimer = setInterval(() => {
+            if(document.visibilityState === 'hidden') return; // 백그라운드 탭 스킵
+            const isStudentView = document.getElementById('appS') && !document.getElementById('appS').classList.contains('hidden');
+            if(!isStudentView) { clearInterval(_myCookiePollTimer); _myCookiePollTimer = null; return; } // 로그아웃/교사뷰 → 정지
+            // 광장(s_plz)·용사(s_char)에 머무는 동안은 1분 폴링 스킵 (진입 시 1회만)
+            const _onSkipTab = _MY_COOKIE_POLL_SKIP_TABS.some(tid => {
+                const e = document.getElementById(tid); return e && !e.classList.contains('hidden');
+            });
+            if(_onSkipTab) return;
+            try { syncMyCookieSilent(); } catch(_){}
+        }, 60000); // 1분
+    };
+    window._stopMyCookiePoll = function() {
+        if(_myCookiePollTimer) { clearInterval(_myCookiePollTimer); _myCookiePollTimer = null; }
     };
 
     // 노출 — 탭 진입 시 즉시 동기화에 사용
@@ -5108,6 +5149,9 @@ let _renderLock = false; // 재진입 방지
             const fn = snap => {
                 const v = snap.val();
                 if(!v) { console.warn('[stuOwn] stu/'+target+' null — 데이터 없음'); return; }
+                // 🛡️ 신원 가드: 경로는 stu/{target}이지만 레코드 내부 cd가 다르면(데이터 손상·마이그레이션 사고)
+                //   다른 학생 정보를 me로 흡수하지 않도록 병합 차단. (레거시 모드의 cd-mismatch 가드와 동일 취지)
+                if(v.cd && String(v.cd).trim() !== target) { console.error('[stuOwn-cd] cd 불일치 — 병합 차단:', { path: target, recordCd: v.cd }); return; }
                 if(!Array.isArray(db.stu)) db.stu = [];
                 const localIdx = db.stu.findIndex(s => s && String(s.cd).trim() === target);
                 if((v.no == null || v.no === undefined) && localIdx >= 0 && db.stu[localIdx] && db.stu[localIdx].no != null) v.no = db.stu[localIdx].no;
@@ -5121,6 +5165,8 @@ let _renderLock = false; // 재진입 방지
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
                     try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
+                    // co/cn/tk(꿀·캔디·바구니): 미flush 로컬 차감/지급 델타를 echo가 되돌리지 않도록 재적용
+                    try { window._applyPendingCurDelta && window._applyPendingCurDelta(); } catch(_){}
                     // 외부(교사) 갱신만 시퀀스 증가 — 자기 write echo는 제외(정상 요청이 병합으로 되돌려지는 회귀 방지)
                     if(!(v && v.updatedAt && window._myWrittenTs && window._myWrittenTs.includes(v.updatedAt))) {
                         window._meSyncSeq = (window._meSyncSeq || 0) + 1;
@@ -5196,6 +5242,8 @@ let _renderLock = false; // 재진입 방지
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
                     try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
+                    // co/cn/tk(꿀·캔디·바구니): 미flush 로컬 차감/지급 델타를 echo가 되돌리지 않도록 재적용
+                    try { window._applyPendingCurDelta && window._applyPendingCurDelta(); } catch(_){}
                     // 외부(교사) 갱신만 시퀀스 증가 — 자기 write echo는 제외(정상 요청이 병합으로 되돌려지는 회귀 방지)
                     if(!(v && v.updatedAt && window._myWrittenTs && window._myWrittenTs.includes(v.updatedAt))) {
                         window._meSyncSeq = (window._meSyncSeq || 0) + 1;
@@ -9104,6 +9152,7 @@ let _renderLock = false; // 재진입 방지
                 if(!s) return;
                 if(s.tk === undefined) s.tk = 0;
                 if(s.co === undefined) s.co = 0;
+                if(s.cn === undefined) s.cn = 0;   // 화폐삭제 가드(_svStu/_doWrite)와 대칭 — cn 미정의 레거시 레코드가 영구 차단되지 않게
                 if(s.kc === undefined) s.kc = 0;
             });
 
@@ -9451,24 +9500,34 @@ let _renderLock = false; // 재진입 방지
     // 🌟 안전한 경매 타이머 루프
     setInterval(() => {
         if(document.hidden) return; // 백그라운드 탭 스킵
-        if(!db.auc || !db.auc.some(a => a && a.st === 'active')) return; // 활성 경매 없으면 즉시 리턴
-        let needSave = false;
         const now = Date.now();
-
+        const _isTeacherView = !document.getElementById('appT').classList.contains('hidden');
+        // 활성 경매가 있거나, (교사 뷰 한정) 1일 경과해 정리할 done 경매가 있을 때만 루프 실행.
+        // 학생 탭은 done 정리를 하지 않으므로 active 없으면 기존처럼 즉시 리턴(불필요한 매초 틱 방지).
+        if(!db.auc || !db.auc.some(a => a && (a.st === 'active' || (_isTeacherView && a.st === 'done' && a.endedAt && (now - a.endedAt) > AUC_DONE_KEEP_MS)))) return;
+        let needSave = false;
         if(db.auc) {
-            db.auc.forEach(a => {
-                if(a && a.st === 'active') {
+            db.auc.forEach((a, idx) => {
+                if(!a) return;
+                if(a.st === 'active') {
                     const diff = a.et - now;
-                    
+
                     // 시간 종료 처리
                     if(diff <= 0 && !a._resolving) {
-                        // 교사 페이지가 열려 있거나, 경매를 올린 학생 본인일 때만 마감 처리를 진행해 중복 차감을 방지합니다.
-                        if (!document.getElementById('appT').classList.contains('hidden') || (me && me.cd === a.reqBy)) {
+                        // 마감 처리(낙찰자 차감·아카이브)는 교사 세션에서만 수행합니다.
+                        // 학생 탭은 db.stu를 부분만 보유(본인+요청자만 fetch)하므로 낙찰자 차감이 누락되고,
+                        // sv()도 학생 탭에선 타 학생을 저장하지 못해 "차감 안 됨 + 완료기록 사라짐" 사고가 났었음.
+                        // 교사 앱이 열려 있는 동안 매초 검사하므로, 교사가 접속하면 만료된 경매는 즉시 마감됩니다.
+                        if (_isTeacherView) {
                             a._resolving = true; // 동일 tick 내 중복 실행 방지
                             resolveAuctionTimer(a);
                             needSave = true;
                         }
                     }
+                } else if (_isTeacherView && a.st === 'done' && a.endedAt && (now - a.endedAt) > AUC_DONE_KEEP_MS) {
+                    // 종료 후 1일 경과 → /auc 에서 제거 (참가 학생 노출 종료). aucArc엔 보관됨.
+                    db.auc[idx] = null;
+                    needSave = true;
                 }
             });
         }
@@ -9489,13 +9548,16 @@ let _renderLock = false; // 재진입 방지
             return;
         }
         const maxAmt = Math.max(...auc.bids.map(b => b.amt));
-        const topBidders = auc.bids.filter(b => b.amt === maxAmt);
+        // 동일 금액 입찰 허용 이후: 같은 학생이 최고가에 중복 입찰할 수 있으므로 cd 기준 디둡
+        // (자기 자신과 동점되는 가짜 tie 방지)
+        const _seenTop = new Set();
+        const topBidders = auc.bids.filter(b => b.amt === maxAmt && b && b.cd && !_seenTop.has(b.cd) && _seenTop.add(b.cd));
 
         if(topBidders.length === 1) {
             auc.st = 'done';
             auc.winner = topBidders[0];
             processAuctionWin(auc, topBidders[0]);
-            _archiveAndRemoveAuc(auc); // 단독 낙찰 → 즉시 아카이브
+            _finalizeAucKeepForStudents(auc); // 단독 낙찰 → 참가 학생에게 1일간 결과 노출
         } else {
             auc.st = 'tie';
             auc.tied = topBidders;
@@ -9514,6 +9576,8 @@ let _renderLock = false; // 재진입 방지
             // 낙찰 결과를 학생 본인 노드에 기록 → 학생의 stu own listener로 자동 수신, 결과 모달 표시
             s.aucWin = { id: auc.id, n: auc.n || '경매', amt: winnerData.amt, cur: auc.cur, ts: Date.now() };
             logCandy(s.nm, -winnerData.amt, `경매 낙찰 (${auc.n})`);
+            // 차감·낙찰필드를 해당 학생 노드에 직접 저장(sv() 가드/통째쓰기 우회) — 차감 누락 방지
+            try { if(window._svStuByCd) window._svStuByCd(s.cd); } catch(_){}
         }
     }
 
@@ -9532,6 +9596,22 @@ let _renderLock = false; // 재진입 방지
                 try { dbRef.child('auc/' + idx).remove(); } catch(_){}
             }
         }
+    }
+
+    // 경매 노출 유지 기간: 참가 학생은 종료 후 이 기간 동안 결과를 본다 (1일)
+    const AUC_DONE_KEEP_MS = 24 * 60 * 60 * 1000;
+    // 입찰자가 있던 경매의 마감: /aucArc(교사 이력 7일)에 보관하되,
+    // /auc 에는 done+endedAt 상태로 그대로 둔다 → 참가 학생 화면에 1일간 결과 노출.
+    // 1일 경과분은 _pruneEndedAucs(교사 타이머)에서 /auc 에서 제거(aucArc엔 잔존).
+    function _finalizeAucKeepForStudents(auc) {
+        if(!auc || !auc.id) return;
+        auc.st = 'done';
+        auc.endedAt = Date.now();
+        const archived = JSON.parse(JSON.stringify(auc));
+        try { dbRef.child('aucArc/' + auc.id).set(archived); } catch(_){}
+        if(!Array.isArray(db.aucArc)) db.aucArc = [];
+        if(!db.aucArc.some(x => x && x.id === auc.id)) db.aucArc.push(archived);
+        // /auc 에서 제거하지 않음 — 호출자의 sv()가 done 상태를 학생에게 반영.
     }
 
     function updateAucTimersUI() {
@@ -9919,6 +9999,12 @@ let _renderLock = false; // 재진입 방지
                             _skippedReasons.push({idx:i, reason:'invalid-schema', cd:s.cd, nm:s.nm});
                             return;
                         }
+                        // 🛡️ 화폐 삭제 방지: 전체노드 쓰기는 누락 필드를 Firebase에서 삭제 → co/cn/tk가
+                        //   빠진 부분·손상 레코드는 write 거부(경고). "바구니 통째 삭제" 사고 차단. (0은 정상값)
+                        if(s.co === undefined || s.cn === undefined || s.tk === undefined) {
+                            _skippedReasons.push({idx:i, reason:'missing-currency', cd:s.cd, nm:s.nm, co:s.co, cn:s.cn, tk:s.tk});
+                            return;
+                        }
                         // 🛡️ stale write 방지: _remoteStuTs는 cd 키 모드에서 s.cd로, 레거시에서 i로 인덱싱
                         const _tsKey = _cdMigrated ? s.cd : i;
                         const _remoteTs = window._remoteStuTs[_tsKey] || 0;
@@ -10186,6 +10272,11 @@ let _renderLock = false; // 재진입 방지
                 const s = db.stu[i]; if(!s) return;
                 // 🛡️ schema validation
                 if(!s.cd || !s.nm) { _skipped.push({idx:i, reason:'invalid-schema', cd:s.cd, nm:s.nm}); return; }
+                // 🛡️ 화폐 삭제 방지: 전체노드 쓰기는 누락 필드를 Firebase에서 삭제 → co/cn/tk가 빠진
+                //   부분·손상 레코드는 write 스킵(경고). "바구니 통째 삭제" 사고 차단. (0은 정상값이라 통과)
+                if(s.co === undefined || s.cn === undefined || s.tk === undefined) {
+                    _skipped.push({idx:i, reason:'missing-currency', cd:s.cd, nm:s.nm, co:s.co, cn:s.cn, tk:s.tk}); return;
+                }
                 if(!window._remoteStuTs) window._remoteStuTs = {};
                 const _tsKey = _cdMigrated ? s.cd : i;
                 // 🛡️ [재발방지] 호출자가 updatedAt 갱신을 깜빡해도 변경된 레코드는 stale로 오인돼
@@ -10684,6 +10775,7 @@ let _renderLock = false; // 재진입 방지
             document.getElementById('appS').classList.remove('hidden');
             updateNameTag();
             navS('s_char'); // navS('s_char')에서 _syncAllLevelsSilent + _startGlobalLevelPoll 처리
+            try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){} // 본인 쿠키 1분 폴링(탭 무관)
             setTimeout(_checkTeacherMsgs, 400);
             setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); } catch(_){} }, 700);
             // 이벤트 메뉴 노출 동기화 (cfg 로드 타이밍에 따라 약간 지연)
@@ -10980,6 +11072,8 @@ let _renderLock = false; // 재진입 방지
         if(idx < 0) { document.getElementById('_swapConfirmModal')?.remove(); alert('보유한 아이템이 없어요'); return; }
         me.inv.splice(idx, 1);
         me.tk = (me.tk || 0) + amt;
+        // 증분 보호 편입 — 절대값 쓰기로 교사 동시지급분이 덮어써지지 않게 (구매 경로와 동일)
+        if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta.tk += amt;
         upMe();
         document.getElementById('_swapConfirmModal')?.remove();
         document.getElementById('itemModal')?.remove();
@@ -12068,6 +12162,11 @@ let _renderLock = false; // 재진입 방지
             // co/cn/tk 차감 델타도 write 여부와 무관하게 소비 (shopUsed와 동일 — 중복 적용 방지)
             const _curDelta = window._curAtomicDelta || {co:0,cn:0,tk:0};
             window._curAtomicDelta = {co:0,cn:0,tk:0};
+            // 🛡️ 미flush 델타 강제 포함: 차감 후 값이 우연히 직전 기록 해시와 같아 updates에서 누락되면
+            //   아래 increment 치환이 건너뛰어져 차감이 영영 저장 안 되는 버그 방지. (값은 increment로 치환됨)
+            ['co','cn','tk'].forEach(_cf => { if(_curDelta[_cf]) updates[_cf] = _safeWithoutShopLog[_cf]; });
+            // shopUsed도 동일 — 양수 델타(increment 경로)만 강제 포함. (음수/환불 절대값 경로는 기존 동작 유지)
+            if(_pendingDelta > 0) updates.shopUsed = _safeWithoutShopLog.shopUsed;
             if(Object.keys(updates).length > 0) {
                 const _ts = Date.now();
                 _safeWithoutShopLog.updatedAt = _ts;
@@ -12292,6 +12391,8 @@ let _renderLock = false; // 재진입 방지
         } catch(_){}
         // 이벤트 메뉴 가시성 갱신 (cfg 변경 반영)
         try { window._refreshEventMenus && _refreshEventMenus(); } catch(_){}
+        // 본인 쿠키 1분 폴링 self-heal — 어떤 이유로 멈췄어도 탭 전환 시 재가동 (double-start 가드로 안전)
+        try { window._startMyCookiePoll && window._startMyCookiePoll(); } catch(_){}
         // ※ 일반 탭 전환 시에는 다른 학생 정보 fetch 안 함 — 순위표 진입 시에만 rRank()가 강제 refresh (트래픽 절감)
         // 광장은 자체 presence(per-uid 구독)로 별도 처리됨
         // 광장에서 나갈 때 cleanup
@@ -12449,13 +12550,14 @@ let _renderLock = false; // 재진입 방지
             try { window._startGlobalLevelPoll && window._startGlobalLevelPoll(); } catch(_){}
             rSh();
         }
-        if(id==='s_gababo') { try { window._ensureEventCfg && _ensureEventCfg('gababoEvent').then(()=>rGababoS()); } catch(_) { rGababoS(); } }
+        if(id==='s_gababo') { try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){} try { window._ensureEventCfg && _ensureEventCfg('gababoEvent').then(()=>rGababoS()); } catch(_) { rGababoS(); } } // 가바보 로비: 진입 시 본인 쿠키 1회(즉시 갱신). 체류 중 본인쿠키 1분 폴링은 계속 돎(s_gababo는 skip 아님). 도전 창은 openLeagueChalWin에서 전체 1회.
         if(id==='s_fashion') { try { window._ensureEventCfg && _ensureEventCfg('fashionShow').then(()=>{ try { _renderStudentFashion(); } catch(_){} try { window._fsAttachNotiListener && _fsAttachNotiListener(); } catch(_){} }); } catch(_){} }
         if(id==='s_tbank') { try { window._ensureEventCfg && _ensureEventCfg('timeBank').then(()=>{ try { _renderStudentTimeBank(); } catch(_){} }); } catch(_){} }
         if(id==='s_bank') { try { (window._ensureBankGrades ? _ensureBankGrades() : Promise.resolve()).then(()=>{ try { _renderBankStudent(); } catch(_){} }); } catch(_){ try { _renderBankStudent(); } catch(_){} } }
         if(id==='s_manitto') { try { _attachManittoListener(); window._fetchMyManittoPair && window._fetchMyManittoPair(); window._attachBingoStudentListener && window._attachBingoStudentListener(); rManittoS(); } catch(_){} }
         if(id==='s_kiosk') { try { (window._ensureEventCfg ? _ensureEventCfg('kiosk') : Promise.resolve()).then(()=>{ try { window.rKioskS && rKioskS(); const _ks=document.getElementById('s_kiosk'); if(_ks){_ks.style.transition='none';_ks.style.opacity='0';requestAnimationFrame(()=>{_ks.style.transition='opacity 0.15s';_ks.style.opacity='1';});} } catch(_){} }); } catch(_){} }
         if(id==='s_plz') {
+            try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){} // 광장은 진입 시 1회만 (체류 중 1분 폴링 없음)
             // 광장 진입 — 학생 단말은 plaza presence 만 사용. 교사·풀모드만 db.stu 로드.
             if((window._isTeacherSession || window._rpgStudentStuFull) && window._ensureStuLoaded) {
                 try { window._ensureStuLoaded(); } catch(_){}
@@ -15048,12 +15150,14 @@ let _renderLock = false; // 재진입 방지
             s[type] = 0;
             targetNames.push(s.nm);
         });
-        
+
         db.stu = stuList;
         if(targetNames.length > 0) {
             logCandy(targetNames.join(', '), 0, `일괄 초기화 (${curName[type]})`);
         }
-        window._svStu(checked); rTb();
+        // 전체레코드 _svStu → 학생별 per-field surgical write(해당 화폐만 0) — 동시 변경 클로버 방지
+        checked.forEach(i => { const s = stuList[i]; if(s && s.cd) window._svStuCurField(s, type, 0, 'set'); });
+        rTb();
     }
     // 🌟 매니저 권한 토글 함수 추가
     window.toggleMgr = function(i) {
@@ -15719,11 +15823,53 @@ let _renderLock = false; // 재진입 방지
         document.body.appendChild(bg);
     };
 
+    // 교사 화폐 단일필드 surgical write — 전체레코드 _svStu 대신 해당 필드만 갱신.
+    //   학생의 동시 변경(inv/다른 화폐/spend)이나 stale 전체레코드 클로버 방지. (upCk·bulkCur와 동일 패턴)
+    //   mode:'delta' → transaction 증감(서버 현재값 기준, 레이스 안전) / 'set' → 절대값 update(교사 명시값).
+    //   shopUsed는 음수 허용(레벨 보너스). 로컬 s[field]는 호출 전 이미 갱신돼 있어야 한다.
+    window._svStuCurField = function(s, field, value, mode){
+        if(!s || !s.cd) return;
+        if(!window._stuListenerReady){ if(window._svStuByCd) window._svStuByCd(s.cd); return; }
+        const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        const _fbKey = _cdMig ? s.cd : (Array.isArray(db.stu) ? db.stu.indexOf(s) : -1);
+        if(!_cdMig && (_fbKey == null || _fbKey < 0)){ if(window._svStuByCd) window._svStuByCd(s.cd); return; }
+        const _allowNeg = (field === 'shopUsed');
+        const _ts = Date.now();
+        s.updatedAt = _ts;
+        try {
+            if(mode === 'delta'){
+                dbRef.child('stu/' + _fbKey + '/' + field).transaction(cur => {
+                    const _n = (cur||0) + value;
+                    return _allowNeg ? _n : Math.max(0, _n);
+                });
+                dbRef.child('stu/' + _fbKey + '/updatedAt').set(_ts);
+            } else {
+                const _upd = {}; _upd[field] = value; _upd.updatedAt = _ts;
+                dbRef.child('stu/' + _fbKey).update(_upd);
+            }
+            // surgical write 했으니 _svStu/_doWrite가 같은 학생을 전체레코드로 재전송하지 않도록 hash 동기화 (bulkCur와 동일)
+            if(_cdMig && window._stuSentHash && window._stuPerHash){
+                const { updatedAt:_ua, ...rest } = s; const _h = JSON.stringify(rest);
+                window._stuPerHash[s.cd] = _h; window._stuSentHash[s.cd] = _h;
+            }
+            // 즉시 전파(_svStu와 동일) — 같은 기기 학생 프리뷰·다른 교사탭에 변경 필드만 머지 전달 (Firebase 왕복 전 갱신)
+            const _bcData = { cd: s.cd }; _bcData[field] = s[field]; _bcData.updatedAt = _ts;
+            try { if(_teacherBC) _teacherBC.postMessage({ type:'stu_update', cd: s.cd, stuData: _bcData }); } catch(_){}
+            try { if(window._tchTabChannel) window._tchTabChannel.postMessage({ type:'stu_update', tabId: window._tchTabId, cd: s.cd, updatedAt: _ts, stuData: _bcData }); } catch(_){}
+            window._safeCacheStu && window._safeCacheStu();
+        } catch(_e){
+            console.warn('[_svStuCurField] surgical write 실패 — _svStuByCd fallback:', _e);
+            if(window._svStuByCd) window._svStuByCd(s.cd);
+        }
+    };
+
     window._updateStuCoin = function(stuCd, field, val) {
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
         const s = stuList.find(x=>x.cd===stuCd); if(!s) return;
         s[field] = Math.max(0, parseInt(val)||0);
-        db.stu = stuList; window._svStuByCd(stuCd);
+        db.stu = stuList;
+        // 전체레코드 _svStuByCd → per-field surgical write (화폐만 갱신, 동시 변경 클로버 방지)
+        window._svStuCurField(s, field, s[field], 'set');
     };
     window._coinClick = function(stuCd, field, delta) {
         const stuList = Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
@@ -15734,7 +15880,10 @@ let _renderLock = false; // 재진입 방지
         } else {
             s[field] = Math.max(0, (s[field]||0) + delta);
         }
-        db.stu = stuList; window._svStuByCd(stuCd);
+        db.stu = stuList;
+        // 전체레코드 _svStuByCd → per-field transaction(증감) write — 학생 동시 차감/다른 화폐 클로버 방지
+        if(field === 'cookie') window._svStuCurField(s, 'shopUsed', -delta, 'delta');
+        else window._svStuCurField(s, field, delta, 'delta');
         ['co','cn','tk'].forEach(f => {
             const el = document.getElementById('_coinSpan_'+stuCd+'_'+f);
             if(el) el.textContent = s[f]||0;
@@ -20690,6 +20839,8 @@ window.appU = function(y, si, k) {
                     <div style="font-size:13px;color:#5D4037;margin-top:8px;">누구나 바구니 ${_vbAmt}개와 교환권 1장을 사용해 쿠폰과 교환할까요?</div>`;
                     const _doGiveBasketExchange = () => {
                         me.tk = (me.tk || 0) - _vbAmt;
+                        // 증분 보호 편입 — 절대값 쓰기로 교사 동시지급분이 덮어써지지 않게 (구매 경로와 동일)
+                        if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta.tk -= _vbAmt;
                         _consumeChosenVoucher();
                         me.inv.push({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
                         if(!me.col) me.col = [];
@@ -20732,6 +20883,8 @@ window.appU = function(y, si, k) {
                         me.inv.splice(removeIdx, 1);
                         _consumeChosenVoucher();
                         me.tk = (me.tk || 0) + _vbAmt;
+                        // 증분 보호 편입 — 절대값 쓰기로 교사 동시지급분이 덮어써지지 않게 (구매 경로와 동일)
+                        if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta.tk += _vbAmt;
                         try { _pushShopLog({type:'쿠폰 교환', name:`${_giveNmForLog} → 🧺바구니×${_vbAmt}`, cost:0, ts:Date.now()}); } catch(_){}
                         try { upMe(); } catch(_){}
                         try { if(typeof rBg === 'function') rBg(); } catch(_){}
@@ -21633,6 +21786,9 @@ window.appU = function(y, si, k) {
         // 종료(done) 경매는 /auc에서 즉시 archive로 이동되므로 학생 화면에서 자동 사라짐.
         // 동점(tie)인 경우는 본인이 동점 후보일 때만 표시 (선생님 결정 대기).
         const tieAucs = aucList.filter(a => a.st === 'tie' && Array.isArray(a.tied) && a.tied.some(t => t && t.cd === me.cd));
+        // 종료(done) 경매는 /auc에서 1일간 유지 — 입찰에 참가한 학생에게만 결과 노출.
+        const endedAucs = aucList.filter(a => a.st === 'done' && a.endedAt && (Date.now() - a.endedAt) < 86400000
+            && Array.isArray(a.bids) && a.bids.some(b => b && b.cd === me.cd));
         
         let aucHtml = `<div id="shop-auc-sec" class="shop-section" style="display:none;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; margin-top:20px;"><h2 style="color:#FFF; text-shadow:2px 2px 0 #3E2723; margin:0;">🔨 실시간 경매장</h2><button class="btn btn-wood" onclick="showAucReqModal()" style="box-shadow:0 4px 10px rgba(0,0,0,0.5);">경매 요청</button></div>`;
         
@@ -21662,7 +21818,21 @@ window.appU = function(y, si, k) {
             }).join('') + `</div>`;
         }
 
-        if (myPendingAucs.length === 0 && activeAucs.length === 0 && tieAucs.length === 0) {
+        if(endedAucs.length > 0) {
+            aucHtml += `<h3 style="color:#FFF; border-bottom:2px dashed #BCAAA4; padding-bottom:5px; margin-top:30px;">🏁 종료된 경매 결과 <span style="font-size:12px; color:#CFC; font-weight:normal;">(하루 동안 표시)</span></h3><div class="auc-grid">` + endedAucs.map(a => {
+                const iWon = a.winner && a.winner.cd === me.cd;
+                const winNm = a.winner ? a.winner.nm : '유찰';
+                const resultColor = iWon ? '#2ECC71' : '#FFCDD2';
+                const resultLabel = iWon ? '🏆 내가 낙찰받았어요!' : `낙찰자: ${winNm}`;
+                return `<div style="background: rgba(0,0,0,0.4); border: 2px solid ${iWon?'#2ECC71':'#9E9E9E'}; border-radius: 15px; padding: 15px; color: white; margin-bottom: 15px;">
+                    <h3 style="margin: 0 0 5px 0; color: #ECEFF1; text-decoration:line-through;">${a.n}</h3>
+                    <div style="color:${resultColor}; font-weight:bold; font-size:16px; margin:6px 0;">${resultLabel}</div>
+                    <div style="font-size:14px; color:#CFD8DC;">최종 낙찰가: <b style="color:#FFD54F;">${a.cp} ${curEmoji[a.cur]}</b></div>
+                </div>`;
+            }).join('') + `</div>`;
+        }
+
+        if (myPendingAucs.length === 0 && activeAucs.length === 0 && tieAucs.length === 0 && endedAucs.length === 0) {
             aucHtml += `<div style="color:#FFF; opacity:0.7; text-align:center; padding:20px; background: rgba(0,0,0,0.2); border-radius: 15px; border: 2px dashed #8D6E63; margin-top:20px; min-height:246px; display:flex; align-items:center; justify-content:center; font-size:18px;">현재 진행 중인 경매 내역이 없습니다.</div>`;
         }
         aucHtml += `</div>`;
@@ -23626,6 +23796,8 @@ window.appU = function(y, si, k) {
         const aucIdx = db.auc.findIndex(x => x && x.id === aucId);
         const a = aucIdx >= 0 ? db.auc[aucIdx] : null;
         if(!a) return;
+        // 마감 시각이 지난 경매는 입찰 거부 (교사 마감 전이라도 데드라인 이후 입찰 차단)
+        if(a.et && Date.now() >= a.et) return alert('이미 마감된 경매입니다! ⏱️');
         const bid = parseInt(document.getElementById('ab_p').value);
         if(!bid || bid < a.cp) return alert(`현재 최고가(${a.cp})와 같거나 높은 금액이어야 합니다!`);
         const myBal = a.cur === 'kc' ? ((me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : (me[a.cur]||0);
@@ -23635,7 +23807,8 @@ window.appU = function(y, si, k) {
         const aRef = dbRef.child('auc/' + aucIdx);
         aRef.transaction(cur => {
             if(!cur || cur.id !== aucId) return;        // 다른 경매로 변경됨 — abort
-            if((cur.cp||0) >= bid) return;              // 이미 더 높은 입찰 — abort
+            if(cur.et && Date.now() >= cur.et) return;   // 서버 기준으로도 마감 지났으면 abort
+            if((cur.cp||0) > bid) return;               // 이미 더 높은 입찰 — abort (동일 금액은 허용 → 동점 처리)
             cur.cp = bid;
             if(!cur.bids) cur.bids = [];
             cur.bids.push({ cd: me.cd, nm: me.nm, amt: bid, ts: Date.now() });
@@ -23644,10 +23817,16 @@ window.appU = function(y, si, k) {
             if(err){ alert('입찰 중 오류: ' + err.message); return; }
             if(!committed){
                 const fresh = snap && snap.val();
-                const curCp = fresh ? fresh.cp : '?';
-                alert(`다른 학생이 먼저 입찰했어요 (현재 최고가 ${curCp}). 다시 시도해주세요.`);
                 // 로컬 캐시 갱신
                 if(fresh && db.auc[aucIdx]) db.auc[aucIdx] = fresh;
+                // 마감 시각 초과로 abort된 경우는 "먼저 입찰" 메시지 대신 마감 안내
+                if(fresh && fresh.et && Date.now() >= fresh.et){
+                    document.getElementById('aucBidModal')?.remove();
+                    alert('이미 마감된 경매입니다! ⏱️');
+                    return;
+                }
+                const curCp = fresh ? fresh.cp : '?';
+                alert(`다른 학생이 먼저 입찰했어요 (현재 최고가 ${curCp}). 다시 시도해주세요.`);
                 return;
             }
             document.getElementById('aucBidModal')?.remove();
@@ -23864,8 +24043,11 @@ window.appU = function(y, si, k) {
         sv();
         rAucT();
     } else if (a) {
-        // /auc에 남아있는 경우(예: tie) — 영구 삭제
+        // /auc에 남아있는 경우(tie 또는 1일 노출 중인 done) — 영구 삭제
         db.auc = db.auc.filter(x => x && x.id !== id);
+        // done은 /aucArc에도 보관돼 있으므로 함께 제거 (tie면 no-op)
+        try { dbRef.child('aucArc/' + id).remove(); } catch(_){}
+        if(Array.isArray(db.aucArc)) db.aucArc = db.aucArc.filter(x => x && x.id !== id);
         sv();
         rAucT();
     } else {
@@ -23885,7 +24067,7 @@ window.appU = function(y, si, k) {
         a.winner = winnerData;
         a.st = 'done';
         processAuctionWin(a, winnerData);
-        _archiveAndRemoveAuc(a);
+        _finalizeAucKeepForStudents(a); // 동점 해소 낙찰 → 참가 학생에게 1일간 결과 노출
         sv(); rAucT();
     }
 
@@ -66007,6 +66189,8 @@ window._EJ = {
         };
         window.openLeagueChalWin = function() {
             const old = document.getElementById('leagueChalWin'); if (old) old.remove();
+            // 도전 창 진입: 전체 학생 쿠키/레벨 1회 동기화 (상대 레벨 표시 최신화, 스로틀 우회)
+            try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(true); } catch(_){}
             // 카드 HTML을 지금 생성 (평소 렌더에선 생략됨) — 캐시 데이터로 동기 빌드
             // 대전 클릭 시 — 구독 보장(로컬 캐시로 즉시 빌드 + 이후 변경은 구독으로 수신해 열린 창 자동 갱신). 이미 구독 중이면 캐시 렌더만이라 추가 트래픽 없음.
             try { _lgLobbyWanted = true; subscribeLeagueData(); } catch(_) {}
@@ -70086,6 +70270,8 @@ window._EJ = {
         };
         window.openLeagueChalWin = function() {
             const old = document.getElementById('leagueChalWin'); if (old) old.remove();
+            // 도전 창 진입: 전체 학생 쿠키/레벨 1회 동기화 (상대 레벨 표시 최신화, 스로틀 우회)
+            try { window._syncAllLevelsSilent && window._syncAllLevelsSilent(true); } catch(_){}
             // 카드 HTML을 지금 생성 (평소 렌더에선 생략됨) — 캐시 데이터로 동기 빌드
             // 대전 클릭 시 — 구독 보장(로컬 캐시로 즉시 빌드 + 이후 변경은 구독으로 수신해 열린 창 자동 갱신). 이미 구독 중이면 캐시 렌더만이라 추가 트래픽 없음.
             try { _lgLobbyWanted = true; subscribeLeagueData(); } catch(_) {}
