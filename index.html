@@ -3722,6 +3722,73 @@ let _renderLock = false; // 재진입 방지
         const _su = window._shopUsedAtomicDelta || 0;
         if(_su) me.shopUsed = (me.shopUsed||0) + _su;
     };
+    // 🛡️ inv 신규 아이템(구매·뽑기·교환 등 학생 본인 추가분) 보호 — 통화 델타(_applyPendingCurDelta)와 동일 취지.
+    //   echo 병합(me[k]=v[k])이 me.inv를 서버값으로 통째 덮어쓰면, 아직 flush 안 된 신규 아이템이 사라진다.
+    //   → 화면에서 즉시 소실되고, 그 직후 다른 upMe(예: 쿠키 폴링)가 아이템 빠진 me로 _safe를 재캡처해 저장하면
+    //     서버에서도 영구 소실 + 차감된 쿠키(shopUsed)는 그대로 남아 학생이 이중 손해.
+    //   _pendingInvAdds에 _pid로 기록 → echo 직후 _applyPendingInvAdds로 재적용해 두 경로 모두 차단.
+    //   pending은 upMe write가 _safe.inv(절대값)를 flush할 때 소비(통화 델타와 동일 수명).
+    //   _pid는 non-enumerable → JSON.stringify·Firebase 직렬화(상점 raw inv write 포함) 모두 자동 제외돼 서버 오염 없음.
+    window._pendingInvAdds = window._pendingInvAdds || [];
+    function _setInvPid(it, pid){
+        try { Object.defineProperty(it, '_pid', { value: pid, enumerable:false, writable:true, configurable:true }); }
+        catch(_){ try { it._pid = pid; } catch(__){} }
+    }
+    window._meInvPush = function(it){
+        if(!me) return it;
+        if(!Array.isArray(me.inv)) me.inv = me.inv ? Object.values(me.inv).filter(Boolean) : [];
+        const _pid = '_iv' + Date.now() + '_' + (window._invPidSeq = (window._invPidSeq||0) + 1);
+        _setInvPid(it, _pid);
+        me.inv.push(it);
+        // snap엔 _pid(non-enum)가 안 담기므로 재적용 시 다시 부여 — pending entry의 _pid가 진실의 원천
+        let _snap; try { _snap = JSON.parse(JSON.stringify(it)); } catch(_){ _snap = it; }
+        window._pendingInvAdds.push({ _pid, snap: _snap });
+        return it;
+    };
+    window._applyPendingInvAdds = function(){
+        if(!me || me.cd === 'teacher_main') return;
+        const _adds = window._pendingInvAdds;
+        if(!_adds || !_adds.length) return;
+        if(!Array.isArray(me.inv)) me.inv = me.inv ? Object.values(me.inv).filter(Boolean) : [];
+        _adds.forEach(e => {
+            if(e && e._pid && !me.inv.some(it => it && it._pid === e._pid)) {
+                let _copy; try { _copy = JSON.parse(JSON.stringify(e.snap)); } catch(_){ _copy = e.snap; }
+                _setInvPid(_copy, e._pid);
+                me.inv.push(_copy);
+            }
+        });
+    };
+    // 🛡️ 컬렉션(avtOwned/earnedBdg/col/ownedPets) echo 덮어쓰기 보호 — inv(_applyPendingInvAdds)와 동일 취지.
+    //   split 리스너 echo가 me[k]=v[k]로 이 SET류 컬렉션을 stale 서버값으로 덮으면, 아직 flush 안 된 신규 획득분이
+    //   사라지고 후속 upMe 재캡처로 영구 손실(아바타·펫·뱃지·도감). push 사이트(~30곳) 변경 대신 baseline 기반 중앙처리:
+    //   _lastFlushedCols = 마지막 서버 write 시점의 컬렉션. echo 직전 _prev와 baseline을 비교해 "pending 추가분
+    //   (=_prev엔 있는데 baseline엔 없는 항목)"만 서버값에 다시 합친다 → 교사 회수(baseline에 있던 항목 삭제)는
+    //   부활하지 않음(그건 pending이 아니므로). ownedPets는 defId, 그 외는 값 자체로 식별.
+    window._colCaptureCols = function(){
+        const COLS = ['avtOwned','earnedBdg','col','ownedPets'];
+        const _o = {};
+        COLS.forEach(f => { _o[f] = Array.isArray(me && me[f]) ? me[f].slice() : (me && me[f] ? Object.values(me[f]).filter(Boolean) : []); });
+        return _o;
+    };
+    window._applyPendingColAdds = function(_prev){
+        if(!me || me.cd === 'teacher_main' || !_prev) return;
+        const COLS = ['avtOwned','earnedBdg','col','ownedPets'];
+        // baseline 미설정 시: 현재(서버 반영) 상태를 baseline으로만 잡고 이번엔 재적용 안 함(허위 부활 방지)
+        if(!window._lastFlushedCols) { window._lastFlushedCols = window._colCaptureCols(); return; }
+        const _base = window._lastFlushedCols;
+        COLS.forEach(f => {
+            const prevArr = Array.isArray(_prev[f]) ? _prev[f] : null;
+            if(!prevArr || !prevArr.length) return;
+            const isPet = (f === 'ownedPets');
+            const _key = it => isPet ? (it && it.defId) : it;
+            const baseKeys = new Set((Array.isArray(_base[f]) ? _base[f] : []).map(_key));
+            const pending = prevArr.filter(it => it != null && !baseKeys.has(_key(it)));
+            if(!pending.length) return;
+            if(!Array.isArray(me[f])) me[f] = me[f] ? Object.values(me[f]).filter(Boolean) : [];
+            const curKeys = new Set(me[f].map(_key));
+            pending.forEach(it => { if(!curKeys.has(_key(it))) { me[f].push(it); curKeys.add(_key(it)); } });
+        });
+    };
     // 용사 레벨용 '순수 다했니 쿠키' — me.cookie는 교사 지급(execGiveCoin 'c')·은행 이자로 오염될 수
     // 있어 레벨 산정에서 제외한다. 다했니 출처(라이브 캐시 + 폴링 캐시)는 누적값이라 단조 증가 →
     // 둘 중 최댓값으로 새로고침 시 stale 깜빡임 방지. 순수 다했니 소스가 전혀 없을 때만 랭크캐시→me.cookie 폴백.
@@ -4676,12 +4743,36 @@ let _renderLock = false; // 재진입 방지
     }
     window._isPlzHoursBlocked = _isPlzHoursBlocked;
 
+    // 접속 가능 시간(plzHours) 제한 면제 방 판정 — 타자연습방·OX퀴즈방은 시간 제한을 따르지 않음.
+    //  엔트리 시점엔 방 cfg가 아직 로드 전이므로 picker가 미리 캐싱한 값(_plzTypingRoomCache/_plzOxRoomCache)을
+    //  우선 사용하고, 방 진입 후엔 enterPlaza가 확정한 _plzCurRoomIsOx + db.cfg 폴백으로 본다.
+    function _isPlzHoursExemptRoom(rid) {
+        rid = rid || _plzCurRoom;
+        const tCache = window._plzTypingRoomCache || {};
+        if(tCache[rid]) return true; // 타자 전용방
+        const oCache = window._plzOxRoomCache || {};
+        if(oCache[rid]) return true; // OX 퀴즈방
+        // 방 진입 후 폴백: 현재 방이면 enterPlaza가 확정한 OX 여부
+        if(rid === _plzCurRoom && window._plzCurRoomIsOx) return true;
+        // db.cfg 폴백 (학생이 plzRooms를 로드한 경우)
+        const meta = (db.cfg && db.cfg.plzRooms && db.cfg.plzRooms[rid] && db.cfg.plzRooms[rid].plz) || {};
+        if(meta.typingRoomOn === true || meta.oxQuizOn === true) return true;
+        return false;
+    }
+    window._isPlzHoursExemptRoom = _isPlzHoursExemptRoom;
+
     // plzHours Firebase 변경 수신 시 실시간 반영
     function _checkPlzHoursLive() {
         if(window._isTeacherSession) return;
         const plzHours = (db.cfg && db.cfg.plzHours) || {};
         const blocked = _isPlzHoursBlocked(plzHours);
         if(window._plzActive) {
+            // 면제 방(타자연습방·OX퀴즈방)에 있으면 시간 제한으로 퇴장시키지 않음
+            if(blocked && _isPlzHoursExemptRoom()) {
+                window._plzHoursKickPending = false;
+                if(window._plzHoursKickWatcher) { clearInterval(window._plzHoursKickWatcher); window._plzHoursKickWatcher = null; }
+                return;
+            }
             if(blocked) {
                 const gameActive = window._anyPlzGameActive && window._anyPlzGameActive();
                 if(gameActive) {
@@ -4736,6 +4827,7 @@ let _renderLock = false; // 재진입 방지
         window._plzHoursExitTimer = setTimeout(() => {
             window._plzHoursExitTimer = null;
             if(!window._plzActive) return;
+            if(window._isPlzHoursExemptRoom && window._isPlzHoursExemptRoom()) return; // 타자연습방·OX퀴즈방은 시간 종료 자동퇴장 면제
             const gameActive = window._anyPlzGameActive && window._anyPlzGameActive();
             if(gameActive) {
                 window._plzHoursKickPending = true;
@@ -5163,11 +5255,16 @@ let _renderLock = false; // 재진입 방지
                     const _prevInvArr = Array.isArray(me.inv) ? me.inv : Object.values(me.inv || {});
                     const _prevCookieReqCount = _prevInvArr.filter(it => it && it.type === 'cookie_req' && it.locked).length;
                     if(v.titNotify) console.log('[STUOWN-cd] titNotify 수신 raw=', JSON.stringify(v.titNotify));
+                    const _prevCols = window._colCaptureCols ? window._colCaptureCols() : null; // echo 덮어쓰기 전 컬렉션 스냅샷
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
                     try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
                     // co/cn/tk(꿀·캔디·바구니): 미flush 로컬 차감/지급 델타를 echo가 되돌리지 않도록 재적용
                     try { window._applyPendingCurDelta && window._applyPendingCurDelta(); } catch(_){}
+                    // inv: 미flush 신규 아이템(구매·뽑기 등)을 echo가 me.inv 덮어쓰며 날리지 않도록 재적용
+                    try { window._applyPendingInvAdds && window._applyPendingInvAdds(); } catch(_){}
+                    // 컬렉션(아바타·펫·뱃지·도감): 미flush 신규 획득분을 echo가 덮어쓰며 날리지 않도록 재적용
+                    try { window._applyPendingColAdds && window._applyPendingColAdds(_prevCols); } catch(_){}
                     // 외부(교사) 갱신만 시퀀스 증가 — 자기 write echo는 제외(정상 요청이 병합으로 되돌려지는 회귀 방지)
                     if(!(v && v.updatedAt && window._myWrittenTs && window._myWrittenTs.includes(v.updatedAt))) {
                         window._meSyncSeq = (window._meSyncSeq || 0) + 1;
@@ -5240,11 +5337,16 @@ let _renderLock = false; // 재진입 방지
                     const _prevCookieReqCount2 = _prevInvArr2.filter(it => it && it.type === 'cookie_req' && it.locked).length;
                     const _prevPetSkinSale2 = me.petSkinSale;
                     if(v.titNotify) console.log('[STUOWN-idx] titNotify 수신 raw=', JSON.stringify(v.titNotify));
+                    const _prevCols2 = window._colCaptureCols ? window._colCaptureCols() : null; // echo 덮어쓰기 전 컬렉션 스냅샷
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
                     try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
                     // co/cn/tk(꿀·캔디·바구니): 미flush 로컬 차감/지급 델타를 echo가 되돌리지 않도록 재적용
                     try { window._applyPendingCurDelta && window._applyPendingCurDelta(); } catch(_){}
+                    // inv: 미flush 신규 아이템(구매·뽑기 등)을 echo가 me.inv 덮어쓰며 날리지 않도록 재적용
+                    try { window._applyPendingInvAdds && window._applyPendingInvAdds(); } catch(_){}
+                    // 컬렉션(아바타·펫·뱃지·도감): 미flush 신규 획득분을 echo가 덮어쓰며 날리지 않도록 재적용
+                    try { window._applyPendingColAdds && window._applyPendingColAdds(_prevCols2); } catch(_){}
                     // 외부(교사) 갱신만 시퀀스 증가 — 자기 write echo는 제외(정상 요청이 병합으로 되돌려지는 회귀 방지)
                     if(!(v && v.updatedAt && window._myWrittenTs && window._myWrittenTs.includes(v.updatedAt))) {
                         window._meSyncSeq = (window._meSyncSeq || 0) + 1;
@@ -8533,7 +8635,7 @@ let _renderLock = false; // 재진입 방지
             const _stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
             const fbKey = _cdMig ? me.cd : _stuArr.findIndex(s => s && String(s.cd) === String(me.cd));
             if(fbKey !== -1 && fbKey !== undefined) {
-                dbRef.child(`stu/${fbKey}/inv`).set(me.inv);
+                dbRef.child(`stu/${fbKey}/inv`).set(me.inv); window._pendingInvAdds = []; // raw inv 영속화 → pending 소비(이후 echo 중복 방지)
             } else if(typeof upMe === 'function') upMe();
         } catch(e) { if(typeof upMe === 'function') upMe(); }
         try { showToast && showToast('↩️ 통과가 취소됐어요.'); } catch(_){}
@@ -8612,7 +8714,7 @@ let _renderLock = false; // 재진입 방지
             if(fbKey !== -1 && fbKey !== undefined) {
                 if(_allDone) {
                     // 완료: locked/st/useDate 등 여러 필드 변경 → full inv write
-                    dbRef.child(`stu/${fbKey}/inv`).set(me.inv);
+                    dbRef.child(`stu/${fbKey}/inv`).set(me.inv); window._pendingInvAdds = []; // raw inv 영속화 → pending 소비(이후 echo 중복 방지)
                 } else {
                     // 미완료: checkedDates만 업데이트 (full inv 10KB → 수백 bytes 절감)
                     dbRef.child(`stu/${fbKey}/inv/${invIdx}/checkedDates`).set(item.checkedDates);
@@ -8717,7 +8819,7 @@ let _renderLock = false; // 재진입 방지
             const _stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
             const fbKey = _cdMig ? me.cd : _stuArr.findIndex(s => s && String(s.cd) === String(me.cd));
             if(fbKey !== -1 && fbKey !== undefined) {
-                dbRef.child(`stu/${fbKey}/inv`).set(me.inv);
+                dbRef.child(`stu/${fbKey}/inv`).set(me.inv); window._pendingInvAdds = []; // raw inv 영속화 → pending 소비(이후 echo 중복 방지)
             } else if(typeof upMe === 'function') upMe();
         } catch(e) { if(typeof upMe === 'function') upMe(); }
         document.getElementById('_lockMissionFailConfirm')?.remove();
@@ -11940,9 +12042,10 @@ let _renderLock = false; // 재진입 방지
             if(refund > 0) {
                 if(cur === 'kc') {
                     me.shopUsed = Math.max(0, (me.shopUsed||0) - refund);
-                    // pending delta에서 환불분 차감 (buy와 cancel이 같은 300ms 안에 있을 때 increment 과다 방지)
-                    window._shopUsedAtomicDelta = Math.max(0, (window._shopUsedAtomicDelta||0) - refund);
-                } else me[cur] = (me[cur]||0) + refund;
+                    // pending delta에서 환불분 차감 — 음수 허용(클램프 금지). 같은 300ms 내 buy+cancel은 net으로 상쇄되고,
+                    //   이전 window의 구매 취소는 음수 델타→increment(-refund)로 race-safe하게 서버 반영(절대값 write 클로버 방지).
+                    window._shopUsedAtomicDelta = (window._shopUsedAtomicDelta||0) - refund;
+                } else { me[cur] = (me[cur]||0) + refund; if(cur==='co'||cur==='cn'||cur==='tk'){ if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta[cur] += refund; } }
             }
             me.inv.splice(idx, 1);
         });
@@ -11958,8 +12061,9 @@ let _renderLock = false; // 재진입 방지
         if(refund > 0) {
             if(cur === 'kc') {
                 me.shopUsed = Math.max(0, (me.shopUsed||0) - refund);
-                window._shopUsedAtomicDelta = Math.max(0, (window._shopUsedAtomicDelta||0) - refund);
-            } else me[cur] = (me[cur]||0) + refund;
+                // 환불 델타 음수 허용(클램프 금지) → increment(-refund)로 race-safe 반영 (절대값 write 클로버 방지)
+                window._shopUsedAtomicDelta = (window._shopUsedAtomicDelta||0) - refund;
+            } else { me[cur] = (me[cur]||0) + refund; if(cur==='co'||cur==='cn'||cur==='tk'){ if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta[cur] += refund; } }
         }
         me.inv.splice(idx, 1);
         upMe(); rBg();
@@ -12134,6 +12238,19 @@ let _renderLock = false; // 재진입 방지
             const _exists = (Array.isArray(db.stu) ? db.stu : []).some(s => s && String(s.cd) === String(key));
             if (!_exists) { console.error('[정크키차단] _upMeWriteCore: 실제 cd 아님 —', key); return; }
         }
+        // 🛡️ inv 보호 마무리: 이 write가 _safe.inv(절대값)를 서버에 flush하므로 pending 신규아이템 소비
+        //   (통화 델타 소비와 동일 수명). _pid는 non-enumerable이라 _safe(JSON 복사)엔 이미 없어 서버 오염 없음.
+        window._pendingInvAdds = [];
+        // 🛡️ 컬렉션 baseline 갱신 — 이 write가 _safe의 컬렉션을 서버에 반영하므로, 이후 echo의 pending 계산 기준을
+        //   방금 쓴 값으로 설정(_safe 캡처 후 me에 더 들어온 항목은 baseline에 없으므로 pending으로 보호됨).
+        try {
+            window._lastFlushedCols = {
+                avtOwned: Array.isArray(_safe.avtOwned)?_safe.avtOwned.slice():[],
+                earnedBdg: Array.isArray(_safe.earnedBdg)?_safe.earnedBdg.slice():[],
+                col: Array.isArray(_safe.col)?_safe.col.slice():[],
+                ownedPets: Array.isArray(_safe.ownedPets)?_safe.ownedPets.slice():[]
+            };
+        } catch(_){}
         try {
             // shopLog는 별도 경로(shopLog/{cd})에 쓰고, stu 노드에서는 제외 (트래픽 절감)
             let _shopLogToWrite = null;
@@ -12155,7 +12272,10 @@ let _renderLock = false; // 재진입 방지
                 if(v !== lastHash[k]) updates[k] = _safeWithoutShopLog[k];
             });
             // 절대 null로 쓰면 안 되는 핵심 필드 — 부분 로드된 me가 이 필드를 빠뜨려도 삭제하지 않음
-            const _noNullFields = new Set(['cd','nm','no','gdr','cookie','usedCookie','shopUsed','co','cn','tk','updatedAt']);
+            //   화폐(cd~tk) + 항상 존재하는 컬렉션/착용 필드(inv/col/avtOwned/earnedBdg/earnedTit/ownedPets/eq/
+            //   displayPets/equippedTit). 이들은 비어도 []/{}로 존재 → 키가 빠지면 부분로드 사고이므로 서버 wipe 차단.
+            const _noNullFields = new Set(['cd','nm','no','gdr','cookie','usedCookie','shopUsed','co','cn','tk','updatedAt',
+                'inv','col','avtOwned','earnedBdg','earnedTit','ownedPets','eq','displayPets','equippedTit']);
             Object.keys(lastHash).forEach(k => { if(!(k in _safeWithoutShopLog) && !_noNullFields.has(k)) updates[k] = null; });
             // shopUsed race 방지: pending delta는 write 여부와 무관하게 소비 (avt-direct 이후 중복 방지)
             const _pendingDelta = window._shopUsedAtomicDelta || 0;
@@ -12166,8 +12286,10 @@ let _renderLock = false; // 재진입 방지
             // 🛡️ 미flush 델타 강제 포함: 차감 후 값이 우연히 직전 기록 해시와 같아 updates에서 누락되면
             //   아래 increment 치환이 건너뛰어져 차감이 영영 저장 안 되는 버그 방지. (값은 increment로 치환됨)
             ['co','cn','tk'].forEach(_cf => { if(_curDelta[_cf]) updates[_cf] = _safeWithoutShopLog[_cf]; });
-            // shopUsed도 동일 — 양수 델타(increment 경로)만 강제 포함. (음수/환불 절대값 경로는 기존 동작 유지)
-            if(_pendingDelta > 0) updates.shopUsed = _safeWithoutShopLog.shopUsed;
+            // shopUsed도 동일 — 양수(구매)·음수(환불/취소/레벨업보너스) 델타 모두 increment 경로로 강제 포함.
+            //   (과거 양수만 increment·음수는 절대값 write라, 학생 환불이 교사 동시 회수(shopUsed 트랜잭션)·
+            //    멀티탭 increment를 덮어써 화폐가 날아가던 레이스 수정. co/cn/tk와 동일한 양방향 increment 정책.)
+            if(_pendingDelta !== 0) updates.shopUsed = _safeWithoutShopLog.shopUsed;
             if(Object.keys(updates).length > 0) {
                 const _ts = Date.now();
                 _safeWithoutShopLog.updatedAt = _ts;
@@ -12177,7 +12299,7 @@ let _renderLock = false; // 재진입 방지
                 if(!window._myWrittenTs) window._myWrittenTs = [];
                 window._myWrittenTs.push(_ts);
                 if(window._myWrittenTs.length > 8) window._myWrittenTs.shift();
-                if('shopUsed' in updates && _pendingDelta > 0) {
+                if('shopUsed' in updates && _pendingDelta !== 0) {
                     updates.shopUsed = firebase.database.ServerValue.increment(_pendingDelta);
                 }
                 // co/cn/tk: 차감 델타가 있으면 절대값 대신 increment → 교사의 동시 지급분이 덮어써지지 않음
@@ -15944,15 +16066,22 @@ let _renderLock = false; // 재진입 방지
         const stuCd = s.cd;
         const type = document.getElementById('_giveCoinType')?.value || 'cn';
         const amt = Math.max(1, parseInt(document.getElementById('_giveCoinAmt')?.value)||1);
-        if(type==='c') s.cookie = (s.cookie||0) + amt;
+        // 🍪 쿠키 지급은 s.cookie 직접 증가 금지 — cookie는 다했니 권위값이라 학생 1분 폴링(syncMyCookieSilent)이
+        //   다했니 값으로 덮어써 지급이 ~1분 내 사라짐. 레벨업 보너스(7483)·48306과 동일하게 폴링이 안 건드리는
+        //   shopUsed를 음수 차감해 가용 잔액(cookie-usedCookie-shopUsed)을 늘린다.
+        if(type==='c') s.shopUsed = (s.shopUsed||0) - amt;
         else s[type] = (s[type]||0) + amt;
         db.stu = stuList;
         // Bug-1 fix: transaction으로 동시 쓰기 충돌 방지
         if(s.cd && window._stuListenerReady) {
             const _cdMigG = !!(db.cfg && db.cfg.stuKeyCdMigrated);
             const _fbKeyG = _cdMigG ? s.cd : si;
-            const _fieldG = (type==='c') ? 'cookie' : type;
-            dbRef.child('stu/' + _fbKeyG + '/' + _fieldG).transaction(cur => (cur || 0) + amt)
+            const _fieldG = (type==='c') ? 'shopUsed' : type;
+            const _deltaG = (type==='c') ? -amt : amt;   // 쿠키 지급 = shopUsed 감소(가용 잔액 증가)
+            dbRef.child('stu/' + _fbKeyG + '/' + _fieldG).transaction(cur => {
+                const _n = (cur || 0) + _deltaG;
+                return _fieldG === 'shopUsed' ? _n : Math.max(0, _n);   // shopUsed는 음수 허용(보너스 화폐)
+            })
                 .then(() => { dbRef.child('stu/' + _fbKeyG + '/updatedAt').set(Date.now()); })
                 .catch(err => { console.warn('execGiveCoin transaction failed:', err); window._svStu([si]); });
         } else {
@@ -15976,7 +16105,8 @@ let _renderLock = false; // 재진입 방지
         prettyConfirm(`대기 항목 <b>${targets.length}건</b>을<br>모두 승인할까요?`, function(){
             targets.forEach(g=>{
                 g.items.forEach(x=>{
-                    const s=stuList[x.si];
+                    // cd 우선 조회 — index(x.si)는 학생 삭제(splice) 시 흔들려 오대상 승인 위험. 미발견 시 skip.
+                    const s = x.cd ? (db.stu||[]).find(t=>t&&String(t.cd)===String(x.cd)) : stuList[x.si];
                     if(!s) return;
                     if(x.y==='c'&&s.inv&&s.inv[x.k]) { const _it=s.inv[x.k]; if(_it.st==='shop_req') _it.st='active'; else if(_it.st==='req') _it.reqApproved=true; else _it.st='used'; }
                     else if(x.y==='l'&&s.ibx&&s.ibx[x.k]) s.ibx[x.k].st='used';
@@ -16081,7 +16211,8 @@ let _renderLock = false; // 재진입 방지
         if(!confirm(`전체 학생의 대기 항목 ${allReq.length}건을 모두 승인하시겠습니까?`)) return;
         allReq.forEach(g=>{
             g.items.forEach(x=>{
-                const s=stuList[x.si];
+                // cd 우선 조회 — index(x.si)는 학생 삭제(splice) 시 흔들려 오대상 승인 위험. 미발견 시 skip.
+                const s = x.cd ? (db.stu||[]).find(t=>t&&String(t.cd)===String(x.cd)) : stuList[x.si];
                 if(!s) return;
                 if(x.y==='c'&&s.inv&&s.inv[x.k]) { const _it=s.inv[x.k]; if(_it.st==='shop_req') _it.st='active'; else if(_it.st==='req') _it.reqApproved=true; else _it.st='used'; }
                 else if(x.y==='l'&&s.ibx&&s.ibx[x.k]) s.ibx[x.k].st='used';
@@ -16354,11 +16485,21 @@ let _renderLock = false; // 재진입 방지
                 if(s2) {
                     s2.shopLog = trimmed;
                     if(cost > 0) {
-                        if(cur==='kc') s2.shopUsed = Math.max(0, (s2.shopUsed||0) - cost);
-                        else s2[cur] = (s2[cur]||0) + cost;
+                        // 절대값+전체레코드 write 대신 per-field 트랜잭션(델타) — 학생 동시 spend/earn·컬렉션 변경 클로버 방지
+                        //   (execGiveCoin·_coinClick과 동일 안전 패턴). 환불=kc는 shopUsed -cost, 그 외는 +cost.
+                        if(cur==='kc') {
+                            s2.shopUsed = Math.max(0, (s2.shopUsed||0) - cost);
+                            if(window._svStuCurField) window._svStuCurField(s2, 'shopUsed', -cost, 'delta');
+                            else if(window._svStuByCd) window._svStuByCd(stuCd); else sv();
+                        } else {
+                            s2[cur] = (s2[cur]||0) + cost;
+                            if(window._svStuCurField) window._svStuCurField(s2, cur, cost, 'delta');
+                            else if(window._svStuByCd) window._svStuByCd(stuCd); else sv();
+                        }
+                    } else {
+                        // 비용 0(통화 변경 없음) — 기존대로 전체 저장(shopLog는 별도 경로에 이미 기록됨)
+                        if(window._svStuByCd) window._svStuByCd(stuCd); else sv();
                     }
-                    // [P1] 학생 1명만 변경
-                    if(window._svStuByCd) window._svStuByCd(stuCd); else sv();
                 }
                 const bk = document.getElementById('_allPurchaseModal'); if(bk) bk.remove();
                 window.showAllPurchaseLog();
@@ -17474,8 +17615,8 @@ let _renderLock = false; // 재진입 방지
             if(!s) return;
             const _inv = Array.isArray(s.inv) ? s.inv : Object.values(s.inv||{}).filter(Boolean);
             const _ibx = Array.isArray(s.ibx) ? s.ibx : Object.values(s.ibx||{}).filter(Boolean);
-            _inv.forEach((t,k)=>{ if(t && t.st==='jukebox') return; l.push({y:'c',si,k,t,sn:s.nm,no:s.no}); });
-            _ibx.forEach((t,k)=>{ if(t.y==='sys') return; l.push({y:'l',si,k,t,sn:s.nm,no:s.no}); });
+            _inv.forEach((t,k)=>{ if(t && t.st==='jukebox') return; l.push({y:'c',si,k,t,sn:s.nm,no:s.no,cd:s.cd}); });
+            _ibx.forEach((t,k)=>{ if(t.y==='sys') return; l.push({y:'l',si,k,t,sn:s.nm,no:s.no,cd:s.cd}); });
             // [FIX 2026-05-21] 카탈로그 lookup 실패한 dangling reference 는 표시 안 함 + 동일 id 중복 제거
             // 아바타 보유 항목 (inv에 이미 shop_req/active 항목이 있으면 중복 방지)
             const _seenAvt = new Set();
@@ -20843,7 +20984,7 @@ window.appU = function(y, si, k) {
                         // 증분 보호 편입 — 절대값 쓰기로 교사 동시지급분이 덮어써지지 않게 (구매 경로와 동일)
                         if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta.tk -= _vbAmt;
                         _consumeChosenVoucher();
-                        me.inv.push({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
+                        window._meInvPush({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
                         if(!me.col) me.col = [];
                         if(!getDef.excludeFromCol && !me.col.includes(getDef.n)) me.col.push(getDef.n);
                         try { _pushShopLog({type:'쿠폰 교환', name:`🧺바구니×${_vbAmt} → ${getDef.n}`, cost:0, ts:Date.now()}); } catch(_){}
@@ -20990,7 +21131,7 @@ window.appU = function(y, si, k) {
             // 2) 교환권 events에서 선택한 유효기간 것 1건 제거
             _consumeChosenVoucher();
             // 3) 받을 쿠폰 1개 inv 추가
-            me.inv.push({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
+            window._meInvPush({ n: getDef.n, i: getDef.i, st:'active', g: getDef.g||'C' });
             if(!me.col) me.col = [];
             if(!getDef.excludeFromCol && !me.col.includes(getDef.n)) me.col.push(getDef.n);
             // 화폐 스냅샷 복원 — 교환은 쿠폰 ↔ 쿠폰 1:1 이며 화폐를 건드리면 안 됨
@@ -22564,7 +22705,7 @@ window.appU = function(y, si, k) {
             _pushShopLog({type:'아이템 구입', name:item.n, cost:effectiveCost, cur:cType, passUsed, mondayUsed, ts:Date.now()});
         }
 
-        me.inv.push({n: item.n, i: item.i, st: 'active', g: item.g || 'C'});
+        window._meInvPush({n: item.n, i: item.i, st: 'active', g: item.g || 'C'});
         if (!me.col) me.col = [];
         if (!me.col.includes(item.n)) me.col.push(item.n);
 
@@ -22746,7 +22887,7 @@ window.appU = function(y, si, k) {
             if(it.type==='avt'){
                 if(!me.avtOwned.includes(it.id)) me.avtOwned.push(it.id);
             } else {
-                me.inv.push({n:it.n, i:it.i||'🎁', st:'active', g:'C', setName:set.name});
+                window._meInvPush({n:it.n, i:it.i||'🎁', st:'active', g:'C', setName:set.name});
                 if(!me.col) me.col=[];
                 if(!me.col.includes(it.n)) me.col.push(it.n);
             }
@@ -23626,9 +23767,12 @@ window.appU = function(y, si, k) {
             // 성공: 비용 차감 및 로컬 상태 갱신
             if(cType==='kc') {
                 me.shopUsed=(me.shopUsed||0)+effCost;
+                // race 방지: 다른 구매 경로와 동일하게 increment 델타 추적 (교사 동시 회수·멀티탭 클로버 방지)
+                window._shopUsedAtomicDelta=(window._shopUsedAtomicDelta||0)+effCost;
                 _pushShopLog({type:'뽑기(오프라인)', name:g.n, cost:effCost, passUsed, ts:Date.now()});
             } else if(cType!=='item') {
                 me[cType]=(me[cType]||0)-effCost;
+                if(cType==='co'||cType==='cn'||cType==='tk'){ if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta[cType]-=effCost; }
                 _pushShopLog({type:'뽑기(오프라인)', name:g.n, cost:effCost, cur:cType, passUsed, ts:Date.now()});
             }
             db.gacQueue[gacNm] = snapshot.val();
@@ -23674,8 +23818,14 @@ window.appU = function(y, si, k) {
             const passUsed = _removedEntry.passUsed || 0;
             const cType = g.cur||'cn';
             const effCost = g.c - passUsed;
-            if(cType==='kc') me.shopUsed=Math.max(0,(me.shopUsed||0)-effCost);
-            else me[cType]=(me[cType]||0)+effCost;
+            if(cType==='kc') {
+                me.shopUsed=Math.max(0,(me.shopUsed||0)-effCost);
+                // 환불도 increment 델타로 (음수) — 절대값 write 클로버 방지. buy와 대칭.
+                window._shopUsedAtomicDelta=(window._shopUsedAtomicDelta||0)-effCost;
+            } else {
+                me[cType]=(me[cType]||0)+effCost;
+                if(cType==='co'||cType==='cn'||cType==='tk'){ if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta[cType]+=effCost; }
+            }
             // BUG-08 fix: 신청 시 기록한 정확한 인덱스로만 복원
             const _savedIdx = _removedEntry.passIdx;
             if(Array.isArray(_savedIdx) && _savedIdx.length) {
@@ -24853,7 +25003,7 @@ let isScratchDone = false;
         if(me && !me.isTest) rBg();
         const cb = window._postGachaCallback; window._postGachaCallback = null; if(cb) setTimeout(cb, 300);
     }
-    function giveReward(item, bonus=0) {
+    function giveReward(item) {
         if(me.isTest) return;
         // ✨ 2배권 중간 단계: 두 번 연달아 뽑는 동안 보상 지급 보류
         if(window._gachaDoubleNoGive) {
@@ -24864,14 +25014,20 @@ let isScratchDone = false;
         if(item && item.currency) {
             const cur = item.currency;
             const qty = item._qty || item.q || 1;
-            if(cur === 'kc') me.cookie = (me.cookie||0) + qty;
+            if(cur === 'kc') {
+                // 쿠키 보상은 me.cookie 직접 증가 금지 — cookie는 다했니 권위값이라 1분 폴링(syncMyCookieSilent)이
+                //   덮어써 보상이 유실됨. 레벨업 보너스(7458)와 동일하게 폴링이 안 건드리는 shopUsed를 음수 차감해
+                //   가용 잔액을 늘리고, increment 델타로 race-safe 반영.
+                me.shopUsed = (me.shopUsed||0) - qty;
+                window._shopUsedAtomicDelta = (window._shopUsedAtomicDelta||0) - qty;
+            }
             else {
                 me[cur] = (me[cur]||0) + qty;
                 // 동일 화폐(co/cn/tk)로 차감 후 같은 화폐를 보상받는 경우: 차감 increment 델타에 보상도 합산해야
                 // upMe에서 absolute가 increment(차감)로 덮여 보상이 유실되는 회귀 방지 (net = -차감 +보상)
-                if((cur==='co'||cur==='cn'||cur==='tk') && window._curAtomicDelta) window._curAtomicDelta[cur] += qty;
+                // 델타 객체가 아직 없을 때도 추적하도록 초기화 — 그래야 보상이 increment로 race-safe하게 반영됨.
+                if(cur==='co'||cur==='cn'||cur==='tk'){ if(!window._curAtomicDelta) window._curAtomicDelta={co:0,cn:0,tk:0}; window._curAtomicDelta[cur] += qty; }
             }
-            if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
             window._gachaInProgress = false;
             upMe();
             try { rChar(); } catch(_){}
@@ -24897,7 +25053,6 @@ let isScratchDone = false;
                 if(!Array.isArray(me.earnedBdg)) me.earnedBdg = [];
                 if(!me.earnedBdg.includes(avtItem.setSkillId)) me.earnedBdg.push(avtItem.setSkillId);
             }
-            if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
             window._gachaInProgress = false; upMe(); rBg(); rChar(); return;
         }
         // 2순위: 펫 스킬(뱃지 → earnedBdg)
@@ -24905,7 +25060,6 @@ let isScratchDone = false;
         if(bdg) {
             if(!Array.isArray(me.earnedBdg)) me.earnedBdg = [];
             if(!me.earnedBdg.includes(bdg.id)) me.earnedBdg.push(bdg.id);
-            if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
             window._gachaInProgress = false; upMe(); rBg(); rChar(); return;
         }
         // 3순위: 합성 펫 정의(avt에 없을 때만 — ownedPets) — 합성 머신 차단 + sessionId idempotency
@@ -24914,11 +25068,9 @@ let isScratchDone = false;
         if(petDef && !petDef.gachaMachineId) {
             if(!Array.isArray(me.ownedPets)) me.ownedPets = [];
             window._safeAddOwnedPet({defId:petDef.id, isSpecial:petDef.type==='spGacha', skin:null, skill:null, gotAt:Date.now()});
-            if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
             window._gachaInProgress = false; upMe(); rChar(); return;
         } else if(petDef) {
             // 합성 머신 — push 스킵
-            if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
             window._gachaInProgress = false; upMe(); rChar(); return;
         }
         }
@@ -24927,12 +25079,10 @@ let isScratchDone = false;
 
         const qty = item._qty || 1;
         for(let k=0; k<qty; k++){
-            me.inv.push({n: item.n, i: item.i, st: 'active', g: item.g||'C'});
+            window._meInvPush({n: item.n, i: item.i, st: 'active', g: item.g||'C'});
         }
         if(!me.col) me.col = [];
         if(!me.col.includes(item.n)) me.col.push(item.n);
-        // 복권 보너스 쿠키 지급
-        if(bonus > 0) me.cookie = (me.cookie||0) + bonus;
 
         window._gachaInProgress = false;
         upMe(); rBg(); rSh(); rCol();
@@ -25054,7 +25204,7 @@ window.addCharRow = function() {
         if(validCount === 0) return alert("최소 한 개 이상의 부위와 번호를 입력해주세요!");
         
         reqs.forEach(req => {
-            me.inv.push({
+            window._meInvPush({
                 n: `캐릭터 제작: ${req.p}(${req.n})`,
                 i: '👤',
                 st: 'req',
@@ -32085,7 +32235,7 @@ window.addCharRow = function() {
             const _isSelf2 = String(item.creatorCd) === String(me.cd);
             if(_isSelf2) {
                 if(!Array.isArray(me.inv)) me.inv = me.inv ? Object.values(me.inv) : [];
-                for(let k=0; k<_earnActual; k++) me.inv.push(_passItem());
+                for(let k=0; k<_earnActual; k++) window._meInvPush(_passItem());
                 try { const _hSelf = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_hSelf) _hSelf['inv'] = JSON.stringify(me.inv); } catch(_){}
                 try { upMe(); } catch(_){}
             } else {
@@ -32131,6 +32281,8 @@ window.addCharRow = function() {
             me.avtOwned.push(item.id);
             if(item.price>0) {
                 me.shopUsed=(me.shopUsed||0)+item.price;
+                // race 방지: increment 델타 추적 (교사 동시 회수·멀티탭 클로버 방지). upMe가 increment로 write.
+                window._shopUsedAtomicDelta=(window._shopUsedAtomicDelta||0)+item.price;
                 _pushShopLog({type:'아바타 구입', name:item.nm||item.id, cost:item.price, ts:Date.now()});
                 if(item.creatorCd) _creatorPayQueue.push(item);
             }
@@ -32499,10 +32651,15 @@ window.addCharRow = function() {
             } else {
                 const _tsA = Date.now();
                 me.updatedAt = _tsA;
-                const _wpA = dbRef.child('stu/' + _kA).update({ avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: me.shopUsed, inv: me.inv, eq: me.eq, updatedAt: _tsA });
+                // shopUsed는 절대값 대신 increment(effectiveCost) — 교사 동시 회수(shopUsed 트랜잭션)·멀티탭을 덮어쓰지 않게.
+                //   직전 구매의 미flush delta는 reset하지 않음 → 그 buy의 upMe가 별도 increment로 flush.
+                //   (과거: 절대값 write + delta reset → 직전구매 upMe가 stale 절대값으로 effCost를 덮어쓰는 under-charge 레이스)
+                const _wpA = dbRef.child('stu/' + _kA).update({ avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: firebase.database.ServerValue.increment(effectiveCost), inv: me.inv, eq: me.eq, updatedAt: _tsA });
                 window._mirrorMyRankAvatar(); // 구매+자동착용은 stu만 직접 write → rank 미러도 갱신해야 대전/랭킹에 최신 반영
-                // avt-direct가 최신 me.shopUsed를 raw write했으므로 pending delta 소비 (중복 increment 방지)
-                window._shopUsedAtomicDelta = 0;
+                // 방금 increment로 권위 write → 이후 upMe가 shopUsed를 절대값으로 재기록(클로버)하지 않도록 hash 동기화
+                try { if(window._upMeLastHash && window._upMeLastHash[me.cd]) window._upMeLastHash[me.cd].shopUsed = JSON.stringify(me.shopUsed); } catch(_){}
+                // inv도 raw write로 영속화됨 → pending 신규아이템 소비 (이후 echo에서 중복 재적용 방지)
+                window._pendingInvAdds = [];
                 // 제작자 수익 — 메인 write 완료 후 지급(self-purchase inv race 방지)
                 if(_earnActual > 0) { _wpA.then(_creditAvtCreator).catch(()=>{ try{ _creditAvtCreator(); }catch(_){} }); }
             }
@@ -32784,7 +32941,11 @@ window.addCharRow = function() {
                 const _tsS = Date.now();
                 me.updatedAt = _tsS;
                 // 메인 write가 끝난 후에만 제작자 수익 지급 (상점 이용권 N개)
-                dbRef.child('stu/' + _kS).update({ avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: me.shopUsed, inv: me.inv, eq: me.eq, updatedAt: _tsS })
+                window._pendingInvAdds = []; // inv도 raw write로 영속화됨 → pending 소비(이후 echo 중복 방지)
+                // shopUsed는 절대값 대신 increment(effectiveCost) — 교사 동시 회수·멀티탭 클로버 방지 + 직전구매 delta 미리셋이라
+                //   절대값일 때 발생하던 이중차감(over-charge) 제거. 직전 delta는 그 buy의 upMe가 별도 increment로 flush.
+                try { if(window._upMeLastHash && window._upMeLastHash[me.cd]) window._upMeLastHash[me.cd].shopUsed = JSON.stringify(me.shopUsed); } catch(_){}
+                dbRef.child('stu/' + _kS).update({ avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: firebase.database.ServerValue.increment(effectiveCost), inv: me.inv, eq: me.eq, updatedAt: _tsS })
                     .then(()=>{ try { window._mirrorMyRankAvatar(); } catch(_){} }) // 살롱구매도 stu 직접 write → rank 미러 갱신
                     .then(()=>{
                         // 제작자 수익 지급 — 상점 이용권 N개 + 판매 알림
@@ -32820,7 +32981,7 @@ window.addCharRow = function() {
                                     if(_isSelf2) {
                                         // 본인 구입: me.inv에 직접 push (own 리스너 race condition 우회)
                                         if(!Array.isArray(me.inv)) me.inv = me.inv ? Object.values(me.inv) : [];
-                                        for(let k=0; k<_earnActual; k++) me.inv.push(_passItem());
+                                        for(let k=0; k<_earnActual; k++) window._meInvPush(_passItem());
                                         try { const _hSelf = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_hSelf) _hSelf['inv'] = JSON.stringify(me.inv); } catch(_){}
                                         try { upMe(); } catch(_){}
                                     } else {
@@ -39129,6 +39290,11 @@ window.addCharRow = function() {
                 }
                 // 타자 전용방은 인원제한 없음 → 카드에 접속자 수 대신 '도전 N/lim회' 표시 (메뉴와 동일 로직)
                 if(isTR && window._plzUpdTypingCard) window._plzUpdTypingCard(r.rid);
+            });
+            // [접속 가능 시간 면제] OX퀴즈방 여부도 미리 캐싱 → enterPlaza 엔트리 차단 판정에서 동기 참조
+            _trackedOnce(firebase.database().ref('ClassData/EventShop/plaza/' + r.rid + '/cfg/oxQuizOn'), snap => {
+                if(!window._plzOxRoomCache) window._plzOxRoomCache = {};
+                window._plzOxRoomCache[r.rid] = !!snap.val();
             });
         });
         // 즉시 1차 체크 (db 캐시 기준)
@@ -52342,6 +52508,9 @@ window.addCharRow = function() {
         // 이동 제한 토글은 새 방 cfg가 로드되기 전까지 false로 시작 (이전 방 값 잔류 방지). cfg.once/렌더에서 실제값 설정됨.
         // (자리 배치는 진입 시 lmSeatClaims 트랜잭션 시스템이 매번 처리)
         window._plzSeatLockOn = false;
+        // 현재 방 OX 여부도 새 방 cfg 로드 전까지 false로 초기화 (이전 방 값 잔류 → 시간제한 면제 오판 방지).
+        //  cfg.once에서 실제값으로 확정됨. (엔트리 차단 판정은 picker가 캐싱한 _plzOxRoomCache를 신뢰)
+        window._plzCurRoomIsOx = false;
         // C: 학생 탭은 광장 진입 직전 plzRoomsCfg를 한 번 새로고침해 최신 광장 설정 사용
         if(window._refreshPlzRoomsCfg) try { window._refreshPlzRoomsCfg(); } catch(_){}
 
@@ -52386,8 +52555,9 @@ window.addCharRow = function() {
         }
 
         // 접속 가능 시간 확인 (picker에서 plzHours 라이브 동기화 → db.cfg.plzHours 최신값 신뢰)
+        //  단, 타자연습방·OX퀴즈방은 시간 제한 면제 → 차단하지 않고 입장 허용.
         const plzHours = (db.cfg && db.cfg.plzHours) || {};
-        if(_isPlzHoursBlocked(plzHours)) {
+        if(_isPlzHoursBlocked(plzHours) && !_isPlzHoursExemptRoom(_plzCurRoom)) {
             const container = document.getElementById('s_plz');
             container.style.flexDirection = 'column';
             const _now = new Date();
@@ -52451,6 +52621,10 @@ window.addCharRow = function() {
             const cfg = snap.val() || {};
             // 캐시 저장 (다음번 빠른 진입용)
             try { localStorage.setItem('plzCfgCache_' + _plzCurRoom, JSON.stringify(cfg)); } catch(_) {}
+            // 현재 방 OX퀴즈 여부 확정 — 접속 가능 시간 제한 면제 판정에 사용
+            window._plzCurRoomIsOx = (cfg.oxQuizOn === true);
+            if(!window._plzOxRoomCache) window._plzOxRoomCache = {};
+            window._plzOxRoomCache[_plzCurRoom] = (cfg.oxQuizOn === true);
             // 이동 제한(자리 고정) 토글 — 진입 즉시 반영
             window._plzSeatLockOn = (cfg.seatLockOn === true);
             if(!cfg.open) {
@@ -58922,6 +59096,9 @@ window.addCharRow = function() {
 
         try {
             await firebase.database().ref().update(updates);
+            // 키오스크가 batch에서 shopUsed를 increment(권위·원자적)로 썼으므로, 직후 upMe가 같은 값을
+            //   절대값으로 재기록해 교사 동시 회수를 덮어쓰지 않도록 upMe hash를 현재값으로 동기화(재write 스킵).
+            try { if(window._upMeLastHash && window._upMeLastHash[me.cd]) window._upMeLastHash[me.cd].shopUsed = JSON.stringify(me.shopUsed); } catch(_){}
             window._kbsClose();
             try { upMe(); } catch(e2) {}
             var msg = qty > 1 ? '[' + s.itemName + '] × ' + qty + '개 신청 완료!' : '[' + s.itemName + '] 신청 완료!';
