@@ -1258,7 +1258,7 @@
             </div>
 
             <div id="couponPendingPanel" style="margin-top:10px;"></div>
-            <table style="margin-top:14px;"><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th style="color:#9E9E9E;font-size:11px;">🍪쿠키</th><th>🍯코인</th><th>🍭캔디</th><th>🧺바구니</th><th style="color:#8D6E63;font-size:12px;cursor:pointer;" onclick="deleteAllStudents()" title="전체 학생 삭제">🗑️</th></tr></thead><tbody id="ttb"></tbody><tfoot><tr><td colspan="8" onclick="showAddStuModal()" style="text-align:center;padding:10px;cursor:pointer;background:#FFF8E1;color:#8D6E63;font-size:20px;font-weight:bold;letter-spacing:2px;border-radius:0 0 10px 10px;transition:background 0.15s;" onmouseover="this.style.background='#FFE082'" onmouseout="this.style.background='#FFF8E1'">＋</td></tr></tfoot></table>
+            <table style="margin-top:14px;"><thead><tr><th><input type="checkbox" onchange="toggleAll(this)"></th><th>번호</th><th>이름</th><th style="color:#9E9E9E;font-size:11px;">🍪쿠키</th><th>🍯코인</th><th>🍭캔디</th><th>🧺바구니</th><th style="color:#8D6E63;font-size:12px;cursor:pointer;" onclick="deleteAllStudents()" title="전체 학생 삭제">🗑️</th></tr></thead><tbody id="ttb"></tbody><tfoot><tr><td colspan="9" onclick="showAddStuModal()" style="text-align:center;padding:10px;cursor:pointer;background:#FFF8E1;color:#8D6E63;font-size:20px;font-weight:bold;letter-spacing:2px;border-radius:0 0 10px 10px;transition:background 0.15s;" onmouseover="this.style.background='#FFE082'" onmouseout="this.style.background='#FFF8E1'">＋</td></tr></tfoot></table>
         </div>
         <div id="t_mgr" class="hidden"></div>
         <div id="t_jukebox" class="hidden">
@@ -1779,6 +1779,7 @@
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                         <button class="btn" style="background:#9C27B0;color:white;padding:6px 14px;font-size:13px;" onclick="genManitto()">🎲 뽑기</button>
                         <button class="btn" style="background:#43A047;color:white;padding:6px 14px;font-size:13px;" id="manittoRevealBtn" onclick="toggleManittoReveal()">🔒 비공개중</button>
+                        <button class="btn" style="background:#FB8C00;color:white;padding:6px 14px;font-size:13px;" id="manittoVoteBtn" onclick="toggleManittoVote()">🗳️ 정답투표 시작</button>
                         <button class="btn btn-red" style="padding:6px 14px;font-size:13px;" onclick="clearManitto()">🗑️ 초기화</button>
                     </div>
                 </div>
@@ -3721,6 +3722,11 @@ let _renderLock = false; // 재진입 방지
         //      클램프하면 음수 보너스가 0으로 깎이고, 음수 델타는 write가 절대값 경로라 영구 손실됨.
         const _su = window._shopUsedAtomicDelta || 0;
         if(_su) me.shopUsed = (me.shopUsed||0) + _su;
+        // tpMoney(타자 게임머니)도 동일 취지 — 학생 본인만 변경(보상 지급·환전 차감)하므로,
+        //   아직 flush 안 된 델타(_tpMoneyDelta)를 echo 병합(me[k]=v[k])이 stale 값으로 되돌리면
+        //   방금 번 게임머니가 사라진다. 델타는 upMe write 시 0으로 리셋되므로 남아있으면 미반영 → 중복 없음.
+        const _tm = window._tpMoneyDelta || 0;
+        if(_tm) me.tpMoney = Math.max(0, (me.tpMoney||0) + _tm);
     };
     // 🛡️ inv 신규 아이템(구매·뽑기·교환 등 학생 본인 추가분) 보호 — 통화 델타(_applyPendingCurDelta)와 동일 취지.
     //   echo 병합(me[k]=v[k])이 me.inv를 서버값으로 통째 덮어쓰면, 아직 flush 안 된 신규 아이템이 사라진다.
@@ -6329,12 +6335,29 @@ let _renderLock = false; // 재진입 방지
                 if (dirtyCds.length && window._svStuByCd) window._svStuByCd(dirtyCds);
             };
         }
-        // 마니또: 학생 로그인 시 공개 상태 즉시 반영을 위해 시작 시 1회 fetch
+        // 마니또: 로그인 시 메뉴 노출용 상태만 1회 fetch
+        // (학생은 pairs/votes 전체를 내려받으면 콘솔로 자기 마니또를 알 수 있으므로 flag만 읽음.
+        //  본인 pair/vote는 탭 진입 시 _fetchMyManittoPair/_fetchMyManittoVote가 개별 fetch)
         try {
-            dbRef.child('manitto').once('value').then(snap => {
-                const v = snap.val();
-                if(v) { db.manitto = v; try { window._updateManittoStatus && window._updateManittoStatus(); } catch(_){} }
-            }).catch(()=>{});
+            if(_teacherLogged) {
+                dbRef.child('manitto').once('value').then(snap => {
+                    const v = snap.val();
+                    if(v) { db.manitto = v; try { window._updateManittoStatus && window._updateManittoStatus(); } catch(_){} }
+                }).catch(()=>{});
+            } else {
+                Promise.all([
+                    dbRef.child('manitto/revealed').once('value'),
+                    dbRef.child('manitto/voteOpen').once('value')
+                ]).then(([rs, vs]) => {
+                    const rv = rs.val(), vo = vs.val();
+                    if(rv != null || vo != null) {
+                        if(!db.manitto) db.manitto = {};
+                        if(rv != null) db.manitto.revealed = !!rv;
+                        if(vo != null) db.manitto.voteOpen = !!vo;
+                        try { window._updateManittoStatus && window._updateManittoStatus(); } catch(_){}
+                    }
+                }).catch(()=>{});
+            }
         } catch(_){}
     } else {
         // _useSplit=true 로 고정되어 이 분기는 도달하지 않음 (레거시 fallback — 전체 DB 리스너 제거됨)
@@ -8898,7 +8921,7 @@ let _renderLock = false; // 재진입 방지
         };
         ensure('goldenTicket', {n:'골든 티켓', i:'🎫', g:'L', p:0, c:'cn', d:'방어자/유망주 추천으로 받는 티켓. 모아서 뽑기 가능!', special:'goldenTicket', needApprove:true, excludeFromCol:true});
         ensure('dalgona', {n:'달고나', i:'🍯', g:'L', p:0, c:'cn', d:'친구가 보낸 따뜻한 마음. 간식 달고나는 사용 가능!', special:'dalgona', needApprove:true, excludeFromCol:true});
-        ensure('voucher', {n:'쿠폰 교환권', i:'🎟️', g:'L', p:0, c:'cn', d:'클릭해서 쿠폰 1개와 교환할 수 있어요.', special:'voucher', excludeFromCol:true});
+        ensure('voucher', {n:'쿠폰 교환권', i:'🎫', g:'L', p:0, c:'cn', d:'클릭해서 쿠폰 1개와 교환할 수 있어요.', special:'voucher', excludeFromCol:true});
         // 뽑기 2배권 — 일반 inv 아이템(상점 이용권 패턴), 이름으로 식별
         const _dblExisting = db.itm.find(it => it && it.n === '뽑기 2배권');
         if(!_dblExisting) {
@@ -9341,6 +9364,9 @@ let _renderLock = false; // 재진입 방지
                     navS('s_char');
                     setTimeout(_checkTeacherMsgs, 400);
                     setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); window._attachCoUseListener && window._attachCoUseListener(); } catch(_){} }, 700);
+                    // 🎫 미완주 스크래치 복권 이어긁기 — 재접속/새로고침 시 1회 자동 재오픈
+                    if(!window._scratchResumeChecked){ window._scratchResumeChecked = true;
+                        setTimeout(() => { try{ window._resumeScratchIfPending && window._resumeScratchIfPending(); }catch(_){} }, 800); }
                     window._applyColTabVisibility?.();
                     // 교사 탭(Tab A)에서 보내는 즉시 업데이트 수신 (URL ?cd= 프리뷰 탭 전용)
                     if(_teacherBC && !window._teacherBCListening) {
@@ -9388,6 +9414,9 @@ let _renderLock = false; // 재진입 방지
                         setTimeout(_checkTeacherMsgs, 400);
                         setTimeout(() => { try { window._checkCoUseReqs && window._checkCoUseReqs(); window._attachCoUseListener && window._attachCoUseListener(); } catch(_){} }, 700);
                             window._applyColTabVisibility?.();
+                        // 🎫 미완주 스크래치 복권 이어긁기 — 재접속/새로고침 시 1회 자동 재오픈
+                        if(!window._scratchResumeChecked){ window._scratchResumeChecked = true;
+                            setTimeout(() => { try{ window._resumeScratchIfPending && window._resumeScratchIfPending(); }catch(_){} }, 800); }
                     } else if(window._fetchStuByCd) {
                         // 🛡️ db.stu에 아직 안 들어왔을 수 있음 — Firebase에서 직접 한 번 더 시도
                         window._fetchStuByCd(_savedCd).then(({stu, idx}) => {
@@ -12274,7 +12303,7 @@ let _renderLock = false; // 재진입 방지
             // 절대 null로 쓰면 안 되는 핵심 필드 — 부분 로드된 me가 이 필드를 빠뜨려도 삭제하지 않음
             //   화폐(cd~tk) + 항상 존재하는 컬렉션/착용 필드(inv/col/avtOwned/earnedBdg/earnedTit/ownedPets/eq/
             //   displayPets/equippedTit). 이들은 비어도 []/{}로 존재 → 키가 빠지면 부분로드 사고이므로 서버 wipe 차단.
-            const _noNullFields = new Set(['cd','nm','no','gdr','cookie','usedCookie','shopUsed','co','cn','tk','updatedAt',
+            const _noNullFields = new Set(['cd','nm','no','gdr','cookie','usedCookie','shopUsed','co','cn','tk','tpMoney','updatedAt',
                 'inv','col','avtOwned','earnedBdg','earnedTit','ownedPets','eq','displayPets','equippedTit']);
             Object.keys(lastHash).forEach(k => { if(!(k in _safeWithoutShopLog) && !_noNullFields.has(k)) updates[k] = null; });
             // shopUsed race 방지: pending delta는 write 여부와 무관하게 소비 (avt-direct 이후 중복 방지)
@@ -12283,9 +12312,14 @@ let _renderLock = false; // 재진입 방지
             // co/cn/tk 차감 델타도 write 여부와 무관하게 소비 (shopUsed와 동일 — 중복 적용 방지)
             const _curDelta = window._curAtomicDelta || {co:0,cn:0,tk:0};
             window._curAtomicDelta = {co:0,cn:0,tk:0};
+            // tpMoney(타자 게임머니) 델타 — co/cn/tk와 동일하게 write 여부 무관하게 소비 후 increment 경로로 flush.
+            //   절대값 write는 학생 stale _safe·멀티탭·교사 동시수정이 서로 덮어쓸 수 있어 increment로 방어.
+            const _tpDelta = window._tpMoneyDelta || 0;
+            window._tpMoneyDelta = 0;
             // 🛡️ 미flush 델타 강제 포함: 차감 후 값이 우연히 직전 기록 해시와 같아 updates에서 누락되면
             //   아래 increment 치환이 건너뛰어져 차감이 영영 저장 안 되는 버그 방지. (값은 increment로 치환됨)
             ['co','cn','tk'].forEach(_cf => { if(_curDelta[_cf]) updates[_cf] = _safeWithoutShopLog[_cf]; });
+            if(_tpDelta) updates.tpMoney = _safeWithoutShopLog.tpMoney; // tpMoney 델타 강제 포함 (increment로 치환됨)
             // shopUsed도 동일 — 양수(구매)·음수(환불/취소/레벨업보너스) 델타 모두 increment 경로로 강제 포함.
             //   (과거 양수만 increment·음수는 절대값 write라, 학생 환불이 교사 동시 회수(shopUsed 트랜잭션)·
             //    멀티탭 increment를 덮어써 화폐가 날아가던 레이스 수정. co/cn/tk와 동일한 양방향 increment 정책.)
@@ -12306,6 +12340,8 @@ let _renderLock = false; // 재진입 방지
                 ['co','cn','tk'].forEach(_cf => {
                     if(_cf in updates && _curDelta[_cf]) updates[_cf] = firebase.database.ServerValue.increment(_curDelta[_cf]);
                 });
+                // tpMoney: 델타가 있으면 절대값 대신 increment → 교사 동시수정·멀티탭 지급/차감이 덮어써지지 않음
+                if('tpMoney' in updates && _tpDelta) updates.tpMoney = firebase.database.ServerValue.increment(_tpDelta);
                 dbRef.child('stu/' + key).update(updates);
             }
             // shopLog는 변경된 경우에만 별도 경로에 쓰기
@@ -12677,7 +12713,7 @@ let _renderLock = false; // 재진입 방지
         if(id==='s_fashion') { try { window._ensureEventCfg && _ensureEventCfg('fashionShow').then(()=>{ try { _renderStudentFashion(); } catch(_){} try { window._fsAttachNotiListener && _fsAttachNotiListener(); } catch(_){} }); } catch(_){} }
         if(id==='s_tbank') { try { window._ensureEventCfg && _ensureEventCfg('timeBank').then(()=>{ try { _renderStudentTimeBank(); } catch(_){} }); } catch(_){} }
         if(id==='s_bank') { try { (window._ensureBankGrades ? _ensureBankGrades() : Promise.resolve()).then(()=>{ try { _renderBankStudent(); } catch(_){} }); } catch(_){ try { _renderBankStudent(); } catch(_){} } }
-        if(id==='s_manitto') { try { _attachManittoListener(); window._fetchMyManittoPair && window._fetchMyManittoPair(); window._attachBingoStudentListener && window._attachBingoStudentListener(); rManittoS(); } catch(_){} }
+        if(id==='s_manitto') { try { _attachManittoListener(); window._fetchMyManittoPair && window._fetchMyManittoPair(); window._fetchMyManittoVote && window._fetchMyManittoVote(); if(db.manitto?.voteOpen && window._ensureStuLoaded) window._ensureStuLoaded().then(()=>{try{rManittoS();}catch(_){}}); window._attachBingoStudentListener && window._attachBingoStudentListener(); rManittoS(); } catch(_){} }
         if(id==='s_kiosk') { try { (window._ensureEventCfg ? _ensureEventCfg('kiosk') : Promise.resolve()).then(()=>{ try { window.rKioskS && rKioskS(); const _ks=document.getElementById('s_kiosk'); if(_ks){_ks.style.transition='none';_ks.style.opacity='0';requestAnimationFrame(()=>{_ks.style.transition='opacity 0.15s';_ks.style.opacity='1';});} } catch(_){} }); } catch(_){} }
         if(id==='s_plz') {
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){} // 광장은 진입 시 1회만 (체류 중 1분 폴링 없음)
@@ -15059,6 +15095,7 @@ let _renderLock = false; // 재진입 방지
                         </div>
                     </div>
                 </th>
+                <th style="background:#4E342E; color:white; white-space:nowrap; width:12%;" title="타자 연습 게임머니">⌨️💰게임머니</th>
                 <th style="background:#4E342E; width:48px; cursor:pointer;" onclick="deleteSelectedStudents()" title="선택한 학생 삭제">🗑️</th>
             </tr>
         `;
@@ -15077,6 +15114,7 @@ let _renderLock = false; // 재진입 방지
                 <td><input class="qty-input" style="${inputStyle} color:#FBC02D;" type="number" value="${s.co||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'co',this.value)" onchange="upCk(${i},'co',this.value)"></td>
                 <td><input class="qty-input" style="${inputStyle}" type="number" value="${s.cn||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'cn',this.value)" onchange="upCk(${i},'cn',this.value)"></td>
                 <td><input class="qty-input" style="${inputStyle} color:#42A5F5;" type="number" value="${s.tk||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'tk',this.value)" onchange="upCk(${i},'tk',this.value)"></td>
+                <td><input class="qty-input" style="${inputStyle} color:#FF7043;" type="number" value="${s.tpMoney||0}" onfocus="if(this.value=='0')this.value=''" onblur="if(this.value=='')this.value='0'; upCk(${i},'tpMoney',this.value)" onchange="upCk(${i},'tpMoney',this.value)" title="타자 연습 게임머니"></td>
                 <td style="white-space:nowrap;">
                     <button onclick="window._showStuHistory(${i})" style="border:none;background:#E8F5E9;color:#2E7D32;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:13px;margin-right:2px;" title="지급·구매 내역">📋</button>
                     <button onclick="delS(${i})" style="border:none;background:#FFEBEE;color:#E53935;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:13px;" title="삭제">🗑️</button>
@@ -20856,7 +20894,7 @@ window.appU = function(y, si, k) {
             const getCardsHtml = basketCard + getCards || '<div style="color:#aaa;font-size:12px;padding:14px;text-align:center;grid-column:1/-1;">교환권 쿠폰 풀이 비어 있어요.</div>';
             const ready = (!_needEvPick || !!state.voucherEvKey) && !!state.getName && state.giveName !== state.getName && (state.giveName === '__basket2__' || state.giveInvIdx !== null);
             const summary = state.giveName && state.getName
-                ? `<span style="color:#5D4037;">[${state.giveName}] + 🎟️ → <b style="color:#1976D2;">[${state.getName}]</b></span>`
+                ? `<span style="color:#5D4037;">[${state.giveName}] + 🎫 → <b style="color:#1976D2;">[${state.getName}]</b></span>`
                 : '<span style="color:#aaa;">내 쿠폰과 받을 쿠폰을 골라요.</span>';
             const _voucherPickerHtml = _needEvPick ? (() => {
                 const _now = Date.now();
@@ -20866,7 +20904,7 @@ window.appU = function(y, si, k) {
                     const expLabel = key === 'none' ? '유효기간 없음' : `~${new Date(Number(key)).toLocaleDateString('sv-SE')}까지`;
                     const chosen = state.voucherEvKey === key;
                     return `<div data-vex-evkey="${key}" style="border:2px solid ${chosen?'#E65100':isExpired?'#EEE':'#FFB74D'};border-radius:12px;padding:8px 10px;text-align:center;cursor:${isExpired?'not-allowed':'pointer'};background:${chosen?'#FFF3E0':'white'};opacity:${isExpired?0.35:1};transition:0.12s;position:relative;min-width:100px;">
-                        <div style="font-size:24px;pointer-events:none;">🎟️</div>
+                        <div style="font-size:24px;pointer-events:none;">🎫</div>
                         <div style="font-size:11px;color:#5D4037;margin-top:3px;line-height:1.3;word-break:keep-all;pointer-events:none;">${expLabel}</div>
                         <div style="font-size:12px;font-weight:bold;color:${isExpired?'#aaa':'#E65100'};margin-top:2px;pointer-events:none;">${cnt2}장</div>
                         ${isExpired?'<div style="font-size:9px;color:#E64A19;pointer-events:none;">만료됨</div>':''}
@@ -20874,7 +20912,7 @@ window.appU = function(y, si, k) {
                     </div>`;
                 }).join('');
                 return `<div style="background:#FFF8E1;border:2px solid #FFCC80;border-radius:14px;padding:12px;margin-bottom:14px;">
-                    <div style="font-size:13px;font-weight:bold;color:#E65100;margin-bottom:8px;">🎟️ 어떤 교환권을 사용할까요?</div>
+                    <div style="font-size:13px;font-weight:bold;color:#E65100;margin-bottom:8px;">🎫 어떤 교환권을 사용할까요?</div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">${cards}</div>
                 </div>`;
             })() : '';
@@ -22371,7 +22409,7 @@ window.appU = function(y, si, k) {
                     </div>
                     <div style="background:linear-gradient(135deg,#FFE082,#FFD54F);border-radius:14px;padding:14px;margin-bottom:16px;">
                         <div style="font-size:11px;color:#5D4037;letter-spacing:2px;font-weight:bold;">획득</div>
-                        <div style="font-size:24px;color:#E65100;font-weight:bold;margin-top:4px;">🎟️ 상점 이용권 ${amount}개</div>
+                        <div style="font-size:24px;color:#E65100;font-weight:bold;margin-top:4px;">🎫 상점 이용권 ${amount}개</div>
                     </div>
                     <button id="_pssOk" style="width:100%;padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,#FF9800,#E65100);color:white;font-family:Jua;font-size:17px;font-weight:bold;cursor:pointer;letter-spacing:2px;box-shadow:0 5px 0 #BF360C,0 8px 16px rgba(230,81,0,0.45);animation:_pssPulse 1.6s ease-in-out infinite;transition:transform 0.1s;" onmousedown="this.style.transform='translateY(2px)';" onmouseup="this.style.transform='';" onmouseout="this.style.transform='';">✨ 확인 ✨</button>
                 </div>
@@ -22582,7 +22620,7 @@ window.appU = function(y, si, k) {
         const _passDefault = Math.min(_shortage, passCount, item.p);
         const passSection = (cType==='cn' || cType==='kc') && passCount > 0 && item.p > 0 ? `
             <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span>${_shortage>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_shortage}개 자동 적용</span>`:''}</div>
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎫 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span>${_shortage>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_shortage}개 자동 적용</span>`:''}</div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;">
                     <label style="font-size:12px;color:#795548;white-space:nowrap;">사용할 개수:</label>
                     <input id="_passUse" type="number" min="${_shortage}" max="${Math.min(passCount, item.p)}" value="${_passDefault}" style="width:60px;flex-shrink:0;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _v=parseInt(this.value)||0,_mx=${Math.min(passCount,item.p)},_mn=${_shortage};if(_v>_mx)this.value=_mx;else if(_v<_mn)this.value=_mn;">
@@ -23053,7 +23091,7 @@ window.appU = function(y, si, k) {
                         <div style="font-size:13px;color:#999;margin-top:4px;">현재 잔액: <b>${myBal}</b> ${curEmoji[cType]}</div>
                     </div>
                     ${passCount > 0 ? `<div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#5D4037;">
-                        🎟️ 상점 이용권 보유: <b>${passCount}개</b>
+                        🎫 상점 이용권 보유: <b>${passCount}개</b>
                         <div style="font-size:11px;color:#E65100;margin-top:5px;">💡 이용권을 모두 써도 ${curEmoji[cType]}가 부족해요</div>
                     </div>` : ''}
                     ${mondayCookieCount > 0 ? `<div style="background:#FFF3E0;border:2px solid #FF8F00;border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#E65100;">
@@ -23082,13 +23120,13 @@ window.appU = function(y, si, k) {
             const gacTicketSectionHtml = gacTicketCount > 0 ? `<div style="background:#F3E5F5;border:2px solid #CE93D8;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <input type="checkbox" id="_gacTicketUse" checked style="width:18px;height:18px;cursor:pointer;accent-color:#7B1FA2;" onchange="const _pi=document.getElementById('_gacPassSec');if(_pi){_pi.style.opacity=this.checked?'0.4':'1';_pi.querySelectorAll('input').forEach(el=>el.disabled=this.checked);}">
-                                <label for="_gacTicketUse" style="font-size:13px;color:#4A148C;font-weight:bold;cursor:pointer;">🎟️ 뽑기 이용권 사용 (보유: ${gacTicketCount}개)</label>
+                                <label for="_gacTicketUse" style="font-size:13px;color:#4A148C;font-weight:bold;cursor:pointer;">🎫 뽑기 이용권 사용 (보유: ${gacTicketCount}개)</label>
                             </div>
                             <div style="font-size:11px;color:#9C27B0;margin-top:6px;margin-left:28px;">이용권 1개로 화폐 차감 없이 뽑기 1회</div>
                         </div>` : '';
             const _passInitDisabled = gacTicketCount > 0;
             const passSectionHtml = _showPassUI ? `<div id="_gacPassSec" style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;${_passInitDisabled?'opacity:0.4;':''}">
-                            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span>${_minPass>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_minPass}개 자동 적용</span>`:''}</div>
+                            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎫 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span>${_minPass>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_minPass}개 자동 적용</span>`:''}</div>
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;">
                                 <label style="font-size:12px;color:#795548;white-space:nowrap;">사용 개수:</label>
                                 <input id="_gacPassUse" type="number" inputmode="numeric" min="${_minPass}" max="${maxPass}" value="${_defPass}" ${_passInitDisabled?'disabled':''} style="width:60px;flex-shrink:0;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${maxPass},_gmn=${_minPass};if(_gv>_gmx)this.value=_gmx;else if(_gv<_gmn)this.value=_gmn;">
@@ -23192,7 +23230,7 @@ window.appU = function(y, si, k) {
                         <div style="font-size:18px;color:#5D4037;">가격: <b style="color:#E65100;font-size:22px;">${g.c}</b> ${curEmoji[cType]}</div>
                     </div>
                     <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-                        <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span></div>
+                        <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎫 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span></div>
                         <div style="display:flex;align-items:center;gap:8px;">
                             <label style="font-size:12px;color:#795548;">사용 개수:</label>
                             <input id="_gacPassUse" type="number" min="${_minPass}" max="${maxPass}" value="${_defPass}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${maxPass},_gmn=${_minPass};let _v=_gv;if(_v>_gmx)_v=_gmx;if(_v<_gmn)_v=_gmn;this.value=_v;document.getElementById('_gacPWRemain').textContent=(${g.c}-_v);">
@@ -23247,7 +23285,7 @@ window.appU = function(y, si, k) {
         const _defPass = _canMixPass ? Math.max(_minPass, 0) : 0;
         const _passUi = _canMixPass ? `
           <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:10px 12px;margin-bottom:12px;">
-            <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-bottom:6px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${({kc:'🍪',cn:'🍭'})[cType]} 대체</span></div>
+            <div style="font-size:12px;color:#5D4037;font-weight:bold;margin-bottom:6px;">🎫 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${({kc:'🍪',cn:'🍭'})[cType]} 대체</span></div>
             <div style="display:flex;align-items:center;gap:8px;">
               <label style="font-size:12px;color:#795548;">사용 개수:</label>
               <input id="_gacPassUse" type="text" inputmode="numeric" value="${_defPass}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${_maxPass},_gmn=${_minPass};let _v=_gv;if(_v>_gmx)_v=_gmx;if(_v<_gmn)_v=_gmn;this.value=_v;document.getElementById('_skillReRemain').textContent=(${cost}-_v);">
@@ -23642,7 +23680,7 @@ window.appU = function(y, si, k) {
         const _defPass = _canMixPass ? Math.max(_minPass, 0) : 0;
         const _passUi = _canMixPass && !myEntry && !maxReached ? `
           <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span></div>
+            <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎫 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 ${curEmoji[cType]} 대체</span></div>
             <div style="display:flex;align-items:center;gap:8px;">
               <label style="font-size:12px;color:#795548;">사용 개수:</label>
               <input id="_offGacPassUse" type="number" min="${_minPass}" max="${_maxPass}" value="${_defPass}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _gv=parseInt(this.value)||0,_gmx=${_maxPass},_gmn=${_minPass};let _v=_gv;if(_v>_gmx)_v=_gmx;if(_v<_gmn)_v=_gmn;this.value=_v;document.getElementById('_offGacRemain').textContent=(${g.c}-_v);">
@@ -24815,14 +24853,39 @@ let isScratchDone = false;
     let scratchTop = [];
     let scratchBot = [];
 
+    // 🎫 스크래치 미완주 "이어서 긁기" — 학생이 다 긁기 전에 닫거나 재접속해도 지불한 뽑기를 복원.
+    //   pending은 me/Firebase가 아닌 독립 localStorage에 저장 → echo·폴링·새로고침이 절대 덮어쓰지 못함.
+    function _scratchPendKey(){ return 'scratchPending_' + ((me&&me.cd)||''); }
+    function _saveScratchPending(item, gachaName){
+        try{ if(me && !me.isTest && me.cd)
+            localStorage.setItem(_scratchPendKey(), JSON.stringify({item, gachaName, ts:Date.now()})); }catch(_){}
+    }
+    function _clearScratchPending(){ try{ localStorage.removeItem(_scratchPendKey()); }catch(_){} }
+    window._resumeScratchIfPending = function(){
+        try{
+            if(!me || me.isTest || !me.cd) return;
+            if(window._gachaInProgress) return;                     // 진행 중이면 skip
+            const raw = localStorage.getItem(_scratchPendKey()); if(!raw) return;
+            const p = JSON.parse(raw);
+            if(!p || !p.item || typeof p.item !== 'object'){ _clearScratchPending(); return; }
+            scratchItem = p.item;                                   // 전역 세팅(checkReveal가 읽음)
+            initScratch(p.item);                                    // 같은 상품·슬롯 리셋으로 재오픈(재과금 없음)
+            try{ showToast && showToast('이전에 긁던 복권을 이어서 긁어요 🎫', 2500); }catch(_){}
+        }catch(_){ _clearScratchPending(); }
+    };
+
     function initScratch(realItem) {
+        // 이전 회차의 미발화 checkReveal 타이머 정리 → 재오픈 시 stale 이중 지급 차단
+        if(window._scratchRevealTimer){ clearTimeout(window._scratchRevealTimer); window._scratchRevealTimer = null; }
         const resDiv = document.getElementById('scrM');
-        resDiv.classList.remove('hidden'); 
-        if(ac.state==='suspended')ac.resume(); 
+        resDiv.classList.remove('hidden');
+        if(ac.state==='suspended')ac.resume();
 
         isScratchDone = false;
         slotCleared = { '0_t':false, '0_b':false, '1_t':false, '1_b':false, '2_t':false, '2_b':false };
         lastSoundTime = 0;
+        // 미완주 복원용 pending 저장 (신규·재개 모두 idempotent)
+        _saveScratchPending(realItem, (realItem && realItem._gachaName) || '');
 
         // 아이템 개수(qty) 값 자체를 포인트로 직접 매핑
         // 예) qty=10 → 🍬 일치(+10pts), qty=30 → 전부 일치(+30pts)
@@ -24960,7 +25023,7 @@ let isScratchDone = false;
                 const _capturedItem = scratchItem;
                 const _capturedMsg  = scratchMsg;
                 const _capturedBonus = scratchBonus;
-                setTimeout(() => checkReveal(_capturedItem, _capturedMsg, _capturedBonus), 800);
+                window._scratchRevealTimer = setTimeout(() => { window._scratchRevealTimer = null; checkReveal(_capturedItem, _capturedMsg, _capturedBonus); }, 800);
             }
         }
     }
@@ -24977,6 +25040,8 @@ let isScratchDone = false;
             fireConfetti('confetti');
         }
 
+        // 완주 지급 — 미완주 복원 대상 제거(이후 재접속해도 재오픈 안 됨). giveReward는 검증된 보상 경로 그대로.
+        _clearScratchPending();
         giveReward(Object.assign({}, item, {_qty: bonus}));
 
         const popup = document.getElementById('scrWinPopup');
@@ -24992,11 +25057,15 @@ let isScratchDone = false;
     }
 
     function clsScr() { window._gachaRunning = false;
-        isScratchDone = false; 
-        
+        isScratchDone = false;
+        // 미완주로 닫아도 뽑기 잠금이 남지 않도록 해제(다음 뽑기·이어긁기 가능) + 미발화 지급 타이머 정리.
+        //   pending은 지우지 않음 — 완주(checkReveal) 시에만 제거하여 이어긁기 대상 유지.
+        window._gachaInProgress = false;
+        if(window._scratchRevealTimer){ clearTimeout(window._scratchRevealTimer); window._scratchRevealTimer = null; }
+
         // 🌟 완전 초기화 (이전 팝업이 뜨는 문제 원천 차단)
-        const p = document.getElementById('scrWinPopup'); 
-        if(p) p.remove(); 
+        const p = document.getElementById('scrWinPopup');
+        if(p) p.remove();
         
         document.getElementById('scrM').classList.add('hidden');
         document.getElementById('confetti').innerHTML = '';
@@ -32224,8 +32293,8 @@ window.addCharRow = function() {
         const _itmDefs = Array.isArray(db.itm) ? db.itm : Object.values(db.itm||{});
         const _passDef = _itmDefs.find(it => it && it.n === '상점 이용권');
         const _passItem = () => {
-            if(_passDef) { const base = { n: _passDef.n, i: _passDef.i || '🎟️', g: _passDef.g || 'C', st: 'active' }; if(_passDef.d) base.d = _passDef.d; return base; }
-            return { n:'상점 이용권', i:'🎟️', st:'active', g:'C' };
+            if(_passDef) { const base = { n: _passDef.n, i: _passDef.i || '🎫', g: _passDef.g || 'C', st: 'active' }; if(_passDef.d) base.d = _passDef.d; return base; }
+            return { n:'상점 이용권', i:'🎫', st:'active', g:'C' };
         };
         dbRef.child(`stu/${_fbKey}/inv`).transaction(cur => {
             const arr = Array.isArray(cur) ? cur.slice() : (cur ? Object.values(cur) : []);
@@ -32448,7 +32517,7 @@ window.addCharRow = function() {
         const _avtPassDefault = Math.min(_avtShortage, maxPass);
         const passSection = price > 0 && passCount > 0 ? `
             <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 🍪 대체</span>${_avtShortage>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_avtShortage}개 자동 적용</span>`:''}</div>
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎫 상점 이용권 사용 (보유: ${passCount}개) <span style="font-size:11px;color:#999;font-weight:normal;">· 1:1로 🍪 대체</span>${_avtShortage>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_avtShortage}개 자동 적용</span>`:''}</div>
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;">
                     <label style="font-size:12px;color:#795548;white-space:nowrap;">사용할 개수:</label>
                     <input id="_avtPassUse" type="number" min="${_avtShortage}" max="${maxPass}" value="${_avtPassDefault}" style="width:60px;flex-shrink:0;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="const _av=parseInt(this.value)||0,_amx=${maxPass},_amn=${_avtShortage};if(_av>_amx)this.value=_amx;else if(_av<_amn)this.value=_amn;">
@@ -32477,7 +32546,7 @@ window.addCharRow = function() {
         // 제작자 정보 표시 (creator 있는 모든 아이템 — 구매 시 10% 지급)
         const _shareRate = (db.cfg && db.cfg.salonShareRate != null) ? db.cfg.salonShareRate : 10;
         const _petCreatorLine = (item.creatorCd && item.creatorNm && item.price > 0 && _shareRate > 0)
-            ? `<div style="font-size:12px;color:#E65100;margin-top:6px;">🎨 제작자 ${_escHtml(item.creatorNm)}에게 🎟️ 상점 이용권 ${Math.round(item.price * _shareRate / 100)}개 지급됩니다</div>` : '';
+            ? `<div style="font-size:12px;color:#E65100;margin-top:6px;">🎨 제작자 ${_escHtml(item.creatorNm)}에게 🎫 상점 이용권 ${Math.round(item.price * _shareRate / 100)}개 지급됩니다</div>` : '';
 
         // 펫: 살롱 아이템(creatorCd)이면 수동 피커, 일반 펫이면 자동 교환 안내
         let _petAutoReplHtml = '';
@@ -32690,7 +32759,7 @@ window.addCharRow = function() {
                         <span style="font-size:18px;">🎨</span>
                         <div style="text-align:left;">
                             <div style="font-size:11px;color:#E65100;font-weight:bold;">제작자 수익 지급</div>
-                            <div style="font-size:12px;color:#4A148C;"><b>${_escHtml(item.creatorNm||'제작자')}</b>에게 🎟️ 상점 이용권 <b style="color:#E65100;">${_earnActual}</b>개 지급 완료!</div>
+                            <div style="font-size:12px;color:#4A148C;"><b>${_escHtml(item.creatorNm||'제작자')}</b>에게 🎫 상점 이용권 <b style="color:#E65100;">${_earnActual}</b>개 지급 완료!</div>
                         </div>
                     </div>` : ''}
                     <button class="btn btn-org" style="width:60%;font-size:18px;padding:12px;" onclick="document.getElementById('avtBuyModal').remove()">확인!</button>
@@ -32778,11 +32847,11 @@ window.addCharRow = function() {
         const _earnAmt = price > 0 && sk.creatorNm ? Math.round(price * _shareRate / 100) : 0;
         const imgHtml = sk.img ? `<img src="${sk.img}" style="width:90px;height:90px;object-fit:contain;image-rendering:pixelated;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);">` : `<div style="font-size:70px;">${sk.i||'🎨'}</div>`;
         const priceStr = price===0 ? '<span style="color:#66BB6A;font-size:22px;font-weight:bold;">무료!</span>' : `<span style="font-size:22px;font-weight:bold;color:#FF6F00;">🍪 ${price}</span>`;
-        const creatorLine = _earnAmt > 0 ? `<div style="font-size:12px;color:#E65100;margin-top:6px;">🎨 제작자 ${_escHtml(sk.creatorNm)}에게 🎟️ 상점 이용권 ${_earnAmt}개 지급됩니다</div>` : '';
+        const creatorLine = _earnAmt > 0 ? `<div style="font-size:12px;color:#E65100;margin-top:6px;">🎨 제작자 ${_escHtml(sk.creatorNm)}에게 🎫 상점 이용권 ${_earnAmt}개 지급됩니다</div>` : '';
         const petPickerHtml = _buildOwnedPetPicker('_sskReplPetSel');
         const passSection = price > 0 && passCount > 0 ? `
             <div style="background:#FFF8E1;border:2px solid #FFD54F;border-radius:14px;padding:12px 14px;margin-bottom:14px;">
-                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)${_shortage>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_shortage}개 자동 적용</span>`:''}</div>
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:8px;">🎫 상점 이용권 사용 (보유: ${passCount}개)${_shortage>0?` <span style="color:#E53935;font-size:11px;">— 부족분 ${_shortage}개 자동 적용</span>`:''}</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <label style="font-size:12px;color:#795548;">사용할 개수:</label>
                     <input id="_ssk_passUse" type="number" min="${_shortage}" max="${maxPass}" value="${_passDefault}" style="width:60px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;">
@@ -32963,11 +33032,11 @@ window.addCharRow = function() {
                                 const _passItem = () => {
                                     // 기본 grade='C' (기존 inv 아이템들과 동일) — db.itm 정의에 g 있으면 그것 우선
                                     if(_passDef) {
-                                        const base = { n: _passDef.n, i: _passDef.i || '🎟️', g: _passDef.g || 'C', st: 'active' };
+                                        const base = { n: _passDef.n, i: _passDef.i || '🎫', g: _passDef.g || 'C', st: 'active' };
                                         if(_passDef.d) base.d = _passDef.d;
                                         return base;
                                     }
-                                    return { n:'상점 이용권', i:'🎟️', st:'active', g:'C' };
+                                    return { n:'상점 이용권', i:'🎫', st:'active', g:'C' };
                                 };
                                 // inv 트랜잭션
                                 dbRef.child(`stu/${_fbKey}/inv`).transaction(cur => {
@@ -33015,7 +33084,7 @@ window.addCharRow = function() {
         const _earnBlock = _earnActual > 0 ? `<div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:12px;padding:8px 14px;margin-bottom:20px;font-family:'Jua';">
             <span style="font-size:18px;">🎨</span>
             <div style="text-align:left;"><div style="font-size:11px;color:#E65100;font-weight:bold;">제작자 수익 지급</div>
-            <div style="font-size:12px;color:#4A148C;"><b>${_escHtml(sk.creatorNm||'제작자')}</b>에게 🎟️ 상점 이용권 <b style="color:#E65100;">${_earnActual}</b>개 지급 완료!</div></div>
+            <div style="font-size:12px;color:#4A148C;"><b>${_escHtml(sk.creatorNm||'제작자')}</b>에게 🎫 상점 이용권 <b style="color:#E65100;">${_earnActual}</b>개 지급 완료!</div></div>
         </div>` : '';
         const _buyHtml = `<div id="_sskBuyModal" class="modal-overlay">
             <div id="_sskBuyConfetti" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></div>
@@ -33637,7 +33706,7 @@ window.addCharRow = function() {
             if (_ks && _ks.style.display !== 'none' && window.rKioskS) rKioskS();
         } catch(_){}
         const manittoBtn = document.getElementById('menuManittoBtn');
-        if(manittoBtn) manittoBtn.style.display = db.manitto?.revealed ? '' : 'none';
+        if(manittoBtn) manittoBtn.style.display = (db.manitto?.revealed || db.manitto?.voteOpen) ? '' : 'none';
         const petDrawBtn = document.getElementById('menuPetDrawBtn');
         if(petDrawBtn) petDrawBtn.style.display = _isEventOpen('petdraw') ? '' : 'none';
     }
@@ -48008,6 +48077,7 @@ window.addCharRow = function() {
         if(typeof g.exchangeRate !== 'number' || g.exchangeRate < 1) g.exchangeRate = 15;
         if(typeof g.dailyLimit !== 'number' || g.dailyLimit < 1) g.dailyLimit = 3; // 하루 도전 가능 횟수
         if(!g.catHidden || typeof g.catHidden !== 'object') g.catHidden = {}; // 카테고리 숨김 플래그 (기본 노출)
+        if(g.weekdayOnly === undefined || g.weekdayOnly === null) g.weekdayOnly = true; // 평일(월~금)만 이용 — 주말·공휴일 제외 (기본 켬)
         return g;
     };
     // [트래픽 절감 A] 하루 도전횟수·단계완료는 기기 로컬(localStorage)에만 보관 — 서버에는 보상/환전만 전송.
@@ -48072,7 +48142,7 @@ window.addCharRow = function() {
         d.done[_tpStageKey(cat, lvKey)] = 1;
         _tpLsSet(_tpStageLsKey(), d);
     };
-    window._tpGrantMoney = function(n){ me.tpMoney = (me.tpMoney||0) + n; upMe(); };
+    window._tpGrantMoney = function(n){ me.tpMoney = (me.tpMoney||0) + n; window._tpMoneyDelta = (window._tpMoneyDelta||0) + n; upMe(); };
     // 가용 쿠키 잔액 = cookie - usedCookie - shopUsed (앱 전체와 동일한 계산)
     window._tpMyCookie = function(){ return me ? Math.max(0, (me.cookie||0) - (me.usedCookie||0) - (me.shopUsed||0)) : 0; };
 
@@ -48103,6 +48173,17 @@ window.addCharRow = function() {
         }
         const g = window._tpEnsureCfg();
         if(!g.on){ alert('지금은 타자 연습을 이용할 수 없어요.'); return; }
+        // 타자 연습은 시간제한은 없지만 평일(월~금)에만 이용 가능 — 주말·공휴일 제외.
+        //  (펫 스킬 지급과 동일하게 _getHolidaySet 사용, 시뮬 날짜 _getTestDate 반영)
+        //  교사 설정 weekdayOnly가 켜져 있을 때만 적용.
+        if(g.weekdayOnly){
+            const _tpNow = (window._getTestDate ? window._getTestDate() : new Date());
+            const _tpDow = _tpNow.getDay();
+            const _tpKey = _tpNow.toLocaleDateString('sv-SE'); // 로컬(KST) 날짜 키 — toISOString(UTC)는 새벽에 하루 밀림
+            const _tpHols = (window._getHolidaySet ? window._getHolidaySet() : new Set());
+            if(_tpDow === 0 || _tpDow === 6){ alert('타자 연습은 평일에만 이용할 수 있어요. 주말에는 쉬어요!'); return; }
+            if(_tpHols.has(_tpKey)){ alert('오늘은 공휴일이라 타자 연습을 이용할 수 없어요.'); return; }
+        }
         if(_tpState && _tpState.timerId){ clearInterval(_tpState.timerId); _tpState.timerId = null; }
         _tpState = null;
         document.getElementById('_tpPlayOv')?.remove();
@@ -48146,8 +48227,8 @@ window.addCharRow = function() {
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:12px;color:#ddd;margin-bottom:12px;">
-                    <span>🍪 ${window._tpMyCookie()}</span><span style="color:#555;">·</span><span>💰 ${me.tpMoney||0}</span>
-                    <button onclick="window._tpExchangeUI()" style="padding:4px 10px;border-radius:9px;border:none;background:#66bb6a;color:#fff;font-family:'Jua';font-size:11px;cursor:pointer;">환전</button>
+                    <span>💰 ${me.tpMoney||0}</span>
+                    <button onclick="window._tpExchangeUI()" style="padding:4px 10px;border-radius:9px;border:none;background:#66bb6a;color:#fff;font-family:'Jua';font-size:11px;cursor:pointer;">교환</button>
                 </div>
                 <div style="display:flex;gap:6px;margin-bottom:10px;">${tabsHtml}</div>
                 ${warn}
@@ -48349,14 +48430,14 @@ window.addCharRow = function() {
         const html = `<div id="_tpExOv" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99100;display:flex;align-items:center;justify-content:center;font-family:'Jua';" onclick="if(event.target===this)this.remove();">
             <div style="position:relative;background:#2a2a33;color:#eee;border-radius:18px;padding:24px 22px;width:min(320px,90vw);text-align:center;" onclick="event.stopPropagation()">
                 <button onclick="document.getElementById('_tpExOv').remove()" title="닫기" style="position:absolute;top:10px;right:12px;background:transparent;border:none;color:#aaa;font-size:22px;line-height:1;cursor:pointer;padding:2px 6px;">✕</button>
-                <div style="font-size:18px;font-weight:bold;margin-bottom:12px;">💰 → 🍪 환전</div>
+                <div style="font-size:18px;font-weight:bold;margin-bottom:12px;">💰 → 🎫 교환</div>
                 <div style="font-size:13px;color:#ddd;margin-bottom:4px;">보유 게임머니: 💰 ${me.tpMoney||0}</div>
-                <div style="font-size:13px;color:#ddd;margin-bottom:4px;">환전 비율: 💰 ${rate} = 🍪 1</div>
-                <div style="font-size:12px;color:#9e9e9e;margin-bottom:14px;">최대 ${maxC} 쿠키 교환 가능</div>
+                <div style="font-size:13px;color:#ddd;margin-bottom:4px;">교환 비율: 💰 ${rate} = 🎫 상점 이용권 1개</div>
+                <div style="font-size:12px;color:#9e9e9e;margin-bottom:14px;">최대 ${maxC}개 교환 가능</div>
                 <input id="_tpExN" type="number" min="1" max="${maxC}" value="${maxC>0?1:0}" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:none;font-size:16px;font-family:'Jua';text-align:center;margin-bottom:12px;">
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                    <button onclick="window._tpDoExchange(document.getElementById('_tpExN').value)" style="${_TP_BTN}background:#66bb6a;">환전하기</button>
-                    <button ${maxC>0?'':'disabled'} onclick="window._tpDoExchange(${maxC})" style="${_TP_BTN}background:#26a69a;${maxC>0?'':'opacity:0.5;'}">전부 환전 (🍪${maxC})</button>
+                    <button onclick="window._tpDoExchange(document.getElementById('_tpExN').value)" style="${_TP_BTN}background:#66bb6a;">교환하기</button>
+                    <button ${maxC>0?'':'disabled'} onclick="window._tpDoExchange(${maxC})" style="${_TP_BTN}background:#26a69a;${maxC>0?'':'opacity:0.5;'}">전부 교환 (🎫${maxC})</button>
                 </div>
             </div></div>`;
         document.body.insertAdjacentHTML('beforeend', html);
@@ -48366,19 +48447,18 @@ window.addCharRow = function() {
         if(n <= 0){ window._tpToast('✏️', '1 이상 입력해 주세요'); return; }
         const g = window._tpEnsureCfg();
         const need = n * g.exchangeRate;
-        if((me.tpMoney||0) < need){ window._tpToast('💸', '게임머니가 부족해요', `${n}쿠키 환전에 💰 ${need} 필요`); return; }
+        if((me.tpMoney||0) < need){ window._tpToast('💸', '게임머니가 부족해요', `상점 이용권 ${n}개에 💰 ${need} 필요`); return; }
         me.tpMoney = (me.tpMoney||0) - need;
-        // 쿠키 지급: 다했니 폴링이 덮어쓰는 cookie 대신, 폴링이 건드리지 않는 shopUsed를
-        // 음수 방향으로 차감해 가용 잔액(cookie-usedCookie-shopUsed)을 늘린다. (레벨업 보너스와 동일 경로)
-        me.shopUsed = (me.shopUsed||0) - n;
-        window._shopUsedAtomicDelta = (window._shopUsedAtomicDelta || 0) - n;
+        window._tpMoneyDelta = (window._tpMoneyDelta||0) - need; // echo 병합이 미flush 차감을 되돌리지 않도록 델타 기록
+        // 보상: 쿠키 대신 이미 등록된 일반 아이템 '상점 이용권' 쿠폰을 inv에 지급.
+        //   등록 정의(db.itm)의 아이콘·등급을 참조하고, echo-보호되는 _meInvPush로 race-safe 지급.
+        const _passDef = (db.itm||[]).find(d => d && d.n === '상점 이용권');
+        for(let k=0; k<n; k++){ window._meInvPush({ n:'상점 이용권', i:(_passDef && _passDef.i) || '🎫', st:'active', g:(_passDef && _passDef.g) || 'C' }); }
         upMe();
-        try{ if(typeof updateNameTag==='function') updateNameTag(); }catch(_){}
-        try{ const _sb=document.getElementById('s_bg'); if(_sb && !_sb.classList.contains('hidden') && typeof rBg==='function') rBg(); }catch(_){}
         try{ rSh && rSh(); }catch(_){}
         document.getElementById('_tpExOv')?.remove();
         window._tpMenu();
-        window._tpToast('🍪', `${n} 쿠키로 환전 완료!`, `남은 게임머니 💰 ${me.tpMoney||0}`);
+        window._tpToast('🎫', `상점 이용권 ${n}개로 교환 완료!`, `남은 게임머니 💰 ${me.tpMoney||0}`);
     };
 
     /* ── 교사 관리 패널 + Gemini 단어 생성 ── */
@@ -48412,7 +48492,8 @@ window.addCharRow = function() {
                 <button class="modal-close-btn" onclick="document.getElementById('_tpAdmin').remove()">X</button>
                 <div class="modal-inner" style="text-align:left;">
                     <h3 style="margin:0 0 10px;color:#5D4037;text-align:center;">⌨️ 타자 연습 설정</h3>
-                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#5D4037;margin-bottom:10px;"><input type="checkbox" id="_tpA_on" ${g.on?'checked':''}> 게임 활성화</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#5D4037;margin-bottom:6px;"><input type="checkbox" id="_tpA_on" ${g.on?'checked':''}> 게임 활성화</label>
+                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#5D4037;margin-bottom:10px;"><input type="checkbox" id="_tpA_weekday" ${g.weekdayOnly?'checked':''}> 평일만 이용 (주말·공휴일 제외)</label>
                     <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;font-size:12px;color:#5D4037;align-items:center;">
                         <label>환전비율(💰→🍪1) <input id="_tpA_rate" type="number" value="${g.exchangeRate}" style="width:60px;${_TP_AIN}"></label>
                         <label>하루 도전 횟수 <input id="_tpA_limit" type="number" value="${g.dailyLimit}" style="width:52px;${_TP_AIN}"></label>
@@ -48436,6 +48517,8 @@ window.addCharRow = function() {
         const g = window._tpEnsureCfg();
         const onChk = document.getElementById('_tpA_on');
         g.on = onChk ? !!onChk.checked : true;
+        const wdChk = document.getElementById('_tpA_weekday');
+        g.weekdayOnly = wdChk ? !!wdChk.checked : true;
         g.exchangeRate = Math.max(1, parseInt(document.getElementById('_tpA_rate')?.value, 10) || 15);
         g.dailyLimit = Math.max(1, parseInt(document.getElementById('_tpA_limit')?.value, 10) || 3);
         const ge = id => document.getElementById(id);
@@ -57140,6 +57223,27 @@ window.addCharRow = function() {
                     if(window._applyManittoDB) window._applyManittoDB(db.manitto);
                 }).catch(()=>{});
             };
+            // 본인이 제출한 정답 투표만 once() — 남의 투표/정답은 읽지 않음
+            window._fetchMyManittoVote = function() {
+                const myCd = _myCdGet();
+                if(!myCd) return;
+                dbRef.child('manittoVotes/' + myCd).once('value').then(vs => {
+                    const v = vs.val();
+                    if(!db.manitto) db.manitto = {};
+                    if(!db.manitto.votes) db.manitto.votes = {};
+                    if(v) db.manitto.votes[myCd] = v;
+                    if(window._applyManittoDB) window._applyManittoDB(db.manitto);
+                }).catch(()=>{});
+            };
+            try {
+                dbRef.child('manitto/voteOpen').on('value', s => {
+                    const vo = !!s.val();
+                    if(!db.manitto) db.manitto = {};
+                    db.manitto.voteOpen = vo;
+                    if(vo) window._fetchMyManittoVote && window._fetchMyManittoVote();
+                    if(window._applyManittoDB) window._applyManittoDB(db.manitto);
+                });
+            } catch(_){}
             try {
                 dbRef.child('manitto/revealed').on('value', s => {
                     const rv = s.val();
@@ -57165,6 +57269,17 @@ window.addCharRow = function() {
             dbRef.child('manitto').on('value', snap => {
                 if(window._applyManittoDB) window._applyManittoDB(snap.val());
             });
+            // 정답 투표는 별도 노드(manittoVotes)에 저장 → manitto 값 리스너가 매 투표마다
+            // pairs 전체를 재전송하는 것을 방지. 델타(child_*)로 1명분씩만 수신.
+            const _applyVoteDelta = (cd, v) => {
+                if(!db.manitto) db.manitto = {};
+                if(!db.manitto.votes) db.manitto.votes = {};
+                if(v == null) delete db.manitto.votes[cd]; else db.manitto.votes[cd] = v;
+                try { window._renderManittoCard && _renderManittoCard(); } catch(_){}
+            };
+            dbRef.child('manittoVotes').on('child_added',   s => _applyVoteDelta(s.key, s.val()));
+            dbRef.child('manittoVotes').on('child_changed', s => _applyVoteDelta(s.key, s.val()));
+            dbRef.child('manittoVotes').on('child_removed', s => _applyVoteDelta(s.key, null));
         } catch(_){}
     }
 
@@ -57223,13 +57338,22 @@ window.addCharRow = function() {
         const m = db.manitto;
         const revBtn = document.getElementById('manittoRevealBtn');
         const resultEl = document.getElementById('manittoResult');
+        const voteBtn = document.getElementById('manittoVoteBtn');
         if(!m?.pairs) {
             if(revBtn) revBtn.textContent = '🔒 비공개중';
+            if(voteBtn) voteBtn.textContent = '🗳️ 정답투표 시작';
             return;
         }
         if(revBtn) revBtn.textContent = m.revealed ? '🔓 공개중' : '🔒 비공개중';
+        if(voteBtn) {
+            voteBtn.textContent = m.voteOpen ? '🗳️ 정답투표 종료' : '🗳️ 정답투표 시작';
+            voteBtn.style.background = m.voteOpen ? '#EF6C00' : '#FB8C00';
+        }
         // 결과 테이블 갱신 (이미 표시 중이면)
         if(resultEl && resultEl.style.display !== 'none') _renderManittoTable();
+        // 학생별 현황(빙고+투표) 갱신 (이미 펼쳐져 있으면)
+        const statsWrap = document.getElementById('bingoStatsListWrap');
+        if(statsWrap && statsWrap.style.display !== 'none') { try { window._renderBingoStatsTable && window._renderBingoStatsTable(); } catch(_){} }
     }
 
     function _renderManittoTable() {
@@ -57250,6 +57374,27 @@ window.addCharRow = function() {
         el.innerHTML = html;
         el.style.display = 'block';
     }
+
+    // 특정 학생(cd)의 '마니또'(=나에게 주는 사람)를 반환. pairs[giver].cd === cd 인 giver.
+    function _manittoGiverOf(cd) {
+        const pairs = db.manitto?.pairs;
+        if(!pairs) return null;
+        for(const [giverCd, recv] of Object.entries(pairs)) {
+            if(recv && String(recv.cd) === String(cd)) return { cd: giverCd, nm: recv._giverNm };
+        }
+        return null;
+    }
+
+    // 교사: 정답 투표 시작/종료 토글
+    window.toggleManittoVote = function() {
+        if(!db.manitto?.pairs) { alert('마니또 결과가 없습니다. 먼저 뽑기를 해주세요.'); return; }
+        const next = !db.manitto.voteOpen;
+        db.manitto.voteOpen = next;
+        try { dbRef.child('manitto/voteOpen').set(next); } catch(e){}
+        _renderManittoCard();
+        try { window._writeEventsOpenSnap && _writeEventsOpenSnap(); } catch(_){}
+        showToast(next ? '🗳️ 정답 투표를 시작했어요!' : '🗳️ 정답 투표를 종료했어요.');
+    };
 
     window.genManitto = function() {
         // 모드 선택 모달 표시
@@ -57310,6 +57455,8 @@ window.addCharRow = function() {
             const pairs = window._manittoComputePairs(stus, mode);
             const data = {active:true, revealed:false, mode, pairs, createdAt:Date.now()};
             try { dbRef.child('manitto').set(data); } catch(e){ console.error('[manitto]',e); }
+            // 재추첨 시 이전 라운드 정답 투표 초기화 (새 pairs와 불일치·재투표 차단 방지)
+            try { dbRef.child('manittoVotes').remove(); } catch(e){}
             db.manitto = data;
             _renderManittoCard();
             _showManittoResultModal();
@@ -57381,6 +57528,7 @@ window.addCharRow = function() {
         if(!confirm('마니또 결과를 초기화하시겠습니까?\n(빙고 승인/대기/거절/편지도 함께 초기화됩니다. 빙고 칸 내용은 유지됩니다.)')) return;
         db.manitto = null;
         try { dbRef.child('manitto').remove(); } catch(e){}
+        try { dbRef.child('manittoVotes').remove(); } catch(e){}
         // 빙고 승인/대기/거절/편지 초기화 (cells, cellTypes, active는 유지)
         if(db.bingo) { delete db.bingo.approved; delete db.bingo.pending; delete db.bingo.rejected; }
         try { dbRef.child('bingo/approved').remove(); } catch(e){}
@@ -57419,13 +57567,16 @@ window.addCharRow = function() {
     function _updateManittoStatus() {
         const m = db.manitto;
         const mBtn = document.getElementById('menuManittoBtn');
-        if(mBtn) mBtn.style.display = m?.revealed ? '' : 'none';
+        if(mBtn) mBtn.style.display = (m?.revealed || m?.voteOpen) ? '' : 'none';
         const evTab = document.getElementById('t_events');
         if(evTab && !evTab.classList.contains('hidden')) _renderManittoCard();
     }
 
     window._applyManittoDB = function(val) {
+        // votes는 별도 노드(manittoVotes)에서 관리되므로 manitto 노드 갱신 시 유지
+        const _prevVotes = db.manitto?.votes;
         db.manitto = val || null;
+        if(db.manitto && _prevVotes && !db.manitto.votes) db.manitto.votes = _prevVotes;
         _updateManittoStatus();
         const el = document.getElementById('s_manitto');
         if(el && !el.classList.contains('hidden')) rManittoS();
@@ -57472,6 +57623,15 @@ window.addCharRow = function() {
                 </div>`;
         }
 
+        // ── 정답 투표 섹션 ──
+        const voteHtml = _buildManittoVoteSHtml();
+
+        // 정답 투표가 열려 있으면 투표 화면만 표시 (내 마니또·빙고 숨김)
+        if(m && m.voteOpen && voteHtml) {
+            el.innerHTML = `<div style="max-width:560px;margin:0 auto;padding:0 20px 20px;">${voteHtml}</div>`;
+            return;
+        }
+
         // ── 빙고 섹션 ──
         const bingoHtml = _buildBingoSHtml();
 
@@ -57487,6 +57647,81 @@ window.addCharRow = function() {
         });
     }
     window.rManittoS = rManittoS;
+
+    // 학생: 마니또 정답 투표 폼 (내 마니또가 누구일지 이름+이유 제출)
+    function _buildManittoVoteSHtml() {
+        const m = db.manitto;
+        if(!m || !m.voteOpen) return '';
+        const myCd = (typeof me !== 'undefined' && me?.cd) || window._myCd || localStorage.getItem('stuCode') || '';
+        if(!myCd) return '';
+        const myVote = m.votes && m.votes[myCd];
+        const stuArr = (Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{})).filter(s => s && s.cd && String(s.cd) !== String(myCd));
+        stuArr.sort((a,b) => (Number(a.no)||9999) - (Number(b.no)||9999));
+
+        if(myVote) {
+            // 이미 제출함 — 읽기 전용 (정답 여부/실제 마니또는 공개하지 않음)
+            const stuMap = {};
+            (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).forEach(s=>{if(s)stuMap[s.cd]=s;});
+            const guessNm = myVote.guessCd ? (stuMap[myVote.guessCd]?.nm || myVote.guessNm || '?') : (myVote.guessNm || '?');
+            return `<div style="background:white;border-radius:18px;border:2px solid #FFCC80;padding:22px;">
+                <div style="text-align:center;margin-bottom:14px;">
+                    <div style="font-size:24px;font-family:'Jua';color:#E65100;">🗳️ 내 마니또 맞히기</div>
+                </div>
+                <div style="background:#FFF3E0;border-radius:14px;padding:18px;text-align:center;">
+                    <div style="font-size:14px;color:#BF6000;margin-bottom:8px;">제출 완료! ✅</div>
+                    <div style="font-size:15px;color:#5D4037;">내가 예상한 마니또</div>
+                    <div style="font-size:30px;font-family:'Jua';color:#E65100;font-weight:bold;margin:6px 0;">💘 ${guessNm}</div>
+                    <div style="background:white;border-radius:10px;padding:10px 14px;margin-top:10px;font-size:14px;color:#555;line-height:1.6;text-align:left;white-space:pre-wrap;">${(myVote.reason||'').replace(/</g,'&lt;')||'(이유 없음)'}</div>
+                </div>
+                <div style="font-size:12px;color:#FFB74D;text-align:center;margin-top:12px;">결과는 선생님만 확인할 수 있어요 🤫</div>
+            </div>`;
+        }
+
+        // 아직 학생 명단이 없으면 로드 후 재렌더 (드롭다운 비어있는 것 방지)
+        if(!stuArr.length && window._ensureStuLoaded) {
+            try { window._ensureStuLoaded().then(()=>{ try { rManittoS(); } catch(_){} }); } catch(_){}
+            return `<div style="background:white;border-radius:18px;border:2px solid #FFCC80;padding:22px;text-align:center;color:#BF6000;font-family:'Jua';">🗳️ 투표 준비 중...</div>`;
+        }
+        const opts = stuArr.map(s => `<option value="${s.cd}">${s.no?s.no+' ':''}${s.nm}</option>`).join('');
+        return `<div style="background:white;border-radius:18px;border:2px solid #FFCC80;padding:22px;">
+            <div style="text-align:center;margin-bottom:14px;">
+                <div style="font-size:24px;font-family:'Jua';color:#E65100;">🗳️ 내 마니또 맞히기</div>
+                <div style="font-size:14px;color:#BF6000;margin-top:6px;">내 마니또가 누구일 것 같은지 예상해서 제출해요!</div>
+            </div>
+            <div style="font-size:14px;color:#5D4037;font-weight:bold;margin-bottom:6px;">내 마니또는?</div>
+            <select id="_manittoGuessSel" style="width:100%;box-sizing:border-box;border:1.5px solid #FFB74D;border-radius:10px;padding:11px;font-family:'Jua';font-size:15px;outline:none;background:white;margin-bottom:14px;">
+                <option value="">-- 친구를 선택하세요 --</option>
+                ${opts}
+            </select>
+            <div style="font-size:14px;color:#5D4037;font-weight:bold;margin-bottom:6px;">그렇게 생각한 이유</div>
+            <textarea id="_manittoGuessReason" rows="3" placeholder="왜 그렇게 생각했는지 적어주세요!"
+                style="width:100%;box-sizing:border-box;border:1.5px solid #FFB74D;border-radius:10px;padding:11px;font-family:'Jua';font-size:14px;resize:none;outline:none;"></textarea>
+            <button onclick="submitManittoVote()" style="width:100%;margin-top:14px;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#FB8C00,#FFB74D);color:white;font-family:'Jua';font-size:16px;font-weight:bold;cursor:pointer;">📨 제출하기</button>
+            <div style="font-size:12px;color:#FFB74D;text-align:center;margin-top:10px;">한 번 제출하면 바꿀 수 없어요. 정답은 알려주지 않아요 🤫</div>
+        </div>`;
+    }
+
+    window.submitManittoVote = function() {
+        const m = db.manitto;
+        if(!m || !m.voteOpen) { alert('지금은 투표 기간이 아니에요.'); return; }
+        const myCd = (typeof me !== 'undefined' && me?.cd) || window._myCd || localStorage.getItem('stuCode') || '';
+        if(!myCd) { alert('학생 정보를 불러오는 중이에요. 잠시 후 다시 시도해주세요.'); return; }
+        if(m.votes && m.votes[myCd]) { alert('이미 제출했어요!'); return; }
+        const sel = document.getElementById('_manittoGuessSel');
+        const reasonEl = document.getElementById('_manittoGuessReason');
+        const guessCd = sel ? sel.value : '';
+        const reason = reasonEl ? reasonEl.value.trim() : '';
+        if(!guessCd) { alert('내 마니또를 선택해주세요!'); if(sel) sel.focus(); return; }
+        if(!reason) { alert('이유를 적어주세요!'); if(reasonEl){ reasonEl.style.border='1.5px solid #E53935'; reasonEl.focus(); } return; }
+        const stuMap = {};
+        (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).forEach(s=>{if(s)stuMap[s.cd]=s;});
+        const vote = { guessCd, guessNm: stuMap[guessCd]?.nm || '', reason, ts: Date.now() };
+        try { dbRef.child('manittoVotes/' + myCd).set(vote); } catch(e){ console.error('[manitto vote]', e); alert('제출에 실패했어요. 다시 시도해주세요.'); return; }
+        if(!db.manitto.votes) db.manitto.votes = {};
+        db.manitto.votes[myCd] = vote;
+        showToast('🗳️ 제출 완료!');
+        rManittoS();
+    };
 
     // 빙고 HTML 빌더 (s_manitto 전용)
     function _buildBingoSHtml() {
@@ -57984,9 +58219,25 @@ window.addCharRow = function() {
             window._ensureStuLoaded().then(() => _renderBingoStatsTable()).catch(()=>{});
             return;
         }
+        // 마니또 투표 병합 정보
+        const mHasPairs = !!db.manitto?.pairs;
+        const mVotes = db.manitto?.votes || {};
+        const stuMapM = {};
+        stuList.forEach(s => { if(s && s.cd) stuMapM[s.cd] = s; });
         const rows = stuList.filter(s=>s&&s.cd).map(s => {
             const doneSet = new Set(Object.keys(approved[s.cd]||{}).map(Number));
-            return {no: s.no ?? 9999, cd: s.cd, name: s.nm||s.cd, doneCnt: doneSet.size, lines: _calcBingoLines(doneSet)};
+            const r = {no: s.no ?? 9999, cd: s.cd, name: s.nm||s.cd, doneCnt: doneSet.size, lines: _calcBingoLines(doneSet)};
+            if(mHasPairs) {
+                const giver = _manittoGiverOf(s.cd);
+                r.giverNm = giver ? (stuMapM[giver.cd]?.nm || '') : '-';
+                const v = mVotes[s.cd];
+                if(v) {
+                    r.guessNm = v.guessCd ? (stuMapM[v.guessCd]?.nm || v.guessNm || '?') : (v.guessNm || '?');
+                    r.correct = !!(giver && v.guessCd && String(v.guessCd) === String(giver.cd));
+                    r.voted = true;
+                } else { r.voted = false; }
+            }
+            return r;
         });
         const {key, dir} = _bingoStatsSort;
         rows.sort((a,b) => {
@@ -58000,19 +58251,50 @@ window.addCharRow = function() {
             return dir === 1 ? '<span style="font-size:10px;">▲</span>' : '<span style="font-size:10px;">▼</span>';
         };
         const thStyle = 'padding:3px 6px;border-bottom:2px solid #90CAF9;font-size:12px;cursor:pointer;user-select:none;';
-        statsList.innerHTML = `<table style="width:100%;border-collapse:collapse;">
+        const thStyleM = 'padding:3px 6px;border-bottom:2px solid #FFB74D;font-size:12px;text-align:center;';
+        const _giverHidden = !!window._manittoGiverHidden;
+        // 투표 요약
+        let voteSummary = '';
+        if(mHasPairs) {
+            const sub = rows.filter(r=>r.voted).length;
+            const cor = rows.filter(r=>r.correct).length;
+            voteSummary = `<div style="margin-bottom:6px;font-size:12px;color:#E65100;">🗳️ 정답투표 제출 <b>${sub}</b>/${rows.length}명 · 정답 <b>${cor}</b>명</div>`;
+        }
+        const _mCell = (r) => {
+            if(!mHasPairs) return '';
+            let guess, verdict;
+            if(r.voted) {
+                guess = r.guessNm;
+                verdict = r.correct
+                    ? '<span style="color:#2E7D32;font-weight:bold;">⭕</span>'
+                    : '<span style="color:#C62828;font-weight:bold;">❌</span>';
+            } else { guess = '<span style="color:#bbb;">미제출</span>'; verdict = '<span style="color:#bbb;">-</span>'; }
+            const giverCell = _giverHidden ? '<span style="color:#bbb;">•••</span>' : `💘 ${r.giverNm}`;
+            return `<td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;color:#6A1B9A;font-weight:bold;white-space:nowrap;">${giverCell}</td>
+                <td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;white-space:nowrap;">${guess}</td>
+                <td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;">${verdict}</td>`;
+        };
+        statsList.innerHTML = `${voteSummary}<table style="width:100%;border-collapse:collapse;">
             <thead><tr>
                 <th style="text-align:center;${thStyle}" onclick="_sortBingoStats('no')">학생 ${arrow('no')}</th>
                 <th style="text-align:center;${thStyle}" onclick="_sortBingoStats('done')">완료 칸 ${arrow('done')}</th>
                 <th style="text-align:center;${thStyle}" onclick="_sortBingoStats('lines')">완성 줄 ${arrow('lines')}</th>
+                ${mHasPairs?`<th style="${thStyleM}cursor:pointer;user-select:none;" onclick="window._toggleManittoGiverCol()" title="클릭하여 숨기기/보이기">실제 마니또 ${_giverHidden?'🙈':'👁'}</th><th style="${thStyleM}">제출 정답</th><th style="${thStyleM}">정답</th>`:''}
             </tr></thead>
             <tbody>${rows.map(r=>`<tr onclick="_showBingoStudentModal('${r.cd}','${r.name.replace(/'/g,'&#39;')}')" style="cursor:pointer;" onmouseover="this.style.background='#E3F2FD'" onmouseout="this.style.background=''">
                 <td style="padding:3px 6px;border-bottom:1px solid #BBDEFB;">${r.name}</td>
                 <td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;">${r.doneCnt}/9</td>
                 <td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;font-weight:bold;color:${r.lines>0?'#1565C0':'#999'};">${r.lines}줄</td>
+                ${_mCell(r)}
             </tr>`).join('')}</tbody>
         </table>`;
     }
+
+    // 교사: '실제 마니또' 열 숨기기/보이기 토글 (스포일러 방지)
+    window._toggleManittoGiverCol = function() {
+        window._manittoGiverHidden = !window._manittoGiverHidden;
+        try { window._renderBingoStatsTable && _renderBingoStatsTable(); } catch(_){}
+    };
 
     window._showBingoStudentModal = function(cd, name) {
         const b = db.bingo;
@@ -58049,11 +58331,38 @@ window.addCharRow = function() {
             }).join('');
         };
 
-        modal.innerHTML = `<div style="background:white;border-radius:20px;padding:20px;max-width:400px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-family:'Jua';">
+        // 마니또 정답 투표 정보 블록
+        let voteBlock = '';
+        if(db.manitto?.pairs) {
+            const stuMapV = {};
+            (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).forEach(s=>{if(s)stuMapV[s.cd]=s;});
+            const giver = _manittoGiverOf(cd);
+            const giverNm = giver ? (stuMapV[giver.cd]?.nm || '-') : '-';
+            const v = db.manitto?.votes?.[cd];
+            let voteRow;
+            if(v) {
+                const guessNm = v.guessCd ? (stuMapV[v.guessCd]?.nm || v.guessNm || '?') : (v.guessNm || '?');
+                const isCorrect = !!(giver && v.guessCd && String(v.guessCd) === String(giver.cd));
+                const reason = v.reason ? String(v.reason).replace(/</g,'&lt;') : '<span style="color:#bbb;">(이유 없음)</span>';
+                voteRow = `<div style="font-size:13px;color:#5D4037;">제출한 정답: <b style="color:#E65100;">${guessNm}</b> ${isCorrect?'<span style="color:#2E7D32;font-weight:bold;">⭕ 정답</span>':'<span style="color:#C62828;font-weight:bold;">❌ 오답</span>'}</div>
+                    <div style="font-size:12px;color:#666;margin-top:6px;background:white;border-radius:8px;padding:8px 10px;line-height:1.5;white-space:pre-wrap;">💬 ${reason}</div>`;
+            } else {
+                voteRow = `<div style="font-size:13px;color:#bbb;">정답 투표 미제출</div>`;
+            }
+            voteBlock = `<div style="background:#FFF3E0;border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+                <div style="font-size:13px;color:#E65100;font-weight:bold;margin-bottom:6px;">🗳️ 마니또 정답 투표</div>
+                <div style="font-size:13px;color:#6A1B9A;font-weight:bold;margin-bottom:4px;">실제 마니또: 💘 ${giverNm}</div>
+                ${voteRow}
+            </div>`;
+        }
+
+        modal.innerHTML = `<div style="background:white;border-radius:20px;padding:20px;max-width:400px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);font-family:'Jua';">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-                <div style="font-size:16px;font-weight:bold;color:#1565C0;">🎯 ${name} 빙고 현황</div>
+                <div style="font-size:16px;font-weight:bold;color:#1565C0;">🎯 ${name} 현황</div>
                 <button onclick="document.querySelectorAll('[data-bingo-stu-modal]').forEach(m=>m.remove())" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;">✕</button>
             </div>
+            ${voteBlock}
+            <div style="font-size:13px;color:#1565C0;font-weight:bold;margin-bottom:8px;">🎯 빙고 현황</div>
             <div id="_bingoStuModalGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${_renderGrid()}</div>
         </div>`;
         document.body.appendChild(modal);
@@ -58922,7 +59231,7 @@ window.addCharRow = function() {
                 + '</div></div>'
                 // 상점 이용권 (항상 표시)
                 + '<div style="display:flex;align-items:center;justify-content:space-between;">'
-                + '<div><div style="font-size:13px;font-weight:700;color:#4E342E;">🎟️ 상점 이용권</div>'
+                + '<div><div style="font-size:13px;font-weight:700;color:#4E342E;">🎫 상점 이용권</div>'
                 + '<div style="font-size:11px;color:#999;">보유 ' + _kwonCount + '개 · 1개당 1🍪</div></div>'
                 + '<div style="display:flex;align-items:center;gap:8px;">'
                 + '<button onclick="window._kbsAdj(&quot;kwon&quot;,-1)" style="' + btnBase + kwonDis + '">−</button>'
@@ -60145,7 +60454,7 @@ window.addCharRow = function() {
         const cookLeftInit = Math.max(0, sk.price - passDefault);
         const passSection = maxPass > 0 ? `
             <div style="background:#FFF8E1;border:1.5px solid #FFD54F;border-radius:12px;padding:10px 14px;margin-top:12px;text-align:left;">
-                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:6px;">🎟️ 상점 이용권 사용 (보유: ${passCount}개)</div>
+                <div style="font-size:13px;color:#5D4037;font-weight:bold;margin-bottom:6px;">🎫 상점 이용권 사용 (보유: ${passCount}개)</div>
                 <div style="display:flex;align-items:center;gap:8px;">
                     <label style="font-size:12px;color:#795548;">사용 개수:</label>
                     <input type="text" inputmode="numeric" id="_skinPassRange" value="${passDefault}" style="width:54px;padding:4px;font-size:14px;border:1px solid #DDD;border-radius:8px;text-align:center;" oninput="(function(el){
@@ -60188,7 +60497,7 @@ window.addCharRow = function() {
             <div style="text-align:center;font-size:22px;font-weight:bold;color:#E65100;">🍪 ${sk.price}</div>
             ${creatorLine}
             ${passSection}
-            ${!canAfford ? `<div style="margin-top:10px;text-align:center;font-size:13px;color:#E53935;font-weight:bold;">쿠키가 부족합니다 (보유: 🍪${myCookie}${passCount>0?` + 🎟️${passCount}개`:''})</div>` : ''}
+            ${!canAfford ? `<div style="margin-top:10px;text-align:center;font-size:13px;color:#E53935;font-weight:bold;">쿠키가 부족합니다 (보유: 🍪${myCookie}${passCount>0?` + 🎫${passCount}개`:''})</div>` : ''}
             <div style="display:flex;gap:10px;margin-top:16px;">
                 <button onclick="this.closest('[style*=inset]').remove()" style="flex:1;padding:12px;border:none;border-radius:14px;background:#EEEEEE;font-family:'Jua';font-size:15px;cursor:pointer;color:#555;">취소</button>
                 <button id="_skinBuyBtn" onclick="window._execBuySkin(${skinId},this)" style="flex:2;padding:12px;border:none;border-radius:14px;background:linear-gradient(135deg,#AB47BC,#7B1FA2);font-family:'Jua';font-size:15px;cursor:pointer;color:white;font-weight:bold;opacity:${btnDisabled?'0.4':'1'};" ${btnDisabled?'disabled':''}>🛒 구매하기</button>
@@ -62315,9 +62624,7 @@ window._EJ = {
   "✉": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0NDRDZERCIgZD0iTTM2IDI3YzAgMi4yMDktMS43OTEgNC00IDRINGMtMi4yMDkgMC00LTEuNzkxLTQtNFY5YzAtMi4yMDkgMS43OTEtNCA0LTRoMjhjMi4yMDkgMCA0IDEuNzkxIDQgNHYxOHoiLz48cGF0aCBmaWxsPSIjOTlBQUI1IiBkPSJNMTEuOTUgMTcuNjM2TC42MzcgMjguOTQ5Yy0uMDI3LjAyOC0uMDM3LjA2My0uMDYuMDkxLjM0LjU3LjgxNCAxLjA0MyAxLjM4NCAxLjM4NC4wMjktLjAyMy4wNjMtLjAzMy4wOS0uMDZMMTMuMzY1IDE5LjA1Yy4zOS0uMzkxLjM5LTEuMDIzIDAtMS40MTQtLjM5Mi0uMzkxLTEuMDI0LS4zOTEtMS40MTUgME0zNS40MjMgMjkuMDRjLS4wMjEtLjAyOC0uMDMzLS4wNjMtLjA2LS4wOUwyNC4wNTEgMTcuNjM2Yy0uMzkyLS4zOTEtMS4wMjQtLjM5MS0xLjQxNSAwLS4zOTEuMzkyLS4zOTEgMS4wMjQgMCAxLjQxNGwxMS4zMTMgMTEuMzE0Yy4wMjYuMDI2LjA2Mi4wMzcuMDkuMDYuNTcxLS4zNCAxLjA0NC0uODE0IDEuMzg0LTEuMzg0Ii8+PHBhdGggZmlsbD0iIzk5QUFCNSIgZD0iTTMyIDVINEMxLjc5MSA1IDAgNi43OTEgMCA5djEuMDNsMTQuNTI4IDE0LjQ5NmMxLjg5NCAxLjg5MyA0Ljk4OCAxLjg5MyA2Ljg4NCAwTDM2IDEwLjAwOVY5YzAtMi4yMDktMS43OTEtNC00LTR6Ii8+PHBhdGggZmlsbD0iI0UxRThFRCIgZD0iTTMyIDVINEMyLjQxMiA1IDEuMDUxIDUuOTM0LjQwNSA3LjI3NWwxNC43NjYgMTQuNzY3YzEuNTYyIDEuNTYyIDQuMDk2IDEuNTYyIDUuNjU3IDBMMzUuNTk1IDcuMjc1QzM0Ljk0OSA1LjkzNCAzMy41ODkgNSAzMiA1eiIvPjwvc3ZnPg==",
   "✍": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0VGOTY0NSIgZD0iTTYuMjAzIDIxLjY0MWMtLjA3OC45MjIuMzIxIDEuMTk4Ljk0NiAxLjYzNi42MTguNDMzIDQuMzgzLTIuODY3IDUuNjE0LTMuMzY5IDEuMjMxLS41MDIgMTIuNzg3LTIuOTQ5IDEyLjI4Ni01LjE4My0uNTAxLTIuMjM0LTMuOTkzLTIuNTY0LTYuNjgzLTIuMTA4LTIuNjkuNDU2LTcuODM4IDIuODIyLTkuMzQyIDQuMDk5LTEuNTA0IDEuMjc2LTIuODIxIDQuOTI1LTIuODIxIDQuOTI1em04LjYyMiAxLjQ5N3MtMy41NTcgMS4xNTUtMy41NTcgNC4xNTUuODY2IDQuNjkyIDEuMjc2IDUuNTEzYy40MTEuODIgMS42ODggMS42MTYgMy40NTUuODUxIDIuMDUyLS44ODktLjQ5MS02LjAwNCA2LTMuNjU2IDIuOTc0IDEuMDc1IDYuMDU5IDIuNTI4IDkuMDU5IDEuNTI4QzMzLjkwNCAzMC41OCAzNSAyNyAzNSAyNWMwLTQuMDk0LTMtMy00LTJzLTkgMy0xMCAzLTYuMTc1LTIuODYyLTYuMTc1LTIuODYyeiIvPjxwYXRoIGZpbGw9IiNGOUNBNTUiIGQ9Ik0xOS4zMTIgMjguMTg4cy0uMTItMS4zMTYtMS4zNzUtMS40NjljLTEuMDMxLS4xMjUtMi42NTYuMjE5LTMuNSAxLjkwNi0uODQ0IDEuNjg4LTIuMzQ0IDEuNDA2LTIuMjgxIDIuODEyLjA2MiAxLjQwNi41IDIuNSAxLjQwNiAyLjc4MS45MDcuMjgyIDIuMTg4LS4yMTggMi4zNDQtMS43MTguMTU2LTEuNS4zNDQtMi44NzUgMS4zMTItMy40NjkuOTctLjU5MyAyLjA5NC0uODQzIDIuMDk0LS44NDN6Ii8+PHBhdGggZmlsbD0iI0VGOTY0NSIgZD0iTTE4IDI2cy0xLTEtMy0xLTYuNjY0IDIuMTMzLTUuMjUgNi4zNzVjMSAzIDMuODQ0IDEuNTk0IDQuMjUtMS4zNzUuNDA3LTIuOTczIDQtNCA0LTR6Ii8+PHBhdGggZmlsbD0iI0Y5Q0E1NSIgZD0iTTE3IDI2cy0xLTEtMy0xLTQuODg1IDEuNTMtNSA2Yy0uMDk0IDMuNjU2IDQuMDMxIDIgNC0xLS4wMzEtMyA0LTQgNC00eiIvPjxwYXRoIGZpbGw9IiNFRjk2NDUiIGQ9Ik01IDI3YzAgMy4yOTcuNDU3IDUuMjg2IDIuNDI4IDQuOTQ3IDMuMjY5LS41NjIgMi4wMjgtNC42MTQgNC44ODktNS43NTQgMi4wNzctLjgyNyA1LjEwMS0uNjMgOC4wMiAxLjEwM0MyMi4yNiAyOC40MzggMjEgMjQgMTkgMjNzLTggMC05IDAtNSA0LTUgNHoiLz48cGF0aCBmaWxsPSIjRjlDQTU1IiBkPSJNNC44NDIgMjcuMTc0QzMuMjUxIDI5LjgzOSA0LjIxOSAzMi41OTQgNyAzMmMyLjY5MS0uNTc0IDEuMzQzLTQuMDcgNC02IDEuNDg5LTEuMDgyIDQuNjk4LTEuNDQ1IDYuNjk4LS40NDVTMjAgMjQgMTggMjNzLTguNTQtLjAyNS05LjUzOC4wMzdjLTEuOTA5LjExOS0zLjYyIDQuMTM3LTMuNjIgNC4xMzd6Ii8+PHBhdGggZmlsbD0iIzNCODhDMyIgZD0iTTkuNDE4IDI5LjExNGMtLjY3OS43NzgtMS44Ni44NTktMi42MzkuMThsLS4xOTYtLjE3MWMtLjc3OS0uNjc5LS44NTktMS44NTktLjE4LTIuNjM4TDI4LjkyNi42NjhjLjY3OS0uNzc4IDEuODYtLjg1OSAyLjYzOS0uMThsLjE5NS4xNzFjLjc3OS42NzkuODU5IDEuODYuMTgxIDIuNjM4TDkuNDE4IDI5LjExNHoiLz48cGF0aCBmaWxsPSIjM0I4OEMzIiBkPSJNMTAuNDkgMjcuODg2Yy0yLjM2IDIuNzA1LTguMzEzIDguMDA5LTkuMDY3IDcuMzUyLS43NTMtLjY1NyAzLjY5My03LjI3NSA2LjA1My05Ljk4MSAyLjM2LTIuNzA2IDEuNjYxLS41NDIgMi40OTMuMTg1LjgzMi43MjYgMi44ODEtLjI2LjUyMSAyLjQ0NHoiLz48cGF0aCBmaWxsPSIjRUY5NjQ1IiBkPSJNNi42NzIgMjUuMDI2YzAgMSAyLjQyMSAxLjkxNSAzLjQyMS45MTVzMy4zNDEtMi4yMjggNi40MTktLjk0MUMyMy43MTYgMjguMDEgMjEgMjQgMTggMjNzLTggMC05IDAtMi4zMjggMi4wMjYtMi4zMjggMi4wMjZ6Ii8+PHBhdGggZmlsbD0iI0ZGREM1RCIgZD0iTTYuMTk1IDIyLjA0M2MtLjM1OC0xLjExMyAyLjE4OC03LjI3OSAzLjM0MS04LjIzNCAxLjQ1Mi0xLjIwMiA3LjA2OS0zLjA2MyA5LjA2OS0zLjA2M1MzNSAxOCAzNSAyM3MtMiA1LjYyNS00Ljg3NSA2LjQwNmMtMi4yOTkuNjI1LTcuMTE1LjI0Mi05LjIxOS0xLjcxOUMxOS4wNjIgMjUuOTY5IDE3Ljc4MSAyNC43ODEgMTYgMjRjLTMuMzAyLTEuNDQ4LTUuNTAzLjQyNC02LjUwMyAxLjQyNC0yIDItNS43NjgtLjE1OS0yLjYyNS0zLjU4QzkuMTIxIDE5LjM5NSAxMS4xMDIgMTguNjMyIDEzIDE4YzYtMiAxMC0yIDgtNC0uNzA3LS43MDctMS4wOTIuMzQ2LTIuMDc2LjUyNS0xLjk4LjM2LTMuNTU2LjYwMi02LjE2NSAxLjQ3Mi0uOTAyLjMtNS4xNzIgMy4wMjMtNi41NjQgNi4wNDZ6Ii8+PHBhdGggZmlsbD0iI0VGOTY0NSIgZD0iTTEzLjE5NiAxNi4yNzVjMS4wNjQtLjM4OCA1LjcwMi0xLjIzMiA4LjExNS0yLjA2OCAxLjk0OS0uNjc2IDMuNjU5LjYzNi0uMDQgMi4wMjgtMy41NyAxLjM0My03LjI3OSAxLjIzMy05Ljk4NCAyLjMwNy0xLjAyMy40MDYtMS45MS0uODc1IDEuOTA5LTIuMjY3eiIvPjxwYXRoIGZpbGw9IiMzQjg4QzMiIGQ9Ik0yMi40ODcgOC4wMjNzLTUuOTI4IDYuNzk1LTguNDQ2IDkuNjYxYzIuMjU0LS45MjYgNC4yNzEtLjc1IDYuMTk4LTEuODg0IDEuOTI3LTEuMTMzIDIuODA2LTIuMzQyIDUuNzMtNS42OTUgMS4wODYtMS4yNDQtMy40ODItMi4wODItMy40ODItMi4wODJ6Ii8+PC9zdmc+",
   "✏": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0Q5OUU4MiIgZD0iTTM1LjIyMiAzMy41OThjLS42NDctMi4xMDEtMS43MDUtNi4wNTktMi4zMjUtNy41NjYtLjUwMS0xLjIxNi0uOTY5LTIuNDM4LTEuNTQ0LTMuMDE0LS41NzUtLjU3NS0xLjU1My0uNTMtMi4xNDMuMDU4IDAgMC0yLjQ2OSAxLjY3NS0zLjM1NCAyLjc4My0xLjEwOC44ODItMi43ODUgMy4zNTctMi43ODUgMy4zNTctLjU5LjU5LS42MzUgMS41NjctLjA2IDIuMTQzLjU3Ni41NzUgMS43OTggMS4wNDMgMy4wMTUgMS41NDQgMS41MDYuNjIgNS40NjUgMS42NzYgNy41NjYgMi4zMjUuMzU5LjExIDEuNzQtMS4yNzEgMS42My0xLjYzeiIvPjxwYXRoIGZpbGw9IiNFQTU5NkUiIGQ9Ik0xMy42NDMgNS4zMDhjMS4xNTEgMS4xNTEgMS4xNTEgMy4wMTYgMCA0LjE2N2wtNC4xNjcgNC4xNjhjLTEuMTUxIDEuMTUtMy4wMTggMS4xNS00LjE2NyAwTDEuMTQxIDkuNDc1Yy0xLjE1LTEuMTUxLTEuMTUtMy4wMTYgMC00LjE2N2w0LjE2Ny00LjE2N2MxLjE1LTEuMTUxIDMuMDE2LTEuMTUxIDQuMTY3IDBsNC4xNjggNC4xNjd6Ii8+PHBhdGggZmlsbD0iI0ZGQ0M0RCIgZD0iTTMxLjM1MyAyMy4wMThsLTQuMTcgNC4xNy00LjE2MyA0LjE2NUw3LjM5MiAxNS43MjZsOC4zMzUtOC4zMzQgMTUuNjI2IDE1LjYyNnoiLz48cGF0aCBmaWxsPSIjMjkyRjMzIiBkPSJNMzIuMDc4IDM0Ljc2M3MyLjcwOSAxLjQ4OSAzLjQ0MS43NTdjLjczMi0uNzMyLS43NjUtMy40MzUtLjc2NS0zLjQzNXMtMi41NjYuMDQ4LTIuNjc2IDIuNjc4eiIvPjxwYXRoIGZpbGw9IiNDQ0Q2REQiIGQ9Ik0yLjE4MyAxMC41MTdsOC4zMzUtOC4zMzUgNS4yMDggNS4yMDktOC4zMzQgOC4zMzV6Ii8+PHBhdGggZmlsbD0iIzk5QUFCNSIgZD0iTTMuMjI1IDExLjU1OGw4LjMzNC04LjMzNCAxLjA0MiAxLjA0Mkw0LjI2NyAxMi42em0yLjA4MyAyLjA4Nmw4LjMzNS04LjMzNSAxLjA0MiAxLjA0Mi04LjMzNSA4LjMzNHoiLz48L3N2Zz4=",
-  "➡": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iIzNCODhDMyIgZD0iTTM2IDMyYzAgMi4yMDktMS43OTEgNC00IDRINGMtMi4yMDkgMC00LTEuNzkxLTQtNFY0YzAtMi4yMDkgMS43OTEtNCA0LTRoMjhjMi4yMDkgMCA0IDEuNzkxIDQgNHYyOHoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNyAxNGg5VjdsMTMgMTEtMTMgMTF2LTdIN3oiLz48L3N2Zz4=",
-  "🎟": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0VBNTk2RSIgZD0iTTI2Ljc1MSA4LjAwN2MxLjM2NCAxLjM2NSAzLjM2NCAxLjcwOCA1LjA0NiAxLjAzMmwzLjYxMyAzLjYxMWMuNzM3Ljc0LjczOCAxLjkzOC0uMDA0IDIuNjhMMTUuMzE5IDM1LjQwNWMtLjc0My43MzktMS45NC43MzctMi42ODEgMGwtMy42MDYtMy42MTJjLjY3Mi0xLjY4NC4zMy0zLjY4Mi0xLjAzMi01LjA0Ny0xLjM2Ny0xLjM2NS0zLjM2NC0xLjcwNy01LjA0Ny0xLjAzMmwtMi4zNTktMi4zNmMtLjc0LS43MzctLjc0Mi0xLjkzOCAwLTIuNjhMMjAuNjc4LjU5NmMuNzM5LS43NCAxLjkzNi0uNzQxIDIuNjc5LjAwMmwyLjM2MSAyLjM2MWMtLjY3NyAxLjY4My0uMzMxIDMuNjgxIDEuMDMzIDUuMDQ4eiIvPjxwYXRoIGZpbGw9IiNCRTE5MzEiIGQ9Ik01LjQyIDE4LjUyN2wtMi4xNDkgMi4xNDhjLS43MzkuNzM5LS43NDEgMS45MzktLjAwMyAyLjY4bC41NDIuNTQxYzEuODk2LS41MDUgMy45OTktLjAxOCA1LjQ4MiAxLjQ2OCAxLjQ4OCAxLjQ4NiAxLjk3MSAzLjU4OSAxLjQ2NyA1LjQ4MWwxLjg3OCAxLjg4M2MuNzQxLjczOSAxLjk0MS43MzkgMi42ODItLjAwMmwyLjE4OS0yLjE4N0w1LjQyIDE4LjUyN3ptMTMuNTIxIDEwLjU4bDEwLjE1OC0xMC4xNTJMMTcuMDA4IDYuOTQzIDYuODU0IDE3LjA5NWwxMi4wODcgMTIuMDEyem0xLjk5LTEzLjk5M2MyLjI0NSAyLjIyOCAyLjc0NSA1LjM1NiAxLjEyMSA2Ljk4OS0xLjYyNyAxLjYzNS00Ljc2MiAxLjE1MS03LjAwMS0xLjA3NS0yLjIzOS0yLjIyOC0yLjczOC01LjM1OC0xLjExNC02Ljk5MSAxLjYyNS0xLjYzIDQuNzU1LTEuMTUgNi45OTQgMS4wNzd6bTExLjgtMi40NjRsLTEuODgxLTEuODgxYy0xLjg5NS41MDMtMy45OTguMDIxLTUuNDgzLTEuNDY4LTEuNDg4LTEuNDg0LTEuOTc2LTMuNTkxLTEuNDctNS40ODRsLS41NDEtLjU0NmMtLjc0LS43MzUtMS45NC0uNzM1LTIuNjc4LjAwM0wxOC40NDIgNS41MWwxMi4wOTIgMTIuMDExIDIuMTk2LTIuMTk1Yy43NC0uNzM3Ljc0LTEuOTM2LjAwMS0yLjY3NnoiLz48L3N2Zz4=",
-  "🏖": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PGVsbGlwc2UgZmlsbD0iIzNCODhDMyIgY3g9IjE4IiBjeT0iMzAuNTQiIHJ4PSIxOCIgcnk9IjUuMzYiLz48cGF0aCBmaWxsPSIjODhDOUY5IiBkPSJNMzMuODEzIDI4LjUzOGMwIDEuNjE2LTIuNSAyLjU4Ny0xNC40ODIgMi41ODctMTAuOTI1IDAtMTMuNjEyLS45NzEtMTMuNjEyLTIuNTg3czUuNjgzLTIuOTI2IDEzLjYxMi0yLjkyNiAxNC40ODIgMS4zMSAxNC40ODIgMi45MjZ6Ii8+PHBhdGggZmlsbD0iI0Y0OTAwQyIgZD0iTTcgMjguMjVjMC0xIDEtNSAxMS01IDEyIDAgMTUgNCAxNSA1czAgMi0xNCAyYy0xMiAwLTEyLTEtMTItMnoiLz48cGF0aCBmaWxsPSIjNjY3NTdGIiBkPSJNMjAuNjIgMjcuNjY3Yy0uMTUuNjkyLS44MzUgMS4xMzMtMS41MjcuOTgyLS42OTMtLjE1LTEuMTMzLS44MzQtLjk4My0xLjUyN2w1LjA4My0yNS45ODVjLjE1LS42OTMuODM0LTEuMTMyIDEuNTI3LS45ODIuNjkxLjE1IDEuMTMzLjgzNC45ODEgMS41MjdMMjAuNjIgMjcuNjY3eiIvPjxwYXRoIGZpbGw9IiNERDJFNDQiIGQ9Ik0yNC4zNTggMS44MjdDMTYuNzM2LjE3MyA5LjUwMSAzLjcgOC4xOTggOS43MDVjMCAwLS4zNjMgMS42NzIuNDc0IDEuODU0LjgzNi4xODIgMi44NzItMS4xMjggMi44NzItMS4xMjhsMjAuOTA4IDQuNTM4czEuMzA5IDIuMDM2IDIuMTQ2IDIuMjE4Yy44MzcuMTgyIDEuMTk5LTEuNDkxIDEuMTk5LTEuNDkxQzM3LjEwMSA5LjY5IDMxLjk3OSAzLjQ4MSAyNC4zNTggMS44Mjd6Ii8+PHBhdGggZmlsbD0iI0ZGRThCNiIgZD0iTTI0LjM1OCAxLjgyN0MxOC41ODQuNTc0IDEyLjg0NyA0LjQyNiAxMS41NDQgMTAuNDNjMCAwLS4zNjMgMS42NzMgMS4zMSAyLjAzNiAxLjY3My4zNjQgNC41NDUtLjc2NSA0LjU0NS0uNzY1bDkuMTk5IDEuOTk3czIuMTQ2IDIuMjE3IDMuODE5IDIuNTgxYzEuNjczLjM2MiAyLjAzNS0xLjMxMSAyLjAzNS0xLjMxMSAxLjMwMy02LjAwNC0yLjMyMS0xMS44ODgtOC4wOTQtMTMuMTQxeiIvPjxwYXRoIGZpbGw9IiNERDJFNDQiIGQ9Ik0yNC4zNTggMS44MjdjLTMuMDAzLS42NTEtNS42NTcgMy44Ny02Ljk2IDkuODc0IDAgMCAyLjE0NiAyLjIxOCAzLjgxOCAyLjU4bC44MzcuMTgzYzEuNjczLjM2MiA0LjU0NC0uNzY2IDQuNTQ0LS43NjYgMS4zMDQtNi4wMDQuNzY0LTExLjIxOS0yLjIzOS0xMS44NzF6Ii8+PHBhdGggZmlsbD0iI0ZGQUMzMyIgZD0iTTE1Ljg0NCAyNy45NDhjLjQ2OS0uNDI3IDEuNzUtLjMyNiAyLjUtLjYwMnMxLjIxOS0uNjI3IDEuODQ0LS4zNzYuODEyLjYyNyAxLjQwNi42NzggMS4wMzEuNDAyLjc4MS42NzgtMi4yMTkuMzc2LTMuNTMxLjM3Ni0zLjU3OS0uMjI2LTMtLjc1NHoiLz48L3N2Zz4=",
+  "➡": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iIzNCODhDMyIgZD0iTTM2IDMyYzAgMi4yMDktMS43OTEgNC00IDRINGMtMi4yMDkgMC00LTEuNzkxLTQtNFY0YzAtMi4yMDkgMS43OTEtNCA0LTRoMjhjMi4yMDkgMCA0IDEuNzkxIDQgNHYyOHoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNNyAxNGg5VjdsMTMgMTEtMTMgMTF2LTdIN3oiLz48L3N2Zz4=",  "🏖": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PGVsbGlwc2UgZmlsbD0iIzNCODhDMyIgY3g9IjE4IiBjeT0iMzAuNTQiIHJ4PSIxOCIgcnk9IjUuMzYiLz48cGF0aCBmaWxsPSIjODhDOUY5IiBkPSJNMzMuODEzIDI4LjUzOGMwIDEuNjE2LTIuNSAyLjU4Ny0xNC40ODIgMi41ODctMTAuOTI1IDAtMTMuNjEyLS45NzEtMTMuNjEyLTIuNTg3czUuNjgzLTIuOTI2IDEzLjYxMi0yLjkyNiAxNC40ODIgMS4zMSAxNC40ODIgMi45MjZ6Ii8+PHBhdGggZmlsbD0iI0Y0OTAwQyIgZD0iTTcgMjguMjVjMC0xIDEtNSAxMS01IDEyIDAgMTUgNCAxNSA1czAgMi0xNCAyYy0xMiAwLTEyLTEtMTItMnoiLz48cGF0aCBmaWxsPSIjNjY3NTdGIiBkPSJNMjAuNjIgMjcuNjY3Yy0uMTUuNjkyLS44MzUgMS4xMzMtMS41MjcuOTgyLS42OTMtLjE1LTEuMTMzLS44MzQtLjk4My0xLjUyN2w1LjA4My0yNS45ODVjLjE1LS42OTMuODM0LTEuMTMyIDEuNTI3LS45ODIuNjkxLjE1IDEuMTMzLjgzNC45ODEgMS41MjdMMjAuNjIgMjcuNjY3eiIvPjxwYXRoIGZpbGw9IiNERDJFNDQiIGQ9Ik0yNC4zNTggMS44MjdDMTYuNzM2LjE3MyA5LjUwMSAzLjcgOC4xOTggOS43MDVjMCAwLS4zNjMgMS42NzIuNDc0IDEuODU0LjgzNi4xODIgMi44NzItMS4xMjggMi44NzItMS4xMjhsMjAuOTA4IDQuNTM4czEuMzA5IDIuMDM2IDIuMTQ2IDIuMjE4Yy44MzcuMTgyIDEuMTk5LTEuNDkxIDEuMTk5LTEuNDkxQzM3LjEwMSA5LjY5IDMxLjk3OSAzLjQ4MSAyNC4zNTggMS44Mjd6Ii8+PHBhdGggZmlsbD0iI0ZGRThCNiIgZD0iTTI0LjM1OCAxLjgyN0MxOC41ODQuNTc0IDEyLjg0NyA0LjQyNiAxMS41NDQgMTAuNDNjMCAwLS4zNjMgMS42NzMgMS4zMSAyLjAzNiAxLjY3My4zNjQgNC41NDUtLjc2NSA0LjU0NS0uNzY1bDkuMTk5IDEuOTk3czIuMTQ2IDIuMjE3IDMuODE5IDIuNTgxYzEuNjczLjM2MiAyLjAzNS0xLjMxMSAyLjAzNS0xLjMxMSAxLjMwMy02LjAwNC0yLjMyMS0xMS44ODgtOC4wOTQtMTMuMTQxeiIvPjxwYXRoIGZpbGw9IiNERDJFNDQiIGQ9Ik0yNC4zNTggMS44MjdjLTMuMDAzLS42NTEtNS42NTcgMy44Ny02Ljk2IDkuODc0IDAgMCAyLjE0NiAyLjIxOCAzLjgxOCAyLjU4bC44MzcuMTgzYzEuNjczLjM2MiA0LjU0NC0uNzY2IDQuNTQ0LS43NjYgMS4zMDQtNi4wMDQuNzY0LTExLjIxOS0yLjIzOS0xMS44NzF6Ii8+PHBhdGggZmlsbD0iI0ZGQUMzMyIgZD0iTTE1Ljg0NCAyNy45NDhjLjQ2OS0uNDI3IDEuNzUtLjMyNiAyLjUtLjYwMnMxLjIxOS0uNjI3IDEuODQ0LS4zNzYuODEyLjYyNyAxLjQwNi42NzggMS4wMzEuNDAyLjc4MS42NzgtMi4yMTkuMzc2LTMuNTMxLjM3Ni0zLjU3OS0uMjI2LTMtLjc1NHoiLz48L3N2Zz4=",
   "🏳": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iIzg4OTlBNiIgZD0iTTUgMzZjLTEuMTA0IDAtMi0uODk2LTItMlYzYzAtMS4xMDQuODk2LTIgMi0yczIgLjg5NiAyIDJ2MzFjMCAxLjEwNC0uODk2IDItMiAyeiIvPjxwYXRoIGZpbGw9IiNBQUI4QzIiIGQ9Ik01IDFjLTEuMTA1IDAtMiAuODk1LTIgMnYzMWMwIC4yNzYuMjI0LjUuNS41cy41LS4yMjQuNS0uNVY0LjQxNEM0IDMuNjMzIDQuNjMzIDMgNS40MTQgM0g3YzAtMS4xMDUtLjg5NS0yLTItMnoiLz48cGF0aCBmaWxsPSIjODg5OUE2IiBkPSJNNSAzNmMtMS4xMDQgMC0yLS44OTYtMi0yVjNjMC0xLjEwNC44OTYtMiAyLTJzMiAuODk2IDIgMnYzMWMwIDEuMTA0LS44OTYgMi0yIDJ6Ii8+PHBhdGggZmlsbD0iI0FBQjhDMiIgZD0iTTUgMWMtMS4xMDUgMC0yIC44OTUtMiAydjMxYzAgLjI3Ni4yMjQuNS41LjVzLjUtLjIyNC41LS41VjQuNDE0QzQgMy42MzMgNC42MzMgMyA1LjQxNCAzSDdjMC0xLjEwNS0uODk1LTItMi0yeiIvPjxwYXRoIGZpbGw9IiNFMUU4RUQiIGQ9Ik0zMi40MTUgMy4wOWMtMS43NTItLjc5OS0zLjYxNS0xLjE4Ny01LjY5OC0xLjE4Ny0yLjUxOCAwLTUuMDIuNTctNy40MzggMS4xMjItMi40MTguNTUxLTQuNzAyIDEuMDcyLTYuOTk1IDEuMDcyLTEuNzkgMC0zLjM4Mi0uMzI5LTQuODY4LTEuMDA2LS4zMDktLjE0Mi0uNjctLjExNS0uOTU2LjA2OEM2LjE3MyAzLjM0MyA2IDMuNjYgNiA0djE5YzAgLjM5Mi4yMjkuNzQ3LjU4NS45MSAxLjc1Mi43OTkgMy42MTYgMS4xODcgNS42OTggMS4xODcgMi41MTggMCA1LjAyLS41NyA3LjQzOC0xLjEyMiAyLjQxOC0uNTUxIDQuNzAyLTEuMDcxIDYuOTk1LTEuMDcxIDEuNzkgMCAzLjM4My4zMjkgNC44NjggMS4wMDcuMzExLjE0LjY3LjExNS45NTYtLjA2OS4yODctLjE4NS40Ni0uNTAyLjQ2LS44NDJWNGMwLS4zOTItLjIyOS0uNzQ4LS41ODUtLjkxeiIvPjwvc3ZnPg==",
   "🏷": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0ZGRDk4MyIgZD0iTTMyLjAxNyAyMC4xODFMMTcuMzQ1IDUuNzQ2QzE2LjY4NyA1LjA4NyAxNS44MjMgNSAxNC45NiA1SDQuODgzQzMuMDI5IDUgMiA2LjAyOSAyIDcuODgzdjEwLjA4MmMwIC44NjEuMDg5IDEuNzIzLjc0NiAyLjM4TDE3LjMgMzUuMDE3YzEuMzExIDEuMzEgMy4zNzggMS4zMSA0LjY4OCAwbDEwLjA1OS0xMC4wODhjMS4zMS0xLjMxMiAxLjI4LTMuNDM4LS4wMy00Ljc0OHptLTIzLjU5Ni04Ljc2Yy0uNTg1LjU4NS0xLjUzMy41ODUtMi4xMTggMHMtLjU4Ni0xLjUzMyAwLTIuMTE4Yy41ODUtLjU4NiAxLjUzMy0uNTg1IDIuMTE4IDAgLjU4NS41ODYuNTg2IDEuNTMzIDAgMi4xMTh6Ii8+PHBhdGggZmlsbD0iI0Q5OUU4MiIgZD0iTTkuOTUyIDcuNzcyYy0xLjQzLTEuNDMxLTMuNzQ5LTEuNDMxLTUuMTc5IDAtMS40MzEgMS40My0xLjQzMSAzLjc0OSAwIDUuMTggMS40MyAxLjQzIDMuNzQ5IDEuNDMgNS4xOCAwIDEuNDMtMS40MzEgMS40MjktMy43NDktLjAwMS01LjE4em0tMS41MyAzLjY1Yy0uNTg1LjU4NS0xLjUzNC41ODUtMi4xMTkgMC0uNTg1LS41ODUtLjU4Ni0xLjUzNCAwLTIuMTE5LjU4NS0uNTg3IDEuNTM0LS41ODUgMi4xMTkgMCAuNTg1LjU4NS41ODYgMS41MzMgMCAyLjExOXoiLz48cGF0aCBmaWxsPSIjQzE2OTRGIiBkPSJNOC41MDcgMTAuNTAxYy0uMzkxLjM5MS0xLjAyMy4zOTEtMS40MTUgMC0uMzkxLS4zOTEtLjM5LTEuMDIzIDAtMS40MTRMMTUuNTc3LjYwMmMuMzkxLS4zOTEgMS4wMjMtLjM5MSAxLjQxNSAwIC4zOTEuMzkxLjM5IDEuMDIzIDAgMS40MTRsLTguNDg1IDguNDg1eiIvPjwvc3ZnPg==",
   "👨": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0ZGREM1RCIgZD0iTTggMTljMCAyLjIwOS0xLjExOSA0LTIuNSA0UzMgMjEuMjA5IDMgMTlzMS4xMTktNCAyLjUtNFM4IDE2Ljc5MSA4IDE5em0yNSAwYzAgMi4yMDktMS4xMTkgNC0yLjUgNFMyOCAyMS4yMDkgMjggMTlzMS4xMTktNCAyLjUtNCAyLjUgMS43OTEgMi41IDR6Ii8+PHBhdGggZmlsbD0iI0ZGREM1RCIgZD0iTTUgMjAuNTYyYzAtOC41MjYgNS44Mi0xNS40MzggMTMtMTUuNDM4czEzIDYuOTEyIDEzIDE1LjQzOFMyNS4xOCAzNiAxOCAzNiA1IDI5LjA4OCA1IDIwLjU2MnoiLz48cGF0aCBmaWxsPSIjNjYyMTEzIiBkPSJNMTMgMjBjLS41NTIgMC0xLS40NDctMS0xdi0yYzAtLjU1Mi40NDgtMSAxLTFzMSAuNDQ4IDEgMXYyYzAgLjU1My0uNDQ4IDEtMSAxem0xMCAwYy0uNTUzIDAtMS0uNDQ3LTEtMXYtMmMwLS41NTIuNDQ3LTEgMS0xczEgLjQ0OCAxIDF2MmMwIC41NTMtLjQ0NyAxLTEgMXoiLz48cGF0aCBmaWxsPSIjQzE2OTRGIiBkPSJNMTkgMjRoLTJjLS41NTIgMC0xLS40NDctMS0xcy40NDgtMSAxLTFoMmMuNTUzIDAgMSAuNDQ3IDEgMXMtLjQ0NyAxLTEgMXoiLz48cGF0aCBmaWxsPSIjRkZBQzMzIiBkPSJNMjUuMjc0IDI3LjAzOGwtMy4yOTQtLjk0MWMuMDAzLS4wMzQuMDItLjA2My4wMi0uMDk3IDAtLjU1My0uNDQ3LTEtMS0xaC02Yy0uNTUyIDAtMSAuNDQ3LTEgMSAwIC4wMzQuMDE2LjA2My4wMTkuMDk3bC0zLjI5NC45NDFjLS41MzEuMTUyLS44MzguNzA2LS42ODYgMS4yMzYuMTI1LjQ0LjUyNS43MjYuOTYxLjcyNi4wOTEgMCAuMTg0LS4wMTMuMjc1LS4wMzhsMS45MzEtLjU1MmMtLjIxNi4yOTMtLjI3NC42ODgtLjEgMS4wMzcuMTc1LjM1MS41MjguNTUzLjg5NS41NTMuMTUgMCAuMzAzLS4wMzQuNDQ2LS4xMDVsMS41NzctLjc4OGMuMDM2LjMyNi4yMTMuNjMxLjUyOS43ODguMTQzLjA3MS4yOTYuMTA1LjQ0Ni4xMDUuMzY3IDAgLjcyLS4yMDIuODk2LS41NTNsLjEwNS0uMjExLjEwNS4yMTFjLjE3Ni4zNTEuNTI5LjU1My44OTYuNTUzLjE1IDAgLjMwMy0uMDM0LjQ0Ni0uMTA1LjMxNS0uMTU3LjQ5My0uNDYyLjUyOS0uNzg4bDEuNTc2Ljc4OGMuMTQ0LjA3MS4yOTcuMTA1LjQ0Ny4xMDUuMzY3IDAgLjcyLS4yMDIuODk2LS41NTMuMTc0LS4zNDkuMTE2LS43NDQtLjEtMS4wMzdsMS45MzEuNTUyYy4wOTEuMDI1LjE4My4wMzguMjc1LjAzOC40MzQgMCAuODM1LS4yODYuOTYxLS43MjYuMTUxLS41My0uMTU2LTEuMDg0LS42ODgtMS4yMzZ6TTE4IDBjOC42MTUgMCAxNCA2LjM1OCAxNCAxMS42NTYgMCA1LjI5OC0xLjA3NyA3LjQxNy0yLjE1NCA1LjI5OGwtMi4xNTMtNC4yMzhzLTYuNDYyIDAtOC42MTUtMi4xMmMwIDAgMy4yMyA2LjM1OC0zLjIzMSAwIDAgMCAxLjA3NyA0LjIzOS01LjM4NS0xLjA2IDAgMC0zLjIzIDIuMTItNC4zMDggNy40MTdDNS44NTUgMTguNDIzIDQgMTYuOTU0IDQgMTEuNjU2IDQgNi4zNTcgOC4zMDggMCAxOCAweiIvPjwvc3ZnPg==",
@@ -62410,7 +62717,7 @@ window._EJ = {
   "🎉": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0REMkU0NCIgZD0iTTExLjYyNiA3LjQ4OGMtLjExMi4xMTItLjE5Ny4yNDctLjI2OC4zOTVsLS4wMDgtLjAwOEwuMTM0IDMzLjE0MWwuMDExLjAxMWMtLjIwOC40MDMuMTQgMS4yMjMuODUzIDEuOTM3LjcxMy43MTMgMS41MzMgMS4wNjEgMS45MzYuODUzbC4wMS4wMUwyOC4yMSAyNC43MzVsLS4wMDgtLjAwOWMuMTQ3LS4wNy4yODItLjE1NS4zOTUtLjI2OSAxLjU2Mi0xLjU2Mi0uOTcxLTYuNjI3LTUuNjU2LTExLjMxMy00LjY4Ny00LjY4Ni05Ljc1Mi03LjIxOC0xMS4zMTUtNS42NTZ6Ii8+PHBhdGggZmlsbD0iI0VBNTk2RSIgZD0iTTEzIDEyTC40MTYgMzIuNTA2bC0uMjgyLjYzNS4wMTEuMDExYy0uMjA4LjQwMy4xNCAxLjIyMy44NTMgMS45MzcuMjMyLjIzMi40NzMuNDA4LjcwOS41NTdMMTcgMTdsLTQtNXoiLz48cGF0aCBmaWxsPSIjQTAwNDFFIiBkPSJNMjMuMDEyIDEzLjA2NmM0LjY3IDQuNjcyIDcuMjYzIDkuNjUyIDUuNzg5IDExLjEyNC0xLjQ3MyAxLjQ3NC02LjQ1My0xLjExOC0xMS4xMjYtNS43ODgtNC42NzEtNC42NzItNy4yNjMtOS42NTQtNS43OS0xMS4xMjcgMS40NzQtMS40NzMgNi40NTQgMS4xMTkgMTEuMTI3IDUuNzkxeiIvPjxwYXRoIGZpbGw9IiNBQThERDgiIGQ9Ik0xOC41OSAxMy42MDljLS4xOTkuMTYxLS40NTkuMjQ1LS43MzQuMjE1LS44NjgtLjA5NC0xLjU5OC0uMzk2LTIuMTA5LS44NzMtLjU0MS0uNTA1LS44MDgtMS4xODMtLjczNS0xLjg2Mi4xMjgtMS4xOTIgMS4zMjQtMi4yODYgMy4zNjMtMi4wNjYuNzkzLjA4NSAxLjE0Ny0uMTcgMS4xNTktLjI5Mi4wMTQtLjEyMS0uMjc3LS40NDYtMS4wNy0uNTMyLS44NjgtLjA5NC0xLjU5OC0uMzk2LTIuMTEtLjg3My0uNTQxLS41MDUtLjgwOS0xLjE4My0uNzM1LTEuODYyLjEzLTEuMTkyIDEuMzI1LTIuMjg2IDMuMzYyLTIuMDY1LjU3OC4wNjIuODgzLS4wNTcgMS4wMTItLjEzNC4xMDMtLjA2My4xNDQtLjEyMy4xNDgtLjE1OC4wMTItLjEyMS0uMjc1LS40NDYtMS4wNy0uNTMyLS41NDktLjA2LS45NDctLjU1Mi0uODg2LTEuMTAyLjA1OS0uNTQ5LjU1LS45NDYgMS4xMDEtLjg4NiAyLjAzNy4yMTkgMi45NzMgMS41NDIgMi44NDQgMi43MzUtLjEzIDEuMTk0LTEuMzI1IDIuMjg2LTMuMzY0IDIuMDY3LS41NzgtLjA2My0uODguMDU3LTEuMDEuMTM0LS4xMDMuMDYyLS4xNDUuMTIzLS4xNDkuMTU3LS4wMTMuMTIyLjI3Ni40NDYgMS4wNzEuNTMyIDIuMDM3LjIyIDIuOTczIDEuNTQyIDIuODQ0IDIuNzM1LS4xMjkgMS4xOTItMS4zMjQgMi4yODYtMy4zNjIgMi4wNjUtLjU3OC0uMDYyLS44ODIuMDU4LTEuMDEyLjEzNC0uMTA0LjA2NC0uMTQ0LjEyNC0uMTQ4LjE1OC0uMDEzLjEyMS4yNzYuNDQ2IDEuMDcuNTMyLjU0OC4wNi45NDcuNTUzLjg4NiAxLjEwMi0uMDI4LjI3NC0uMTY3LjUxMS0uMzY2LjY3MXoiLz48cGF0aCBmaWxsPSIjNzdCMjU1IiBkPSJNMzAuNjYxIDIyLjg1N2MxLjk3My0uNTU3IDMuMzM0LjMyMyAzLjY1OCAxLjQ3OC4zMjQgMS4xNTQtLjM3OCAyLjYxNS0yLjM1IDMuMTctLjc3LjIxNi0xLjAwMS41ODQtLjk3LjcwMS4wMzQuMTE4LjQyNS4zMTIgMS4xOTMuMDk1IDEuOTcyLS41NTUgMy4zMzMuMzI1IDMuNjU3IDEuNDc5LjMyNiAxLjE1NS0uMzc4IDIuNjE0LTIuMzUxIDMuMTctLjc2OS4yMTYtMS4wMDEuNTg1LS45NjcuNzAyLjAzMy4xMTcuNDIzLjMxMSAxLjE5Mi4wOTUuNTMtLjE0OSAxLjA4NC4xNiAxLjIzMy42OTEuMTQ4LjUzMi0uMTYxIDEuMDg0LS42OTMgMS4yMzQtMS45NzEuNTU1LTMuMzMzLS4zMjMtMy42NTktMS40NzktLjMyNC0xLjE1NC4zNzktMi42MTMgMi4zNTMtMy4xNjkuNzctLjIxNyAxLjAwMS0uNTg0Ljk2Ny0uNzAyLS4wMzItLjExNy0uNDIyLS4zMTItMS4xOS0uMDk2LTEuOTc0LjU1Ni0zLjMzNC0uMzIyLTMuNjU5LTEuNDc5LS4zMjUtMS4xNTQuMzc4LTIuNjEzIDIuMzUxLTMuMTcuNzY4LS4yMTUuOTk5LS41ODUuOTY3LS43MDEtLjAzNC0uMTE4LS40MjMtLjMxMi0xLjE5Mi0uMDk2LS41MzIuMTUtMS4wODMtLjE2LTEuMjMzLS42OTEtLjE0OS0uNTMuMTYxLTEuMDgyLjY5My0xLjIzMnoiLz48cGF0aCBmaWxsPSIjQUE4REQ4IiBkPSJNMjMuMDAxIDIwLjE2Yy0uMjk0IDAtLjU4NC0uMTI5LS43ODItLjM3NS0uMzQ1LS40MzItLjI3NC0xLjA2MS4xNTYtMS40MDYuMjE4LS4xNzUgNS40MTgtNC4yNTkgMTIuNzY3LTMuMjA4LjU0Ny4wNzguOTI3LjU4NC44NDkgMS4xMzEtLjA3OC41NDYtLjU4LjkzLTEuMTMyLjg0OC02LjQ5My0uOTIyLTExLjE4NyAyLjc1NC0xMS4yMzMgMi43OTEtLjE4Ni4xNDgtLjQwNi4yMTktLjYyNS4yMTl6Ii8+PHBhdGggZmlsbD0iIzc3QjI1NSIgZD0iTTUuNzU0IDE2Yy0uMDk1IDAtLjE5Mi0uMDE0LS4yODgtLjA0Mi0uNTI5LS4xNTktLjgyOS0uNzE2LS42Ny0xLjI0NSAxLjEzMy0zLjc3MyAyLjE2LTkuNzk0Ljg5OC0xMS4zNjQtLjE0MS0uMTc4LS4zNTQtLjM1My0uODQyLS4zMTYtLjkzOC4wNzItLjg0OSAyLjA1MS0uODQ4IDIuMDcxLjA0Mi41NTEtLjM3MiAxLjAzMS0uOTIyIDEuMDcyLS41NTkuMDM0LTEuMDMxLS4zNzItMS4wNzItLjkyMy0uMTAzLTEuMzc5LjMyNi00LjAzNSAyLjY5Mi00LjIxNCAxLjA1Ni0uMDggMS45MzMuMjg3IDIuNTUyIDEuMDU3IDIuMzcxIDIuOTUxLS4wMzYgMTEuNTA2LS41NDIgMTMuMTkyLS4xMy40MzMtLjUyOC43MTItLjk1OC43MTJ6Ii8+PGNpcmNsZSBmaWxsPSIjNUM5MTNCIiBjeD0iMjUuNSIgY3k9IjkuNSIgcj0iMS41Ii8+PGNpcmNsZSBmaWxsPSIjOTI2NkNDIiBjeD0iMiIgY3k9IjE4IiByPSIyIi8+PGNpcmNsZSBmaWxsPSIjNUM5MTNCIiBjeD0iMzIuNSIgY3k9IjE5LjUiIHI9IjEuNSIvPjxjaXJjbGUgZmlsbD0iIzVDOTEzQiIgY3g9IjIzLjUiIGN5PSIzMS41IiByPSIxLjUiLz48Y2lyY2xlIGZpbGw9IiNGRkNDNEQiIGN4PSIyOCIgY3k9IjQiIHI9IjIiLz48Y2lyY2xlIGZpbGw9IiNGRkNDNEQiIGN4PSIzMi41IiBjeT0iOC41IiByPSIxLjUiLz48Y2lyY2xlIGZpbGw9IiNGRkNDNEQiIGN4PSIyOS41IiBjeT0iMTIuNSIgcj0iMS41Ii8+PGNpcmNsZSBmaWxsPSIjRkZDQzREIiBjeD0iNy41IiBjeT0iMjMuNSIgcj0iMS41Ii8+PC9zdmc+",
   "🎊": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iIzI5MkYzMyIgZD0iTTI2IDljLTMuNTkxIDAtNi4yNy0xLjY0OC03Ljk4OS00LjkwNUMxNi4zODUgNy4zMTQgMTMuOTkzIDkgMTEgOWMtLjU1MiAwLTEtLjQ0OC0xLTFzLjQ0OC0xIDEtMWMyLjcyOSAwIDQuNzY1LTEuOTU3IDYuMDUxLTUuODE2QzE3LjE4OC43NzUgMTcuNTY5LjUgMTggLjVzLjgxMi4yNzUuOTQ5LjY4NEMyMC4yNzEgNS4xNTEgMjIuNTEyIDcgMjYgN2MuNTUzIDAgMSAuNDQ4IDEgMXMtLjQ0NyAxLTEgMXoiLz48cGF0aCBmaWxsPSIjRkZBQzMzIiBkPSJNMTQuNzExIDkuNjU0YzMuMzY0IDMuMzY2LjQ5OCA1Ljk1NC0yLjg2OCA5LjMxOS0zLjM2NSAzLjM2NS01Ljk1NCA2LjIzMi05LjMxOSAyLjg2OC0zLjM2Ni0zLjM2Ni0zLjM2Ni04LjgyMiAwLTEyLjE4NyAzLjM2Ni0zLjM2NiA4LjgyMS0zLjM2NiAxMi4xODcgMHoiLz48cGF0aCBmaWxsPSIjQkUxOTMxIiBkPSJNMTUuNTQyIDEwLjk3MmMxLjU4NCAxLjU4NS4yNDggNS40ODYtMi45ODMgOC43MTctMy4yMzEgMy4yMzEtNy4xMzIgNC41NjgtOC43MTcgMi45ODItMS41ODQtMS41ODQtLjI0OC01LjQ4NiAyLjk4Mi04LjcxNyAzLjIzMi0zLjIzIDcuMTM0LTQuNTY2IDguNzE4LTIuOTgyeiIvPjxwYXRoIGZpbGw9IiNGRkFDMzMiIGQ9Ik0yMS4yODkgOS42NTRjLTMuMzYzIDMuMzY2LS40OTggNS45NTQgMi44NjggOS4zMTkgMy4zNjUgMy4zNjUgNS45NTQgNi4yMzIgOS4zMTkgMi44NjggMy4zNjUtMy4zNjYgMy4zNjUtOC44MjIgMC0xMi4xODctMy4zNjUtMy4zNjYtOC44Mi0zLjM2Ni0xMi4xODcgMHoiLz48cGF0aCBmaWxsPSIjQkUxOTMxIiBkPSJNMjAuNDU5IDEwLjk3MmMtMS41ODUgMS41ODUtLjI0OSA1LjQ4NiAyLjk4MiA4LjcxNyAzLjIzIDMuMjMxIDcuMTMzIDQuNTY4IDguNzE3IDIuOTgyIDEuNTg0LTEuNTg0LjI0OC01LjQ4Ni0yLjk4My04LjcxNy0zLjIzLTMuMjMtNy4xMzMtNC41NjYtOC43MTYtMi45ODJ6Ii8+PHBhdGggZmlsbD0iI0FBOEREOCIgZD0iTTIyLjQxIDE4LjIyMWMuMTk5LS4xNi40NTktLjI0NC43MzQtLjIxNS44NjcuMDk0IDEuNTk4LjM5NiAyLjEwOS44NzMuNTQxLjUwNS44MDcgMS4xODMuNzM0IDEuODYyLS4xMjkgMS4xOTEtMS4zMjQgMi4yODUtMy4zNjMgMi4wNjUtLjc5My0uMDg1LTEuMTQ2LjE3LTEuMTU4LjI5MS0uMDE0LjEyMS4yNzcuNDQ2IDEuMDcuNTMyLjg2Ny4wOTQgMS41OTguMzk2IDIuMTA5Ljg3My41NDEuNTA1LjgwOSAxLjE4My43MzQgMS44NjItLjEyOSAxLjE5Mi0xLjMyNCAyLjI4NS0zLjM2MSAyLjA2Ni0uNTc4LS4wNjItLjg4My4wNTctMS4wMTIuMTM0LS4xMDMuMDYzLS4xNDQuMTI0LS4xNDguMTU4LS4wMTIuMTIuMjc1LjQ0NSAxLjA3LjUzMS41NDkuMDYuOTQ3LjU1My44ODcgMS4xMDItLjA1OS41NDktLjU1MS45NDYtMS4xMDIuODg3LTIuMDM3LS4yMTktMi45NzMtMS41NDItMi44NDQtMi43MzUuMTI5LTEuMTkyIDEuMzI0LTIuMjg1IDMuMzYzLTIuMDY1LjU3OC4wNjMuODgxLS4wNTcgMS4wMS0uMTM0LjEwNC0uMDYyLjE0NS0uMTIzLjE0OC0uMTU3LjAxNC0uMTIxLS4yNzUtLjQ0Ni0xLjA3LS41MzItMi4wMzctLjIyLTIuOTczLTEuNTQyLTIuODQ0LTIuNzM1LjEyOS0xLjE5MiAxLjMyNC0yLjI4NiAzLjM2MS0yLjA2NC41NzguMDYyLjg4My0uMDU4IDEuMDEyLS4xMzUuMTAzLS4wNjIuMTQ0LS4xMjMuMTQ4LS4xNTcuMDEyLS4xMjEtLjI3Ny0uNDQ2LTEuMDctLjUzMi0uNTQ5LS4wNTktLjk0Ny0uNTUzLS44ODctMS4xMDIuMDMyLS4yNzYuMTcxLS41MTIuMzctLjY3M3oiLz48cGF0aCBmaWxsPSIjNzdCMjU1IiBkPSJNMTUuMjY2IDM1LjgyOGMtMS45NzMuNTU3LTMuMzM0LS4zMjItMy42NTgtMS40NzctLjMyNC0xLjE1NC4zNzgtMi42MTUgMi4zNS0zLjE3Ljc3LS4yMTYgMS4wMDEtLjU4NC45Ny0uNzAxLS4wMzQtLjExOS0uNDI1LS4zMTItMS4xOTMtLjA5Ni0xLjk3Mi41NTYtMy4zMzMtLjMyNC0zLjY1Ny0xLjQ3OS0uMzI2LTEuMTU1LjM3OC0yLjYxNCAyLjM1MS0zLjE2OS43NjktLjIxNyAxLjAwMS0uNTg2Ljk2Ny0uNzAzLS4wMzMtLjExNi0uNDIzLS4zMTEtMS4xOTItLjA5NS0uNTMuMTQ5LTEuMDg0LS4xNTktMS4yMzMtLjY5LS4xNDgtLjUzMy4xNjEtMS4wODQuNjkzLTEuMjM0IDEuOTcxLS41NTUgMy4zMzMuMzIyIDMuNjU5IDEuNDc5LjMyNCAxLjE1NC0uMzc5IDIuNjEzLTIuMzUyIDMuMTctLjc3LjIxNi0xLjAwMS41ODQtLjk2Ny43MDEuMDMyLjExNy40MjIuMzEyIDEuMTkuMDk2IDEuOTc0LS41NTYgMy4zMzQuMzIyIDMuNjU5IDEuNDc5LjMyNSAxLjE1My0uMzc4IDIuNjEyLTIuMzUyIDMuMTY5LS43NjguMjE1LS45OTkuNTg2LS45NjcuNzAxLjAzNC4xMTguNDIzLjMxMiAxLjE5Mi4wOTcuNTMyLS4xNTEgMS4wODMuMTU5IDEuMjMzLjY5LjE0OS41MzEtLjE2MSAxLjA4NC0uNjkzIDEuMjMyeiIvPjxjaXJjbGUgZmlsbD0iIzVDOTEzQiIgY3g9IjIuNSIgY3k9IjI3LjUiIHI9IjEuNSIvPjxjaXJjbGUgZmlsbD0iIzkyNjZDQyIgY3g9IjciIGN5PSIzMSIgcj0iMiIvPjxjaXJjbGUgZmlsbD0iIzkyNjZDQyIgY3g9IjMwIiBjeT0iMjciIHI9IjIiLz48Y2lyY2xlIGZpbGw9IiM1QzkxM0IiIGN4PSIyNS41IiBjeT0iMzEuNSIgcj0iMS41Ii8+PGNpcmNsZSBmaWxsPSIjNUM5MTNCIiBjeD0iMTcuNSIgY3k9IjE5LjUiIHI9IjEuNSIvPjxjaXJjbGUgZmlsbD0iI0ZGQ0M0RCIgY3g9IjciIGN5PSIyMyIgcj0iMiIvPjxjaXJjbGUgZmlsbD0iI0ZGQ0M0RCIgY3g9IjI3LjUiIGN5PSIxNi41IiByPSIxLjUiLz48Y2lyY2xlIGZpbGw9IiNGRkNDNEQiIGN4PSIxMi41IiBjeT0iMTQuNSIgcj0iMS41Ii8+PC9zdmc+",
   "🎒": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZD0iTTExLjk0NiAyN0MtMS4wMzYgNy44NzYgNy41MjQgMi43NTIgOS4xMTQgMmMuMTQ5LS4wNy4yNDItLjEwNS4yNDUtLjEwNy40MTgtLjIwOS42MzgtLjY3NS41MjktMS4xMjVDOS43NzkuMzE4IDkuMzcyIDAgOC45MDMgMEg0Ljg0N0MxLjA1NCAwLTQuMjgyIDExIDUuODU5IDI4Yy4xNTEuMjUzIDUuMDczIDAgNS4wNzMgMCAuNTU5IDAgMS4zMjQtLjU0MSAxLjAxNC0xek0zMS4yMjkgMGgtNGMtLjQ2MiAwLS44NjMuMzE4LS45NzEuNzY4LS4xMDcuNDUuMTA5LjkxNi41MjEgMS4xMjUuMDA0LjAwMi4wOTUuMDM3LjI0Mi4xMDcgMS41NjguNzUyIDEwLjAxIDUuODc2LTIuNzkyIDI1LS4zMDcuNDU5LjQ0OCAxIDEgMSAwIDAgNC44NTQuMjUzIDUuMDAyIDAgMTAtMTcgNC43MzktMjggLjk5OC0yOHoiIGZpbGw9IiNDMTY5NEYiLz48cGF0aCBkPSJNNi44ODkgMjguODM2bC4wMDQuMDFjLS4wNjQtLjI5MyA1LjM2My0xLjM4NyA1LjA1My0xLjg0NkMtMS4wMzYgNy44NzYgNy41MjQgMi43NTIgOS4xMTQgMkg0Ljg0NUMxLjA1MyAyLTMuMjY4IDEzIDYuODg5IDI4LjgzNnpNMzEuMjMxIDJoLTQuMjFjMS41NjguNzUyIDEwLjAxIDUuODc2LTIuNzkyIDI1LS4zMDcuNDU5IDQuOTg0IDEuODM5IDQuOTg2IDEuODM2QzM5LjIzMSAxMyAzNC45NzEgMiAzMS4yMzEgMnoiIGZpbGw9IiM2NjIxMTMiLz48cGF0aCBmaWxsPSIjQzE2OTRGIiBkPSJNOS45MTYgOGMtLjU2MSAwLTEuMDE1LS40NDgtMS4wMTUtMSAwLTMuMzE2LTIuMDI4LTUtNC4wNTYtNS0uNDcgMC0uMDgtLjc4Mi4wMjktMS4yMzIuMTEtLjQ1LjUxNi0uNzY4Ljk4NS0uNzY4aDUuMDcxYzMuNzkxIDAgNC45MzggNi4xMzYgNS4wNTcgNi44MzUuMDQ5LjI5LS4wMzQuNTg2LS4yMjYuODExLS4xOTUuMjI1LS40NzguMzU0LS43NzUuMzU0aC01LjA3em0xNi4zMTUgMGMuNTUzIDAgMS0uNDQ4IDEtMSAwLTMuMzE2IDItNSA0LTUgLjQ2MyAwIC4wNzgtLjc4Mi0uMDI5LTEuMjMyLS4xMDctLjQ1LS41MDgtLjc2OC0uOTcxLS43NjhoLTVjLTMuNzM4IDAtNC44NjkgNi4xMzYtNC45ODYgNi44MzUtLjA0OS4yOS4wMzMuNTg2LjIyMy44MTEuMTkxLjIyNS40Ny4zNTQuNzYzLjM1NGg1eiIvPjxwYXRoIGZpbGw9IiNCRTE5MzEiIGQ9Ik02IDMyczAgNCA0IDRoMTZzNCAwIDQtNFYxMHMwLTQtNC00SDEwYy00IDAtNCA0LTQgNHYyMnoiLz48cGF0aCBmaWxsPSIjQTAwNDFFIiBkPSJNMjQgMjhIMTJjLTIuMjAxIDAtMy0xLjc5NC0zLTNWMTFjMC0uNTUyLjQ0OC0xIDEtMXMxIC40NDggMSAxdjE0Yy4wMTIuNDUuMTk1IDEgMSAxaDEyYy40NS0uMDEyIDEtLjE5NCAxLTFWMTFjMC0uNTUyLjQ0Ny0xIDEtMXMxIC40NDggMSAxdjE0YzAgMi4yMDEtMS43OTQgMy0zIDN6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE2IDI1czAtMSAxLTFoMnMxIDAgMSAxdjVzMCAxLTEgMWgtMnMtMSAwLTEtMXYtNXoiLz48L3N2Zz4=",
-  "🎟️": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0VBNTk2RSIgZD0iTTI2Ljc1MSA4LjAwN2MxLjM2NCAxLjM2NSAzLjM2NCAxLjcwOCA1LjA0NiAxLjAzMmwzLjYxMyAzLjYxMWMuNzM3Ljc0LjczOCAxLjkzOC0uMDA0IDIuNjhMMTUuMzE5IDM1LjQwNWMtLjc0My43MzktMS45NC43MzctMi42ODEgMGwtMy42MDYtMy42MTJjLjY3Mi0xLjY4NC4zMy0zLjY4Mi0xLjAzMi01LjA0Ny0xLjM2Ny0xLjM2NS0zLjM2NC0xLjcwNy01LjA0Ny0xLjAzMmwtMi4zNTktMi4zNmMtLjc0LS43MzctLjc0Mi0xLjkzOCAwLTIuNjhMMjAuNjc4LjU5NmMuNzM5LS43NCAxLjkzNi0uNzQxIDIuNjc5LjAwMmwyLjM2MSAyLjM2MWMtLjY3NyAxLjY4My0uMzMxIDMuNjgxIDEuMDMzIDUuMDQ4eiIvPjxwYXRoIGZpbGw9IiNCRTE5MzEiIGQ9Ik01LjQyIDE4LjUyN2wtMi4xNDkgMi4xNDhjLS43MzkuNzM5LS43NDEgMS45MzktLjAwMyAyLjY4bC41NDIuNTQxYzEuODk2LS41MDUgMy45OTktLjAxOCA1LjQ4MiAxLjQ2OCAxLjQ4OCAxLjQ4NiAxLjk3MSAzLjU4OSAxLjQ2NyA1LjQ4MWwxLjg3OCAxLjg4M2MuNzQxLjczOSAxLjk0MS43MzkgMi42ODItLjAwMmwyLjE4OS0yLjE4N0w1LjQyIDE4LjUyN3ptMTMuNTIxIDEwLjU4bDEwLjE1OC0xMC4xNTJMMTcuMDA4IDYuOTQzIDYuODU0IDE3LjA5NWwxMi4wODcgMTIuMDEyem0xLjk5LTEzLjk5M2MyLjI0NSAyLjIyOCAyLjc0NSA1LjM1NiAxLjEyMSA2Ljk4OS0xLjYyNyAxLjYzNS00Ljc2MiAxLjE1MS03LjAwMS0xLjA3NS0yLjIzOS0yLjIyOC0yLjczOC01LjM1OC0xLjExNC02Ljk5MSAxLjYyNS0xLjYzIDQuNzU1LTEuMTUgNi45OTQgMS4wNzd6bTExLjgtMi40NjRsLTEuODgxLTEuODgxYy0xLjg5NS41MDMtMy45OTguMDIxLTUuNDgzLTEuNDY4LTEuNDg4LTEuNDg0LTEuOTc2LTMuNTkxLTEuNDctNS40ODRsLS41NDEtLjU0NmMtLjc0LS43MzUtMS45NC0uNzM1LTIuNjc4LjAwM0wxOC40NDIgNS41MWwxMi4wOTIgMTIuMDExIDIuMTk2LTIuMTk1Yy43NC0uNzM3Ljc0LTEuOTM2LjAwMS0yLjY3NnoiLz48L3N2Zz4=",
+  "🎫": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0VBNTk2RSIgZD0iTTI2Ljc1MSA4LjAwN2MxLjM2NCAxLjM2NSAzLjM2NCAxLjcwOCA1LjA0NiAxLjAzMmwzLjYxMyAzLjYxMWMuNzM3Ljc0LjczOCAxLjkzOC0uMDA0IDIuNjhMMTUuMzE5IDM1LjQwNWMtLjc0My43MzktMS45NC43MzctMi42ODEgMGwtMy42MDYtMy42MTJjLjY3Mi0xLjY4NC4zMy0zLjY4Mi0xLjAzMi01LjA0Ny0xLjM2Ny0xLjM2NS0zLjM2NC0xLjcwNy01LjA0Ny0xLjAzMmwtMi4zNTktMi4zNmMtLjc0LS43MzctLjc0Mi0xLjkzOCAwLTIuNjhMMjAuNjc4LjU5NmMuNzM5LS43NCAxLjkzNi0uNzQxIDIuNjc5LjAwMmwyLjM2MSAyLjM2MWMtLjY3NyAxLjY4My0uMzMxIDMuNjgxIDEuMDMzIDUuMDQ4eiIvPjxwYXRoIGZpbGw9IiNCRTE5MzEiIGQ9Ik01LjQyIDE4LjUyN2wtMi4xNDkgMi4xNDhjLS43MzkuNzM5LS43NDEgMS45MzktLjAwMyAyLjY4bC41NDIuNTQxYzEuODk2LS41MDUgMy45OTktLjAxOCA1LjQ4MiAxLjQ2OCAxLjQ4OCAxLjQ4NiAxLjk3MSAzLjU4OSAxLjQ2NyA1LjQ4MWwxLjg3OCAxLjg4M2MuNzQxLjczOSAxLjk0MS43MzkgMi42ODItLjAwMmwyLjE4OS0yLjE4N0w1LjQyIDE4LjUyN3ptMTMuNTIxIDEwLjU4bDEwLjE1OC0xMC4xNTJMMTcuMDA4IDYuOTQzIDYuODU0IDE3LjA5NWwxMi4wODcgMTIuMDEyem0xLjk5LTEzLjk5M2MyLjI0NSAyLjIyOCAyLjc0NSA1LjM1NiAxLjEyMSA2Ljk4OS0xLjYyNyAxLjYzNS00Ljc2MiAxLjE1MS03LjAwMS0xLjA3NS0yLjIzOS0yLjIyOC0yLjczOC01LjM1OC0xLjExNC02Ljk5MSAxLjYyNS0xLjYzIDQuNzU1LTEuMTUgNi45OTQgMS4wNzd6bTExLjgtMi40NjRsLTEuODgxLTEuODgxYy0xLjg5NS41MDMtMy45OTguMDIxLTUuNDgzLTEuNDY4LTEuNDg4LTEuNDg0LTEuOTc2LTMuNTkxLTEuNDctNS40ODRsLS41NDEtLjU0NmMtLjc0LS43MzUtMS45NC0uNzM1LTIuNjc4LjAwM0wxOC40NDIgNS41MWwxMi4wOTIgMTIuMDExIDIuMTk2LTIuMTk1Yy43NC0uNzM3Ljc0LTEuOTM2LjAwMS0yLjY3NnoiLz48L3N2Zz4=",
   "🎤": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iIzg4OTlBNiIgZD0iTTM1Ljk5OSAxMS45MTdjMCAzLjgwMy0zLjA4MiA2Ljg4NS02Ljg4NSA2Ljg4NS0zLjgwMiAwLTYuODg0LTMuMDgyLTYuODg0LTYuODg1IDAtMy44MDIgMy4wODItNi44ODQgNi44ODQtNi44ODQgMy44MDMgMCA2Ljg4NSAzLjA4MiA2Ljg4NSA2Ljg4NHoiLz48cGF0aCBmaWxsPSIjMzEzNzNEIiBkPSJNMzIuODEgMTguNTY4Yy0uMzM2LjMzNi0uODgxLjMzNi0xLjIxNyAwTDIyLjQ2NiA5LjQ0Yy0uMzM2LS4zMzYtLjMzNi0uODgxIDAtMS4yMTdsMS4yMTctMS4yMTdjLjMzNi0uMzM2Ljg4MS0uMzM2IDEuMjE3IDBsOS4xMjcgOS4xMjhjLjMzNi4zMzYuMzM2Ljg4MSAwIDEuMjE3bC0xLjIxNyAxLjIxN3ptLTYuMDcxLjEzNmwtNC4zMjUtNC4zMjdjLS43NzgtLjc3OS0xLjk5NS0uNzMzLTIuNzE5LjEwMWwtOS4xNTggMTAuNTc0Yy0xLjIxOSAxLjQwOC0xLjQ2MSAzLjM1NC0uNzExIDQuNzNsLTQuOTExIDQuOTEyIDEuNDA5IDEuNDA5IDQuODc3LTQuODc3YzEuMzgxLjg0IDMuNDExLjYwOSA0Ljg2Mi0uNjQ4bDEwLjU3NS05LjE1N2MuODM0LS43MjMuODgxLTEuOTQuMTAxLTIuNzE3eiIvPjxwYXRoIGZpbGw9IiM1NUFDRUUiIGQ9Ik00IDZ2OC4xMjJDMy42ODYgMTQuMDQ3IDMuMzUyIDE0IDMgMTRjLTEuNjU3IDAtMyAuODk2LTMgMnMxLjM0MyAyIDMgMiAzLS44OTYgMy0yVjkuODg5bDUgMi4yMjJ2NS4wMTFjLS4zMTQtLjA3NS0uNjQ4LS4xMjItMS0uMTIyLTEuNjU3IDAtMyAuODk2LTMgMnMxLjM0MyAyIDMgMiAyLjk5OS0uODk2IDMtMnYtOUw0IDZ6bTE0LTV2OC4xMjNDMTcuNjg1IDkuMDQ4IDE3LjM1MyA5IDE3IDljLTEuNjU3IDAtMyAuODk1LTMgMiAwIDEuMTA0IDEuMzQzIDIgMyAyIDEuNjU2IDAgMy0uODk2IDMtMlYxaC0yeiIvPjwvc3ZnPg==",
   "🎨": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0Q5OUU4MiIgZD0iTTE4IDMuMTQzYy05Ljk0MSAwLTE4IDYuOTA4LTE4IDE1LjQyOCAwIDEuMDY2LjEyNiAyLjEwNy4zNjcgMy4xMTJDMi4xNDYgMjQuNzQ0IDMuMzc3IDIyLjgxMiA5IDIwYzUuNzI3LTIuODY0IDAgNC0yIDgtLjYxNSAxLjIzLS4yODIgMi4yNzEuNTYgMy4xMjRDMTAuNTA2IDMyLjkyOCAxNC4xMDQgMzQgMTggMzRjOS45NDEgMCAxOC02LjkwNyAxOC0xNS40MjkgMC04LjUyLTguMDU5LTE1LjQyOC0xOC0xNS40Mjh6bTIuODQ5IDI0LjQ0N2MtLjM5NSAxLjM0Ni0yLjQ2IDEuOTI0LTQuNjEzIDEuMjkxLTIuMTUzLS42MzItMy41NzgtMi4yMzQtMy4xODMtMy41ODEuMzk1LTEuMzQ2IDIuNDYtMS45MjQgNC42MTMtMS4yOSAyLjE1My42MzEgMy41NzggMi4yMzMgMy4xODMgMy41OHoiLz48Y2lyY2xlIGZpbGw9IiM1QzkxM0IiIGN4PSIxMCIgY3k9IjExIiByPSIzIi8+PGNpcmNsZSBmaWxsPSIjMjY5IiBjeD0iMjAiIGN5PSI5IiByPSIzIi8+PGNpcmNsZSBmaWxsPSIjREQyRTQ0IiBjeD0iMjkiIGN5PSIxNSIgcj0iMyIvPjxjaXJjbGUgZmlsbD0iI0ZGQ0M0RCIgY3g9IjI4IiBjeT0iMjQiIHI9IjMiLz48L3N2Zz4=",
   "🎪": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzNiAzNiI+PHBhdGggZmlsbD0iI0REMkU0NCIgZD0iTTMzIDMzYzAgMS4xMDQtLjg5NiAyLTIgMkg1Yy0xLjEwNCAwLTItLjg5Ni0yLTJsMS0xMmgyOGwxIDEyeiIvPjxwYXRoIGZpbGw9IiNFQTU5NkUiIGQ9Ik0xMyAzNWMtLjc5Mi0xLjg3NS0xLjc1LTMuMjkxLTMuNDE3LTQuNjY2IDEuNzUtMS40NTkgNC41NDItNS41IDUuMjUtOC4yOTJzMi43NSA4LjEyNSAyLjA0MiAxMC42MjVTMTMgMzUgMTMgMzV6bTEwLjMwMyAwYy43OTEtMS44NzUgMS43NS0zLjI5MSAzLjQxNi00LjY2Ni0xLjc1LTEuNDU5LTQuNTQxLTUuNS01LjI1LTguMjkyLS43MDctMi43OTItMi43NSA4LjEyNS0yLjA0IDEwLjYyNS43MDggMi41IDMuODc0IDIuMzMzIDMuODc0IDIuMzMzeiIvPjxwYXRoIGZpbGw9IiNCRTE5MzEiIGQ9Ik0zLjcyOCAyNC4yNjNjLjQ1My40NTUgMS4wNzkuNzM3IDEuNzcyLjczN0M2Ljg4MSAyNSA4IDIzLjg4MSA4IDIyLjVjMC0uNTY1LS4xOTUtMS4wODEtLjUxMS0xLjVINGwtLjI3MiAzLjI2M3ptMjguNTQ0IDBMMzIgMjFoLTMuNDg5Yy0uMzE2LjQxOS0uNTExLjkzNS0uNTExIDEuNSAwIDEuMzgxIDEuMTE5IDIuNSAyLjUgMi41LjY5MyAwIDEuMzE5LS4yODIgMS43NzItLjczN3oiLz48Y2lyY2xlIGZpbGw9IiNCRTE5MzEiIGN4PSIxNCIgY3k9IjIzIiByPSIyIi8+PGNpcmNsZSBmaWxsPSIjQkUxOTMxIiBjeD0iMjIiIGN5PSIyMyIgcj0iMiIvPjxjaXJjbGUgZmlsbD0iI0JFMTkzMSIgY3g9IjEwIiBjeT0iMjMiIHI9IjIiLz48Y2lyY2xlIGZpbGw9IiNCRTE5MzEiIGN4PSIyNiIgY3k9IjIzIiByPSIyIi8+PHBhdGggZD0iTTIzIDM1SDEzczItNiAyLTEzaDZjMCA3IDIgMTMgMiAxM3pNMTcgMmgydjdoLTJ6Ii8+PHBhdGggZmlsbD0iIzU1QUNFRSIgZD0iTTE4LjgzOC4yMDZDMTcuNjY3LjA0MiAxNyAuMzE4IDE3IDEuNDE4djFjMCAxLjEuODY1IDEuNzUzIDEuOTIzIDEuNDUxbDUuMTU0LS45MDFjMS43MTUtLjM0MyAxLjU0OC0xLjU5My4wODUtMS44ODRMMTguODM4LjIwNnoiLz48cGF0aCBmaWxsPSIjQ0NENkREIiBkPSJNMTggNmwtLjA4MS4xMjNDMTAuOTM4IDE2Ljk4MSAzIDE1LjAxNSAzIDE5djIuNUMzIDIyLjg4MSA0LjExOSAyNCA1LjUgMjRjMS4yMSAwIDIuMjE4LS44NTkgMi40NS0ySDEyYzAgMS4xMDQuODk2IDIgMiAyczItLjg5NiAyLTJoNGMwIDEuMTA0Ljg5NiAyIDIgMnMyLS44OTYgMi0yaDQuMDVjLjIzMiAxLjE0MSAxLjI0IDIgMi40NSAyIDEuMzgxIDAgMi41LTEuMTE5IDIuNS0yLjVWMTljMC00LTgtMi0xNS0xM3oiLz48ZyBmaWxsPSIjRjVGOEZBIj48cGF0aCBkPSJNMTcuOTQ4IDYuMDc4bC0uMDMuMDQ1QzE3LjEzMiAxMS42MTkgMTAuODExIDE2LjEyNiA4IDE4djRjMCAxLjEwNC44OTYgMiAyIDJzMi0uODk2IDItMnYtNGMuOTgyLS45ODIgNS44MTMtNi43ODcgNS45ODQtMTEuNzMyLS4wMS0uMDY0LS4wMjctLjEyNi0uMDM2LS4xOXptLjA4LjM5OEMxOC4zMjQgMTEuMzc0IDIzLjAzMSAxNy4wMzEgMjQgMTh2NGMwIDEuMTA0Ljg5NiAyIDIgMnMyLS44OTYgMi0ydi00Yy0yLjc1LTEuODMzLTguOTUzLTYuMTktOS45NzItMTEuNTI0eiIvPjxwYXRoIGQ9Ik0xNy45ODQgNi4yN0MxNy45MjIgOC4zNDYgMTcuNjA2IDE2LjM5NCAxNiAxOHY0YzAgMS4xMDQuODk2IDIgMiAyczItLjg5NiAyLTJ2LTRjLTEuNTY0LTEuNTY0LTEuOTA1LTkuMjQxLTEuOTc5LTExLjU1OS0uMDExLS4wNTctLjAyNy0uMTEzLS4wMzctLjE3MXoiLz48L2c+PC9zdmc+",
@@ -65122,7 +65429,7 @@ window._EJ = {
             document.getElementById('statConfirmModal').style.display = 'flex';
         }
 
-        async async function doSaveStats() {
+        async function doSaveStats() {
             const s = parseInt(document.getElementById('in_s').value),
                   r = parseInt(document.getElementById('in_r').value),
                   p = parseInt(document.getElementById('in_p').value),
