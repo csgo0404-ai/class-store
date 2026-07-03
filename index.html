@@ -60945,27 +60945,11 @@ window.addCharRow = function() {
         try {
         const today = _bankToday();
 
-        // ── 하루 1회 체크: 인메모리 상태 불신 — 서버 date 필드를 직접 읽어 판단 ──
-        // (~15B 스칼라 fetch로 race condition 원천 차단)
-        let _serverSweepDate = '';
-        try {
-            const _snap = await dbRef.child('cfg/bankSweepLog/date').once('value');
-            _serverSweepDate = _snap.val() || '';
-            if(!db.cfg) db.cfg = {};
-            if(!db.cfg.bankSweepLog) db.cfg.bankSweepLog = {};
-            db.cfg.bankSweepLog.date = _serverSweepDate;
-        } catch(_) {}
-
-        if(_serverSweepDate === today && !_forceMsg) {
-            console.log('[은행 sweep] 오늘 이미 실행됨 —', today);
-            return { skipped: true }; // finally가 락 해제
-        }
-
         // cfg/bankGrades 미로드 시 fetch (은행 탭 미방문 상태 대비 — 등급별 이자율 정확 적용)
+        if(!db.cfg) db.cfg = {};
         if(!db.cfg?.bankGrades) {
             try {
                 const _gSnap = await dbRef.child('cfg/bankGrades').once('value');
-                if(!db.cfg) db.cfg = {};
                 db.cfg.bankGrades = _gSnap.val() || {};
             } catch(_) {}
         }
@@ -60974,97 +60958,153 @@ window.addCharRow = function() {
         if((!db.stu || !db.stu.length) && window._ensureStuLoaded) {
             await window._ensureStuLoaded().catch(()=>{});
         }
+        // stu 로드 실패 시 "소유권 선점 전에" 중단 → 오늘 날짜가 찍혀 재시도 불가해지는 회귀 방지
         if(!db.stu || !db.stu.length) return { skipped: true, reason: 'stu_empty' };
 
-        let interestCount = 0, overdueCount = 0, autoRepayCount = 0;
-        const updates = {};
-        const gradeMap = Object.assign({}, (db.cfg && db.cfg.bankGrades) || {});
-        let gradesChanged = false;
-        const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
-
-        (db.stu || []).forEach((s, i) => {
-            if(!s) return;
-            const fbKey = _cdMig ? s.cd : i;
-            const stuGrade = s.cd ? (Number(gradeMap[s.cd]) || 3) : 3;
-            const bank = _bankGetStudentData(s);
-            const eff = _bankGetEffectiveRates(cfg, stuGrade);
-            window._bankAdjInit(s); // 레코드 settle/상환 전 bankAdj 부트스트랩
-            let changed = false;
-
-            // 1. 만기 예금 → 원금 s.cookie 복원 + 이자(쿠키) 지급
-            for(const dep of bank.deposits) {
-                if(!dep.settled && !dep.cancelled && dep.dueDate && dep.dueDate <= today) {
-                    const rate = _bankGetDepositRate(eff, dep.periodDays || 14);
-                    const interest = Math.floor(dep.amount * rate / 100);
-                    const _add = dep.amount + (interest > 0 ? interest : 0);
-                    s.cookie = (s.cookie || 0) + _add;
-                    s.bankAdj += _add;
-                    updates[`stu/${fbKey}/cookie`] = s.cookie;
-                    dep.settled = true;
-                    dep.closedAt = today;
-                    changed = true;
-                    interestCount++;
+        // ── 하루 1회 "원자적 소유권 획득" (서버 트랜잭션) ──
+        // 다중 기기/탭 교사 세션이 동시에 sweep을 돌려 이중 차감하는 TOCTOU 차단.
+        // cfg/bankSweepLog/date 를 오늘 날짜로 선점(commit)한 세션만 실제 처리 진행.
+        // (stu 로드가 확정된 뒤 선점 — 로드 실패로 날짜만 찍히는 상황 방지)
+        let _serverSweepDate = '';
+        if(!db.cfg.bankSweepLog) db.cfg.bankSweepLog = {};
+        if(_forceMsg) {
+            // 강제 실행(교사 수동): 소유권 무시하고 진행 — 현재 날짜는 정보용으로만 조회
+            try { const _snap = await dbRef.child('cfg/bankSweepLog/date').once('value'); _serverSweepDate = _snap.val() || ''; } catch(_){}
+        } else {
+            try {
+                const _res = await dbRef.child('cfg/bankSweepLog/date').transaction(cur => {
+                    _serverSweepDate = cur || '';
+                    if(cur === today) return;   // 이미 오늘 처리됨(다른 세션이 소유) → abort
+                    return today;               // 오늘 소유권 획득
+                }, undefined, false);
+                if(!(_res && _res.committed)) {  // 소유 실패 = 이미 오늘 실행됨
+                    console.log('[은행 sweep] 오늘 이미 실행됨(소유 실패) —', today);
+                    return { skipped: true };    // finally가 락 해제
                 }
+            } catch(e) {
+                console.error('[은행 sweep] 날짜 소유 트랜잭션 오류 — 이중 차감 방지 위해 중단', e);
+                return { skipped: true, reason: 'claim_error' };
             }
-
-            // 2. 만기 대출 처리 — 쿠키 충분 시 자동 상환, 부족 시 연체(쿠키 음수, 상점 제한)
-            for(const ln of bank.loans) {
-                if(!ln.overdue && ln.dueDate && ln.dueDate <= today && (ln.remaining || 0) > 0) {
-                    const totalDue = ln.remaining + (ln.interest != null && !ln.interestPaid ? (ln.interest || 0) : 0);
-                    // 실제 잔액 = cookie - usedCookie - shopUsed (누적값 보정)
-                    const curCookie = (s.cookie || 0) - (s.usedCookie || 0) - (s.shopUsed || 0);
-                    if(curCookie >= totalDue) {
-                        // ✅ 자동 상환: 실잔액 충분 → 연체 없음, 상점 제한 없음
-                        s.cookie = (s.cookie || 0) - totalDue;
-                        s.bankAdj -= totalDue;
-                        ln.remaining = 0;
-                        ln.interestPaid = true;
-                        autoRepayCount++;
-                    } else {
-                        // ❌ 연체: 실잔액 부족 → 쿠키 차감(음수 가능), 부족분만큼 상점 제한
-                        const shortfall = totalDue - Math.max(0, curCookie);
-                        s.cookie = (s.cookie || 0) - totalDue; // 음수 가능
-                        s.bankAdj -= totalDue;
-                        ln.shopBanUntil = window._bankAddBizDays(today, shortfall);
-                        ln.overdue = true;
-                        overdueCount++;
-                    }
-                    ln.remaining = 0;
-                    ln.interestPaid = true;
-                    ln.closedAt = today;
-                    updates[`stu/${fbKey}/cookie`] = s.cookie;
-                    changed = true;
-                }
-            }
-
-            // 완료 레코드 prune — 교사 관리 불필요분을 Firebase에서 제거(쿠키 무관: bankAdj가 진실의 원천,
-            // 활성 레코드는 보존). bankAdj는 위에서 이미 부트스트랩/갱신됨.
-            const _pr = _bankPruneCompleted(bank, today);
-            if(_pr.removed.length) {
-                _bankArchiveCompleted(s.cd, _pr.removed); // 삭제 전 교사 로컬 아카이브 적립
-                bank.deposits = _pr.kept.deposits;
-                bank.loans = _pr.kept.loans;
-                changed = true;
-            }
-
-            if(changed) { updates[`stu/${fbKey}/bank`] = bank; updates[`stu/${fbKey}/bankAdj`] = s.bankAdj; }
-        });
-
-        // sweep 로그 — 처리 건이 있거나 날짜가 바뀔 때만 write (처리 없고 날짜 같으면 skip)
-        const _hadAction = interestCount + overdueCount + autoRepayCount > 0;
-        const sweepLog = { date: today, interest: interestCount, overdue: overdueCount, autoRepay: autoRepayCount, ts: Date.now() };
-        if(!db.cfg) db.cfg = {};
-        db.cfg.bankSweepLog = sweepLog;
-        // 처리 건 있거나, 오늘 날짜로 아직 미기록이거나, forced 실행 시 → 기록
-        if(_hadAction || _serverSweepDate !== today || _forceMsg) updates['cfg/bankSweepLog'] = sweepLog;
-
-        if(gradesChanged) {
-            updates['cfg/bankGrades'] = gradeMap;
-            updates['cfg/bankGradesRev'] = String(Date.now());
-            db.cfg.bankGrades = gradeMap;
+            db.cfg.bankSweepLog.date = today;
         }
 
-        await dbRef.update(updates).catch(e => console.error('[은행 sweep] write 오류', e));
+        let interestCount = 0, overdueCount = 0, autoRepayCount = 0;
+        const gradeMap = Object.assign({}, (db.cfg && db.cfg.bankGrades) || {});
+        const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+
+        // bank.deposits/loans 정규화 (Firebase가 배열을 numeric-key 객체로 바꾼 경우 대응)
+        const _normBank = (b) => {
+            const bank = (b && typeof b === 'object') ? b : {};
+            bank.deposits = Array.isArray(bank.deposits) ? bank.deposits : (bank.deposits ? Object.values(bank.deposits).filter(Boolean) : []);
+            bank.loans    = Array.isArray(bank.loans)    ? bank.loans    : (bank.loans    ? Object.values(bank.loans).filter(Boolean)    : []);
+            return bank;
+        };
+
+        // ── 학생별 "원자적" 처리 ──
+        // 핵심 수정: db.stu(교사 탭 메모리, 상환 echo 반영 전일 수 있음)를 절대값으로 통째 덮어쓰던
+        //   기존 방식은 학생 상환과 경쟁 시 상환분을 지우고 이중 차감 + 오연체(상점 중지)를 유발했다.
+        //   이제 각 학생 노드에서 트랜잭션으로 "서버 최신값"을 읽어 판정·기록한다.
+        //   → 상환이 먼저 반영됐으면 remaining=0으로 보여 자동 skip, 동시 write는 Firebase가 재시도로 흡수.
+        for(let i = 0; i < (db.stu || []).length; i++) {
+            const s0 = db.stu[i];
+            if(!s0) continue;
+            const b0 = s0.bank;
+            const _depLen = b0 ? (Array.isArray(b0.deposits) ? b0.deposits.length : (b0.deposits ? 1 : 0)) : 0;
+            const _lnLen  = b0 ? (Array.isArray(b0.loans)    ? b0.loans.length    : (b0.loans    ? 1 : 0)) : 0;
+            if(!_depLen && !_lnLen) continue; // 은행 레코드 없는 학생은 skip
+            const fbKey = _cdMig ? s0.cd : i;
+            const stuGrade = s0.cd ? (Number(gradeMap[s0.cd]) || 3) : 3;
+            const eff = _bankGetEffectiveRates(cfg, stuGrade);
+            const _cd = s0.cd;
+
+            // 트랜잭션 함수는 재시도로 여러 번 호출될 수 있음 → 카운트/아카이브 대상은
+            //   매 호출 시작 시 초기화하고, 커밋(committed) 성공 시의 마지막 값만 반영한다.
+            let _tc = null, _removed = null, _committed = false;
+            try {
+                const _res = await dbRef.child('stu/' + fbKey).transaction(cur => {
+                    if(!cur) return; // 노드 없음 → abort
+                    _tc = { interest: 0, overdue: 0, autoRepay: 0 };
+                    _removed = [];
+                    const bank = _normBank(cur.bank);
+                    let bankAdj = (typeof cur.bankAdj === 'number') ? cur.bankAdj
+                                 : (window._bankRecordsOffset ? window._bankRecordsOffset(cur) : 0);
+                    let cookie = cur.cookie || 0;
+                    let changed = false;
+
+                    // 1. 만기 예금 → 원금 복원 + 이자(쿠키) 지급
+                    for(const dep of bank.deposits) {
+                        if(!dep.settled && !dep.cancelled && dep.dueDate && dep.dueDate <= today) {
+                            const rate = _bankGetDepositRate(eff, dep.periodDays || 14);
+                            const interest = Math.floor(dep.amount * rate / 100);
+                            const _add = dep.amount + (interest > 0 ? interest : 0);
+                            cookie += _add; bankAdj += _add;
+                            dep.settled = true; dep.closedAt = today;
+                            changed = true; _tc.interest++;
+                        }
+                    }
+
+                    // 2. 만기 대출 → 실잔액 충분 시 자동상환, 부족 시 연체(쿠키 음수·상점 제한)
+                    //    실잔액/remaining 모두 "서버 최신 cur" 기준 → 이미 상환된 대출은 remaining=0이라 건너뜀
+                    for(const ln of bank.loans) {
+                        if(!ln.overdue && ln.dueDate && ln.dueDate <= today && (ln.remaining || 0) > 0) {
+                            const totalDue = ln.remaining + (ln.interest != null && !ln.interestPaid ? (ln.interest || 0) : 0);
+                            const curCookie = cookie - (cur.usedCookie || 0) - (cur.shopUsed || 0);
+                            if(curCookie >= totalDue) {
+                                cookie -= totalDue; bankAdj -= totalDue;
+                                _tc.autoRepay++;
+                            } else {
+                                const shortfall = totalDue - Math.max(0, curCookie);
+                                cookie -= totalDue; bankAdj -= totalDue; // 음수 가능
+                                ln.shopBanUntil = window._bankAddBizDays(today, shortfall);
+                                ln.overdue = true;
+                                _tc.overdue++;
+                            }
+                            ln.remaining = 0; ln.interestPaid = true; ln.closedAt = today;
+                            changed = true;
+                        }
+                    }
+
+                    // 완료 레코드 prune (bankAdj가 진실의 원천 — 활성 레코드는 보존)
+                    const _pr = _bankPruneCompleted(bank, today);
+                    if(_pr.removed.length) {
+                        _removed = _pr.removed;
+                        bank.deposits = _pr.kept.deposits;
+                        bank.loans = _pr.kept.loans;
+                        changed = true;
+                    }
+
+                    if(!changed) return; // 변경 없음 → 트랜잭션 abort(write 안 함)
+                    cur.bank = bank; cur.cookie = cookie; cur.bankAdj = bankAdj;
+                    return cur;
+                }, undefined, false); // applyLocally=false: 로컬 echo 튐 방지
+                _committed = !!(_res && _res.committed);
+            } catch(e) {
+                console.error('[은행 sweep] 학생 처리 오류', fbKey, e);
+            }
+
+            if(_committed && _tc) {
+                interestCount += _tc.interest; overdueCount += _tc.overdue; autoRepayCount += _tc.autoRepay;
+                if(_removed && _removed.length) { try { _bankArchiveCompleted(_cd, _removed); } catch(_){} } // 삭제 전 교사 로컬 아카이브 적립
+                // 로컬 db.stu 즉시 동기화 (child_changed도 곧 도착하지만 화면 즉시 반영용)
+                // 인덱스 i가 아니라 cd로 재조회해 대입 — 루프 중 db.stu가 재정렬돼도 오배정 방지
+                try {
+                    const _snap = await dbRef.child('stu/' + fbKey).once('value');
+                    const _v = _snap.val();
+                    if(_v) {
+                        const _tcd = _v.cd != null ? _v.cd : _cd;
+                        // 흔한 경우(재정렬 없음): 인덱스 그대로 O(1) 확인 먼저 → 재정렬 시에만 findIndex 폴백
+                        let _idx = (db.stu[i] && db.stu[i].cd === _tcd) ? i
+                                 : (Array.isArray(db.stu) ? db.stu.findIndex(x => x && x.cd === _tcd) : -1);
+                        if(_idx >= 0) db.stu[_idx] = _v; // 매칭 실패 시 대입 생략(child_changed가 갱신)
+                    }
+                } catch(_){}
+            }
+        }
+
+        // sweep 로그 기록 (소유권을 획득한 세션만 여기 도달)
+        const sweepLog = { date: today, interest: interestCount, overdue: overdueCount, autoRepay: autoRepayCount, ts: Date.now() };
+        db.cfg.bankSweepLog = sweepLog;
+        try { await dbRef.child('cfg/bankSweepLog').set(sweepLog); } catch(e) { console.error('[은행 sweep] 로그 write 오류', e); }
 
         const parts = [];
         if(interestCount > 0) parts.push(`예금만기 ${interestCount}건`);
@@ -61190,41 +61230,13 @@ window.addCharRow = function() {
     }
 
     // ─── 교사: 이자 일괄 지급 ───
+    // ⚠️ 기존의 비원자적(db.stu 스냅샷 → 절대값 write) 구현은 학생 상환/취소와 경쟁 시
+    //    이중 처리 위험이 있어 제거했다. 통합 원자적 경로(_bankAutoSweep)로 위임한다.
     window._bankPayInterest = async function() {
         const cfg = _bankGetCfg();
         if (!cfg.depositRates && !cfg.depositRate) { alert('은행 설정을 먼저 저장하세요.'); return; }
-        const today = _bankToday();
-        const _cdMigLocal = !!(db.cfg && db.cfg.stuKeyCdMigrated);
-        let count = 0;
-        const updates = {};
-        const _gradeMap = (db.cfg && db.cfg.bankGrades) || {};
-        db.stu.forEach((s, i) => {
-            const fbKey = _cdMigLocal ? s.cd : i;
-            const bank = _bankGetStudentData(s);
-            const stuGrade = s.cd ? (Number(_gradeMap[s.cd]) || 3) : 3;
-            const eff = _bankGetEffectiveRates(cfg, stuGrade);
-            window._bankAdjInit(s); // settle 전 bankAdj 부트스트랩
-            let changed = false;
-            for (const dep of bank.deposits) {
-                if (!dep.settled && !dep.cancelled && dep.dueDate && dep.dueDate <= today) {
-                    const rate = _bankGetDepositRate(eff, dep.periodDays || 14);
-                    const interest = Math.floor(dep.amount * rate / 100);
-                    // 원금 cookie 복원 + 이자 쿠키 지급
-                    const _add = dep.amount + (interest > 0 ? interest : 0);
-                    s.cookie = (s.cookie || 0) + _add;
-                    s.bankAdj += _add;
-                    updates[`stu/${fbKey}/cookie`] = s.cookie;
-                    dep.settled = true;
-                    dep.closedAt = today;
-                    changed = true;
-                    count++;
-                }
-            }
-            if (changed) { updates[`stu/${fbKey}/bank`] = bank; updates[`stu/${fbKey}/bankAdj`] = s.bankAdj; }
-        });
-        if (Object.keys(updates).length) {
-            await dbRef.update(updates);
-        }
+        const r = await window._bankAutoSweep(true); // 강제 실행 — 예금만기·대출까지 원자 처리
+        const count = (r && r.interestCount) || 0;
         const statusEl = document.getElementById('bankOpStatus');
         if (statusEl) statusEl.textContent = count > 0 ? `✅ ${count}건 이자 지급 완료` : '만기된 예금이 없습니다.';
         setTimeout(() => { const el = document.getElementById('bankOpStatus'); if(el) el.textContent=''; }, 4000);
@@ -61232,46 +61244,10 @@ window.addCharRow = function() {
     };
 
     // ─── 교사: 연체 처리 ───
+    // ⚠️ 기존의 비원자적 구현(상환과 경쟁 시 이중 차감·오연체 유발)은 제거했다. 원자적 경로로 위임.
     window._bankProcessOverdue = async function() {
-        const cfg = _bankGetCfg();
-        const today = _bankToday();
-        const _cdMigLocal = !!(db.cfg && db.cfg.stuKeyCdMigrated);
-        let count = 0;
-        const updates = {};
-        db.stu.forEach((s, i) => {
-            const fbKey = _cdMigLocal ? s.cd : i;
-            const bank = _bankGetStudentData(s);
-            window._bankAdjInit(s); // 상환/연체 처리 전 bankAdj 부트스트랩
-            let changed = false;
-            for (const ln of bank.loans) {
-                if (!ln.overdue && ln.dueDate && ln.dueDate <= today && (ln.remaining || 0) > 0) {
-                    const totalDue = ln.remaining + (ln.interest != null && !ln.interestPaid ? (ln.interest || 0) : 0);
-                    const curCookie = (s.cookie || 0) - (s.usedCookie || 0) - (s.shopUsed || 0);
-                    if(curCookie >= totalDue) {
-                        // 자동 상환: 실잔액 충분
-                        s.cookie = (s.cookie || 0) - totalDue;
-                        s.bankAdj -= totalDue;
-                    } else {
-                        // 연체: 부족분만큼 영업일 상점 제한
-                        const shortfall = totalDue - Math.max(0, curCookie);
-                        s.cookie = (s.cookie || 0) - totalDue;
-                        s.bankAdj -= totalDue;
-                        ln.shopBanUntil = window._bankAddBizDays(today, shortfall);
-                        ln.overdue = true;
-                        count++;
-                    }
-                    ln.remaining = 0;
-                    ln.interestPaid = true;
-                    ln.closedAt = today;
-                    updates[`stu/${fbKey}/cookie`] = s.cookie;
-                    changed = true;
-                }
-            }
-            if (changed) { updates[`stu/${fbKey}/bank`] = bank; updates[`stu/${fbKey}/bankAdj`] = s.bankAdj; }
-        });
-        if (Object.keys(updates).length) {
-            await dbRef.update(updates);
-        }
+        const r = await window._bankAutoSweep(true); // 강제 실행 — 서버 최신값 기준 원자 처리
+        const count = (r && r.overdueCount) || 0;
         const statusEl = document.getElementById('bankOpStatus');
         if (statusEl) statusEl.textContent = count > 0 ? `⚠️ ${count}건 연체 처리 — 쿠키 차감 (부족 시 음수) · 부족분만큼 상점 제한` : '만기된 대출이 없거나 모두 자동 상환되었습니다.';
         setTimeout(() => { const el = document.getElementById('bankOpStatus'); if(el) el.textContent=''; }, 5000);
