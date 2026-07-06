@@ -8223,6 +8223,7 @@ let _renderLock = false; // 재진입 방지
             .sort((a,b) => b.end.localeCompare(a.end))[0];
         const _postVac = _recentVacEnd && Math.round((new Date(_todayStr) - new Date(_recentVacEnd.end + 'T12:00:00')) / 86400000) <= 7;
         const _bdgList = Array.isArray(db.bdg) ? db.bdg : Object.values(db.bdg||{});
+        const _stuListMg = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
         const _missed = [];
         // grantedWeeks / skippedWeeks 오래된 항목 정리 (5주 초과분 삭제 — 최장 주기 4주 + 1주 버퍼)
         const _cutoffWeek = _getISOWeek(new Date(Date.now() - 35*24*3600*1000).toLocaleDateString('sv-SE'));
@@ -8239,6 +8240,15 @@ let _renderLock = false; // 재진입 방지
                     try { dbRef.child(`bdg/${bi}/coupon/${field}`).set(c[field]); } catch(e){}
                 }
             });
+            // 이 스킬(펫)을 보유한 학생이 없으면 지급 대상이 아예 없으므로 누락 알림 제외.
+            // (실제 지급 executePetSkillCouponGrant는 earnedBdg 보유자만 대상 → 보유자 0명이면 지급해도 무의미하고
+            //  lastGrantDate가 갱신되지 않아 매 로그인마다 "누락"으로 재검출되는 문제 방지.)
+            const _hasOwner = _stuListMg.some(s => {
+                if(!s) return false;
+                const earned = Array.isArray(s.earnedBdg) ? s.earnedBdg : Object.values(s.earnedBdg || {});
+                return earned.includes(b.id);
+            });
+            if(!_hasOwner) return;
             const _expDate = _lastExpectedGrantDate(c, _todayStr);
             const _expWeek = _getISOWeek(_expDate);
             // 이미 이번 주 지급됐으면 스킵
