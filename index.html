@@ -39316,7 +39316,7 @@ window.addCharRow = function() {
             box-shadow:inset 0 0 60px rgba(0,0,0,0.12),0 4px 16px rgba(0,0,0,0.2);
             background:${_heartBg},linear-gradient(135deg,#FFD1DC 0%,#FFE4BA 16%,#FFFACD 32%,#D4F5D4 48%,#D1F0F7 64%,#D8D4F5 80%,#F5D1EE 100%);
             background-size:56px 56px,100% 100%;">
-            <div id="_plzRoomCardsWrap" style="position:relative;z-index:1;zoom:1.17;display:grid;grid-template-columns:repeat(4,max-content);justify-content:center;align-items:start;gap:34px 26px;padding:14px 0;">
+            <div id="_plzRoomCardsWrap" style="position:relative;z-index:1;zoom:1.05;display:grid;grid-template-columns:repeat(4,max-content);justify-content:center;align-items:start;gap:34px 26px;padding:14px 0;">
                 ${rooms.map((r,ci) => {
                     const tilt = tilts[ci % tilts.length];
                     if(_omokRids.length > 1 && _omokRids.includes(r.rid) && r.rid !== _omokPrimary) return ''; // 오목 방들은 대표 카드 1개로 병합
