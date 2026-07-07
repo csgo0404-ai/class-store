@@ -38514,6 +38514,8 @@ window.addCharRow = function() {
             copy.plz.bgAspect = null;
             copy.plz.bgAspectByBg = null;
             copy.plz.obstaclesByBg = null;
+            copy.plz.notice = null;          // 공지는 일시적 안내 — 복제 방에 물려주지 않음
+            copy.plz.noticeBroadcastOn = false;
         }
         db.cfg.plzRooms[newRid] = copy;
         _plzSyncRoomKeys();
@@ -38525,7 +38527,7 @@ window.addCharRow = function() {
             obstaclesByBg: null,
             bgAspect: null,
             bgAspectByBg: null,
-            notice: copy.plz?.notice || null,
+            notice: null,   // 복제 방은 공지 없이 시작
             open: false,
             iceTagOn: copy.plz?.iceTagOn !== false,
             hideSeekOn: copy.plz?.hideSeekOn !== false,
@@ -39273,6 +39275,12 @@ window.addCharRow = function() {
             const isOpen = !!(meta.plz && meta.plz.open);
             return { rid, name, bg, maxCnt, isOpen };
         }); // 모든 방을 일단 렌더 → Firebase에서 실시간 open 상태로 닫힌 방 숨김
+        // 오목 방(이름에 '오목' 포함)이 2개 이상이면 목록엔 대표 카드 1개만 → 클릭 시 난이도(방) 선택.
+        const _omokRids = rooms.filter(r => /오목/.test(r.name)).map(r => r.rid);
+        const _omokPrimary = _omokRids[0] || null;
+        window._omokPickList = _omokRids.map(id => { const rr = rooms.find(x => x.rid === id); return { rid: id, name: rr.name, bg: rr.bg, maxCnt: rr.maxCnt }; });
+        window._omokOpenState = {};
+        window._omokCntState = {};
         // 모든 방 배경 이미지를 즉시 프리로드 (특히 첫 번째 방이 늦게 뜨는 문제 해결)
         rooms.forEach(r => {
             if(r.bg && !window._plzBgPreloaded?.[r.bg]) {
@@ -39308,19 +39316,23 @@ window.addCharRow = function() {
             box-shadow:inset 0 0 60px rgba(0,0,0,0.12),0 4px 16px rgba(0,0,0,0.2);
             background:${_heartBg},linear-gradient(135deg,#FFD1DC 0%,#FFE4BA 16%,#FFFACD 32%,#D4F5D4 48%,#D1F0F7 64%,#D8D4F5 80%,#F5D1EE 100%);
             background-size:56px 56px,100% 100%;">
-            <div id="_plzRoomCardsWrap" style="position:relative;z-index:1;zoom:1.3;display:grid;grid-template-columns:repeat(4,max-content);justify-content:center;align-items:start;gap:34px 26px;padding:14px 0;">
+            <div id="_plzRoomCardsWrap" style="position:relative;z-index:1;zoom:1.17;display:grid;grid-template-columns:repeat(4,max-content);justify-content:center;align-items:start;gap:34px 26px;padding:14px 0;">
                 ${rooms.map((r,ci) => {
                     const tilt = tilts[ci % tilts.length];
+                    if(_omokRids.length > 1 && _omokRids.includes(r.rid) && r.rid !== _omokPrimary) return ''; // 오목 방들은 대표 카드 1개로 병합
+                    const _isOmokMerged = (_omokRids.length > 1 && r.rid === _omokPrimary);
+                    const _cardName = _isOmokMerged ? '광장(오목)' : r.name;
+                    const _cardClick = _isOmokMerged ? 'window._pickOmokRoom()' : `window._pickPlzRoom('${r.rid}')`;
                     return `
                     <div id="_roomCard_${r.rid}" style="display:${r.isOpen?'flex':'none'};flex-direction:column;align-items:center;">
-                        <div onclick="window._pickPlzRoom('${r.rid}')" style="cursor:pointer;transform:rotate(${tilt}deg);transition:transform .2s;will-change:transform;"
+                        <div onclick="${_cardClick}" style="cursor:pointer;transform:rotate(${tilt}deg);transition:transform .2s;will-change:transform;"
                              onmouseover="this.style.transform='rotate(0deg) scale(1.05)'"
                              onmouseout="this.style.transform='rotate(${tilt}deg)'">
                             <div style="position:relative;background:#fff;padding:12px 12px 14px;box-shadow:4px 6px 18px rgba(0,0,0,0.20),0 1px 4px rgba(0,0,0,0.1);border-radius:3px;">
                                 <div style="position:absolute;top:-11px;left:50%;transform:translateX(-50%);width:15px;height:24px;background:linear-gradient(#F0D49B,#C49A5A);border-radius:5px;box-shadow:0 2px 4px rgba(0,0,0,0.3);z-index:2;"></div>
                                 <div style="width:170px;height:128px;background:#f1ece4;overflow:hidden;border-radius:2px;${r.bg?`background-image:url('${r.bg}');background-size:cover;background-position:center;`:'background:#b8d4a8;'}"></div>
                                 <div style="padding:10px 4px 2px;text-align:center;width:170px;">
-                                    <div style="font-family:'Jua';font-size:16px;color:#5D4037;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div>
+                                    <div style="font-family:'Jua';font-size:16px;color:#5D4037;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_cardName}</div>
                                     <div id="_roomCount_${r.rid}" style="margin-top:6px;font-size:12px;color:#1565C0;font-weight:bold;">👥 -${r.maxCnt?`/${r.maxCnt}명`:'명'}</div>
                                 </div>
                             </div>
@@ -39349,8 +39361,16 @@ window.addCharRow = function() {
         rooms.forEach(r => {
             _trackedOnce(firebase.database().ref('ClassData/EventShop/plaza/' + r.rid + '/cfg/open'), snap => {
                 const isOpen = !!snap.val();
-                const card = document.getElementById('_roomCard_' + r.rid);
-                if(card) card.style.display = isOpen ? 'flex' : 'none';
+                if(_omokRids.length > 1 && _omokRids.includes(r.rid)){
+                    // 오목 방들의 open을 모아 대표 카드 하나만 표시 (하나라도 열려 있으면 보임)
+                    window._omokOpenState[r.rid] = isOpen;
+                    const _anyOmok = _omokRids.some(id => window._omokOpenState[id]);
+                    const _pc = document.getElementById('_roomCard_' + _omokPrimary);
+                    if(_pc) _pc.style.display = _anyOmok ? 'flex' : 'none';
+                } else {
+                    const card = document.getElementById('_roomCard_' + r.rid);
+                    if(card) card.style.display = isOpen ? 'flex' : 'none';
+                }
                 if(db.cfg && db.cfg.plzRooms && db.cfg.plzRooms[r.rid]) {
                     if(!db.cfg.plzRooms[r.rid].plz) db.cfg.plzRooms[r.rid].plz = {};
                     db.cfg.plzRooms[r.rid].plz.open = isOpen;
@@ -39385,6 +39405,14 @@ window.addCharRow = function() {
                 if(window._plzTypingRoomCache && window._plzTypingRoomCache[r.rid]) return;
                 // 정원(plzMaxUser)은 학생 수 기준 → 표시 인원도 teacher_main 제외해 N/정원이 입장 차단 기준과 일치
                 let cnt = 0; snap.forEach(c => { if(c.key !== 'teacher_main') cnt++; });
+                if(_omokRids.length > 1 && _omokRids.includes(r.rid)){
+                    window._omokCntState[r.rid] = cnt;
+                    const _tot = _omokRids.reduce((s,id) => s + (window._omokCntState[id]||0), 0);
+                    const _cap = (window._omokPickList||[]).reduce((s,o) => s + (o.maxCnt||0), 0);  // 두 방 정원 합
+                    const _el = document.getElementById('_roomCount_' + _omokPrimary);
+                    if(_el) _el.textContent = `👥 ${_tot}${_cap?`/${_cap}명`:'명'}`;
+                    return;
+                }
                 const el = document.getElementById('_roomCount_' + r.rid);
                 if(el) el.textContent = `👥 ${cnt}${r.maxCnt?`/${r.maxCnt}명`:'명'}`;
             });
@@ -44154,6 +44182,34 @@ window.addCharRow = function() {
 
     function _omokGameRef(gid){ return getPlzRef().child('omok').child(gid); }
     function _omokDirRef(gid){ return getPlzRef().child('omokDir').child(gid); }
+    // 오목 랭킹은 방(plaza room)과 무관한 공용 노드에 저장 → 방을 복제해도 모든 방이 같은 랭킹을 공유.
+    //  (게임 진행 데이터 omok/omokDir/관전자는 그대로 방별 유지 → 방 간 실시간 트래픽은 분리)
+    //  읽기는 .once(top-3 + 내 기록 / 전체는 요청 시)만 사용하므로 공유해도 상시 트래픽 증가 없음.
+    function _omokRankRef(){ return firebase.database().ref('ClassData/EventShop/omokRankShared'); }
+    // 1회용: 현재 방에 쌓여 있던 omokRank를 공용 노드로 복사 (이미 공용에 있는 uid는 건너뜀 = 재실행 안전).
+    //  방 복제 전에 콘솔에서 window._migrateOmokRankToShared() 로 한 번만 실행.
+    window._migrateOmokRankToShared = async function(){
+        if(!confirm('현재 방의 오목 랭킹을 공용 노드(omokRankShared)로 복사합니다.\n(이미 공용에 있는 기록은 건드리지 않음)\n\n진행할까요?')) return;
+        try {
+            const snap = await getPlzRef().child('omokRank').once('value');
+            const data = snap.val() || {};
+            const periods = Object.keys(data);
+            if(!periods.length){ alert('복사할 오목 랭킹 기록이 없습니다.'); return; }
+            const dst = _omokRankRef();
+            const updates = {}; let n = 0, skipped = 0;
+            for(const pk of periods){
+                const existing = (await dst.child(pk).once('value')).val() || {};
+                Object.entries(data[pk] || {}).forEach(([uid, v]) => {
+                    if(!v) return;
+                    if(existing[uid]){ skipped++; return; }   // 공용에 이미 있으면 보존
+                    updates[pk + '/' + uid] = v; n++;
+                });
+            }
+            if(!n){ alert('추가로 복사할 기록이 없습니다. (이미 ' + skipped + '개가 공용 노드에 있음)'); return; }
+            await dst.update(updates);
+            alert('✅ 완료: ' + n + '개 기록을 공용 오목 랭킹으로 복사했습니다.' + (skipped ? ('\n(' + skipped + '개는 이미 있어 건너뜀)') : ''));
+        } catch(e){ console.error('[omokRank migrate]', e); alert('복사 실패: ' + e.message); }
+    };
     // 풀 데이터(window._omokGames)가 있으면 그것 — 없으면 dir 인덱스에서 합성한 라이트 데이터로 폴백
     function _omokGet(gid){
         return window._omokGames[gid] || _omokDirAsGame((window._omokDir||{})[gid]);
@@ -44350,7 +44406,7 @@ window.addCharRow = function() {
         const listEl = document.getElementById('plzOmokRankList');
         if(listEl) listEl.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;font-size:10px;padding:8px;">로딩 중...</div>';
         const _ym = window._omokRankKey();
-        getPlzRef().child('omokRank/'+_ym).once('value', snap => {
+        _omokRankRef().child(_ym).once('value', snap => {
             const all = snap.val() || {};
             window._omokRankCache = new Map();
             Object.entries(all).forEach(([uid, v]) => { if(v) window._omokRankCache.set(uid, v); });
@@ -44444,7 +44500,7 @@ window.addCharRow = function() {
         prettyConfirm
             ? prettyConfirm(`⚫ <b>${_ym} 오목 랭킹 초기화</b><br><span style="font-size:13px;color:#888;">이달의 모든 승수·연승 기록이 삭제됩니다.</span>`,
                 () => {
-                    getPlzRef().child('omokRank/'+_ym).remove();
+                    _omokRankRef().child(_ym).remove();
                     window._omokRankCache = new Map();
                     window._omokRankSorted = [];
                     window._omokRankFullLoaded = false;
@@ -44454,7 +44510,7 @@ window.addCharRow = function() {
                 },
                 {icon:'🗑️', okLabel:'초기화', okClass:'btn-red', cancelLabel:'취소'})
             : (confirm(`${_ym} 오목 랭킹을 초기화할까요?`) && (() => {
-                getPlzRef().child('omokRank/'+_ym).remove();
+                _omokRankRef().child(_ym).remove();
                 window._omokRankCache = new Map();
                 window._omokRankSorted = [];
                 window._omokRankFullLoaded = false;
@@ -44623,7 +44679,7 @@ window.addCharRow = function() {
             const _loseUid = _loseColor === 'b' ? g.black?.uid : g.white?.uid;
             const _loseNm = _loseColor === 'b' ? (g.black?.nm||'') : (g.white?.nm||'');
             const _winNm = me.nm || '';
-            const _rankRef = getPlzRef().child('omokRank/'+_ym2);
+            const _rankRef = _omokRankRef().child(_ym2);
             _rankRef.child(me.cd).transaction(cur => ({ w:(cur?.w||0)+1, streak:(cur?.streak||0)+1, nm:_winNm }), (err, committed, snap) => {
                 if(!err && committed && snap){
                     const v = snap.val();
@@ -44689,7 +44745,7 @@ window.addCharRow = function() {
         else if(g.white?.uid === me.cd) dirUpd.whiteScore = newScore;
         _omokDirRef(gid).update(dirUpd);
         const _ym4 = new Date().toISOString().slice(0,7).replace('-','');
-        const _rankRef4 = getPlzRef().child('omokRank/'+_ym4);
+        const _rankRef4 = _omokRankRef().child(_ym4);
         const _winNm4 = me.nm || '';
         if(opUid) _rankRef4.child(opUid).update({ streak:0 });
         _rankRef4.child(me.cd).transaction(cur => ({ w:(cur?.w||0)+1, streak:(cur?.streak||0)+1, nm:_winNm4 }), (err, committed, snap) => {
@@ -44720,7 +44776,7 @@ window.addCharRow = function() {
         else if(g.white?.uid === me.cd) dirUpd.whiteScore = newScore;
         _omokDirRef(gid).update(dirUpd);
         const _ymD = new Date().toISOString().slice(0,7).replace('-','');
-        const _rankRefD = getPlzRef().child('omokRank/'+_ymD);
+        const _rankRefD = _omokRankRef().child(_ymD);
         _omokGameRef(gid).child('rankUpdated').transaction(cur => cur ? undefined : true, (err, committed) => {
             if(err || !committed) return;
             if(loserUid) _rankRefD.child(loserUid).update({ streak:0 });
@@ -44798,7 +44854,7 @@ window.addCharRow = function() {
         const _ym3 = new Date().toISOString().slice(0,7).replace('-','');
         const _winNm3 = winColor==='b' ? (g.black?.nm||'') : (g.white?.nm||'');
         const _loseNm3 = me.nm || '';
-        const _rankRef3 = getPlzRef().child('omokRank/'+_ym3);
+        const _rankRef3 = _omokRankRef().child(_ym3);
         if(winUid){
             _rankRef3.child(winUid).transaction(cur => ({ w:(cur?.w||0)+1, streak:(cur?.streak||0)+1, nm:_winNm3 }), (err, committed, snap) => {
                 if(!err && committed && snap){
@@ -44951,7 +45007,7 @@ window.addCharRow = function() {
         window._omokRankFullLoaded = false;
         const _ym = window._omokRankKey();
         // top-3만 fetch (왕관 배지용) + 내 데이터 별도 fetch (위젯 내 랭킹용)
-        getPlzRef().child('omokRank/'+_ym).orderByChild('w').limitToLast(3)
+        _omokRankRef().child(_ym).orderByChild('w').limitToLast(3)
             .once('value', snap => {
                 const all = snap.val() || {};
                 Object.entries(all).forEach(([uid, v]) => { if(v) window._omokRankCache.set(uid, v); });
@@ -44961,7 +45017,7 @@ window.addCharRow = function() {
             });
         // 내 전적 별도 fetch (top-3에 없을 수 있으므로)
         if(me && me.cd){
-            getPlzRef().child('omokRank/'+_ym+'/'+me.cd).once('value', snap => {
+            _omokRankRef().child(_ym+'/'+me.cd).once('value', snap => {
                 const v = snap.val();
                 if(v){ window._omokRankCache.set(me.cd, v); window._omokRankSorted = _omokBuildSorted(); }
                 if(typeof window._omokRenderPlzRanking === 'function') window._omokRenderPlzRanking();
@@ -45085,7 +45141,7 @@ window.addCharRow = function() {
             _omokDirRef(gid).update(dUpd);
         }
         const ym = new Date().toISOString().slice(0,7).replace('-','');
-        const rankRef = getPlzRef().child('omokRank/'+ym);
+        const rankRef = _omokRankRef().child(ym);
         _omokGameRef(gid).child('rankUpdated').transaction(cur => cur ? undefined : true, (err, committed) => {
             if(err || !committed) return;
             const winUid = iAmCurrent ? opUid : me.cd;
@@ -45551,7 +45607,7 @@ window.addCharRow = function() {
                     // 랭킹 업데이트: rankUpdated 플래그 transaction으로 중복 처리 방지
                     // (양쪽 보드 모두 열려있을 때 두 인터벌이 동시에 도달해도 한 번만 실행)
                     const _ym2 = new Date().toISOString().slice(0,7).replace('-','');
-                    const _rankRef2 = getPlzRef().child('omokRank/'+_ym2);
+                    const _rankRef2 = _omokRankRef().child(_ym2);
                     _omokGameRef(_tickGid).child('rankUpdated').transaction(cur => {
                         if(cur) return; // 이미 처리됨 — abort
                         return true;
@@ -52593,6 +52649,37 @@ window.addCharRow = function() {
             ov.appendChild(splz);
         }
         enterPlaza();
+    };
+
+    // 오목 난이도(방) 선택 — 목록의 '광장(오목)' 대표 카드 클릭 시 열림. 열린 오목 방만 옵션으로 표시.
+    window._pickOmokRoom = function(){
+        const list = (window._omokPickList || []).filter(o => window._omokOpenState && window._omokOpenState[o.rid]);
+        if(list.length === 0){ if(window.prettyConfirm) window.prettyConfirm('지금 열린 오목 광장이 없어요.', null, {icon:'⚫', okLabel:'확인', cancelLabel:''}); return; }
+        if(list.length === 1){ window._pickPlzRoom(list[0].rid); return; }   // 하나만 열려 있으면 바로 입장
+        document.getElementById('_omokPickModal')?.remove();
+        const _diff = nm => { const m = /오목\s*([^)]*)/.exec(nm || ''); return (m && m[1].trim()) || nm || '오목'; };
+        const ov = document.createElement('div');
+        ov.id = '_omokPickModal';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;font-family:Jua;';
+        ov.onclick = e => { if(e.target === ov) ov.remove(); };
+        const cards = list.map(o => {
+            const _c = (window._omokCntState && window._omokCntState[o.rid]) || 0;
+            const _cntTxt = `👥 ${_c}${o.maxCnt?`/${o.maxCnt}명`:'명'}`;
+            return `
+            <button onclick="document.getElementById('_omokPickModal').remove();window._pickPlzRoom('${o.rid}')"
+                style="display:flex;flex-direction:column;align-items:center;gap:0;border:3px solid #6D4C41;border-radius:18px;background:#fff;cursor:pointer;padding:0;overflow:hidden;width:150px;box-shadow:0 6px 18px rgba(0,0,0,0.25);transition:transform .12s;"
+                onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
+                <div style="width:100%;height:96px;${o.bg?`background:url('${o.bg}') center/cover;`:'background:#b8d4a8;'}"></div>
+                <div style="font-size:18px;color:#5D4037;font-weight:bold;padding:8px 0 2px;">${_diff(o.name)}</div>
+                <div style="font-size:13px;color:#1565C0;font-weight:bold;padding:0 0 12px;">${_cntTxt}</div>
+            </button>`; }).join('');
+        ov.innerHTML = `<div style="background:linear-gradient(160deg,#FFF8E1,#FFE0B2);border:3px solid #6D4C41;border-radius:24px;padding:22px;box-shadow:0 16px 48px rgba(0,0,0,0.4);text-align:center;max-width:92vw;">
+            <div style="font-size:20px;color:#4E342E;font-weight:bold;margin-bottom:4px;">⚫ 오목 난이도 선택</div>
+            <div style="font-size:13px;color:#8D6E63;margin-bottom:16px;">들어갈 광장을 골라줘!</div>
+            <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">${cards}</div>
+            <button onclick="document.getElementById('_omokPickModal').remove()" style="margin-top:16px;padding:8px 22px;border:none;border-radius:16px;background:#BDBDBD;color:#fff;font-family:Jua;font-size:14px;cursor:pointer;">닫기</button>
+        </div>`;
+        document.body.appendChild(ov);
     };
 
     /* ---------- Student: enterPlaza / exitPlaza ---------- */
