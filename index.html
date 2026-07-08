@@ -1770,6 +1770,58 @@
         <div id="t_events" class="hidden">
             <h2 style="margin:0 0 14px;">🎉 이벤트</h2>
 
+            <!-- 익명 투표 -->
+            <div class="card" style="padding:16px;margin-bottom:14px;" id="voteCard">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+                    <h3 style="margin:0;font-size:18px;">🗳️ 투표</h3>
+                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                        <button class="btn btn-red" onclick="voteReset()" style="padding:6px 16px;font-size:13px;">초기화</button>
+                        <button class="btn" id="voteUnrevealBtn" onclick="voteUnreveal()" style="display:none;background:#FB8C00;color:#fff;padding:6px 16px;font-size:13px;">↩ 공개 취소</button>
+                    </div>
+                </div>
+                <!-- 만들기 -->
+                <div id="voteSetup">
+                    <div style="display:flex;gap:8px;margin-bottom:10px;">
+                        <button class="btn" id="voteModeTeacher" onclick="voteToggleMode('teacher')" style="flex:1;background:#5b6ef5;color:#fff;padding:8px;font-size:13px;">교사가 문장 입력</button>
+                        <button class="btn" id="voteModeStudent" onclick="voteToggleMode('student')" style="flex:1;background:#eef0f6;color:#555;padding:8px;font-size:13px;">학생이 직접 제출</button>
+                    </div>
+                    <div id="voteSetupTeacher">
+                        <input id="voteTitle" placeholder="투표 제목 (예: 우리 반 급훈 정하기)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;margin-bottom:8px;">
+                        <textarea id="voteBulk" placeholder="한 줄에 하나씩 선택지를 입력하세요&#10;첫 번째 선택지&#10;두 번째 선택지" style="width:100%;min-height:110px;padding:10px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;line-height:1.7;"></textarea>
+                    </div>
+                    <div id="voteSetupStudent" style="display:none;">
+                        <input id="voteTopic" placeholder="투표 주제 (예: 학급 규칙 아이디어를 하나 내주세요)" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:10px;box-sizing:border-box;">
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+                        <span style="font-size:13px;color:#777;">1인 표 수</span>
+                        <input id="voteMax" type="number" min="1" max="10" value="3" style="width:60px;padding:8px;border:1px solid #ddd;border-radius:10px;">
+                        <span style="font-size:13px;color:#777;">시상 개수(1~3등)</span>
+                        <input id="voteAwards" type="number" min="1" max="3" value="3" style="width:56px;padding:8px;border:1px solid #ddd;border-radius:10px;">
+                        <button class="btn" id="voteCreateBtn" onclick="voteCreate()" style="flex:1;min-width:120px;background:#5b6ef5;color:#fff;padding:9px;">투표 시작 🎲</button>
+                    </div>
+                    <p id="voteSetupHint" style="font-size:12px;color:#999;margin:8px 2px 0;">시작하면 문장이 랜덤 순서로 섞여 모든 학생에게 동일하게 표시됩니다.</p>
+                </div>
+                <!-- 제출 수집 (학생제출형) -->
+                <div id="voteCollect" style="display:none;">
+                    <p id="voteCTopic" style="font-weight:bold;margin:0 0 6px;"></p>
+                    <p style="font-size:13px;color:#777;margin:0 0 8px;">제출 <b id="voteCCount">0</b>개</p>
+                    <div id="voteCList"></div>
+                    <div style="display:flex;gap:8px;margin-top:10px;">
+                        <button class="btn" id="voteStartVoteBtn" onclick="voteStartVote()" style="flex:1;background:#43A047;color:#fff;padding:9px;">이 제출로 투표 시작 🎲</button>
+                    </div>
+                </div>
+                <!-- 진행/결과 -->
+                <div id="voteLive" style="display:none;">
+                    <p style="font-size:13px;color:#777;margin:0 0 8px;">제출 <b id="voteTSubmit">0</b>명 · 선택지 <b id="voteTItems">0</b>개</p>
+                    <p id="voteTPhase" style="font-size:13px;color:#999;margin:0 0 8px;"></p>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn" id="voteRevealBtn" onclick="voteReveal()" style="flex:1;background:#43A047;color:#fff;padding:9px;">🎁 결과 공개</button>
+                        <button class="btn" id="voteCancelVoteBtn" onclick="voteCancelVoting()" style="background:#90A4AE;color:#fff;padding:9px 14px;">↩ 투표 취소</button>
+                    </div>
+                    <div id="voteTResult" style="margin-top:12px;"></div>
+                </div>
+            </div>
+
             <!-- 마니또 + 빙고 -->
             <div class="card" style="padding:16px;margin-bottom:14px;" id="manittoCard" data-evt-key="manitto">
                 <!-- 마니또 섹션 -->
@@ -2302,8 +2354,9 @@
         <div class="menu" id="menuGababoBtn" onclick="navS('s_gababo',this)" style="display:none;">⚔️ 가바보</div>
         <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 RPG 축제</div>
         <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💘 마니또</div>
+        <div class="menu" id="menuVoteBtn" onclick="navS('s_vote',this)" style="display:none;">🗳️ 투표</div>
 
-        
+
     </div>
     <div class="cont" style="padding:15px; display:flex; flex-direction:column;">
         <div id="s_char" style="flex:1;overflow-y:auto;"><div id="s_char_inner" style="zoom:0.7;"></div></div>
@@ -2315,6 +2368,7 @@
         <div id="s_tbank" class="hidden" style="flex:1;overflow-y:auto;"></div>
         <div id="s_gababo" class="hidden" style="flex:1;overflow-y:auto;"></div>
         <div id="s_manitto" class="hidden" style="flex:1;overflow-y:auto;padding:10px 16px;"></div>
+        <div id="s_vote" class="hidden" style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 16px 32px;"></div>
         <div id="s_kiosk" class="hidden" style="flex:1;overflow-y:auto;"></div>
         <div id="s_bank" class="hidden" style="flex:1;overflow-y:auto;padding:14px;"></div>
     </div>
@@ -9298,6 +9352,7 @@ let _renderLock = false; // 재진입 방지
                 document.getElementById('login').classList.add('hidden');
                 document.getElementById('appT').classList.remove('hidden');
                 nav('t_home');
+                try { window._voteInit && window._voteInit(true); } catch(_){}
                 setTimeout(updateNotifBell, 100);
                 setTimeout(updateMenuBadges, 150);
                 setTimeout(() => { try { _autoGrantOnLogin && _autoGrantOnLogin(); } catch(_){} }, 1500);
@@ -9648,6 +9703,7 @@ let _renderLock = false; // 재진입 방지
         // 학생 탭은 done 정리를 하지 않으므로 active 없으면 기존처럼 즉시 리턴(불필요한 매초 틱 방지).
         if(!db.auc || !db.auc.some(a => a && (a.st === 'active' || (_isTeacherView && a.st === 'done' && a.endedAt && (now - a.endedAt) > AUC_DONE_KEEP_MS)))) return;
         let needSave = false;
+        let _resolveFired = false;   // 이 tick에 마감 정산 트랜잭션을 띄웠는가 → 루프-끝 sv()가 stale 'active'로 덮어쓰지 않게
         if(db.auc) {
             db.auc.forEach((a, idx) => {
                 if(!a) return;
@@ -9660,10 +9716,32 @@ let _renderLock = false; // 재진입 방지
                         // 학생 탭은 db.stu를 부분만 보유(본인+요청자만 fetch)하므로 낙찰자 차감이 누락되고,
                         // sv()도 학생 탭에선 타 학생을 저장하지 못해 "차감 안 됨 + 완료기록 사라짐" 사고가 났었음.
                         // 교사 앱이 열려 있는 동안 매초 검사하므로, 교사가 접속하면 만료된 경매는 즉시 마감됩니다.
+                        //
+                        // ⚠️ 중복 정산 방지: 여러 교사 세션이거나 리스너가 마감상태를 덮어써 재정산되면
+                        //    낙찰자가 아닌 이전 입찰자까지 차감되는 사고가 있었음(로컬 _resolving 플래그로는 못 막음).
+                        //    → auc 노드 트랜잭션으로 마감을 원자적으로 선점(active→resolving)하고,
+                        //      선점에 성공한 세션만 그 순간의 권위 있는 최종 입찰로 낙찰자 1명을 정산한다.
                         if (_isTeacherView) {
-                            a._resolving = true; // 동일 tick 내 중복 실행 방지
-                            resolveAuctionTimer(a);
-                            needSave = true;
+                            a._resolving = true; // 동일 tick 내 재진입 방지(로컬)
+                            _resolveFired = true; // 이 tick 루프-끝 sv() 스킵(선점 상태 보호)
+                            const _aucId = a.id, _aucIdx = idx;
+                            dbRef.child('auc/' + _aucIdx).transaction(cur => {
+                                if(!cur || cur.id !== _aucId) return;   // 다른 경매로 바뀜 — abort
+                                if(cur.st !== 'active') return;          // 이미 다른 세션이 마감 선점 — abort
+                                cur.st = 'resolving';                    // 마감 선점 마커
+                                return cur;
+                            }, (err, committed, snap) => {
+                                if(err || !committed || !snap){ a._resolving = false; return; }  // 선점 실패 → 이 세션은 정산 안 함
+                                const fresh = snap.val();
+                                if(!fresh){ a._resolving = false; return; }
+                                if(Array.isArray(db.auc)) db.auc[_aucIdx] = fresh;   // 권위 데이터로 로컬 갱신
+                                resolveAuctionTimer(fresh);              // 최신 입찰로 낙찰자 1명만 차감
+                                // 최종 상태(done/tie/유찰제거)를 즉시 타깃 쓰기 → 'resolving' 노출(플리커)·미발화 림보 방지
+                                try { dbRef.child('auc/' + _aucIdx).set(db.auc[_aucIdx] === undefined ? null : db.auc[_aucIdx]); } catch(_){}
+                                sv();
+                                if(!document.getElementById('appT').classList.contains('hidden')) rAucT();
+                                if(me && !document.getElementById('s_sh').classList.contains('hidden')) rSh();
+                            });
                         }
                     }
                 } else if (_isTeacherView && a.st === 'done' && a.endedAt && (now - a.endedAt) > AUC_DONE_KEEP_MS) {
@@ -9673,7 +9751,10 @@ let _renderLock = false; // 재진입 방지
                 }
             });
         }
-        if(needSave) {
+        if(_resolveFired) {
+            // 정산 트랜잭션 콜백이 sv()+rAucT()를 수행 → 여기선 스킵(선점 중 경매를 stale 'active'로 덮어쓰기 방지).
+            // 이 tick의 done-정리(null)도 콜백 sv()가 db.auc 통째로 반영하거나, 미커밋 시 다음 tick에 재처리됨.
+        } else if(needSave) {
             sv();
             if (!document.getElementById('appT').classList.contains('hidden')) rAucT();
             if (me && !document.getElementById('s_sh').classList.contains('hidden')) rSh();
@@ -10803,6 +10884,7 @@ let _renderLock = false; // 재진입 방지
             document.getElementById('login').classList.add('hidden');
             document.getElementById('appT').classList.remove('hidden');
             nav('t_home');
+            try { window._voteInit && window._voteInit(true); } catch(_){}
             setTimeout(updateNotifBell, 100);
             setTimeout(updateMenuBadges, 150);
             window._mondayCookieChecked = true;
@@ -12538,6 +12620,7 @@ let _renderLock = false; // 재진입 방지
             } catch(_) { try { _renderBankTeacher(); } catch(_){} }
         }
         if(id==='t_events') {
+            try { window._voteAttachTeacher && _voteAttachTeacher(); } catch(_){}   // 투표: 이벤트 탭 볼 때만 구독(트래픽 절감)
             try { _renderTeacherEvents(); } catch(_){}
             try { rGababoT(); } catch(_){}
             // [Events Lazy] 이벤트 탭 진입 시 active 스냅 재계산 — 날짜 경계 자동 반영
@@ -12549,10 +12632,14 @@ let _renderLock = false; // 재진입 방지
             try { window._kioskLeaveTab && window._kioskLeaveTab(); } catch(_){}
             // 빙고 pending 구독 해제 (이벤트 탭 이탈 시)
             try { window._detachBingoTeacherListener && _detachBingoTeacherListener(); } catch(_){}
+            // 투표: 이벤트 탭 이탈 시 items/results/votes/entries 구독 해제
+            try { window._voteDetachTeacher && _voteDetachTeacher(); } catch(_){}
         }
     }
 
     function navS(id,e){
+        // 투표 리스너 지연 초기화 (학생 세션 — 최초 nav 시 1회)
+        try { window._voteInit && window._voteInit(); } catch(_){}
         // 은행 대출 상점 제한 체크 — 전체 사이트 이용 중지 (shopRestrict와 동일)
         try {
             const _ban = window._getBankShopBanUntil ? window._getBankShopBanUntil() : null;
@@ -12578,6 +12665,10 @@ let _renderLock = false; // 재진입 방지
         // 마니또 탭 이탈 시 빙고 학생 구독 해제
         if(id !== 's_manitto') {
             try { window._detachBingoStudentListener && _detachBingoStudentListener(); } catch(_){}
+        }
+        // 투표 탭 이탈 시 items/results 구독 해제
+        if(id !== 's_vote') {
+            try { window._voteLeaveScreen && window._voteLeaveScreen(); } catch(_){}
         }
         // 가바보 body-레벨 오버레이(리그 로비/대결/팝업 등)는 가바보 탭에서만 표시 — 다른 탭 가림 방지
         ['leagueLobbyModal','pvpModal','leagueChalWin','pvpItemPanel','pvpRevealOverlay','llobMsgModal'].forEach(function(oid){
@@ -12725,6 +12816,7 @@ let _renderLock = false; // 재진입 방지
         if(id==='s_bank') { try { (window._ensureBankGrades ? _ensureBankGrades() : Promise.resolve()).then(()=>{ try { _renderBankStudent(); } catch(_){} }); } catch(_){ try { _renderBankStudent(); } catch(_){} } }
         if(id==='s_manitto') { try { _attachManittoListener(); window._fetchMyManittoPair && window._fetchMyManittoPair(); window._fetchMyManittoVote && window._fetchMyManittoVote(); if(db.manitto?.voteOpen && window._ensureStuLoaded) window._ensureStuLoaded().then(()=>{try{rManittoS();}catch(_){}}); window._attachBingoStudentListener && window._attachBingoStudentListener(); rManittoS(); } catch(_){} }
         if(id==='s_kiosk') { try { (window._ensureEventCfg ? _ensureEventCfg('kiosk') : Promise.resolve()).then(()=>{ try { window.rKioskS && rKioskS(); const _ks=document.getElementById('s_kiosk'); if(_ks){_ks.style.transition='none';_ks.style.opacity='0';requestAnimationFrame(()=>{_ks.style.transition='opacity 0.15s';_ks.style.opacity='1';});} } catch(_){} }); } catch(_){} }
+        if(id==='s_vote') { try { window._voteEnterScreen && window._voteEnterScreen(); } catch(_){} }
         if(id==='s_plz') {
             try { window._syncMyCookieSilent && window._syncMyCookieSilent(); } catch(_){} // 광장은 진입 시 1회만 (체류 중 1분 폴링 없음)
             // 광장 진입 — 학생 단말은 plaza presence 만 사용. 교사·풀모드만 db.stu 로드.
@@ -15105,7 +15197,7 @@ let _renderLock = false; // 재진입 방지
                         </div>
                     </div>
                 </th>
-                <th style="background:#4E342E; color:white; white-space:nowrap; width:12%;" title="타자 연습 게임머니">⌨️💰게임머니</th>
+                <th style="background:#4E342E; color:white; white-space:nowrap; width:12%;" title="타자 연습 게임머니">💰게임머니</th>
                 <th style="background:#4E342E; width:48px; cursor:pointer;" onclick="deleteSelectedStudents()" title="선택한 학생 삭제">🗑️</th>
             </tr>
         `;
@@ -22247,14 +22339,15 @@ window.appU = function(y, si, k) {
     // (종료/낙찰 경매는 자동으로 /aucArc로 이동되므로 학생이 수동 삭제할 필요 없음)
     window.studentDelAuc = async function(id) {
         try {
-            const snap = await dbRef.child('auc').once('value');
-            const v = snap.val();
-            let aucList = Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
-            const a = aucList.find(x => x && x.id === id);
-            if(!a) { console.warn('[studentDelAuc] auc not found', id); rSh(); return; }
-            // req(승인 대기)와 denied(거절됨) 모두 본인 요청이므로 완전 삭제
-            aucList = aucList.filter(x => x && x.id !== id);
-            await dbRef.child('auc').set(aucList);
+            // 통째 set 대신 트랜잭션으로 원자 삭제 → 동시 요청/입찰 클로버 방지
+            const res = await dbRef.child('auc').transaction(cur => {
+                const arr = Array.isArray(cur) ? cur.slice() : (cur ? Object.values(cur).filter(Boolean) : []);
+                const filtered = arr.filter(x => x && x.id !== id);   // req/denied 본인 요청 완전 삭제
+                if(filtered.length === arr.length) return;            // 해당 요청 없음 — abort
+                return filtered;
+            });
+            const _val = res && res.snapshot ? res.snapshot.val() : null;
+            const aucList = Array.isArray(_val) ? _val.filter(Boolean) : (_val ? Object.values(_val).filter(Boolean) : []);
             db.auc = aucList;
             if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(aucList);
         } catch(e) { console.error('[studentDelAuc]', e); return alert('경매 취소 실패: ' + (e && e.message || e)); }
@@ -23936,22 +24029,24 @@ window.appU = function(y, si, k) {
             reqBy: me.cd, reqNm: me.nm, st: 'req', et: 0,
             bids: [{cd: me.cd, nm: me.nm, amt: p, ts: Date.now()}]
         };
-        // 트래픽 안전성: sv() 통째 갱신 우회 + Firebase 최신 fetch + child set
+        // 동시 요청 클로버 방지: /auc 트랜잭션으로 원자 append (once+set는 두 학생 동시 요청 시 서로 덮어써 유실)
         try {
-            const snap = await dbRef.child('auc').once('value');
-            const v = snap.val();
-            const arr = Array.isArray(v) ? v.filter(Boolean) : (v ? Object.values(v).filter(Boolean) : []);
-            console.log('[submitAucReq] 기존 auc', arr.length, '건 → 추가 후', arr.length+1, '건');
-            arr.push(newEntry);
-            await dbRef.child('auc').set(arr);
+            const res = await dbRef.child('auc').transaction(cur => {
+                const arr = Array.isArray(cur) ? cur.slice() : (cur ? Object.values(cur).filter(Boolean) : []);
+                if(arr.some(x => x && x.id === newEntry.id)) return;   // 재시도로 이미 추가됨 — abort(중복 방지)
+                arr.push(newEntry);
+                return arr;
+            });
+            const _val = res && res.snapshot ? res.snapshot.val() : null;
+            const arr = Array.isArray(_val) ? _val.filter(Boolean) : (_val ? Object.values(_val).filter(Boolean) : []);
             db.auc = arr;
             if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(arr);
-            // aucReqCnt 동기화 — sv() 우회 write이므로 별도 갱신
+            // aucReqCnt 동기화 — 트랜잭션 write이므로 별도 갱신
             const _aucReqCnt = arr.filter(a => a && a.st === 'req').length;
             if(!db.cfg) db.cfg = {};
             db.cfg.aucReqCnt = _aucReqCnt;
             dbRef.child('cfg/aucReqCnt').set(_aucReqCnt).catch(()=>{});
-            console.log('[submitAucReq] Firebase 저장 완료 — id', newEntry.id);
+            console.log('[submitAucReq] 원자 append 완료 — id', newEntry.id, '· 총', arr.length, '건');
         } catch(e) { console.error('[submitAucReq]', e); return alert('경매 요청 저장 실패: ' + (e && e.message || e)); }
         upMe(); // 본인 잔액 등 변경분 반영
         document.getElementById('aucReqModal').remove();
@@ -24196,58 +24291,90 @@ window.appU = function(y, si, k) {
         document.body.insertAdjacentHTML('beforeend', html);
     }
 
-    window.submitAucT = function() {
+    window.submitAucT = async function() {
         const n = document.getElementById('tr_n').value.trim();
         const d = document.getElementById('tr_d').value.trim();
         const p = parseInt(document.getElementById('tr_p').value);
         const c = document.getElementById('tr_c').value;
         const m = parseInt(document.getElementById('tr_m').value);
-        
+
         if(!n || !p || p < 1) return alert("상품명과 시작 가격을 올바르게 입력하세요.");
         if(!m || m < 1) return alert("경매 시간을 올바르게 입력하세요.");
-        
-        db.auc.unshift({
+
+        const newEntry = {
             id: Date.now(), n: n, desc: d, sp: p, cp: p, cur: c, reqBy: 'teacher', st: 'active',
             et: Date.now() + (m * 60 * 1000), bids: []
-        });
-        sv();
-        document.getElementById('aucRegModal').remove();
+        };
+        // 통째 unshift+sv() 대신 /auc 트랜잭션 append — 인덱스 시프트(진행중 경매 인덱스 밀림)·동시 입찰 클로버 방지
+        try {
+            const res = await dbRef.child('auc').transaction(cur => {
+                const arr = Array.isArray(cur) ? cur.slice() : (cur ? Object.values(cur).filter(Boolean) : []);
+                if(arr.some(x => x && x.id === newEntry.id)) return;   // 재시도로 이미 추가됨 — abort
+                arr.push(newEntry);
+                return arr;
+            });
+            const _val = res && res.snapshot ? res.snapshot.val() : null;
+            const arr = Array.isArray(_val) ? _val.filter(Boolean) : (_val ? Object.values(_val).filter(Boolean) : []);
+            db.auc = arr;
+            if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(arr);
+        } catch(e) { console.error('[submitAucT]', e); return alert('경매 생성 실패: ' + (e && e.message || e)); }
+        document.getElementById('aucRegModal')?.remove();
         rAucT();
     };
 
     window.approveAuc = function(id) {
-        const a = db.auc.find(x => x && x.id === id);
+        const idx = db.auc.findIndex(x => x && x.id === id);
+        const a = idx >= 0 ? db.auc[idx] : null;
         if(!a) return;
         const m = parseInt(document.getElementById(`ar_m_${id}`).value);
         if(!m || m < 1) return alert("경매 시간을 제대로 입력해주세요.");
         a.st = 'active';
         a.et = Date.now() + (m * 60 * 1000);
-        sv(); rAucT();
+        // 해당 경매 노드만 타깃 쓰기 — /auc 통째쓰기로 다른 경매 진행중 입찰을 되돌리는 클로버 방지
+        try { dbRef.child('auc/' + idx).set(a); } catch(_){}
+        try { if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(db.auc); } catch(_){}
+        rAucT();
     };
 
     window.forceEndAuc = function(id) {
         if(!confirm("경매를 강제 종료하시겠습니까?")) return;
-        const a = db.auc.find(x => x && x.id === id);
-        if(a && a.st === 'active') {
-            resolveAuctionTimer(a);
+        const idx = db.auc.findIndex(x => x && x.id === id);
+        if(idx < 0) return;
+        // 타이머 마감과 동일하게 트랜잭션으로 원자적 선점 → 중복 정산(낙찰자 아닌 학생 차감) 방지
+        dbRef.child('auc/' + idx).transaction(cur => {
+            if(!cur || cur.id !== id) return;
+            if(cur.st !== 'active') return;   // 이미 마감/선점됨 — abort
+            cur.st = 'resolving';
+            return cur;
+        }, (err, committed, snap) => {
+            if(err || !committed || !snap){ alert('이미 마감되었거나 종료 중인 경매입니다.'); rAucT(); return; }
+            const fresh = snap.val();
+            if(!fresh) return;
+            if(Array.isArray(db.auc)) db.auc[idx] = fresh;
+            resolveAuctionTimer(fresh);
+            try { dbRef.child('auc/' + idx).set(db.auc[idx] === undefined ? null : db.auc[idx]); } catch(_){}  // 최종 상태 즉시 반영
             sv(); rAucT();
-        }
+        });
     }
 
     window.delAuc = function(id) {
-    const a = db.auc.find(x => x && x.id === id);
+    const idx = db.auc.findIndex(x => x && x.id === id);
+    const a = idx >= 0 ? db.auc[idx] : null;
     if (a && a.st === 'req') {
-        // 승인 대기 중 거절 시 상태만 변경하여 학생에게 알림
+        // 승인 대기 중 거절 → 상태만 변경(학생 알림). 타깃 쓰기로 /auc 통째쓰기 회피.
         a.st = 'denied';
-        sv();
+        try { dbRef.child('auc/' + idx).set(a); } catch(_){}
+        try { if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(db.auc); } catch(_){}
         rAucT();
     } else if (a) {
-        // /auc에 남아있는 경우(tie 또는 1일 노출 중인 done) — 영구 삭제
-        db.auc = db.auc.filter(x => x && x.id !== id);
+        // /auc에 남은 tie/done 영구 삭제 → 정산부(_archiveAndRemoveAuc)와 동일한 null-hole 방식
+        //  (인덱스 보존 + 통째쓰기/재인덱싱 회피 → 다른 경매 입찰 클로버 방지)
+        db.auc[idx] = null;
+        try { dbRef.child('auc/' + idx).remove(); } catch(_){}
+        try { if(window._lastSentHash) window._lastSentHash.auc = JSON.stringify(db.auc); } catch(_){}
         // done은 /aucArc에도 보관돼 있으므로 함께 제거 (tie면 no-op)
         try { dbRef.child('aucArc/' + id).remove(); } catch(_){}
         if(Array.isArray(db.aucArc)) db.aucArc = db.aucArc.filter(x => x && x.id !== id);
-        sv();
         rAucT();
     } else {
         // /aucArc에 있는 경우 — Firebase + 로컬 미러에서 제거
@@ -24258,16 +24385,32 @@ window.appU = function(y, si, k) {
 };
 
     window.resolveTie = function(aucId, winnerCd) {
-        const a = db.auc.find(x => x && x.id === aucId);
-        if(!a || a.st !== 'tie') return;
-
-        const winnerData = a.tied.find(t => t.cd === winnerCd);
-        if(!winnerData) return;
-        a.winner = winnerData;
-        a.st = 'done';
-        processAuctionWin(a, winnerData);
-        _finalizeAucKeepForStudents(a); // 동점 해소 낙찰 → 참가 학생에게 1일간 결과 노출
-        sv(); rAucT();
+        const idx = db.auc.findIndex(x => x && x.id === aucId);
+        const a = idx >= 0 ? db.auc[idx] : null;
+        if(!a || a.st !== 'tie' || !Array.isArray(a.tied) || !a.tied.some(t => t && t.cd === winnerCd)) return;
+        // 마감 정산과 동일하게 트랜잭션으로 원자 선점 → 두 교사/더블클릭에 의한 이중 차감 방지
+        dbRef.child('auc/' + idx).transaction(cur => {
+            if(!cur || cur.id !== aucId) return;
+            if(cur.st !== 'tie') return;   // 이미 다른 세션이 처리 — abort
+            cur.st = 'resolving';
+            return cur;
+        }, (err, committed, snap) => {
+            if(err || !committed || !snap){ rAucT(); return; }   // 선점 실패 → 이 세션은 정산 안 함
+            const fresh = snap.val();
+            const winnerData = fresh && Array.isArray(fresh.tied) ? fresh.tied.find(t => t && t.cd === winnerCd) : null;
+            if(!winnerData){
+                // 후보를 못 찾음(비정상) → 상태를 tie로 되돌려 교사가 다시 선택하게
+                try { dbRef.child('auc/' + idx + '/st').set('tie'); } catch(_){}
+                return;
+            }
+            fresh.winner = winnerData;
+            fresh.st = 'done';
+            if(Array.isArray(db.auc)) db.auc[idx] = fresh;
+            processAuctionWin(fresh, winnerData);           // 선택한 1명만 차감
+            _finalizeAucKeepForStudents(fresh);             // 동점 해소 낙찰 → 참가 학생에게 1일간 결과 노출
+            try { dbRef.child('auc/' + idx).set(db.auc[idx] === undefined ? null : db.auc[idx]); } catch(_){}  // 최종 상태 즉시 반영
+            sv(); rAucT();
+        });
     }
 
     /* 게임 공통 로직 유지 */
@@ -57744,6 +57887,449 @@ window.addCharRow = function() {
         });
     }
     window.rManittoS = rManittoS;
+
+    /* ===================== 🗳️ 익명 투표 (독립 이벤트) =====================
+     * 저장: ClassData/EventShop/vote/{state,items,results,votes,entries}
+     * 신원: 학생=me.cd/me.nm, 교사=window._isTeacherSession. 별도 로그인 없음.
+     * 트래픽: 학생은 state·items·results만 구독(votes/entries는 교사만).
+     * 모든 식별자는 vote/_vote 프리픽스로 격리. 출처: 투표.html */
+    (function(){
+        let VST=null, VITEMS=[], VRES=null, VVOTES={}, VENTRIES={}, VINFO=null;
+        let vPicks=new Set(), vMyEntry='', vHasVoted=false, vSeenPoll=null;
+        let voteMode='teacher', _voteInited=false, vIsTeacher=false, vIdx=0;
+        let _vItemsFn=null, _vResFn=null;   // 학생: 탭 체류 중에만 붙는 items/results 리스너
+        const vref = p => dbRef.child('vote'+(p?'/'+p:''));
+
+        function _voteEsc(s){ return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+        function _voteAttr(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+        function _voteShuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+        function _voteTally(){ const tally={},voters={}; Object.values(VVOTES||{}).forEach(v=>{ (v.ids||[]).forEach(id=>{ tally[id]=(tally[id]||0)+1; (voters[id]=voters[id]||[]).push(v.name||'익명'); }); }); return {tally,voters}; }
+        function _voteBars(rows, showVoters, submitted, limit, hideSummary, includeZero){
+            const items=rows.map(x=>({text:x.text,n:x.n||0,who:x.who||[],by:x.by||''}));
+            const total=items.reduce((s,x)=>s+x.n,0);
+            const maxN=Math.max(1,...items.map(x=>x.n));
+            // 학생은 0표 제외, 교사는 includeZero=true로 0표도 표시
+            const ranked=includeZero ? [...items].sort((a,b)=>b.n-a.n) : [...items].sort((a,b)=>b.n-a.n).filter(x=>x.n>0);
+            // 상위 N개로 자르되, 커트라인과 동점인 항목은 모두 포함
+            let shown=(limit&&limit>0)?ranked.slice(0,limit):ranked;
+            if(limit&&limit>0&&shown.length){ const cutoff=shown[shown.length-1].n; shown=ranked.filter(x=>x.n>=cutoff); }
+            const medals=['🥇','🥈','🥉'];
+            const summary=hideSummary?'':`<p style="color:#8a7f72;font-size:13px;margin:0 0 10px;font-family:'Jua';">총 ${total}표 · 제출 ${submitted}명${(limit&&limit<ranked.length)?` · 상위 ${limit}개`:''}</p>`;
+            if(!shown.length) return summary+`<p style="text-align:center;color:#a3907f;font-size:15px;font-family:'Jua';padding:24px 0;">아직 표를 받은 항목이 없어요</p>`;
+            return summary+shown.map((x,i)=>{
+                const rank=ranked.filter(y=>y.n>x.n).length;   // 동점은 같은 순위(자기보다 표 많은 개수)
+                const pct=Math.round(x.n/maxN*100), win=rank===0&&x.n>0;
+                const author=(x.by)?` <span style="color:#8a7f72;font-size:13.5px;">(${_voteEsc(x.by)})</span>`:'';
+                return `<div style="margin:10px 0;">
+                    <div style="position:relative;background:#fff;border:2px solid ${win?'#FFCE44':'#F0E4D0'};border-radius:14px;overflow:hidden;">
+                        <div style="position:absolute;inset:0;width:${pct}%;border-radius:12px;background:${win?'linear-gradient(90deg,#FFE08A,#FFC23D)':'linear-gradient(90deg,#FFE0BD,#FFB870)'};transition:width .6s ease;"></div>
+                        <div style="position:relative;display:flex;align-items:center;gap:10px;padding:13px 15px;">
+                            <span style="font-size:20px;width:30px;text-align:center;font-family:'Jua';color:#8a7f72;">${(rank<3&&x.n>0)?medals[rank]:''}</span>
+                            <span style="flex:1;font-family:'Jua';font-size:16px;color:#4a3a2f;word-break:break-word;">${_voteEsc(x.text)}${author}</span>
+                            <span style="text-align:right;white-space:nowrap;font-family:'Jua';"><b style="color:#E8531A;font-size:17px;">${x.n}<span style="font-size:12px;color:#a3907f;">표</span></b></span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        // 시상대: 교사가 설정한 개수(1~3)만큼만 등수 표시
+        function _votePodium(sortedRows, awards, showVoters){
+            const n=Math.max(1,Math.min(3,awards||3));
+            const top=sortedRows.filter(r=>r.n>0).slice(0,n);
+            if(!top.length) return '';
+            const medals=['🥇','🥈','🥉'], podH=[120,86,60], podC=['#FFCF3F','#CBD2DE','#E3A972'];
+            const order=n>=3?[1,0,2]:(n===2?[0,1]:[0]);
+            const col=rank=>{
+                const r=top[rank]; if(!r) return '';
+                const names=(showVoters&&r.who&&r.who.length)?`<div style="font-size:11px;color:#8a8f9c;margin-top:3px;max-width:170px;">${r.who.map(_voteEsc).join(', ')}</div>`:'';
+                return `<div style="flex:0 0 30%;max-width:190px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;">
+                    <div style="font-size:32px;line-height:1;margin-bottom:4px;">${medals[rank]}</div>
+                    <div style="background:#fff;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);padding:9px;width:100%;box-sizing:border-box;">
+                        <div style="background:#FFF7D6;border-radius:4px;padding:12px 8px;min-height:58px;display:flex;align-items:center;justify-content:center;text-align:center;font-family:'Jua';color:#222;font-size:14px;line-height:1.4;word-break:break-word;">${_voteEsc(r.text)}</div>
+                    </div>
+                    <div style="font-weight:bold;color:#5D4037;margin-top:5px;">${r.n}표</div>
+                    ${names}
+                    <div style="width:100%;height:${podH[rank]}px;margin-top:8px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,#ffffff55,${podC[rank]});box-shadow:inset 0 2px 6px rgba(255,255,255,.5);display:flex;justify-content:center;padding-top:8px;font-family:'Jua';font-size:24px;color:#7a5600;">${rank+1}</div>
+                </div>`;
+            };
+            return `<div style="display:flex;align-items:flex-end;justify-content:center;gap:12px;padding:6px 0 0;">${order.map(col).join('')}</div>`;
+        }
+        function _voteTeacherResultHTML(){ const {tally}=_voteTally(); const byText={}; Object.values(VENTRIES||{}).forEach(e=>{ if(e&&e.text) byText[(e.text||'').trim()]=e.name||'익명'; }); const rows=(VITEMS||[]).map(it=>({text:it.text,n:tally[it.id]||0,by:it.by||byText[(it.text||'').trim()]||''})).sort((a,b)=>b.n-a.n); return _voteBars(rows,true,Object.keys(VVOTES||{}).length,0,true,true); }
+        function _voteStudentResultHTML(){ const r=VRES||{order:[],submitted:0}; const t={},byMap={}; (VITEMS||[]).forEach(it=>{t[it.id]=it.text;byMap[it.id]=it.by;}); const rows=(r.order||[]).map(x=>({text:t[x.id]||'',n:x.n,by:(x.by!=null&&x.by!=='')?x.by:byMap[x.id]})); const aw=(VST&&VST.awards)||3; return _voteBars(rows,false,r.submitted||0,aw,true); }
+
+        // ── 교사 렌더 ──
+        function _voteRenderTeacher(){
+            if(!vIsTeacher) return;
+            if(!document.getElementById('voteCard')) return;
+            // 이벤트 탭이 안 보이면 렌더 스킵(상시 state 리스너의 헛렌더 방지 — CPU 절감)
+            const _te=document.getElementById('t_events'); if(_te && _te.classList.contains('hidden')) return;
+            const phase=VST&&VST.on?VST.phase:'setup';
+            const show=(id,on)=>{ const el=document.getElementById(id); if(el) el.style.display=on?'':'none'; };
+            // 공개 취소(헤더 상시영역): revealed에서만 표시 — 모든 단계에서 무조건 제어
+            const _ub=document.getElementById('voteUnrevealBtn'); if(_ub) _ub.style.display=(phase==='revealed')?'':'none';
+            show('voteSetup',phase==='setup'); show('voteCollect',phase==='collecting'); show('voteLive',phase==='voting'||phase==='revealed');
+            if(phase==='collecting'){
+                const list=Object.values(VENTRIES||{});
+                document.getElementById('voteCCount').textContent=list.length;
+                document.getElementById('voteCTopic').textContent='주제: '+((VINFO&&VINFO.topic)||(VST&&VST.topic)||'');
+                document.getElementById('voteCList').innerHTML=list.length?list.map(e=>`<div style="border:1px solid #eee;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:14px;"><span style="color:#999;font-size:12px;">🙋 ${_voteEsc(e.name)}</span><br>${_voteEsc(e.text)}</div>`).join(''):'<p style="color:#aaa;font-size:13px;">아직 제출이 없어요.</p>';
+                document.getElementById('voteStartVoteBtn').disabled=list.length<2;
+                return;
+            }
+            if(phase==='voting'||phase==='revealed'){
+                document.getElementById('voteTSubmit').textContent=Object.keys(VVOTES||{}).length;
+                document.getElementById('voteTItems').textContent=(VITEMS||[]).length;
+                const revealed=phase==='revealed';
+                const _vtitle=(VINFO&&VINFO.topic)||(VST&&VST.topic)||'';
+                document.getElementById('voteTPhase').innerHTML=(_vtitle?`<b style="color:#3D2A7A;">📌 ${_voteEsc(_vtitle)}</b><br>`:'<span style="color:#c0392b;">제목 없음</span><br>')+(revealed?'결과 공개됨 · 학생에게도 표시 중':'투표 진행 중 · 학생들이 제출하고 있어요');
+                const rb=document.getElementById('voteRevealBtn'); rb.disabled=revealed; rb.style.display=revealed?'none':''; rb.textContent='🎁 결과 공개';
+                const cb=document.getElementById('voteCancelVoteBtn'); if(cb) cb.style.display=revealed?'none':'';   // 투표 취소: voting에서만 (voteLive 내부)
+                document.getElementById('voteTResult').innerHTML=revealed?_voteTeacherResultHTML():'';
+            }
+        }
+
+        // ── 학생 렌더 ──
+        function _voteRenderStudent(){
+            const el=document.getElementById('s_vote'); if(!el) return;
+            const phase=VST&&VST.on?VST.phase:'setup';
+            const pid=VST&&VST.pollId||null;
+            if(VST && pid!==vSeenPoll){ vSeenPoll=pid; vHasVoted=false; vPicks.clear(); vMyEntry=''; vIdx=0; }
+            const wrap=h=>`<div style="max-width:900px;margin:0 auto;">${h}</div>`;
+            if(phase==='setup'){ el.innerHTML=wrap('<div style="text-align:center;padding:40px 20px;color:#BDBDBD;"><div style="font-size:46px;">🗳️</div><div style="margin-top:8px;font-family:\'Jua\';">아직 진행 중인 투표가 없어요</div></div>'); return; }
+            if(phase==='collecting'){
+                if(vMyEntry){
+                    // 제출 완료 — 수정 불가(잠금)
+                    el.innerHTML=wrap(`<div style="background:#fff;border:2.5px solid #38b6a0;border-radius:18px;padding:22px;text-align:center;">
+                        <div style="font-size:46px;line-height:1;">✅</div>
+                        <div style="font-family:'Jua';font-size:20px;color:#2E7D6A;margin:6px 0 14px;">제출 완료!</div>
+                        <div style="background:#F3FBF9;border:2px dashed #BEE6DE;border-radius:14px;padding:16px;font-family:'Jua';font-size:18px;color:#4a3a2f;line-height:1.6;text-align:left;white-space:pre-wrap;word-break:break-word;">${_voteEsc(vMyEntry)}</div>
+                        <div style="color:#8a7f72;font-size:13.5px;margin-top:14px;font-family:'Jua';">한 번 제출하면 수정할 수 없어요.</div>
+                    </div>`);
+                    return;
+                }
+                el.innerHTML=wrap(`<div style="background:#fff;border:2.5px dashed #FF9F45;border-radius:18px;padding:18px;">
+                    <p style="font-family:'Jua';font-weight:bold;font-size:18px;margin:0 0 12px;color:#5D4037;">💡 ${_voteEsc((VINFO&&VINFO.topic)||(VST&&VST.topic)||'아이디어를 제출해 주세요')}</p>
+                    <textarea id="voteSEntry" placeholder="여기에 적어주세요." style="width:100%;min-height:192px;padding:14px 16px;border:2px solid #F0E4D0;border-radius:14px;box-sizing:border-box;font-family:'Jua';font-size:18px;line-height:1.6;resize:vertical;background:#FDF6E9;color:#4a3a2f;"></textarea>
+                    <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:10px;">
+                        <button class="btn" onclick="_voteAskEntry()" style="background:#FF9F45;color:#fff;padding:12px 28px;border-radius:14px;box-shadow:0 3px 0 #FF7A1A;font-family:'Jua';font-size:16px;">제출하기</button>
+                    </div>
+                </div>`);
+                return;
+            }
+            if(phase==='revealed'){
+                el.innerHTML=wrap(`<div style="background:#fff;border-radius:16px;padding:18px;border:1px solid #eee;"><h3 style="margin:0 0 10px;font-size:17px;">📊 결과</h3>${(VITEMS&&VITEMS.length)?_voteStudentResultHTML():'<p style="color:#aaa;">집계 불러오는 중…</p>'}</div>`);
+                return;
+            }
+            if(vHasVoted){ el.innerHTML=wrap('<div style="text-align:center;padding:40px 20px;"><div style="font-size:46px;">✅</div><div style="margin-top:10px;font-weight:bold;">제출 완료</div><div style="color:#999;margin-top:6px;">결과 공개를 기다려 주세요</div></div>'); return; }
+            const max=(VST&&VST.maxVotes)||3;
+            const items=VITEMS||[];
+            if(!items.length){ el.innerHTML=wrap('<div style="text-align:center;padding:40px 20px;color:#aaa;">투표 항목을 불러오는 중…</div>'); return; }
+            _voteEnsureStyle();
+            // 투표용지 카드(A): 번호 + 문장 + ♥ 가로 리스트. 카드 전체 클릭으로 선택.
+            const card=(it,i)=>{
+                const sel=vPicks.has(it.id);
+                return `<div onclick="window._voteToggle('${it.id}')" style="display:flex;align-items:center;gap:14px;background:${sel?'#FFF6EC':'#fff'};border:2.5px solid ${sel?'#FF9F45':'#F0E4D0'};border-radius:16px;padding:15px 18px;cursor:pointer;transition:border-color .14s,background .14s;box-shadow:0 3px 0 ${sel?'#FF9F45':'#F0E4D0'};${sel?'animation:votePickPop .3s ease;':''}">
+                    <div style="flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:${sel?'#FF9F45':'#FBF3E3'};color:${sel?'#fff':'#a3907f'};font-family:'Jua';display:flex;align-items:center;justify-content:center;font-size:16px;">${i+1}</div>
+                    <div style="flex:1;font-family:'Jua';font-size:18px;color:#4a3a2f;line-height:1.45;word-break:break-word;">${_voteEsc(it.text)}</div>
+                    <div style="flex:0 0 auto;font-size:27px;line-height:1;color:${sel?'#E91E63':'#d9cfc4'};${sel?'animation:voteHeartPop .35s ease;':''}">${sel?'♥':'♡'}</div>
+                </div>`;
+            };
+            const grid=items.map((it,i)=>card(it,i)).join('');
+            const title=((VINFO&&VINFO.topic)||(VST&&VST.topic)||'').trim();
+            el.innerHTML=`<div style="max-width:900px;margin:0 auto;padding:4px 6px 28px;">
+                ${title?`<div style="text-align:center;border-radius:20px;padding:20px 18px;margin-bottom:16px;background:linear-gradient(135deg,#FF9F45,#FF7A1A);color:#fff;box-shadow:0 8px 22px rgba(255,122,26,.30);position:relative;overflow:hidden;">
+                    <div style="position:absolute;right:14px;bottom:-8px;font-size:52px;opacity:.28;">🗳️</div>
+                    <div style="font-family:'Jua';font-size:12px;letter-spacing:2px;opacity:.92;">우리 반 투표</div>
+                    <div style="font-family:'Jua';font-size:24px;margin-top:4px;line-height:1.3;position:relative;">${_voteEsc(title)}</div>
+                </div>`:''}
+                <div style="display:flex;flex-direction:column;gap:12px;">${grid}</div>
+                <div style="text-align:center;color:#8a7f72;font-size:13.5px;margin-top:16px;font-family:'Jua';">마음에 드는 의견의 ♡를 눌러 <b style="color:#E8531A;">${max}개</b>까지 고르고 제출을 눌러요. (${vPicks.size}/${max})</div>
+                ${vPicks.size?`<button class="btn" onclick="_voteAskSubmit()" style="width:100%;max-width:520px;display:block;margin:14px auto 0;background:#FF9F45;color:#fff;padding:13px;border-radius:14px;box-shadow:0 3px 0 #FF7A1A;font-family:'Jua';font-size:16px;">${vPicks.size}표 제출하기</button>`:''}
+            </div>`;
+        }
+
+        function _voteRender(){
+            if(vIsTeacher) _voteRenderTeacher();
+            else { const sv=document.getElementById('s_vote'); if(sv && !sv.classList.contains('hidden')) _voteRenderStudent(); }
+        }
+        function _voteOnState(){
+            // 학생 사이드바 투표 메뉴 표시/숨김 (교사 기기엔 appS가 숨겨져 있어 무해)
+            const btn=document.getElementById('menuVoteBtn');
+            if(btn) btn.style.display=(VST&&VST.on)?'':'none';
+            _voteRender();
+        }
+
+        // ── 지연 구독(트래픽 절감) ──
+        //  · state(초소형)만 상시 구독 → 메뉴 등장/화면 전환 신호.
+        //  · items/results(공용 투표내용) = 학생은 투표 탭, 교사는 이벤트 탭 진입 시에만 구독.
+        //  · votes/entries(개인 선택 컬렉션) = 교사가 이벤트 탭 볼 때만 구독. 학생은 절대 구독 안 함(다른 학생 정보 미수신).
+        // 교사 렌더 디바운스 — 여러 학생이 동시에 투표/제출해도 재렌더를 1회로 코얼레싱(CPU 절감)
+        let _vtRenderT=null;
+        function _voteRenderTeacherSoon(){ clearTimeout(_vtRenderT); _vtRenderT=setTimeout(()=>{ try{ _voteRenderTeacher(); }catch(_){} }, 160); }
+        function _vItemsCb(s){ VITEMS=s.val()||[]; _voteRender(); }
+        function _vResCb(s){ VRES=s.val(); _voteRender(); }
+        function _vInfoCb(s){ VINFO=s.val()||null; _voteRender(); }   // topic 등 화면용 메타(state에서 분리 — phase 플립 페이로드 축소)
+        function _vVotesCb(s){ VVOTES=s.val()||{}; _voteRenderTeacherSoon(); }
+        function _vEntriesCb(s){ VENTRIES=s.val()||{}; _voteRenderTeacherSoon(); }
+        let _vContentOn=false, _vTeacherOn=false;
+        function _voteAttachContent(){ if(_vContentOn) return; _vContentOn=true; try{ vref('items').on('value',_vItemsCb); vref('results').on('value',_vResCb); vref('info').on('value',_vInfoCb); }catch(_){} }
+        function _voteDetachContent(){ if(!_vContentOn) return; _vContentOn=false; try{ vref('items').off('value',_vItemsCb); vref('results').off('value',_vResCb); vref('info').off('value',_vInfoCb); }catch(_){} }
+        // 교사 이벤트 탭 진입/이탈 (nav('t_events')에서 호출) — 투표내용 + 개인선택 컬렉션 구독 토글
+        window._voteAttachTeacher=function(){ _voteAttachContent(); if(!_vTeacherOn){ _vTeacherOn=true; try{ vref('votes').on('value',_vVotesCb); vref('entries').on('value',_vEntriesCb); }catch(_){} } try{ _voteRenderTeacher(); }catch(_){} };
+        window._voteDetachTeacher=function(){ _voteDetachContent(); if(!_vTeacherOn) return; _vTeacherOn=false; try{ vref('votes').off('value',_vVotesCb); vref('entries').off('value',_vEntriesCb); }catch(_){} };
+
+        // ── 초기화 (교사=logT / 학생=navS 최초 진입 시 1회) — state만 상시 구독 ──
+        window._voteInit=function(forceTeacher){
+            if(_voteInited) return; _voteInited=true;
+            // 역할 확정: logT/자동교사는 forceTeacher=true, 재접속 교사는 window._isTeacherSession(startup에서 stuCode·urlCd 반영해 확정). 학생은 둘 다 false.
+            vIsTeacher = !!forceTeacher || !!window._isTeacherSession;
+            try{
+                vref('state').on('value', s=>{ VST=s.val(); _voteOnState(); });
+                if(vIsTeacher){ try{ window.voteToggleMode('teacher'); }catch(_){} }
+            }catch(_){}
+        };
+        // 학생: 투표 탭 진입 시 — items/results 구독 시작 + 개인 표/제출 여부만 1회 복원(개인정보는 탭 진입 시에만 수신)
+        window._voteEnterScreen=async function(){
+            if(vIsTeacher) return;
+            _voteAttachContent();
+            try{
+                const cd=(typeof me!=='undefined'&&me&&me.cd)||'';
+                // 활성 투표가 없음이 확실하면(state 로드됨 && on=false) 개인 read 2회 생략(트래픽 절감).
+                // state 미로드(VST null) 시엔 안전하게 읽어 재투표/재제출 방지.
+                const noPoll = !!(VST && VST.on===false);
+                if(cd && !noPoll){
+                    const [vv,ev]=await Promise.all([ vref('votes/'+cd).once('value'), vref('entries/'+cd).once('value') ]);
+                    vHasVoted=vv.exists(); vMyEntry=ev.exists()?(ev.val().text||''):'';
+                }
+                vSeenPoll=(VST&&VST.pollId)||null;
+            }catch(_){}
+            _voteRenderStudent();
+        };
+        // 학생: 투표 탭 이탈 시 items/results 구독 해제 (트래픽 절감)
+        window._voteLeaveScreen=function(){ if(!vIsTeacher) _voteDetachContent(); };
+        // 좌우 넘김 / 드래그 (페이지당 8개 = 4열 × 2줄)
+        const VOTE_PER=8;
+        // 카드 내부 긴 글용 예쁜 스크롤바 스타일 1회 주입
+        function _voteEnsureStyle(){
+            if(document.getElementById('_voteScrollStyle')) return;
+            try{
+                const st=document.createElement('style'); st.id='_voteScrollStyle';
+                st.textContent='.voteScroll{scrollbar-width:thin;scrollbar-color:#E3A92E transparent;}'
+                  +'.voteScroll::-webkit-scrollbar{width:6px;}'
+                  +'.voteScroll::-webkit-scrollbar-track{background:transparent;margin:6px 0;}'
+                  +'.voteScroll::-webkit-scrollbar-thumb{background:linear-gradient(#F4CE5E,#E3A92E);border-radius:99px;}'
+                  +'.voteHScroll{scrollbar-width:thin;scrollbar-color:#E3A92E transparent;}'
+                  +'.voteHScroll::-webkit-scrollbar{height:9px;}'
+                  +'.voteHScroll::-webkit-scrollbar-track{background:rgba(0,0,0,.05);border-radius:99px;margin:0 10px;}'
+                  +'.voteHScroll::-webkit-scrollbar-thumb{background:linear-gradient(90deg,#F4CE5E,#E3A92E);border-radius:99px;}'
+                  +'@keyframes voteHeartPop{0%{transform:scale(1)}40%{transform:scale(1.4)}70%{transform:scale(.9)}100%{transform:scale(1.12)}}'
+                  +'@keyframes votePickPop{0%{transform:scale(.96)}60%{transform:scale(1.03)}100%{transform:scale(1)}}'
+                  +'@keyframes _vcmFade{from{opacity:0}to{opacity:1}}'
+                  +'@keyframes _vcmPop{0%{opacity:0;transform:translateY(14px) scale(.9)}100%{opacity:1;transform:translateY(0) scale(1)}}';
+                (document.head||document.body).appendChild(st);
+            }catch(_){}
+        }
+        function _votePages(){ return Math.max(1, Math.ceil((VITEMS||[]).length/VOTE_PER)); }
+        window._voteNav=function(d){ const n=_votePages(); vIdx=Math.max(0,Math.min(n-1,vIdx+d)); _voteRenderStudent(); };
+        window._voteGo=function(p){ const n=_votePages(); vIdx=Math.max(0,Math.min(n-1,p)); _voteRenderStudent(); };
+        // 가로 스크롤: 포인터 드래그(터치+마우스)로 확실히 넘김 (태블릿 대응)
+        function _voteAttachHScroll(){
+            const box=document.querySelector('#s_vote .voteHScroll');
+            if(!box||box._vhs) return; box._vhs=true;
+            let sx=0, sl=0, active=false, moved=false;
+            box.addEventListener('pointerdown',e=>{ active=true; moved=false; sx=e.clientX; sl=box.scrollLeft; try{box.setPointerCapture(e.pointerId);}catch(_){} box.style.cursor='grabbing'; });
+            box.addEventListener('pointermove',e=>{ if(!active)return; const dx=e.clientX-sx; if(Math.abs(dx)>4) moved=true; box.scrollLeft=sl-dx; });
+            const end=e=>{ if(!active)return; active=false; box.style.cursor='grab'; try{box.releasePointerCapture&&box.releasePointerCapture(e.pointerId);}catch(_){}; };
+            box.addEventListener('pointerup',end);
+            box.addEventListener('pointercancel',end);
+            // 드래그 직후 하트 클릭이 발생하지 않도록: 이동이 있었으면 click 억제
+            box.addEventListener('click',e=>{ if(moved){ e.stopPropagation(); e.preventDefault(); moved=false; } },true);
+        }
+        function _voteAttachDrag(){
+            const box=document.getElementById('voteCarWrap'), track=document.getElementById('voteTrack');
+            if(!box||!track||box._vdrag) return; box._vdrag=true;
+            let sx=0, sy=0, dragging=false, horiz=null;   // horiz: 가로 우세 제스처만 페이지 이동
+            const start=(x,y)=>{ dragging=true; sx=x; sy=y; horiz=null; track.style.transition='none'; };
+            const move=(x,y)=>{ if(!dragging)return; const dx=x-sx, dy=y-sy;
+                if(horiz===null && (Math.abs(dx)>8||Math.abs(dy)>8)) horiz=Math.abs(dx)>Math.abs(dy);
+                if(horiz) track.style.transform=`translateX(calc(-${vIdx*100}% + ${dx}px))`; };
+            const end=x=>{ if(!dragging)return; dragging=false; track.style.transition='transform .28s ease'; const dx=x-sx;
+                if(!horiz || Math.abs(dx)<10){ track.style.transform=`translateX(-${vIdx*100}%)`; return; }  // 세로 스크롤/탭 → 페이지 유지, 버튼 클릭 살림
+                const n=_votePages();
+                if(dx<-40 && vIdx<n-1) vIdx++; else if(dx>40 && vIdx>0) vIdx--;
+                _voteRenderStudent(); };
+            box.addEventListener('touchstart',e=>start(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+            box.addEventListener('touchmove',e=>move(e.touches[0].clientX,e.touches[0].clientY),{passive:true});
+            box.addEventListener('touchend',e=>end((e.changedTouches[0]||{}).clientX!=null?e.changedTouches[0].clientX:sx));
+            box.addEventListener('mousedown',e=>{ start(e.clientX,e.clientY); const mm=ev=>move(ev.clientX,ev.clientY), mu=ev=>{ end(ev.clientX); document.removeEventListener('mousemove',mm); document.removeEventListener('mouseup',mu); }; document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu); });
+        }
+
+        // ── onclick 핸들러 (window 노출) ──
+        window.voteToggleMode=function(m){
+            voteMode=m;
+            const t=document.getElementById('voteModeTeacher'), s=document.getElementById('voteModeStudent');
+            if(t){ t.style.background=m==='teacher'?'#5b6ef5':'#eef0f6'; t.style.color=m==='teacher'?'#fff':'#555'; }
+            if(s){ s.style.background=m==='student'?'#5b6ef5':'#eef0f6'; s.style.color=m==='student'?'#fff':'#555'; }
+            const st=document.getElementById('voteSetupTeacher'), ss=document.getElementById('voteSetupStudent');
+            if(st) st.style.display=m==='teacher'?'':'none';
+            if(ss) ss.style.display=m==='student'?'':'none';
+            const cb=document.getElementById('voteCreateBtn'); if(cb) cb.textContent=m==='student'?'제출 받기 시작 ✏️':'투표 시작 🎲';
+            const hint=document.getElementById('voteSetupHint'); if(hint) hint.textContent=m==='student'?'학생들이 문장을 제출하면 모아서 투표로 넘어갑니다.':'시작하면 문장이 랜덤 순서로 섞여 모든 학생에게 동일하게 표시됩니다.';
+        };
+        window.voteCreate=function(){
+            if(!vIsTeacher){ showToast('교사만 가능합니다'); return; }
+            const max=Math.max(1,Math.min(10,parseInt(document.getElementById('voteMax').value)||3));
+            const awards=Math.max(1,Math.min(3,parseInt(document.getElementById('voteAwards').value)||3));
+            const pollId=Date.now();
+            if(voteMode==='student'){
+                const topic=(document.getElementById('voteTopic').value||'').trim();
+                if(!topic){ showToast('투표 주제를 입력해 주세요'); return; }
+                vref().update({ state:{on:true,phase:'collecting',maxVotes:max,awards,pollId}, info:{topic}, items:null, results:null, votes:null, entries:null });
+                showToast('제출을 받기 시작했어요!'); return;
+            }
+            const lines=(document.getElementById('voteBulk').value||'').split('\n').map(s=>s.trim()).filter(Boolean);
+            if(lines.length<2){ showToast('선택지를 2개 이상 입력해 주세요'); return; }
+            const title=(document.getElementById('voteTitle').value||'').trim();
+            const items=_voteShuffle(lines.map((text,i)=>({id:'i'+i,text})));
+            vref().update({ state:{on:true,phase:'voting',maxVotes:max,awards,pollId}, info:{topic:title}, items, results:null, votes:null, entries:null });
+            showToast('투표를 시작했어요!');
+        };
+        window.voteStartVote=function(){
+            if(!vIsTeacher) return;
+            const doStart=(entriesObj)=>{
+                const ents=Object.values(entriesObj||{}).filter(e=>e&&((e.text)||'').trim());
+                if(ents.length<2){ showToast('제출이 2개 이상 있어야 해요'); return; }
+                // 제출 문장을 랜덤 순서로 섞어 모든 학생에게 동일하게 표시 (by=제안자 이름, 결과 공개 시 교사에게 표시)
+                const items=_voteShuffle(ents.map((e,i)=>({id:'i'+i,text:(e.text||'').trim(),by:(e.name||'익명')})));
+                const cur=VST||{};
+                // voteCreate와 동일하게 state 전체를 기록 → 학생 화면 전환이 확실히 반영됨
+                vref().update({
+                    state:{ on:true, phase:'voting', maxVotes:cur.maxVotes||3, awards:cur.awards||3, pollId:cur.pollId||Date.now() },
+                    items, results:null, votes:null
+                });
+                showToast('제출물로 투표를 시작했어요!');
+            };
+            // VENTRIES가 아직 안 채워졌으면(구독 지연) DB에서 1회 직접 읽어 폴백
+            if(Object.keys(VENTRIES||{}).length>=2){ doStart(VENTRIES); }
+            else { vref('entries').once('value').then(s=>doStart(s.val()||{})).catch(()=>doStart(VENTRIES)); }
+        };
+        window.voteReveal=function(){
+            if(!vIsTeacher) return;
+            // 구독(VVOTES)이 늦게 붙거나 비어 있을 수 있어 DB에서 votes를 직접 읽어 집계(0표 오류 방지)
+            // entries도 함께 읽어 제안자 이름(by)을 results에 저장 → 학생·교사 결과에 확실히 표시
+            Promise.all([ vref('votes').once('value'), vref('entries').once('value') ]).then(([vs,es])=>{
+                VVOTES=vs.val()||{};   // 교사 결과 화면도 최신값으로 갱신
+                const ents=es.val()||{}, byText={};
+                Object.values(ents).forEach(e=>{ if(e&&e.text) byText[(e.text||'').trim()]=e.name||'익명'; });
+                const {tally}=_voteTally();
+                const order=(VITEMS||[]).map(it=>({id:it.id,n:tally[it.id]||0,by:it.by||byText[(it.text||'').trim()]||''})).sort((a,b)=>b.n-a.n);
+                vref().update({ 'state/phase':'revealed', results:{order,submitted:Object.keys(VVOTES).length} });
+            }).catch(()=>{
+                const {tally}=_voteTally();
+                const order=(VITEMS||[]).map(it=>({id:it.id,n:tally[it.id]||0,by:it.by||''})).sort((a,b)=>b.n-a.n);
+                vref().update({ 'state/phase':'revealed', results:{order,submitted:Object.keys(VVOTES||{}).length} });
+            });
+        };
+        // 결과 공개 취소 — revealed → voting (표는 유지, 학생 화면에서 결과 숨김)
+        window.voteUnreveal=function(){
+            if(!vIsTeacher) return;
+            if(!confirm('결과 공개를 취소할까요? 학생 화면에서 결과가 사라지고 투표 화면으로 돌아갑니다. (받은 표는 유지)')) return;
+            vref().update({ 'state/phase':'voting', results:null });
+            showToast('결과 공개를 취소했어요');
+        };
+        // 투표 공개(시작) 취소 — voting → 이전 단계. 표는 삭제, 새 pollId로 학생 상태 리셋.
+        window.voteCancelVoting=function(){
+            if(!vIsTeacher) return;
+            const hasEntries=Object.keys(VENTRIES||{}).length>0;
+            if(!confirm('투표를 취소할까요? 지금까지 받은 표가 모두 삭제되고 '+(hasEntries?'제출 수집':'설정')+' 단계로 돌아갑니다.')) return;
+            const cur=VST||{};
+            if(hasEntries){
+                // 학생 제출형: 수집 단계로 복귀(제출 내용 유지). 새 pollId로 학생 표/로컬상태 초기화.
+                vref().update({ state:{on:true,phase:'collecting',maxVotes:cur.maxVotes||3,awards:cur.awards||3,pollId:Date.now()}, items:null, results:null, votes:null });
+            }else{
+                // 교사 입력형: 설정 단계로. 선택지 텍스트를 입력창에 복원해 재편집 가능.
+                try{ const bulk=document.getElementById('voteBulk'); if(bulk) bulk.value=(VITEMS||[]).map(i=>i.text).join('\n'); }catch(_){}
+                vref().update({ state:{on:false,phase:'setup'}, items:null, results:null, votes:null });
+            }
+            showToast('투표를 취소했어요');
+        };
+        window.voteReset=function(){
+            if(!vIsTeacher) return;
+            if(!confirm('투표를 초기화할까요? 모든 제출/표가 삭제됩니다.')) return;
+            vref().update({ state:{on:false,phase:'setup'}, info:null, items:null, results:null, votes:null, entries:null });
+            const b=document.getElementById('voteBulk'); if(b) b.value='';
+            const t=document.getElementById('voteTopic'); if(t) t.value='';
+            const ti=document.getElementById('voteTitle'); if(ti) ti.value='';
+            showToast('초기화했어요');
+        };
+        window._voteToggle=function(id){
+            const max=(VST&&VST.maxVotes)||3;
+            if(vPicks.has(id)) vPicks.delete(id);
+            else { if(vPicks.size>=max){ showToast('최대 '+max+'표까지만 선택할 수 있어요'); return; } vPicks.add(id); }
+            _voteRenderStudent();
+        };
+        // 제출 확인 모달 — 제출하면 취소 불가임을 예쁘게 안내
+        window._voteAskSubmit=function(){
+            if(vPicks.size===0||vHasVoted) return;
+            _voteEnsureStyle();
+            document.getElementById('_voteConfirmModal')?.remove();
+            const ov=document.createElement('div');
+            ov.id='_voteConfirmModal';
+            ov.style.cssText='position:fixed;inset:0;z-index:99900;background:rgba(60,40,20,.45);display:flex;align-items:center;justify-content:center;padding:20px;animation:_vcmFade .18s ease;';
+            ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+            ov.innerHTML=`<div style="background:#fff;border-radius:26px;padding:30px 26px 22px;max-width:340px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 22px 55px rgba(0,0,0,.32);text-align:center;font-family:'Jua';animation:_vcmPop .3s cubic-bezier(.34,1.45,.5,1);">
+                <div style="font-size:54px;line-height:1;margin-bottom:10px;">🗳️</div>
+                <div style="font-size:21px;color:#5D4037;margin-bottom:8px;">이대로 제출할까요?</div>
+                <div style="font-size:15px;color:#E8531A;line-height:1.55;margin-bottom:22px;">제출하면 <b>다시 바꿀 수 없어요.</b><br>고른 <b>${vPicks.size}표</b>를 확인해 주세요.</div>
+                <div style="display:flex;gap:10px;">
+                    <button onclick="document.getElementById('_voteConfirmModal').remove()" style="flex:1;padding:14px;border:none;border-radius:15px;background:#EFEAE2;color:#7a6a58;font-family:'Jua';font-size:16px;cursor:pointer;">다시 볼게요</button>
+                    <button onclick="document.getElementById('_voteConfirmModal').remove();voteSubmitVote();" style="flex:1;padding:14px;border:none;border-radius:15px;background:#FF9F45;color:#fff;font-family:'Jua';font-size:16px;box-shadow:0 3px 0 #FF7A1A;cursor:pointer;">제출할게요</button>
+                </div>
+            </div>`;
+            document.body.appendChild(ov);
+        };
+        window.voteSubmitVote=async function(){
+            if(vPicks.size===0||vHasVoted) return;
+            const cd=(typeof me!=='undefined'&&me&&me.cd)||'';
+            if(!cd){ showToast('학생 정보를 불러오는 중이에요'); return; }
+            try{
+                await vref('votes/'+cd).set({ name:(me.nm||'익명'), ids:[...vPicks] });
+                vHasVoted=true; vPicks.clear(); showToast('제출 완료! 고마워요 🎉'); _voteRenderStudent();
+            }catch(_){ showToast('제출에 실패했어요. 다시 시도해 주세요'); }
+        };
+        // 아이디어 제출 확인 모달 — 제출하면 수정 불가임을 예쁘게 안내
+        window._voteAskEntry=function(){
+            const inp=document.getElementById('voteSEntry'); const text=((inp&&inp.value)||'').trim();
+            if(!text){ showToast('내용을 입력해 주세요'); return; }
+            _voteEnsureStyle();
+            document.getElementById('_voteConfirmModal')?.remove();
+            const ov=document.createElement('div');
+            ov.id='_voteConfirmModal';
+            ov.style.cssText='position:fixed;inset:0;z-index:99900;background:rgba(60,40,20,.45);display:flex;align-items:center;justify-content:center;padding:20px;animation:_vcmFade .18s ease;';
+            ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+            ov.innerHTML=`<div style="background:#fff;border-radius:26px;padding:30px 26px 22px;max-width:360px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 22px 55px rgba(0,0,0,.32);text-align:center;font-family:'Jua';animation:_vcmPop .3s cubic-bezier(.34,1.45,.5,1);">
+                <div style="font-size:54px;line-height:1;margin-bottom:10px;">✍️</div>
+                <div style="font-size:21px;color:#5D4037;margin-bottom:8px;">이대로 제출할까요?</div>
+                <div style="font-size:15px;color:#E8531A;line-height:1.55;margin-bottom:16px;">제출하면 <b>수정할 수 없어요.</b></div>
+                <div style="background:#FDF6E9;border:2px dashed #F0E4D0;border-radius:14px;padding:14px;font-family:'Jua';font-size:16px;color:#4a3a2f;line-height:1.55;text-align:left;white-space:pre-wrap;word-break:break-word;margin-bottom:20px;max-height:30vh;overflow-y:auto;">${_voteEsc(text)}</div>
+                <div style="display:flex;gap:10px;">
+                    <button onclick="document.getElementById('_voteConfirmModal').remove()" style="flex:1;padding:14px;border:none;border-radius:15px;background:#EFEAE2;color:#7a6a58;font-family:'Jua';font-size:16px;cursor:pointer;">다시 볼게요</button>
+                    <button onclick="document.getElementById('_voteConfirmModal').remove();voteSubmitEntry();" style="flex:1;padding:14px;border:none;border-radius:15px;background:#FF9F45;color:#fff;font-family:'Jua';font-size:16px;box-shadow:0 3px 0 #FF7A1A;cursor:pointer;">제출할게요</button>
+                </div>
+            </div>`;
+            document.body.appendChild(ov);
+        };
+        window.voteSubmitEntry=async function(){
+            const inp=document.getElementById('voteSEntry'); const text=((inp&&inp.value)||'').trim();
+            if(!text){ showToast('문장을 입력해 주세요'); return; }
+            const cd=(typeof me!=='undefined'&&me&&me.cd)||'';
+            if(!cd){ showToast('학생 정보를 불러오는 중이에요'); return; }
+            try{
+                await vref('entries/'+cd).set({ name:(me.nm||'익명'), text });
+                vMyEntry=text; showToast('제출했어요! ✏️'); _voteRenderStudent();
+            }catch(_){ showToast('제출에 실패했어요. 다시 시도해 주세요'); }
+        };
+    })();
 
     // 학생: 마니또 정답 투표 폼 (내 마니또가 누구일지 이름+이유 제출)
     function _buildManittoVoteSHtml() {
