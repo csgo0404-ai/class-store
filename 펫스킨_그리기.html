@@ -206,15 +206,19 @@
 
     <h2>아이템 제출</h2>
     <div class="field">
-      <label>아이템 이름</label>
-      <input id="inName" placeholder="예: 무지개 망토" maxlength="20">
+      <label>아이템 종류</label>
+      <select id="inType"></select>
     </div>
     <div class="field">
-      <label>희망 가격</label>
+      <label>희망 가격 <span id="priceHint" style="font-size:11px;color:#9aa0b8;font-weight:normal;"></span></label>
       <input id="inPrice" type="number" min="0" value="10">
     </div>
     <button class="btn blue" id="submitBtn">📨 선생님께 제출하기</button>
-    <button class="btn grey" id="downloadBtn">⬇️ 다운로드</button>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="btn grey" id="mySubsBtn" style="flex:1;">📂 내 작품</button>
+      <button class="btn grey" id="newDrawBtn" style="flex:1;">🆕 새로 그리기</button>
+    </div>
+    <button class="btn grey" id="downloadBtn" style="margin-top:6px;">⬇️ 다운로드</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -260,6 +264,11 @@ let drawing = false;
 let moveStart = null;                        // 옮기기용
 let panning = false, panStart = null;        // 손바닥(화면 이동)용
 let panX = 0, panY = 0;
+// ===== 교사 '그림 수정' 편집 모드 (이벤트 상점 검토창이 ?editKey= 로 iframe 오픈) =====
+let _editMode = false, _editKey = '', _editCd = '', _editName = '', _editPrice = 10;
+// ===== '내 작품'에서 대기중 제출을 이어그리는 중이면 그 제출 키 (재제출 시 새 push 대신 덮어쓰기) =====
+let _continueKey = '';
+let _continueCid = '';   // 이어그리는 작품의 안정적 id(cid) — 재제출해도 '내 작품' 항목 1개 유지
 
 const PALETTE = ['#000000','#ffffff','#e74c3c','#e67e22','#f1c40f','#2ecc71','#1abc9c',
                  '#3498db','#9b59b6','#e84393','#fab1a0','#fdcb6e','#a29bfe','#636e72',
@@ -272,6 +281,10 @@ const refLayer = document.getElementById('refLayer');
 const wrap = document.getElementById('canvasWrap');
 const viewport = document.getElementById('canvasViewport');
 const A4_RATIO = 0.7071;                      // 세로 틀 가로/세로 비율 (A4)
+// A4 뷰포트가 90×90 정사각의 좌우를 잘라 가림 → 화면에 안 보이는 열(hidden columns).
+// 그리기/채우기/내보내기를 이 '보이는 열' 범위로 제한해 안 보이는 칸이 칠해지거나 등록되지 않게 함.
+const VP_X0 = Math.round((GRID_W - GRID_H*A4_RATIO)/2);   // 왼쪽 숨김 열 수(≈13)
+const VP_X1 = GRID_W - VP_X0;                             // [VP_X0, VP_X1) 만 사용
 const bgCtx = bgCanvas.getContext('2d');
 const ctx = drawCanvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -338,16 +351,17 @@ function setPixel(x,y,c){
   const off = Math.floor((brushSize-1)/2);
   for(let dy=0;dy<brushSize;dy++) for(let dx=0;dx<brushSize;dx++){
     const px = x-off+dx, py = y-off+dy;
-    if(px>=0&&py>=0&&px<GRID_W&&py<GRID_H) pixels[py][px] = c;
+    if(px>=VP_X0&&px<VP_X1&&py>=0&&py<GRID_H) pixels[py][px] = c;   // 보이는 열만
   }
 }
 function floodFill(x,y,newC){
+  if(y<0||y>=GRID_H||x<VP_X0||x>=VP_X1) return;   // 시드가 범위/뷰포트 밖이면 무시(throw 방지 + 숨은 열 시드 차단)
   const target = pixels[y][x];
   if(target === newC) return;
   const stack = [[x,y]];
   while(stack.length){
     const [cx,cy] = stack.pop();
-    if(cx<0||cy<0||cx>=GRID_W||cy>=GRID_H) continue;
+    if(cx<VP_X0||cy<0||cx>=VP_X1||cy>=GRID_H) continue;   // 채우기는 보이는 열 밖으로 새지 않음
     if(pixels[cy][cx] !== target) continue;
     pixels[cy][cx] = newC;
     stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);
@@ -478,7 +492,7 @@ function pointerMove(e){
     pixels = Array.from({length:GRID_H},()=>Array(GRID_W).fill(null));
     for(let yy=0;yy<GRID_H;yy++) for(let xx=0;xx<GRID_W;xx++){
       const nx=xx+dx, ny=yy+dy;
-      if(nx>=0&&ny>=0&&nx<GRID_W&&ny<GRID_H) pixels[ny][nx]=snap[yy][xx];
+      if(nx>=VP_X0&&nx<VP_X1&&ny>=0&&ny<GRID_H) pixels[ny][nx]=snap[yy][xx];   // 보이는 열만 — 숨은 열로 밀려나면 버림
     }
     render(); return;
   }
@@ -607,6 +621,18 @@ document.getElementById('clearBtn').addEventListener('click',()=>{
   pushUndo(); pixels = Array.from({length:GRID_H},()=>Array(GRID_W).fill(null)); render();
 });
 
+/* 백지에서 새로 시작 — 제출 성공 후/‘새로 그리기’ 버튼이 공용 사용. 이어그리기 상태·드래프트·입력 초기화 */
+function freshCanvas(){
+  _continueKey = ''; _continueCid = '';
+  pixels = Array.from({length:GRID_H},()=>Array(GRID_W).fill(null));
+  undoStack.length = 0; redoStack.length = 0;
+  const inT=document.getElementById('inType'); if(inT && inT.options.length) inT.selectedIndex=0;
+  const inP=document.getElementById('inPrice'); if(inP) inP.value='10';
+  try{ _applyTypePrice(); }catch(_){}
+  try{ localStorage.removeItem(draftKey()); }catch(_){}
+  render();   // render()의 자동저장이 즉시 빈 드래프트를 다시 씀
+}
+
 /* 색상 선택 통합 헬퍼 */
 function setColor(c){
   color = c;
@@ -656,6 +682,7 @@ function _saveShopCache(){
   try{ localStorage.setItem(SHOP_CACHE_KEY, JSON.stringify({
     avt: shopDb.avt, petSkins: shopDb.petSkins,
     drawBaseChar: (shopDb.cfg&&shopDb.cfg.drawBaseChar)||{}, baseChar: (shopDb.cfg&&shopDb.cfg.baseChar)||'',
+    petDraw: (shopDb.cfg&&shopDb.cfg.petDraw)||{},
     avtRev: (shopDb.cfg&&shopDb.cfg.avtRev) ?? null, petSkinsRev: (shopDb.cfg&&shopDb.cfg.petSkinsRev) ?? null
   })); }catch(_){}
 }
@@ -665,18 +692,19 @@ async function loadShopData(force){
   try{ cached = JSON.parse(localStorage.getItem(SHOP_CACHE_KEY)||'null'); }catch(_){}
   if(cached && !force){
     // 캐시 즉시 적용
-    shopDb.cfg = { drawBaseChar: cached.drawBaseChar||{}, baseChar: cached.baseChar||'', avtRev: cached.avtRev, petSkinsRev: cached.petSkinsRev };
+    shopDb.cfg = { drawBaseChar: cached.drawBaseChar||{}, baseChar: cached.baseChar||'', petDraw: cached.petDraw||{}, avtRev: cached.avtRev, petSkinsRev: cached.petSkinsRev };
     shopDb.avt = _arr(cached.avt); shopDb.petSkins = _arr(cached.petSkins);
     _shopLoaded = true;
     try{
       // 작은 값만 읽어 변경 확인 (avtRev/petSkinsRev + base char URL은 작아서 항상 최신화)
-      const [arv, prv, dbc, bc] = await Promise.all([
+      const [arv, prv, dbc, bc, pd] = await Promise.all([
         dbRef.child('cfg/avtRev').get(), dbRef.child('cfg/petSkinsRev').get(),
-        dbRef.child('cfg/drawBaseChar').get(), dbRef.child('cfg/baseChar').get()
+        dbRef.child('cfg/drawBaseChar').get(), dbRef.child('cfg/baseChar').get(),
+        dbRef.child('cfg/petDraw').get()
       ]);
       const avtRev = arv.val() ?? null, petSkinsRev = prv.val() ?? null;          // null/undefined 동일 취급
       const cAvtRev = cached.avtRev ?? null, cPsRev = cached.petSkinsRev ?? null;
-      shopDb.cfg.drawBaseChar = dbc.val()||{}; shopDb.cfg.baseChar = bc.val()||'';
+      shopDb.cfg.drawBaseChar = dbc.val()||{}; shopDb.cfg.baseChar = bc.val()||''; shopDb.cfg.petDraw = pd.val()||{};
       if(avtRev !== cAvtRev){ shopDb.avt = _arr((await dbRef.child('avt').get()).val()); }                  // 바뀐 노드만 수신
       if(petSkinsRev !== cPsRev){ shopDb.petSkins = _arr((await dbRef.child('petSkins').get()).val()); }
       shopDb.cfg.avtRev = avtRev; shopDb.cfg.petSkinsRev = petSkinsRev;
@@ -690,7 +718,7 @@ async function loadShopData(force){
       dbRef.child('cfg').get(), dbRef.child('avt').get(), dbRef.child('petSkins').get()
     ]);
     const c = cfg.val() || {};
-    shopDb.cfg = { drawBaseChar: c.drawBaseChar||{}, baseChar: c.baseChar||'', avtRev: c.avtRev, petSkinsRev: c.petSkinsRev };
+    shopDb.cfg = { drawBaseChar: c.drawBaseChar||{}, baseChar: c.baseChar||'', petDraw: c.petDraw||{}, avtRev: c.avtRev, petSkinsRev: c.petSkinsRev };
     shopDb.avt = _arr(avt.val()); shopDb.petSkins = _arr(ps.val());
     _shopLoaded = true;
     _saveShopCache();
@@ -721,12 +749,14 @@ function buildAvatarHTML(eq, displayPetsArr, displayPropsArr, sex){
     const px=item.px||0, py=item.py||0, ps=item.ps||100, rot=item.rot||0;
     const px2=item.px2??px, py2=item.py2??py, ps2=item.ps2??ps, rot2=item.rot2??rot;
     const mirrorPx = 100-px-ps; const isLeft = flip==='left';
+    // 상점 renderAvatar와 동일: 위치는 착용방향(isLeft), 내용 반전은 착용방향 XOR 아이템 좌우대칭(item.flip)
+    const flipX = isLeft !== !!item.flip;
     const sty=(left,fx,r,top,w)=>{
       const parts=[fx?'scaleX(-1)':'', r?`rotate(${r}deg)`:''].filter(Boolean);
       return `position:absolute;left:${left}%;top:${top}%;width:${w}%;height:${w}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${parts.length?`transform:${parts.join(' ')};`:''}`;
     };
-    let html=`<img src="${item.img}" style="${sty(isLeft?mirrorPx:px,isLeft,rot,py,ps)}">`;
-    if(item.img2) html+=`<img src="${item.img2}" style="${sty(isLeft?(100-px2-ps2):px2,isLeft,rot2,py2,ps2)}">`;
+    let html=`<img src="${item.img}" style="${sty(isLeft?mirrorPx:px,flipX,rot,py,ps)}">`;
+    if(item.img2) html+=`<img src="${item.img2}" style="${sty(isLeft?(100-px2-ps2):px2,flipX,rot2,py2,ps2)}">`;
     return html;
   };
   const _renderItemById = (pid, zi, isRight) => {
@@ -737,26 +767,30 @@ function buildAvatarHTML(eq, displayPetsArr, displayPropsArr, sex){
       if(_sk&&_sk.img) item={img:_sk.img,px:_sk.px??0,py:_sk.py??0,ps:_sk.ps??100,rot:_sk.rot??0};
     }
     if(!item||!item.img) return '';
+    // 위치는 슬롯(isRight)만, 좌우대칭(item.flip)은 내용 반전만 XOR로 합성 — 상점 renderAvatar와 동일
+    const flipContent = isRight !== !!item.flip;
     const px=item.px||0,py=item.py||0,ps=item.ps||100,rot=item.rot||0;
     const left=isRight?Math.max(0,100-px-ps):px;
-    const t=[isRight?'scaleX(-1)':'',rot?`rotate(${rot}deg)`:''].filter(Boolean);
+    const t=[flipContent?'scaleX(-1)':'',rot?`rotate(${rot}deg)`:''].filter(Boolean);
     let html=`<img src="${item.img}" style="position:absolute;left:${left}%;top:${py}%;width:${ps}%;height:${ps}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t.length?`transform:${t.join(' ')};`:''}">`;
     if(item.img2){
       const px2=item.px2??px,py2=item.py2??py,ps2=item.ps2??ps,rot2=item.rot2??rot;
       const left2=isRight?Math.max(0,100-px2-ps2):px2;
-      const t2=[isRight?'scaleX(-1)':'',rot2?`rotate(${rot2}deg)`:''].filter(Boolean);
+      const t2=[flipContent?'scaleX(-1)':'',rot2?`rotate(${rot2}deg)`:''].filter(Boolean);
       html+=`<img src="${item.img2}" style="position:absolute;left:${left2}%;top:${py2}%;width:${ps2}%;height:${ps2}%;object-fit:contain;image-rendering:pixelated;z-index:${zi};transform-origin:center;${t2.length?`transform:${t2.join(' ')};`:''}">`;
     }
     return html;
   };
   const norm = a => Array.isArray(a)?a.filter(Boolean):(a&&typeof a==='object'?Object.values(a).filter(Boolean):null);
-  const propIds = (norm(displayPropsArr)&&norm(displayPropsArr).length)?norm(displayPropsArr):(getEqId(eq.prop)?[getEqId(eq.prop)]:[]);
+  let propIds = (norm(displayPropsArr)&&norm(displayPropsArr).length)?norm(displayPropsArr):(getEqId(eq.prop)?[getEqId(eq.prop)]:[]);
+  if(propIds[0] && propIds[0]===propIds[1]) propIds=[propIds[0]];   // 같은 소품 양슬롯 중복 → 1개만(상점과 동일)
   const pets = norm(displayPetsArr);
   const backLayer = renderLyr('back',0);
   const baseEl = `<img src="${baseUrl}" style="position:absolute;left:0;top:0;z-index:1;width:100%;height:100%;object-fit:contain;image-rendering:pixelated;">`;
   const petLayers = (pets&&pets.length)?pets.map((pid,i)=>pid?_renderItemById(pid,3,i===0):'').join(''):'';
   const front = AVT_Z.filter(c=>c!=='back'&&c!=='prop'&&c!=='pet').map(c=>renderLyr(c,2)).join('')
-    + propIds.map((pid,i)=>_renderItemById(pid,2,i===1)).join('') + petLayers;
+    + propIds.map((pid,i)=>_renderItemById(pid,2,i===0)).join('')   /* 소품도 펫과 동일 [0]=반전(상점과 동일) */
+    + petLayers;
   return backLayer + baseEl + front;
 }
 
@@ -849,7 +883,8 @@ function exportCanvas(scale){
   const off = document.createElement('canvas');
   off.width = GRID_W*scale; off.height = GRID_H*scale;
   const o = off.getContext('2d'); o.imageSmoothingEnabled=false;
-  for(let y=0;y<GRID_H;y++) for(let x=0;x<GRID_W;x++){
+  // 보이는 열(VP_X0~VP_X1)만 내보냄 → 화면 밖 숨은 칸은 등록 이미지에 절대 포함 안 됨
+  for(let y=0;y<GRID_H;y++) for(let x=VP_X0;x<VP_X1;x++){
     const c=pixels[y][x]; if(c){ o.fillStyle=c; o.fillRect(x*scale,y*scale,scale,scale); }
   }
   return off;
@@ -917,18 +952,73 @@ async function uploadToCloudinary(blob, creatorCd){
   return j.secure_url;
 }
 
-['inName','inPrice'].forEach(id=>{ const el=document.getElementById(id); if(el) el.addEventListener('input', scheduleSaveDraft); });
+// ===== 아이템 종류(교사 설정 cfg.petDraw.cats) =====
+const _PETDRAW_CATS = [['petskin','🐾 펫 스킨'],['face','얼굴'],['hair','머리'],['outfit','의상'],['shoes','신발'],['hat','모자'],['hair_deco','머리 장식'],['face_deco','얼굴 장식'],['back','등 장식'],['prop','소품'],['pet','펫']];
+function _catLabel(k){ const p=_PETDRAW_CATS.find(x=>x[0]===k); return p?p[1]:(k||''); }
+function _enabledCats(){
+  const cats = (shopDb.cfg && shopDb.cfg.petDraw && shopDb.cfg.petDraw.cats) || {};
+  const hasAny = Object.keys(cats).length>0;
+  const out=[];
+  _PETDRAW_CATS.forEach(([k,lb])=>{
+    const c=cats[k]||{};
+    const on = hasAny ? !!c.on : (k==='petskin');   // 미설정 기본값: 펫 스킨만
+    if(on) out.push({key:k, label:lb, min:(c.min!=null?c.min:0), max:(c.max!=null?c.max:0)});
+  });
+  if(!out.length) out.push({key:'petskin', label:'🐾 펫 스킨', min:0, max:0});
+  return out;
+}
+function _typeBounds(k){ const e=_enabledCats().find(c=>c.key===k); return e?{min:e.min,max:e.max}:{min:0,max:0}; }
+function _applyTypePrice(){
+  const sel=document.getElementById('inType'), inP=document.getElementById('inPrice'), hint=document.getElementById('priceHint');
+  if(!sel||!inP) return;
+  const b=_typeBounds(sel.value);
+  inP.min=b.min; if(b.max>0) inP.max=b.max; else inP.removeAttribute('max');
+  let v=parseInt(inP.value||'0')||0; if(v<b.min)v=b.min; if(b.max>0&&v>b.max)v=b.max; inP.value=v;
+  if(hint) hint.textContent = b.max>0 ? `(${b.min}~${b.max} 🍪)` : (b.min>0?`(${b.min}🍪 이상)`:'');
+}
+window._populateTypeSelect = function(){
+  const sel=document.getElementById('inType'); if(!sel) return;
+  const prev=sel.value, list=_enabledCats();
+  sel.innerHTML = list.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
+  if(prev && list.some(c=>c.key===prev)) sel.value=prev;
+  _applyTypePrice();
+};
+{ const s=document.getElementById('inType'); if(s) s.addEventListener('change', ()=>{ _applyTypePrice(); scheduleSaveDraft(); }); }
+{ const p=document.getElementById('inPrice'); if(p){ p.addEventListener('input', scheduleSaveDraft); p.addEventListener('blur', _applyTypePrice); } }
 
 let _submitting = false;   // 중복 제출 방지
 document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  if(_editMode){ return _finishEdit(); }   // 교사 편집 모드: 새 제출 대신 수정본 반환
   if(_submitting) return;   // 처리 중 추가 클릭 무시
-  const name = document.getElementById('inName').value.trim();
-  const price = Math.max(0, parseInt(document.getElementById('inPrice').value||'0')||0);
   const btn = document.getElementById('submitBtn');
   if(!currentUser || currentUser.role!=='student'){ toast('학생으로 로그인해주세요.'); return; }
   const code = currentUser.code;
-  if(!name){ toast('아이템 이름을 입력해주세요.'); return; }
+  const type = (document.getElementById('inType')||{}).value || '';
+  if(!type){ toast('아이템 종류를 선택해주세요.'); return; }
   if(!hasPixels()){ toast('그림을 먼저 그려주세요.'); return; }
+  // 이름 = 학생이름 + 종류(라벨 앞 이모지 제거) — 교사가 승인 시 수정 가능
+  const name = `${currentUser.name||''}의 ${_catLabel(type).replace(/^[^\w가-힣]+/, '').trim()}`.trim();
+  // 가격 = 종류 범위로 클램프
+  const _b = _typeBounds(type);
+  let price = Math.max(0, parseInt(document.getElementById('inPrice').value||'0')||0);
+  if(_b.min>0 && price<_b.min) price=_b.min;
+  if(_b.max>0 && price>_b.max) price=_b.max;
+
+  // 대기중 제출 제한(교사 설정) — 새 제출만 카운트, 이어그리기 덮어쓰기는 예외
+  const _limit = (shopDb.cfg && shopDb.cfg.petDraw && shopDb.cfg.petDraw.submitLimit) || 0;
+  if(_limit > 0){
+    let _overwriting = false;
+    if(_continueKey){
+      try{ const _cur=(await dbRef.child('skinSubmissions/'+_continueKey).get()).val(); _overwriting = !!(_cur && _cur.status==='pending'); }catch(_){}
+    }
+    if(!_overwriting){
+      try{
+        const _snap = await dbRef.child('skinSubmissions').orderByChild('creatorCd').equalTo(String(code)).once('value');
+        let _pend=0; _snap.forEach(ch=>{ const v=ch.val(); if(v && v.status==='pending') _pend++; });
+        if(_pend >= _limit){ _prettyMsg({ emoji:'🙅', title:'제출 가능한 아이템 수를 넘었어요', html:'선생님이 검토(승인/반려)한 뒤 다시 제출할 수 있어요.', accent:'#fb7185', bg:'linear-gradient(135deg,#fdeef0,#ffe1e6)' }); return; }
+      }catch(e){ console.warn('[제출제한]', e); }
+    }
+  }
 
   _submitting = true;
   btn.disabled = true; btn.textContent = '⏳ 제출 중…';
@@ -939,23 +1029,37 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
     const imgUrl = await uploadToCloudinary(blob, code);
 
     btn.textContent = '📨 제출 중…';
-    const sub = {
-      img: imgUrl,
-      proposedName: name,
-      proposedPrice: price,
-      creatorCd: String(code),
-      creatorNm: currentUser.name || '',
-      px: DEFAULT_OVERLAY.px, py: DEFAULT_OVERLAY.py, ps: DEFAULT_OVERLAY.ps, rot: DEFAULT_OVERLAY.rot,
-      ts: firebase.database.ServerValue.TIMESTAMP,
-      status: 'pending'
-    };
-    const _subRef = await dbRef.child('skinSubmissions').push(sub);
-    try{ if(_subRef && _subRef.key){ _addMySubKey(_subRef.key); _watchMySub(_subRef.key); } }catch(_){}
+    let subKey = '';
+    // '내 작품'에서 대기중 제출을 이어그린 경우: 새 신청 대신 그 제출을 덮어쓰기(중복 방지)
+    if(_continueKey){
+      let cur=null; try{ cur = (await dbRef.child('skinSubmissions/'+_continueKey).get()).val(); }catch(_){}
+      if(cur && cur.status==='pending'){
+        await dbRef.child('skinSubmissions/'+_continueKey).update({ img: imgUrl, proposedName: name, proposedPrice: price, proposedCat: type });
+        subKey = _continueKey;
+      }
+    }
+    if(!subKey){
+      const sub = {
+        img: imgUrl, proposedName: name, proposedPrice: price, proposedCat: type,
+        creatorCd: String(code), creatorNm: currentUser.name || '',
+        px: DEFAULT_OVERLAY.px, py: DEFAULT_OVERLAY.py, ps: DEFAULT_OVERLAY.ps, rot: DEFAULT_OVERLAY.rot,
+        ts: firebase.database.ServerValue.TIMESTAMP, status: 'pending'
+      };
+      const _subRef = await dbRef.child('skinSubmissions').push(sub);
+      subKey = (_subRef && _subRef.key) || '';
+    }
+    if(subKey){
+      const _cid = _continueCid || ('c'+Date.now()+'_'+Math.floor(Math.random()*1000));
+      _addMySub({ cid:_cid, key:subKey, name, cat:type, price, img:imgUrl, status:'pending', ts:Date.now() });
+      _watchMySub(subKey);
+      try{ window._renderMySubs && window._renderMySubs(); }catch(_){}
+    }
     _prettyMsg({
       emoji:'📨', title:'제출되었어요!',
       html:`<b style="color:#22c55e">${name}</b> 아이템을 선생님께 보냈어요.<br>승인 결과를 기다려주세요! 🙌`,
       accent:'#22c55e', bg:'linear-gradient(135deg,#e7f9ee,#d6f5e3)'
     });
+    freshCanvas();   // 제출 후 새 화면(백지) — 같은 그림 재제출 방지
     btn.textContent = '✅ 제출됨';
     setTimeout(()=>{ btn.disabled=false; btn.textContent='📨 선생님께 제출하기'; _submitting=false; }, 2500);
   }catch(err){
@@ -973,12 +1077,25 @@ function toast(msg){
 }
 
 /* ============ 제출 결과 알림 (승인/거절) — 내 제출 노드만 감시(트래픽 최소) ============ */
+// 내 제출 이력(로컬): 레코드 배열 {key,name,price,img,status,ts}. status: pending|approved|rejected.
+// 학생은 제출 큐 전체를 구독하지 않고(트래픽 절감) 이 로컬 이력 + 자기 노드 watch만 사용.
 const _subWatchers = {};   // key -> ref (해제용)
 function _mySubKeyName(){ return 'skinTool_subs_' + (currentUser && currentUser.code ? currentUser.code : 'anon'); }
-function _getMySubKeys(){ try{ return JSON.parse(localStorage.getItem(_mySubKeyName())||'[]')||[]; }catch(_){ return []; } }
-function _setMySubKeys(arr){ try{ localStorage.setItem(_mySubKeyName(), JSON.stringify(arr)); }catch(_){} }
-function _addMySubKey(k){ const a=_getMySubKeys(); if(!a.includes(k)){ a.push(k); _setMySubKeys(a); } }
-function _removeMySubKey(k){ _setMySubKeys(_getMySubKeys().filter(x=>x!==k)); }
+function _getMySubs(){
+  let raw=[]; try{ raw = JSON.parse(localStorage.getItem(_mySubKeyName())||'[]')||[]; }catch(_){ raw=[]; }
+  // 구버전(문자열 키 배열/‌cid 없는 레코드) → 레코드+cid 마이그레이션
+  return raw.map(r=>{
+    if(typeof r==='string') return {cid:r, key:r, status:'pending'};
+    if(r && r.key && !r.cid) return Object.assign({cid:r.key}, r);
+    return r;
+  }).filter(r=>r && r.key && r.cid);
+}
+function _setMySubs(arr){ try{ localStorage.setItem(_mySubKeyName(), JSON.stringify(arr.slice(0,20))); }catch(_){} }
+// cid 기준 upsert — 같은 작품을 재제출(승인/반려 후 포함)해도 항목 1개 유지
+function _addMySub(rec){ if(!rec||!rec.key) return; const cid=rec.cid||rec.key; rec.cid=cid; const a=_getMySubs().filter(r=>r.cid!==cid); a.unshift(rec); _setMySubs(a); }
+function _updateMySub(key, patch){ const a=_getMySubs(); const i=a.findIndex(r=>r.key===key); if(i>=0){ a[i]=Object.assign({}, a[i], patch); _setMySubs(a); } }
+function _removeMySub(key){ _setMySubs(_getMySubs().filter(r=>r.key!==key)); }
+function _removeMySubByCid(cid){ _setMySubs(_getMySubs().filter(r=>r.cid!==cid)); }
 function _unwatchMySub(k){ const r=_subWatchers[k]; if(r){ try{ r.off(); }catch(_){} delete _subWatchers[k]; } }
 function _watchMySub(key){
   if(_subWatchers[key]) return;
@@ -986,15 +1103,18 @@ function _watchMySub(key){
   _subWatchers[key] = ref;
   ref.on('value', snap=>{
     const v = snap.val();
-    if(!v){ _unwatchMySub(key); _removeMySubKey(key); return; }   // 삭제됨
+    if(!v){ _unwatchMySub(key); _removeMySub(key); try{ window._renderMySubs&&window._renderMySubs(); }catch(_){} return; }   // 노드 삭제됨 → 이력에서 제거
     if(v.status==='approved' || v.status==='rejected'){
-      _unwatchMySub(key); _removeMySubKey(key);                   // 1회 알림 후 감시 종료
+      _unwatchMySub(key);                                        // 감시 종료(이력은 상태만 갱신하여 유지)
+      const patch={status:v.status}; if(v.proposedName) patch.name=v.proposedName; if(v.img) patch.img=v.img;
+      _updateMySub(key, patch);
       showSubResult(v.status, v);
+      try{ window._renderMySubs&&window._renderMySubs(); }catch(_){}
     }
   });
 }
-// 로그인/진입 시 보류 중인 내 제출들 다시 감시 (자리비운 사이 처리된 결과도 잡힘)
-function _initSubWatch(){ _getMySubKeys().forEach(k=>_watchMySub(k)); }
+// 로그인/진입 시 대기중 제출들 다시 감시 (자리비운 사이 처리된 결과도 잡힘)
+function _initSubWatch(){ _getMySubs().forEach(r=>{ if(r.status==='pending') _watchMySub(r.key); }); }
 
 // 승인/거절 결과 메시지창
 function showSubResult(status, v){
@@ -1011,6 +1131,121 @@ function showSubResult(status, v){
   });
 }
 
+/* ============ 내 작품(제출 이력) 목록 + 이어그리기 ============ */
+const _subStatusMeta = { pending:{t:'⏳ 대기중',c:'#f59e0b'}, approved:{t:'✅ 승인',c:'#22c55e'}, rejected:{t:'🥲 반려',c:'#fb7185'} };
+window._renderMySubs = function(){
+  const grid = document.getElementById('_mySubsGrid');
+  if(!grid) return;   // 모달이 안 열려 있으면 무시
+  const subs = _getMySubs();
+  if(!subs.length){ grid.innerHTML = '<div style="grid-column:1/-1;color:#9aa0b8;text-align:center;padding:24px;font-size:13px;">아직 제출한 작품이 없어요.</div>'; return; }
+  grid.innerHTML = subs.map(r=>{
+    const m = _subStatusMeta[r.status] || _subStatusMeta.pending;
+    const nm = String(r.name||'무제').replace(/</g,'&lt;');
+    const catLb = r.cat ? _catLabel(r.cat) : '';
+    const canContinue = r.status==='pending';
+    return `<div style="border:1px solid #2a2f45;border-radius:12px;padding:8px;background:#171a2b;display:flex;flex-direction:column;gap:5px;">
+      <div style="background:#0e1120;border-radius:8px;height:90px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+        ${r.img?`<img src="${r.img}" style="max-width:82px;max-height:82px;image-rendering:pixelated;">`:'<span style="color:#556;font-size:11px;">이미지 없음</span>'}
+      </div>
+      <div style="font-size:12px;font-weight:bold;color:#e8eaf6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${nm}</div>
+      ${catLb?`<div style="font-size:10px;color:#8b93b5;">${catLb}</div>`:''}
+      <div style="font-size:11px;color:${m.c};font-weight:bold;">${m.t}</div>
+      <div style="display:flex;gap:5px;">
+        <button data-cid="${r.cid}" class="_mySubOpen btn ${canContinue?'blue':'grey'}" style="flex:1;padding:6px;font-size:12px;">${canContinue?'✏️ 이어 그리기':'📄 불러오기'}</button>
+        <button data-cid="${r.cid}" class="_mySubDel" title="삭제" style="width:34px;padding:6px;border:none;border-radius:8px;background:#3a2030;color:#ff8a8a;cursor:pointer;font-size:13px;">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('._mySubOpen').forEach(b=> b.addEventListener('click', ()=> _loadMySub(b.dataset.cid)) );
+  grid.querySelectorAll('._mySubDel').forEach(b=> b.addEventListener('click', ()=> _confirmDeleteMySub(b.dataset.cid)) );
+};
+window._openMySubs = function(){
+  document.getElementById('_mySubsModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = '_mySubsModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9600;display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;';
+  modal.innerHTML = `<div style="background:#111421;border:1px solid #2a2f45;border-radius:16px;width:100%;max-width:560px;max-height:88vh;overflow:auto;padding:18px;box-sizing:border-box;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <b style="color:#e8eaf6;font-size:16px;">📂 내 작품</b>
+      <button onclick="document.getElementById('_mySubsModal').remove()" style="background:none;border:none;color:#9aa0b8;font-size:22px;cursor:pointer;">×</button>
+    </div>
+    <div style="font-size:11px;color:#9aa0b8;margin-bottom:10px;line-height:1.5;">⏳ 대기중 작품을 이어 그려 다시 제출하면 <b>같은 신청이 갱신</b>돼요(중복 안 생김). ✅ 승인·🥲 반려 작품은 불러와 새 작품으로 만들 수 있어요.</div>
+    <div id="_mySubsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;"></div>
+  </div>`;
+  modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  window._renderMySubs();
+};
+async function _loadMySub(cid){
+  const rec = _getMySubs().find(r=>r.cid===cid);
+  if(!rec){ toast('작품을 찾을 수 없어요.'); return; }
+  if(!rec.img){ toast('이미지가 없어 불러올 수 없어요.'); return; }
+  try{
+    const np = await _rasterToPixels(rec.img);
+    pixels = np; undoStack.length=0; redoStack.length=0;
+    const inT=document.getElementById('inType'); if(inT && rec.cat){ inT.value = rec.cat; }
+    const inP=document.getElementById('inPrice'); if(inP) inP.value = (rec.price!=null?rec.price:10);
+    try{ _applyTypePrice(); }catch(_){}
+    _continueCid = cid;                                    // 같은 작품으로 취급 → 재제출해도 항목 1개 유지
+    _continueKey = (rec.status==='pending') ? rec.key : '';// 대기중만 기존 신청 덮어쓰기(그 외는 새 신청)
+    applyZoom(); render();
+    document.getElementById('_mySubsModal')?.remove();
+    toast(_continueKey ? '이어서 그린 뒤 제출하면 기존 신청이 갱신돼요.' : '불러왔어요. 제출하면 새 신청으로 올라가요.');
+  }catch(e){ console.error('[loadMySub]', e); toast('불러오기에 실패했어요.'); }
+}
+// '내 작품' 삭제 — 예쁜 확인창 + 제출(요청) 노드까지 제거
+window._confirmDeleteMySub = function(cid){
+  const rec=_getMySubs().find(r=>r.cid===cid); if(!rec) return;
+  document.getElementById('_delConfirm')?.remove();
+  const nm=String(rec.name||'이 작품').replace(/</g,'&lt;');
+  const modal=document.createElement('div'); modal.id='_delConfirm';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  modal.innerHTML=`<div style="background:#fff;border-radius:18px;max-width:340px;width:100%;padding:22px 20px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4);">
+    <div style="font-size:42px;margin-bottom:8px;">🗑️</div>
+    <div style="font-size:17px;font-weight:bold;color:#c0392b;margin-bottom:8px;">작품을 삭제할까요?</div>
+    <div style="font-size:13px;color:#666;line-height:1.6;margin-bottom:18px;"><b>${nm}</b><br>선생님께 제출(요청)한 것도 <b style="color:#c0392b;">함께 사라져요</b>.<br>되돌릴 수 없어요.</div>
+    <div style="display:flex;gap:8px;">
+      <button id="_delCancel" style="flex:1;padding:11px;border:none;border-radius:12px;background:#eee;color:#555;font-size:15px;cursor:pointer;">취소</button>
+      <button id="_delOk" style="flex:1;padding:11px;border:none;border-radius:12px;background:#e74c3c;color:#fff;font-size:15px;cursor:pointer;">삭제</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  document.getElementById('_delCancel').onclick=()=>modal.remove();
+  document.getElementById('_delOk').onclick=()=>{ modal.remove(); _deleteMySub(cid); };
+};
+async function _deleteMySub(cid){
+  const rec=_getMySubs().find(r=>r.cid===cid); if(!rec) return;
+  if(rec.key){ try{ await dbRef.child('skinSubmissions/'+rec.key).remove(); }catch(e){ console.warn('[삭제]',e); } _unwatchMySub(rec.key); }
+  _removeMySubByCid(cid);
+  if(_continueCid===cid){ _continueCid=''; _continueKey=''; }
+  try{ window._renderMySubs && window._renderMySubs(); }catch(_){}
+  toast('삭제했어요.');
+}
+// '새로 그리기' 예쁜 확인창 — 제출해야 저장된다는 점 강조
+window._confirmNewDraw = function(){
+  document.getElementById('_newDrawConfirm')?.remove();
+  const modal=document.createElement('div'); modal.id='_newDrawConfirm';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;';
+  modal.innerHTML=`<div style="background:#fff;border-radius:18px;max-width:360px;width:100%;padding:22px 20px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.4);">
+    <div style="font-size:42px;margin-bottom:8px;">🆕</div>
+    <div style="font-size:17px;font-weight:bold;color:#5D4037;margin-bottom:10px;">새 그림을 시작할까요?</div>
+    <div style="font-size:13px;color:#666;line-height:1.6;margin-bottom:10px;">지금 그리던 그림은 <b style="color:#e74c3c;">지워져요.</b></div>
+    <div style="font-size:13px;background:#FFF3E0;border:1px solid #FFCC80;border-radius:12px;padding:10px 12px;color:#E65100;line-height:1.6;margin-bottom:18px;">📨 <b>제출</b>을 눌러야 선생님께 보내지고 「내 작품」에 저장돼요.<br>제출 안 한 그림은 사라져요!</div>
+    <div style="display:flex;gap:8px;">
+      <button id="_ndCancel" style="flex:1;padding:11px;border:none;border-radius:12px;background:#eee;color:#555;font-size:15px;cursor:pointer;">취소</button>
+      <button id="_ndOk" style="flex:1;padding:11px;border:none;border-radius:12px;background:#66BB6A;color:#fff;font-size:15px;cursor:pointer;">새로 그리기</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  document.getElementById('_ndCancel').onclick=()=>modal.remove();
+  document.getElementById('_ndOk').onclick=()=>{ modal.remove(); freshCanvas(); toast('새 도화지로 시작해요!'); };
+};
+// 버튼 연결
+{ const b=document.getElementById('mySubsBtn'); if(b) b.addEventListener('click', ()=> window._openMySubs()); }
+{ const b=document.getElementById('newDrawBtn'); if(b) b.addEventListener('click', ()=>{ if(!hasPixels()){ freshCanvas(); return; } window._confirmNewDraw(); }); }
+
 /* ============ 세션 / 로그인 ============ */
 const TEACHER_CODE = 'csgo10';
 const SESSION_KEY = 'skinTool_session';
@@ -1026,6 +1261,7 @@ function showLogin(){
 function enterStudent(){
   document.getElementById('loginOverlay').classList.add('hidden');
   document.getElementById('teacherOverlay').classList.add('hidden');
+  try{ window._populateTypeSelect && window._populateTypeSelect(); }catch(_){}   // 종류 옵션 먼저 채운 뒤 draft가 값 복원
   loadDraft();                                  // 로컬 임시저장 복원(그림+설정)
   // 기본값: 내 캐릭터를 참고로 표시 (실패 시 본인 성별 기본 캐릭터로 폴백)
   setRefSingle(baseCharUrl(currentUser.sex));
@@ -1057,6 +1293,7 @@ async function autoEnterStudent(cd){
   // 백그라운드 갱신
   try{
     await loadShopData();   // 카탈로그 캐시 신선하면 네트워크 생략
+    try{ window._populateTypeSelect && window._populateTypeSelect(); }catch(_){}   // 설정 최신화 후 종류 재구성
     if(!window._petMyStu){
       // 핸드오프 없을 때만 stu 조회 (수동 새로고침 등)
       const snap = await dbRef.child('stu').get();
@@ -1150,6 +1387,7 @@ var _draftLoaded = false;   // var: 호이스팅으로 TDZ 회피 — 초기화 
 var _draftT = null;
 function draftKey(){ return 'skinTool_draft_' + (currentUser && currentUser.code ? currentUser.code : 'anon'); }
 function saveDraftNow(){
+  if(_editMode) return;   // 교사 편집 모드: 학생 본인 임시저장을 건드리지 않음
   if(!_draftLoaded) return;
   try{
     // 희소 인코딩: 색칠된 셀만 [index,color]로 저장 → 빈/성긴 그림은 수백 바이트.
@@ -1160,12 +1398,12 @@ function saveDraftNow(){
       v:2, w:GRID_W, h:GRID_H, cells, color, brushSize, zoomLevel, tool,
       refOpacity:+document.getElementById('refOpacity').value,
       refVisible,
-      name: document.getElementById('inName').value,
+      type: (document.getElementById('inType')||{}).value || '',
       price: document.getElementById('inPrice').value
     }));
   }catch(_){}
 }
-function scheduleSaveDraft(){ if(!_draftLoaded) return; clearTimeout(_draftT); _draftT=setTimeout(saveDraftNow,400); }
+function scheduleSaveDraft(){ if(_editMode) return; if(!_draftLoaded) return; clearTimeout(_draftT); _draftT=setTimeout(saveDraftNow,400); }
 // 새로고침/탭 닫기/탭 전환 직전 강제 저장 — 디바운스 대기 중인 변경분 유실 방지
 window.addEventListener('beforeunload', ()=>{ try{ if(_draftLoaded) saveDraftNow(); }catch(_){} });
 window.addEventListener('pagehide',     ()=>{ try{ if(_draftLoaded) saveDraftNow(); }catch(_){} });
@@ -1192,7 +1430,7 @@ function loadDraft(){
     if(typeof d.brushSize==='number') brushSize = Math.max(1,Math.min(5,d.brushSize));
     if(typeof d.zoomLevel==='number') zoomLevel = Math.max(1,Math.min(10,d.zoomLevel));
     if(typeof d.tool==='string') tool = d.tool;
-    if(typeof d.name==='string') document.getElementById('inName').value = d.name;
+    if(typeof d.type==='string'){ const _t=document.getElementById('inType'); if(_t) _t.value=d.type; }
     if(d.price!=null) document.getElementById('inPrice').value = d.price;
     if(typeof d.refOpacity==='number') document.getElementById('refOpacity').value = d.refOpacity;
     if(typeof d.refVisible==='boolean') refVisible = d.refVisible;
@@ -1206,9 +1444,84 @@ function loadDraft(){
   saveDraftNow();                // 키 생성 보장
 }
 
+/* ============ 교사 '그림 수정' 편집 모드 ============ */
+// 팔레트 색 → RGB (손실 WebP로 뭉개진 색을 원래 팔레트 색으로 스냅하기 위함)
+const _palRGB = PALETTE.map(h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]);
+function _snapColor(r,g,b){
+  let bi=-1,bd=1e9;
+  for(let i=0;i<_palRGB.length;i++){ const p=_palRGB[i]; const d=(p[0]-r)*(p[0]-r)+(p[1]-g)*(p[1]-g)+(p[2]-b)*(p[2]-b); if(d<bd){bd=d;bi=i;} }
+  if(bd <= 48*48) return PALETTE[bi];   // 팔레트 색에 충분히 가까우면 스냅(아티팩트 제거)
+  return '#' + [r,g,b].map(v=>('0'+(v&255).toString(16)).slice(-2)).join('');   // 커스텀 색은 그대로
+}
+function _loadImg(src){
+  return new Promise((res,rej)=>{ const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>res(im); im.onerror=()=>rej(new Error('이미지 로드 실패')); im.src=src; });
+}
+// 등록 이미지(720×720 래스터)를 90×90 픽셀 격자로 역변환 — 각 셀 '중앙'을 샘플해 블록 경계 블렌딩 회피
+async function _rasterToPixels(src){
+  const im = await _loadImg(src);
+  const W = im.naturalWidth||im.width, H = im.naturalHeight||im.height;
+  const off = document.createElement('canvas'); off.width=W; off.height=H;
+  const o = off.getContext('2d'); o.imageSmoothingEnabled=false; o.drawImage(im,0,0);
+  const data = o.getImageData(0,0,W,H).data;
+  const sx=W/GRID_W, sy=H/GRID_H;
+  const np = Array.from({length:GRID_H},()=>Array(GRID_W).fill(null));
+  for(let y=0;y<GRID_H;y++) for(let x=VP_X0;x<VP_X1;x++){   // 보이는 열만 복원(과거 숨은칸 잔상 제거)
+    const cx=Math.min(W-1,Math.floor(x*sx+sx/2)), cy=Math.min(H-1,Math.floor(y*sy+sy/2));
+    const i=(cy*W+cx)*4;
+    if(data[i+3] < 128) continue;   // 투명 → 빈 셀
+    np[y][x] = _snapColor(data[i],data[i+1],data[i+2]);
+  }
+  return np;
+}
+async function startSkinEdit(key){
+  let h=null; try{ h=JSON.parse(localStorage.getItem('skinTool_edit_'+key)||'null'); }catch(_){}
+  if(!h){ showLogin(); const m=document.getElementById('loginMsg'); if(m){ m.style.color='#ff8a8a'; m.textContent='수정할 신청을 찾을 수 없어요. 검토창을 다시 열어주세요.'; } return; }
+  _editMode=true; _editKey=key; _editCd=String(h.cd||'');
+  currentUser = { role:'student', code:(_editCd||'edit'), name:h.nm||'', sex:'m' };
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('teacherOverlay').classList.add('hidden');
+  // 편집 UI: 제출 버튼을 '수정 완료'로, 이름/가격 채우기
+  const sb=document.getElementById('submitBtn'); if(sb) sb.textContent='✅ 수정 완료';
+  ['mySubsBtn','newDrawBtn'].forEach(id=>{ const e=document.getElementById(id); if(e) e.style.display='none'; });   // 교사 편집 모드엔 불필요
+  // 편집 모드는 그림만 수정 — 종류/가격 필드는 숨기고 값은 핸드오프 유지
+  _editName = h.name||''; _editPrice = (h.price!=null? h.price : 10);
+  ['inType','inPrice'].forEach(id=>{ const e=document.getElementById(id); if(e&&e.closest('.field')) e.closest('.field').style.display='none'; });
+  try{ await loadShopData(); }catch(_){}
+  try{ setRefSingle(baseCharUrl(currentUser.sex)); setRefOpacity(+document.getElementById('refOpacity').value); applyRefVisibility(); }catch(_){}
+  try{
+    const np = await _rasterToPixels(h.img||'');
+    pixels = np; undoStack=[]; redoStack=[];
+    applyZoom(); render();
+  }catch(e){ console.error('[skinEdit raster]', e); toast('그림을 불러오지 못했어요. 그대로 그려서 완료하면 됩니다.'); }
+}
+// '수정 완료' — 편집본을 업로드하고 부모(검토창)에 postMessage. 새 제출을 만들지 않음.
+async function _finishEdit(){
+  if(_submitting) return;
+  const name=String(_editName||'').trim();
+  const price=Math.max(0, parseInt(_editPrice||'0')||0);
+  const btn=document.getElementById('submitBtn');
+  if(!hasPixels()){ toast('그림을 먼저 그려주세요.'); return; }
+  _submitting=true; if(btn){ btn.disabled=true; btn.textContent='⏳ 저장 중…'; }
+  try{
+    const blob=await toWebpBlob();
+    const imgUrl=await uploadToCloudinary(blob, _editCd||'edit');
+    try{ window.parent && window.parent!==window && window.parent.postMessage({ type:'skinEditDone', key:_editKey, img:imgUrl, name, price }, '*'); }catch(_){}
+    if(btn){ btn.textContent='✅ 수정 완료됨'; }
+    _submitting=false;
+  }catch(err){
+    console.error(err); toast('저장 실패: '+(err.message||'다시 시도해주세요.'));
+    if(btn){ btn.disabled=false; btn.textContent='✅ 수정 완료'; }
+    _submitting=false;
+  }
+}
+
 /* ============ START ============ */
 resizeCanvases();
 (function boot(){
+  // 교사 검토창의 '그림 수정' — ?editKey= 로 열리면 편집 모드 진입(학생 자동로그인/임시저장과 분리)
+  let editKey='';
+  try{ editKey=new URLSearchParams(location.search).get('editKey')||''; }catch(_){}
+  if(editKey){ startSkinEdit(editKey); return; }
   // 이벤트 상점에서 외부 창으로 열 때 ?cd=학생코드 자동 전달 → 자동 로그인 (재입력 불필요)
   let urlCd = '';
   try{ urlCd = new URLSearchParams(location.search).get('cd') || ''; }catch(_){}
