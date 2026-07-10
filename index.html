@@ -3767,6 +3767,15 @@ let _renderLock = false; // 재진입 방지
             me.usedCookie = Math.max((me.usedCookie || 0), o.usedCookie || 0);
         }
     };
+    // 은행 커밋 직후(5초 창) echo가 me.cookie/bankAdj/bank를 올드 값으로 되돌리는 것을 방지.
+    //   ⚠️ me[k]=v[k] 블랭킷 병합을 하는 "모든" 학생 self-listener 경로에서 병합 직후 반드시 호출해야 한다.
+    //      (bankAdj가 stale하면 이어지는 _applyDahaeLive가 cookie=API+stale오프셋으로 재계산해 대출/예금 반영분이 증발함)
+    window._bankRestoreProtected = function(){
+        if(!me) return;
+        if(window._bankProtectedCookie  != null) me.cookie  = window._bankProtectedCookie;
+        if(window._bankProtectedBankAdj != null) me.bankAdj = window._bankProtectedBankAdj;
+        if(window._bankProtectedBank    != null) me.bank    = window._bankProtectedBank;
+    };
     // me.co/cn/tk(꿀·캔디·바구니): 아직 Firebase에 flush되지 않은 로컬 차감/지급 델타(_curAtomicDelta)를
     //   stu echo 병합(me[k]=v[k])이 되돌리지 않도록 재적용. (쿠키의 _applyDahaeLive와 동일 취지 — 진행 중 변경 보호)
     //   델타는 upMe write 시 원자적으로 0으로 리셋되므로, 남아있다는 건 "아직 서버 미반영" → 중복 적용 없음.
@@ -5322,6 +5331,8 @@ let _renderLock = false; // 재진입 방지
                     if(v.titNotify) console.log('[STUOWN-cd] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     const _prevCols = window._colCaptureCols ? window._colCaptureCols() : null; // echo 덮어쓰기 전 컬렉션 스냅샷
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    // 은행 커밋 창 보호: bankAdj/bank/cookie 복원 — 반드시 _applyDahaeLive 앞에서 (오프셋 재계산이 올바른 bankAdj 사용)
+                    try { window._bankRestoreProtected && window._bankRestoreProtected(); } catch(_){}
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
                     try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
                     // co/cn/tk(꿀·캔디·바구니): 미flush 로컬 차감/지급 델타를 echo가 되돌리지 않도록 재적용
@@ -5404,6 +5415,8 @@ let _renderLock = false; // 재진입 방지
                     if(v.titNotify) console.log('[STUOWN-idx] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     const _prevCols2 = window._colCaptureCols ? window._colCaptureCols() : null; // echo 덮어쓰기 전 컬렉션 스냅샷
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    // 은행 커밋 창 보호: bankAdj/bank/cookie 복원 — 반드시 _applyDahaeLive 앞에서
+                    try { window._bankRestoreProtected && window._bankRestoreProtected(); } catch(_){}
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
                     try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
                     // co/cn/tk(꿀·캔디·바구니): 미flush 로컬 차감/지급 델타를 echo가 되돌리지 않도록 재적용
@@ -9563,8 +9576,9 @@ let _renderLock = false; // 재진입 방지
                         const _localInvLen = _localInv ? _localInv.length : 0;
                         const _localColLen = _localCol ? _localCol.length : 0;
                         if(!_staleEcho) me = updatedMe;
-                        // 은행 커밋 직후 cookie echo 롤백 방지
-                        if(window._bankProtectedCookie != null && me) me.cookie = window._bankProtectedCookie;
+                        // 은행 커밋 직후 cookie·bankAdj·bank echo 롤백 방지 (공용 헬퍼 — STUOWN 경로와 동일 로직)
+                        // (bankAdj가 롤백되면 다했니 폴링 재계산 시 대출/예금 반영분이 사라짐)
+                        try { window._bankRestoreProtected && window._bankRestoreProtected(); } catch(_){}
                         // 은행 상점 차단 상태 실시간 갱신
                         try { window._checkBankShopBanOnLogin && window._checkBankShopBanOnLogin(); } catch(_){}
                         if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
@@ -62384,6 +62398,8 @@ window.addCharRow = function() {
         updates[`stu/${fbKey}/bank`] = bank;
         updates[`stu/${fbKey}/cookie`] = s.cookie;
         updates[`stu/${fbKey}/bankAdj`] = s.bankAdj;
+        // updatedAt 갱신 — 접속 중 학생의 updatedAt-필터 리스너가 이 변경을 수신하도록 (미갱신 시 새로고침 전까지 반영 안 됨)
+        { const _ts = Date.now(); s.updatedAt = _ts; updates[`stu/${fbKey}/updatedAt`] = _ts; }
         await dbRef.update(updates);
         _bankManualShowStatus(`✅ ${s.nm} — ${count}건 이자 지급 (🍪${itemGained})`, '#2e7d32');
         _renderBankTeacher();
@@ -62408,6 +62424,8 @@ window.addCharRow = function() {
         updates[`stu/${fbKey}/bank`] = bank;
         updates[`stu/${fbKey}/cookie`] = s.cookie;
         updates[`stu/${fbKey}/bankAdj`] = s.bankAdj;
+        // updatedAt 갱신 — 접속 중 학생 리스너가 이 변경을 수신하도록
+        { const _ts = Date.now(); s.updatedAt = _ts; updates[`stu/${fbKey}/updatedAt`] = _ts; }
         await dbRef.update(updates);
         _bankManualShowStatus(`✅ ${s.nm} — 예금 ${active.length}건 취소, 🍪${refund} 반환`, '#f57f17');
         _renderBankTeacher();
@@ -62437,6 +62455,8 @@ window.addCharRow = function() {
             s.bankBanned = false;
             updates[`stu/${fbKey}/bankBanned`] = false;
         }
+        // updatedAt 갱신 — 접속 중 학생 리스너가 이 변경을 수신하도록
+        { const _ts = Date.now(); s.updatedAt = _ts; updates[`stu/${fbKey}/updatedAt`] = _ts; }
         await dbRef.update(updates);
         _bankManualShowStatus(`✅ ${s.nm} — 대출 ${active.length}건 탕감 (원금 🍪${totalRem} 회수)`, '#c62828');
         _renderBankTeacher();
@@ -62453,7 +62473,8 @@ window.addCharRow = function() {
         if(!hasBan) { _bankManualShowStatus('이미 상점 제한이 없는 상태입니다.', '#888'); return; }
         if(!confirm(`${s.nm}의 상점 제한을 해제하시겠습니까?`)) return;
         bank.loans.forEach(l => { if(l.shopBanUntil) { l.shopBanUntil = null; if((l.remaining||0) <= 0 && !l.closedAt) l.closedAt = today; } });
-        await dbRef.child(`stu/${fbKey}/bank`).set(bank);
+        // updatedAt 갱신 — 접속 중 학생 리스너가 이 변경을 수신하도록 (.set → update 로 변경해 함께 기록)
+        { const _ts = Date.now(); s.updatedAt = _ts; await dbRef.update({ [`stu/${fbKey}/bank`]: bank, [`stu/${fbKey}/updatedAt`]: _ts }); }
         _bankManualShowStatus(`✅ ${s.nm} — 상점 제한 해제`, '#1565c0');
         _renderBankTeacher();
     };
@@ -62634,11 +62655,17 @@ window.addCharRow = function() {
     // 액션 공통: 로컬 저장 + 즉시 렌더(낙관적) + Firebase write(await) + 완료 후 재렌더
     async function _bankCommit(fbKey, updates) {
         _bankSaveLocal();
-        // me.cookie를 보호 — Firebase echo가 올드 값으로 덮어쓰는 레이스 방지
+        // me.cookie / bankAdj / bank를 보호 — Firebase echo가 올드 값으로 덮어쓰는 레이스 방지.
+        // ⚠️ 특히 bankAdj: 다했니 폴링이 me.cookie = API쿠키 + bankAdj 로 매번 재계산하므로,
+        //    cookie만 보호하고 bankAdj가 롤백되면 다음 폴링에서 대출/예금 반영분이 사라진다.
         const _savedCookie = me ? (me.cookie || 0) : 0;
+        const _savedBankAdj = me && typeof me.bankAdj === 'number' ? me.bankAdj : null;
+        const _savedBank = me ? me.bank : null;
         _renderBankStudent();                       // 낙관적 즉시 렌더
         window._bankSkipRender = Date.now() + 5000; // Firebase 리스너 자동재렌더 차단
         window._bankProtectedCookie = _savedCookie; // echo 롤백 차단용 스냅샷
+        window._bankProtectedBankAdj = _savedBankAdj;
+        window._bankProtectedBank = _savedBank;
         // 교사 측에 변경 신호 (cd + 타임스탬프) — r: random 제거로 중복 발화 방지
         if (me && me.cd) updates['cfg/bankDataRev'] = { cd: me.cd, ts: Date.now() };
         try {
@@ -62648,8 +62675,16 @@ window.addCharRow = function() {
             if(me) try { _bankAlert('❌', '저장 오류', '서버 저장에 실패했습니다.<br>잠시 후 다시 시도해주세요.'); } catch(_){}
         }
         window._bankSkipRender = 0; // write 완료 후 차단 해제
+        window._bankActionInFlight = false; // 커밋 완료 → 재진입 락 해제 (모든 학생 커밋이 여기로 수렴 → 누수 방지)
         window._bankProtectedCookie = null;
-        if(me) { me.cookie = _savedCookie; } // 최종 확정 전 me.cookie 복원 (echo 대비)
+        window._bankProtectedBankAdj = null;
+        window._bankProtectedBank = null;
+        // 최종 확정 전 me 값 복원 (echo 대비) — cookie·bankAdj·bank 함께 복원
+        if(me) {
+            me.cookie = _savedCookie;
+            if(_savedBankAdj != null) me.bankAdj = _savedBankAdj;
+            if(_savedBank != null) me.bank = _savedBank;
+        }
         _renderBankStudent();                      // 최종 확정 렌더 (Firebase 반영본)
     }
 
@@ -63152,6 +63187,9 @@ window.addCharRow = function() {
             _ov.querySelector('#_depConfirmBtn').onclick = () => { document.body.removeChild(_ov); resolve(true); };
         });
         if (!_confirmed) return;
+        // 재진입 락 — 이전 은행 커밋이 진행 중이면 차단(연타·중첩 커밋 방지). 해제는 _bankCommit 종료부에서 보장.
+        if (window._bankActionInFlight) { try { _bankAlert('⏳', '처리 중', '이전 은행 요청을 처리하고 있어요.<br>잠시 후 다시 시도해주세요.', '#e65100'); } catch(_){} return; }
+        window._bankActionInFlight = true;
         const bank = _bankGetStudentData(me);
         window._bankAdjInit(me); // 레코드 push 전 bankAdj 부트스트랩
         const dep = { id: 'd' + Date.now(), amount: amt, date: today, dueDate, periodDays, settled: false };
@@ -63197,6 +63235,9 @@ window.addCharRow = function() {
             document.body.removeChild(overlay);
             const fbKey = _getMyFbKey();
             if (fbKey == null || fbKey === -1) return;
+            // 재진입 락 — 이전 은행 커밋 진행 중이면 차단. 해제는 _bankCommit 종료부에서 보장.
+            if (window._bankActionInFlight) { try { _bankAlert('⏳', '처리 중', '이전 은행 요청을 처리하고 있어요.<br>잠시 후 다시 시도해주세요.', '#e65100'); } catch(_){} return; }
+            window._bankActionInFlight = true;
             window._bankAdjInit(me); // 레코드 변경 전 bankAdj 부트스트랩
             const _todaySC = _bankToday();
             dep.cancelled = true;
@@ -63292,6 +63333,9 @@ window.addCharRow = function() {
             _bankAlert('🚫', '한도 변경됨', `확인 중 잔여 한도가 변경됐습니다.<br>현재 한도: <strong>🍪${_freshLimit}</strong><br>금액을 다시 입력해주세요.`, '#c62828');
             return;
         }
+        // 재진입 락 — 이전 은행 커밋 진행 중이면 차단(연타·중첩 커밋 방지). 해제는 _bankCommit 종료부에서 보장.
+        if (window._bankActionInFlight) { try { _bankAlert('⏳', '처리 중', '이전 은행 요청을 처리하고 있어요.<br>잠시 후 다시 시도해주세요.', '#e65100'); } catch(_){} return; }
+        window._bankActionInFlight = true;
         // 신규 모델: remaining = 원금만, interest 별도 저장 (당일 상환 시 이자 면제)
         window._bankAdjInit(me); // 레코드 push 전 bankAdj 부트스트랩
         const ln = { id: 'l' + Date.now(), amount: amt, date: today, dueDate, periodDays: loanPeriod, remaining: amt, interest, interestPaid: false, overdue: false, shopBanUntil: null };
@@ -63418,6 +63462,10 @@ window.addCharRow = function() {
 
         // 모달 닫기
         window._bankRepayModalOverlay?.remove();
+
+        // 재진입 락 — 이전 은행 커밋 진행 중이면 차단(첫 me 변형 전). 해제는 _bankCommit 종료부에서 보장.
+        if (window._bankActionInFlight) { try { _bankAlert('⏳', '처리 중', '이전 은행 요청을 처리하고 있어요.<br>잠시 후 다시 시도해주세요.', '#e65100'); } catch(_){} return; }
+        window._bankActionInFlight = true;
 
         const pay = Math.min(kcAmt + tkAmt, _totalDue);
         // 이용권 먼저 차감 (쿠키 절약)
