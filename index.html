@@ -89,7 +89,7 @@
         /* 탭 제목 글자 수별 letter-spacing — 짧을수록 넓게, 길수록 좁게 */
         #appS .menu[data-tlen="2"] { letter-spacing: 18px; }
         #appS .menu[data-tlen="3"] { letter-spacing: 11px; }
-        #appS .menu[data-tlen="4"] { letter-spacing: 6px; }
+        #appS .menu[data-tlen="4"] { font-size: 28px; letter-spacing: 10px; white-space: nowrap; }
         #appS .menu[data-tlen="5"], #appS .menu[data-tlen="6"], #appS .menu[data-tlen="7"] { letter-spacing: 3px; }
         .card { background:white; padding:15px; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom:15px; border:2px solid #F5F5F5; position:relative; }
         .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; align-items: start; }
@@ -3840,14 +3840,15 @@ let _renderLock = false; // 재진입 방지
     //   (=_prev엔 있는데 baseline엔 없는 항목)"만 서버값에 다시 합친다 → 교사 회수(baseline에 있던 항목 삭제)는
     //   부활하지 않음(그건 pending이 아니므로). ownedPets는 defId, 그 외는 값 자체로 식별.
     window._colCaptureCols = function(){
-        const COLS = ['avtOwned','earnedBdg','col','ownedPets'];
+        const COLS = ['avtOwned','earnedBdg','col','ownedPets','earnedTit','displayPets'];
         const _o = {};
         COLS.forEach(f => { _o[f] = Array.isArray(me && me[f]) ? me[f].slice() : (me && me[f] ? Object.values(me[f]).filter(Boolean) : []); });
         return _o;
     };
     window._applyPendingColAdds = function(_prev){
         if(!me || me.cd === 'teacher_main' || !_prev) return;
-        const COLS = ['avtOwned','earnedBdg','col','ownedPets'];
+        // earnedTit/displayPets도 누적 배열 — 미flush 획득분이 echo에 revert되면 칭호 영구소실(displayPets는 표시복구)
+        const COLS = ['avtOwned','earnedBdg','col','ownedPets','earnedTit','displayPets'];
         // baseline 미설정 시: 현재(서버 반영) 상태를 baseline으로만 잡고 이번엔 재적용 안 함(허위 부활 방지)
         if(!window._lastFlushedCols) { window._lastFlushedCols = window._colCaptureCols(); return; }
         const _base = window._lastFlushedCols;
@@ -3863,6 +3864,31 @@ let _renderLock = false; // 재진입 방지
             const curKeys = new Set(me[f].map(_key));
             pending.forEach(it => { if(!curKeys.has(_key(it))) { me[f].push(it); curKeys.add(_key(it)); } });
         });
+    };
+    // 🛡️ #1 클로버 방지 공용 헬퍼: 단조증가 컬렉션(avtOwned/earnedBdg/col/earnedTit)을 절대값이 아니라
+    //   서버 truth 기준 add-only 트랜잭션으로 병합한다. localArr에서 baseline(_lastFlushedCols[field])에
+    //   없던 항목만 서버에 add → 학생이 stale 절대값을 쓰는 사이 교사가 회수한 항목이 부활하지 않는다.
+    //   baseline 미확립 시 false 반환(호출부가 기존 절대값 write 폴백).
+    //   removeList: 학생이 이번에 로컬에서 명시적으로 제거한 id(예: 펫 교체) — 서버에서도 지운다.
+    //   (avtOwned는 대체로 순수 add지만 펫 교체는 실제 제거이므로, 그 제거가 add-only에 막혀 echo로 부활하는
+    //    유령 아이템 버그를 removeList로 해소. add 병합은 그대로라 교사 동시 add 보호는 유지.)
+    window._colAddOnlyTxn = function(key, field, localArr, removeList){
+        const _base = (window._lastFlushedCols && Array.isArray(window._lastFlushedCols[field])) ? window._lastFlushedCols[field] : null;
+        if(!_base) return false;
+        try {
+            const _loc = Array.isArray(localArr) ? localArr : (localArr ? Object.values(localArr).filter(Boolean) : []);
+            const _bk = new Set(_base);
+            const _adds = _loc.filter(it => it != null && !_bk.has(it));
+            const _rem = (Array.isArray(removeList) && removeList.length) ? new Set(removeList.map(String)) : null;
+            dbRef.child('stu/' + key + '/' + field).transaction(server => {
+                let arr = Array.isArray(server) ? server.slice() : (server ? Object.values(server).filter(Boolean) : []);
+                if(_rem) arr = arr.filter(x => !_rem.has(String(x))); // 학생 명시 제거(펫 교체 등) 반영
+                const seen = new Set(arr);
+                _adds.forEach(it => { if(!seen.has(it)){ arr.push(it); seen.add(it); } });
+                return arr;
+            });
+            return true;
+        } catch(_){ return false; }
     };
     // 용사 레벨용 '순수 다했니 쿠키' — me.cookie는 교사 지급(execGiveCoin 'c')·은행 이자로 오염될 수
     // 있어 레벨 산정에서 제외한다. 다했니 출처(라이브 캐시 + 폴링 캐시)는 누적값이라 단조 증가 →
@@ -5310,6 +5336,10 @@ let _renderLock = false; // 재진입 방지
         if(!myCd || !_useSplit) return;
         const target = String(myCd).trim();
         const _cdMigrated = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+        // 🛡️ F1: 리스너 첫 발화(초기 서버값 echo) 전에 컬렉션 baseline을 현재 me로 확립.
+        //   baseline이 null이면 _applyPendingColAdds가 첫 echo에서 재적용 없이 baseline만 잡고 return하므로,
+        //   그 이전에 획득한 미flush 컬렉션(뱃지/칭호/도감/펫)이 교사 echo에 덮여 소실될 수 있다. 미설정 시에만 확립.
+        try { if(!window._lastFlushedCols && me && String(me.cd).trim()===target && window._colCaptureCols) window._lastFlushedCols = window._colCaptureCols(); } catch(_){}
 
         if(_cdMigrated) {
             // [NEW] stu/{cd} 직접 구독 — 인덱스 시프트 원천 불가
@@ -5471,6 +5501,24 @@ let _renderLock = false; // 재진입 방지
         if(typeof ts !== 'number' || !isFinite(ts)) return;
         if(ts > window._getStuLastSyncTs()) localStorage.setItem('_teacherStuLastSyncTs', String(ts));
     };
+    // 🛡️ 순서역전 방지: 캐시를 동기 저장한 뒤에만 lastSyncTs를 전진시킨다.
+    //   기존엔 _setStuLastSyncTs(즉시)가 _saveStuCache(500ms 디바운스)보다 먼저라, 증분 fetch로 들어온
+    //   신규 학생이 캐시에 저장되기 전 탭이 닫히면 lastSyncTs만 전진 → 다음 로드에서 캐시엔 없고
+    //   증분(startAt=lastTs+1)에도 안 잡혀 그 학생이 양쪽에서 누락됐다.
+    //   교사 세션은 _safeCacheStu(급감가드+동기 write)가 성공(!==false)했을 때만 ts 전진, 실패(quota)면
+    //   보류 → 다음 로드에서 전체 재fetch로 자가복구. 비교사 세션은 기존 동작 유지.
+    window._commitStuSyncTs = function(maxTs){
+        if(window._isTeacherSession && window._safeCacheStu){
+            const _ok = window._safeCacheStu();
+            // 실제 저장 성공했을 때만 ts 전진. 급감가드 보존(미저장)이면 이번 fetch 학생이 캐시에 없으므로
+            //   ts 전진 시 다음 로드에서 캐시엔 없고 증분에도 안 잡혀 유실 → 보류하고 다음 로드에서 재fetch.
+            if(_ok !== false && !window._safeCacheStuPreserved){ if(maxTs) window._setStuLastSyncTs(maxTs); }
+            else console.warn('[stuSync] 캐시 미저장(quota 실패 또는 급감보존) — lastSyncTs 전진 보류(다음 로드 재fetch)');
+        } else {
+            if(maxTs) window._setStuLastSyncTs(maxTs);
+            window._saveStuCache && window._saveStuCache();
+        }
+    };
     window._loadStuCache = () => {
         try {
             const raw = localStorage.getItem('_teacherStuCache');
@@ -5532,6 +5580,9 @@ let _renderLock = false; // 재진입 방지
     //    다음 로드에서 증분 모드가 소수만 표시하는 사고를 차단.)
     //   반환값: true=정상 저장 또는 의도적 보존(fallback 금지) / false=실제 저장 실패(quota 등 → 호출부 fallback 가능)
     window._safeCacheStu = function() {
+        // 이번 호출이 실제 저장이었는지(false) 급감가드로 보존(미저장)이었는지(true) 구분 플래그.
+        //   _commitStuSyncTs가 "보존=미저장"인 경우 lastSyncTs 전진을 보류하는 데 사용(순서역전 유실 재유입 방지).
+        window._safeCacheStuPreserved = false;
         if(!Array.isArray(db.stu)) return true;
         let _next;
         try { _next = db.stu.filter(s => s && s.cd && s.nm); } catch(_){ return true; }
@@ -5539,6 +5590,7 @@ let _renderLock = false; // 재진입 방지
             const _prev = JSON.parse(localStorage.getItem('_teacherStuCache') || '[]');
             if(Array.isArray(_prev) && window._stuCacheDropBlocked(_prev.length, _next.length)) {
                 console.warn('[safeCacheStu] 학생수 급감 차단 — 캐시 보존:', _prev.length, '->', _next.length);
+                window._safeCacheStuPreserved = true;
                 return true; // 의도적 보존 — 기존 완전한 캐시 유지
             }
         } catch(_){}
@@ -5770,7 +5822,12 @@ let _renderLock = false; // 재진입 방지
                 if(_cdMig) db.stu.splice(idx, 1); // compact 배열 유지
                 else delete db.stu[idx]; // sparse hole (레거시)
                 if(_splitInitialDone) _splitFire();
-                window._saveStuCache && window._saveStuCache();
+                // 🛡️ 순서역전 방지: 삭제 반영된 캐시를 동기 저장한 뒤에 아래 lastSyncTs 전진.
+                //   기존엔 _saveStuCache(500ms 디바운스) 후 즉시 ts 전진이라, 저장 전 탭닫힘 시 캐시엔 삭제학생이
+                //   남고 ts만 전진 → 다음 로드에서 학생 부활 + 재발화 tombstone은 5801 가드에 막혀 영구 부활.
+                //   삭제는 의도적 감소이므로 _forceCacheStu(급감가드 우회)로 즉시 반영(교사 세션 한정).
+                if(window._isTeacherSession && window._forceCacheStu) window._forceCacheStu();
+                else window._saveStuCache && window._saveStuCache();
             }
             window._setStuLastSyncTs(ts);
         };
@@ -5942,7 +5999,7 @@ let _renderLock = false; // 재진입 방지
                         }
                         if(typeof ts === 'number' && ts > maxTs) maxTs = ts;
                     });
-                    window._setStuLastSyncTs(maxTs);
+                    // lastSyncTs 전진은 캐시 동기저장 성공 후로 이동(_commitStuSyncTs, 아래) — 순서역전 유실 방지
 
                     _ensureStuRetry = 0;
                     window._stuLoaded = true;
@@ -5979,7 +6036,7 @@ let _renderLock = false; // 재진입 방지
                         const _q2 = window._pendingSvQueue.splice(0);
                         setTimeout(() => _q2.forEach(fn => { try { fn(); } catch(_){} }), 0);
                     }
-                    window._saveStuCache && window._saveStuCache();
+                    window._commitStuSyncTs(maxTs); // 캐시 동기저장 후 lastSyncTs 전진(순서역전 유실 방지)
                     if(window._attachSplitStuFullListener && window._mgrOpen !== 'stu') {
                         try { window._attachSplitStuFullListener(); } catch(_){}
                     }
@@ -6040,7 +6097,7 @@ let _renderLock = false; // 재진입 방지
                         console.log('[backfill] updatedAt 자동 부여:', Object.keys(_backfillUpdates).length, '명');
                         dbRef.update(_backfillUpdates).catch(e => console.warn('[backfill] 실패', e));
                     }
-                    if(maxTs) window._setStuLastSyncTs(maxTs);
+                    // lastSyncTs 전진은 캐시 동기저장 성공 후로 이동(_commitStuSyncTs, 아래) — 순서역전 유실 방지
                     // 🛡️ A안: 초기 fetch 완료 → stu write 허용
                     window._stuListenerReady = true;
                     if(window._pendingSvQueue && window._pendingSvQueue.length) {
@@ -6048,7 +6105,7 @@ let _renderLock = false; // 재진입 방지
                         const _q = window._pendingSvQueue.splice(0);
                         _q.forEach(fn => { try { fn(); } catch(_){} });
                     }
-                    window._saveStuCache && window._saveStuCache();
+                    window._commitStuSyncTs(maxTs); // 캐시 동기저장 후 lastSyncTs 전진(순서역전 유실 방지)
                     if(window._attachSplitStuFullListener) try { window._attachSplitStuFullListener(); } catch(_){}
                     if(_splitInitialDone) _splitFire();
                     return db.stu;
@@ -12401,11 +12458,31 @@ let _renderLock = false; // 재진입 방지
         // 🛡️ 컬렉션 baseline 갱신 — 이 write가 _safe의 컬렉션을 서버에 반영하므로, 이후 echo의 pending 계산 기준을
         //   방금 쓴 값으로 설정(_safe 캡처 후 me에 더 들어온 항목은 baseline에 없으므로 pending으로 보호됨).
         try {
+            // 🛡️ #1 클로버 방지 준비: baseline을 덮어쓰기 전에, 단조증가 컬렉션의 "이번 write에서 학생이
+            //   새로 추가한 항목"(=이전 baseline에 없던 로컬 항목)만 뽑아둔다. 아래 write에서 절대값 대신
+            //   서버 truth 기준 add-only 트랜잭션으로 반영 → 교사 동시 회수가 학생 stale 절대값에 부활 안 함.
+            //   avtOwned/earnedBdg/col/earnedTit만 대상(학생이 로컬에서 제거하지 않는 순수 add 컬렉션).
+            //   ownedPets(방출)·displayPets(표시선택)·eq·inv는 학생 주도 제거가 있어 제외.
+            window._colTxnAdds = null;
+            const _prevFlushed = window._lastFlushedCols;
+            if(_prevFlushed && me && me.cd !== 'teacher_main'){
+                const _MONO = ['avtOwned','earnedBdg','col','earnedTit'];
+                const _adds = {};
+                _MONO.forEach(F => {
+                    const _loc = Array.isArray(_safe[F]) ? _safe[F] : (_safe[F] ? Object.values(_safe[F]).filter(Boolean) : []);
+                    const _bk = new Set(Array.isArray(_prevFlushed[F]) ? _prevFlushed[F] : []);
+                    const _a = _loc.filter(it => it != null && !_bk.has(it));
+                    if(_a.length) _adds[F] = _a;
+                });
+                if(Object.keys(_adds).length) window._colTxnAdds = _adds;
+            }
             window._lastFlushedCols = {
                 avtOwned: Array.isArray(_safe.avtOwned)?_safe.avtOwned.slice():[],
                 earnedBdg: Array.isArray(_safe.earnedBdg)?_safe.earnedBdg.slice():[],
                 col: Array.isArray(_safe.col)?_safe.col.slice():[],
-                ownedPets: Array.isArray(_safe.ownedPets)?_safe.ownedPets.slice():[]
+                ownedPets: Array.isArray(_safe.ownedPets)?_safe.ownedPets.slice():[],
+                earnedTit: Array.isArray(_safe.earnedTit)?_safe.earnedTit.slice():[],
+                displayPets: Array.isArray(_safe.displayPets)?_safe.displayPets.slice():[]
             };
         } catch(_){}
         try {
@@ -12470,7 +12547,24 @@ let _renderLock = false; // 재진입 방지
                 });
                 // tpMoney: 델타가 있으면 절대값 대신 increment → 교사 동시수정·멀티탭 지급/차감이 덮어써지지 않음
                 if('tpMoney' in updates && _tpDelta) updates.tpMoney = firebase.database.ServerValue.increment(_tpDelta);
-                dbRef.child('stu/' + key).update(updates);
+                // 🛡️ #1: 단조증가 컬렉션은 절대값 update에서 빼고, 서버 truth 기준 add-only 트랜잭션으로 병합.
+                //   (학생이 새로 얻은 항목만 서버에 add → 교사가 그 사이 회수한 항목이 학생 stale 배열에 부활 안 함.)
+                const _txnAdds = window._colTxnAdds; window._colTxnAdds = null;
+                if(_txnAdds){
+                    Object.keys(_txnAdds).forEach(F => {
+                        if(F in updates) delete updates[F]; // 절대값 write 제거 — 트랜잭션이 담당
+                        const _adds = _txnAdds[F];
+                        try {
+                            dbRef.child('stu/' + key + '/' + F).transaction(server => {
+                                const arr = Array.isArray(server) ? server.slice() : (server ? Object.values(server).filter(Boolean) : []);
+                                const seen = new Set(arr);
+                                _adds.forEach(it => { if(!seen.has(it)){ arr.push(it); seen.add(it); } });
+                                return arr;
+                            });
+                        } catch(_){ updates[F] = _safeWithoutShopLog[F]; } // 트랜잭션 실패 시 절대값 폴백
+                    });
+                }
+                if(Object.keys(updates).length > 0) dbRef.child('stu/' + key).update(updates);
             }
             // shopLog는 변경된 경우에만 별도 경로에 쓰기
             if(_shopLogToWrite !== null) {
@@ -16343,7 +16437,8 @@ let _renderLock = false; // 재진입 방지
         prettyConfirm(`선택한 <b>${targets.length}건</b>을<br>삭제할까요?`, function(){
             targets.forEach(g=>{
                 if(g.y==='avt'){
-                    const s=stuList[g.si];if(!s)return;
+                    // cd 우선 조회 — cd-migrated splice 후 index(g.si) shift로 오대상 삭제 방지(bdg/tit와 동일)
+                    const s=(g.cd?stuList.find(t=>t&&String(t.cd)===String(g.cd)):null)||stuList[g.si];if(!s)return;
                     if(s.avtOwned){const i=s.avtOwned.indexOf(g.k);if(i>=0)s.avtOwned.splice(i,1);}
                     if(s.eq){Object.keys(s.eq).forEach(cat=>{
                         const cur=s.eq[cat];
@@ -16356,17 +16451,18 @@ let _renderLock = false; // 재진입 방지
                         s.displayPets=dp.filter(id=>id!==g.k);
                     }
                 } else if(g.y==='bdg'){
-                    const s=(g.cd?stuList.find(x=>x.cd===g.cd):null)||stuList[g.si];if(!s)return;
+                    const s=(g.cd?stuList.find(x=>x&&String(x.cd)===String(g.cd)):null)||stuList[g.si];if(!s)return;
                     const arr=Array.isArray(s.earnedBdg)?s.earnedBdg:Object.values(s.earnedBdg||{});
                     const bi=arr.indexOf(g.k);if(bi>=0)arr.splice(bi,1);s.earnedBdg=arr;
                 } else if(g.y==='tit'){
-                    const s=(g.cd?stuList.find(x=>x.cd===g.cd):null)||stuList[g.si];if(!s)return;
+                    const s=(g.cd?stuList.find(x=>x&&String(x.cd)===String(g.cd)):null)||stuList[g.si];if(!s)return;
                     const arr=Array.isArray(s.earnedTit)?s.earnedTit:Object.values(s.earnedTit||{});
                     s.earnedTit=arr.filter(tid=>String(tid)!==String(g.k));
                     if(String(s.equippedTit)===String(g.k))s.equippedTit=null;
                 } else {
                     g.items.forEach(x=>{
-                        const s=stuList[x.si];if(!s)return;
+                        // cd 우선 조회 — index(x.si) shift로 오대상 삭제 방지
+                        const s=(x.cd?stuList.find(t=>t&&String(t.cd)===String(x.cd)):null)||stuList[x.si];if(!s)return;
                         const arr=x.y==='c'?s.inv:s.ibx;
                         if(arr&&arr[x.k])arr[x.k].del=true;
                     });
@@ -17853,7 +17949,7 @@ let _renderLock = false; // 재진입 방지
                 // 꾸미기 탭 선택 시 기본 배포 아이템 숨김, 학생별 모드에서는 표시
                 if(item.isDefault && !(asort === 'stu')) return;
                 if((s.inv||[]).some(e => e.avtId === id)) return; // inv 경로로 이미 표시됨
-                l.push({y:'avt',si,k:id,t:{n:item.nm,i:'avt',img:item.img||'',st:'owned'},cat:item.cat||'',sn:s.nm,no:s.no});
+                l.push({y:'avt',si,k:id,t:{n:item.nm,i:'avt',img:item.img||'',st:'owned'},cat:item.cat||'',sn:s.nm,no:s.no,cd:s.cd});
             });
             // 뱃지 보유 항목
             const _seenBdg = new Set();
@@ -17861,7 +17957,7 @@ let _renderLock = false; // 재진입 방지
                 if(!bId || _seenBdg.has(bId)) return; _seenBdg.add(bId);
                 const bdg=(db.bdg||[]).find(b=>b.id===bId);
                 if(!bdg) return; // 카탈로그에 없는 뱃지 ID 는 표시 안 함
-                l.push({y:'bdg',si,k:bId,ki:bi,t:{n:bdg.name,i:'bdg',img:bdg.img||'',icon:bdg.icon||'📛',st:'owned'},sn:s.nm,no:s.no});
+                l.push({y:'bdg',si,k:bId,ki:bi,t:{n:bdg.name,i:'bdg',img:bdg.img||'',icon:bdg.icon||'📛',st:'owned'},sn:s.nm,no:s.no,cd:s.cd});
             });
             // 칭호 보유 항목
             const _seenTit = new Set();
@@ -30964,7 +31060,9 @@ window.addCharRow = function() {
     window.delBdg = function(i) {
         if(!confirm('이 뱃지를 삭제하시겠습니까?')) return;
         db.bdg.splice(i,1); sv();
-        try { dbRef.child('bdg').set(db.bdg).then(()=>{ console.log('[delBdg] ✅ 삭제 후 저장'); try { dbRef.child('cfg/bdgRev').set(Date.now()); } catch(_){} }).catch(e=>console.error('[delBdg] ❌',e)); } catch(e){}
+        // 🛡️ lazy 가드: bdg 미로드 시 부분 db.bdg를 전체 set 하면 서버 뱃지가 wipe됨(saveTit/delTit/30527과 동일 방어).
+        //   뱃지매니저 진입 시 _ensureLazyPaths(['bdg'])로 이미 로드되므로 정상 경로에선 항상 통과.
+        try { if(window._lazyLoaded && window._lazyLoaded.has('bdg')) dbRef.child('bdg').set(db.bdg).then(()=>{ console.log('[delBdg] ✅ 삭제 후 저장'); try { dbRef.child('cfg/bdgRev').set(Date.now()); } catch(_){} }).catch(e=>console.error('[delBdg] ❌',e)); } catch(e){}
         rBdgMgrList();
     };
 
@@ -32959,6 +33057,14 @@ window.addCharRow = function() {
         }
         _pushShopLog({type:'꾸미기 구입', name:item.nm||itemId, cost:effectiveCost, cur:'kc', passUsed:avtPassUsed, mondayUsed:avtMondayUsed, ts:Date.now()});
 
+        // 🛡️ F5 조건부 write 준비: 코스메틱 필드(eq/displayPets/ownedPets) 변이 전 스냅샷.
+        //   아래에서 실제로 바뀐 필드만 절대값 write + upMe 재동기 대상으로 삼아, 안 바뀐 필드를 절대값으로
+        //   실어보내 교사 동시 회수(직접삭제 UI의 eq/displayPets 정리)를 되돌리는 clobber 창을 좁힌다.
+        //   (ownedPets는 이 경로에서 변하지 않아 항상 생략된다.)
+        const _f5Before = { eq: JSON.stringify(me.eq||null), displayPets: JSON.stringify(me.displayPets||null), ownedPets: JSON.stringify(me.ownedPets||null) };
+        // 🛡️ 펫 교체로 avtOwned에서 제거한 id(함수 스코프) — add-only 트랜잭션에 removeList로 넘겨 서버에서도 삭제.
+        let _avtRemovedId = null;
+
         // 펫 교환: 살롱 아이템이면 수동 선택, 아니면 이름에 "펫" 포함된 펫 자동 교환
         if(item.cat === 'pet') {
             let replacePetId = null;
@@ -32974,6 +33080,7 @@ window.addCharRow = function() {
                 }) || null;
             }
             if(replacePetId) {
+                _avtRemovedId = replacePetId; // 서버 avtOwned에서도 지우도록 write 시 removeList로 전달
                 me.displayPets = (me.displayPets||[]).map(p => String(p) === String(replacePetId) ? '' : p);
                 me.avtOwned = (me.avtOwned||[]).filter(id => String(id) !== String(replacePetId));
                 const _replAvtDef = (db.avt||[]).find(a=>String(a.id)===String(replacePetId));
@@ -32986,6 +33093,12 @@ window.addCharRow = function() {
 
         me.avtOwned.push(itemId);
         _autoEquipAvt(me, item, /*onlyIfEmpty=*/false);
+        // 🛡️ F5: 변이 후 실제 변경 여부 판정(이후 mutation 없음). write·hash-cleanup 양쪽에서 사용.
+        const _f5Changed = {
+            eq: JSON.stringify(me.eq||null) !== _f5Before.eq,
+            displayPets: JSON.stringify(me.displayPets||null) !== _f5Before.displayPets,
+            ownedPets: JSON.stringify(me.ownedPets||null) !== _f5Before.ownedPets
+        };
 
         // 제작자 수익 금액 계산 (creator 있는 모든 아이템 — 펫스킨이 얼굴 등 일반아이템으로 등록된 경우 포함)
         // 실제 지급은 메인 write 후 _creditAvtCreator()에서 '상점 이용권' inv로 지급(살롱 스킨과 동일 방식)
@@ -33018,6 +33131,11 @@ window.addCharRow = function() {
                 //   직전 구매의 미flush delta는 reset하지 않음 → 그 buy의 upMe가 별도 increment로 flush.
                 //   (과거: 절대값 write + delta reset → 직전구매 upMe가 stale 절대값으로 effCost를 덮어쓰는 under-charge 레이스)
                 const _updA = { avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: firebase.database.ServerValue.increment(effectiveCost), inv: me.inv, eq: me.eq, updatedAt: _tsA };
+                // 🛡️ #1: avtOwned는 절대값 대신 add-only 트랜잭션 병합(교사 동시 회수 부활 방지). 성공 시 절대값 제거.
+                //   펫 교체로 제거한 id는 removeList로 넘겨 서버에서도 삭제(add-only가 제거를 막아 유령 부활하는 버그 방지).
+                if(window._colAddOnlyTxn && window._colAddOnlyTxn(_kA, 'avtOwned', me.avtOwned, _avtRemovedId?[_avtRemovedId]:null)) delete _updA.avtOwned;
+                // 🛡️ F5: 실제 안 바뀐 코스메틱 필드는 절대값 write 생략(교사 동시 회수 clobber 창 축소). ownedPets는 항상 생략.
+                ['eq','displayPets','ownedPets'].forEach(f=>{ if(!_f5Changed[f]) delete _updA[f]; });
                 Object.keys(_updA).forEach(k=>{ if(_updA[k]===undefined) delete _updA[k]; });   // undefined 필드 생략 → update throw·부분로드 wipe 동시 방지
                 const _wpA = dbRef.child('stu/' + _kA).update(_updA);
                 window._mirrorMyRankAvatar(); // 구매+자동착용은 stu만 직접 write → rank 미러도 갱신해야 대전/랭킹에 최신 반영
@@ -33029,8 +33147,13 @@ window.addCharRow = function() {
                 if(_earnActual > 0) { _wpA.then(_creditAvtCreator).catch(()=>{ try{ _creditAvtCreator(); }catch(_){} }); }
             }
         } catch(e) { console.warn('[avt-direct]', e); }
-        // avt-direct가 쓴 필드를 hash에서 제거 → upMe가 항상 재동기화 (write 실패 시에도 보장)
-        try { const _h = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_h) ['avtOwned','displayPets','ownedPets','shopUsed','eq','inv','col'].forEach(k => { delete _h[k]; }); } catch(_){}
+        // avt-direct가 쓴 필드를 hash에서 제거 → upMe가 재동기화 (write 실패 시에도 보장)
+        //   🛡️ F5: eq/displayPets/ownedPets는 '실제 바뀐 것만' 재동기. 안 바뀐 필드는 hash를 유지해 upMe가
+        //   절대값으로 재기록하지 않게 한다(직접 write에서 생략한 것과 대칭 — 두 경로 모두 clobber 회피).
+        try { const _h = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_h) {
+            ['avtOwned','shopUsed','inv','col'].forEach(k => { delete _h[k]; });
+            ['eq','displayPets','ownedPets'].forEach(k => { if(_f5Changed[k]) delete _h[k]; });
+        } } catch(_){}
         upMe(); updateNameTag(); rChar(); rSh(); rBg(); snd('f');
         // 가드 플래그 해제 — 1초 후 (Firebase write 큐 안정화 시간)
         setTimeout(()=>{ window._avtBuyInProgress = false; }, 1000);
@@ -33249,6 +33372,9 @@ window.addCharRow = function() {
         if(myKc < effectiveCost) return alert('쿠키가 부족해요! 🍪');
         if(effectiveCost > 0) me.shopUsed = (me.shopUsed||0) + effectiveCost;
         _pushShopLog({type:'살롱 스킨 구입', name:sk.name||rawSkId, cost:effectiveCost, cur:'kc', passUsed, ts:Date.now()});
+        // 🛡️ F5 조건부 write 준비(살롱): 코스메틱 필드 변이 전 스냅샷. displayPets/eq는 살롱에선 항상 변경되어
+        //   그대로 write되고, ownedPets는 펫교환(_replId) 없으면 안 변해 생략된다(불필요 절대값 write 제거).
+        const _f5BeforeS = { eq: JSON.stringify(me.eq||null), displayPets: JSON.stringify(me.displayPets||null), ownedPets: JSON.stringify(me.ownedPets||null) };
         // 선택된 펫 교환 + 자동 착용 (슬롯 우선순위: 펫 1 빈자리 > 펫 2 빈자리 > 펫 1 교체)
         if(!me.avtOwned) me.avtOwned = [];
         const _replId = window._sskReplPetSel || null;
@@ -33280,6 +33406,12 @@ window.addCharRow = function() {
         if(!me.eq) me.eq = {};
         // 메인 펫(eq.pet)도 새 스킨으로 갱신
         me.eq.pet = ownId;
+        // 🛡️ F5: 변이 후 실제 변경 여부 판정(이후 mutation 없음). write·hash-cleanup 양쪽에서 사용.
+        const _f5ChangedS = {
+            eq: JSON.stringify(me.eq||null) !== _f5BeforeS.eq,
+            displayPets: JSON.stringify(me.displayPets||null) !== _f5BeforeS.displayPets,
+            ownedPets: JSON.stringify(me.ownedPets||null) !== _f5BeforeS.ownedPets
+        };
         // 메인 write 먼저 — 제작자 수익 트랜잭션이 own 리스너를 깨워 me를 옛 데이터로 되돌리는 것 방지
         // 제작자 수익 금액은 모달 표시용으로 동기 계산 — 자기 자신이 제작자여도 지급
         let _earnActual = 0;
@@ -33311,6 +33443,11 @@ window.addCharRow = function() {
                 //   절대값일 때 발생하던 이중차감(over-charge) 제거. 직전 delta는 그 buy의 upMe가 별도 increment로 flush.
                 try { if(window._upMeLastHash && window._upMeLastHash[me.cd]) window._upMeLastHash[me.cd].shopUsed = JSON.stringify(me.shopUsed); } catch(_){}
                 const _updS = { avtOwned: me.avtOwned, displayPets: me.displayPets, ownedPets: me.ownedPets, shopUsed: firebase.database.ServerValue.increment(effectiveCost), inv: me.inv, eq: me.eq, updatedAt: _tsS };
+                // 🛡️ #1: avtOwned는 절대값 대신 add-only 트랜잭션 병합(교사 동시 회수 부활 방지). 성공 시 절대값 제거.
+                // 펫 교체(_replId)로 제거한 id는 removeList로 넘겨 서버 avtOwned에서도 삭제(유령 부활 방지).
+                if(window._colAddOnlyTxn && window._colAddOnlyTxn(_kS, 'avtOwned', me.avtOwned, _replId?[_replId]:null)) delete _updS.avtOwned;
+                // 🛡️ F5: 실제 안 바뀐 코스메틱 필드는 절대값 write 생략(교사 동시 회수 clobber 창 축소).
+                ['eq','displayPets','ownedPets'].forEach(f=>{ if(!_f5ChangedS[f]) delete _updS[f]; });
                 Object.keys(_updS).forEach(k=>{ if(_updS[k]===undefined) delete _updS[k]; });   // undefined 필드 생략
                 dbRef.child('stu/' + _kS).update(_updS)
                     .then(()=>{ try { window._mirrorMyRankAvatar(); } catch(_){} }) // 살롱구매도 stu 직접 write → rank 미러 갱신
@@ -33323,10 +33460,16 @@ window.addCharRow = function() {
                     })
                     .catch(e=>console.error('[살롱구매] firebase write 실패', e))
                     .finally(()=>{ window._sskConfirming = false; });
-                try { const _hS = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_hS) ['avtOwned','displayPets','ownedPets','shopUsed','inv','eq'].forEach(k => { _hS[k] = JSON.stringify(me[k]); }); } catch(_){}
+                // 🛡️ F5: eq/displayPets/ownedPets는 강제 set 제외 — 미변경 시 hash를 옛값으로 유지해야(buyAvt와 동일)
+                //   직전 미flush 변경을 upMe가 절대값으로 정상 write한다. 강제 set하면 미변경으로 오인해 유실.
+                try { const _hS = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_hS) ['avtOwned','shopUsed','inv'].forEach(k => { _hS[k] = JSON.stringify(me[k]); }); } catch(_){}
             }
         } catch(e) { console.warn('[ssk-direct]', e); window._sskConfirming = false; }
-        try { const _h = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_h) ['avtOwned','displayPets','ownedPets','shopUsed','eq','inv','col'].forEach(k => { delete _h[k]; }); } catch(_){}
+        // 🛡️ F5: eq/displayPets/ownedPets는 '실제 바뀐 것만' 재동기(안 바뀐 필드는 hash 유지 → upMe 절대값 재기록 안 함).
+        try { const _h = window._upMeLastHash && window._upMeLastHash[me.cd]; if(_h) {
+            ['avtOwned','shopUsed','inv','col'].forEach(k => { delete _h[k]; });
+            ['eq','displayPets','ownedPets'].forEach(k => { if(_f5ChangedS[k]) delete _h[k]; });
+        } } catch(_){}
         upMe(); updateNameTag(); rChar(); rSh(); rBg(); snd('f');
         const _earnBlock = _earnActual > 0 ? `<div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#FFF3E0;border:1.5px solid #FFB74D;border-radius:12px;padding:8px 14px;margin-bottom:20px;font-family:'Jua';">
             <span style="font-size:18px;">🎨</span>
@@ -36279,8 +36422,14 @@ window.addCharRow = function() {
             border-radius:3px; position:relative;
         }
         .tb-classfile-pig-slot::after {
-            content:'🪙'; font-size:14px; position:absolute;
+            content:'⏳︎'; width:15px; height:15px; position:absolute;
             top:-22px; left:50%; transform:translateX(-50%);
+            display:grid; place-items:center; box-sizing:border-box; overflow:hidden;
+            font-size:8px; font-weight:900; color:#B26A00; line-height:15px; text-align:center; text-indent:0;
+            border-radius:50%;
+            background:radial-gradient(circle at 35% 28%, #FFF6C4 0%, #FFD23E 42%, #F5A200 100%);
+            border:1.5px solid #D98E00;
+            box-shadow:inset 0 0 0 1.5px rgba(255,255,255,0.55), inset 0 -2px 3px rgba(180,110,0,0.45), 0 1px 2px rgba(0,0,0,0.25);
             animation:_tbCoinDrop 2.2s ease-in-out infinite;
         }
         @keyframes _tbCoinDrop {
@@ -45321,6 +45470,10 @@ window.addCharRow = function() {
             // 보드 풀스크린이 열려 있으면 다시 그려서 배지 점수 등 동기화
             if(window._omokOpenedId) _omokRender();
         };
+        // 🛡️ 멱등: _omokSubscribe가 exitPlaza 없이 재호출돼도 dir 리스너가 배수 누적되지 않도록 이전 구독만 해제.
+        //   ⚠️ off('value')(콜백 없이)는 바로 위 45359 once('value')까지 취소하므로, 반드시 이전 fn을 지정 해제한다.
+        try { if(window._omokDirFn) dirRef.off('value', window._omokDirFn); } catch(_){}
+        window._omokDirFn = fn;
         dirRef.on('value', fn);
         plzListeners.push({ref:dirRef, type:'value', fn, who:'student'});
         // [잔존/교착 방지] 보드 패널을 닫아도 도는 전역 턴 타임아웃 워처.
@@ -60945,13 +61098,24 @@ window.addCharRow = function() {
     window._attachSkinSubListener = function(){
         if(window._skinSubAttached) return;
         window._skinSubAttached = true;
+        // 🛡️ 사용량 절감: skinSubmissions는 append-only(승인/거절=status update, remove 없음)라
+        //   .on('value')는 status 변경 1건마다 역대 전체 큐를 재다운로드 → 노드가 커질수록 낭비 폭증.
+        //   child_* 증분으로 전환해 변경분 1건만 다운로드. 단 초기 부착 시 기존 N건이 child_added로
+        //   순차 발화하므로, 렌더/배지 3종을 setTimeout으로 코얼레싱해 O(N²) 재렌더를 1회로 병합.
         try{
-            dbRef.child('skinSubmissions').on('value', snap=>{
-                window._skinSubs = snap.val() || {};
+            const ref = dbRef.child('skinSubmissions');
+            window._skinSubs = window._skinSubs || {};
+            let _skTimer = null;
+            const _flush = () => {
+                _skTimer = null;
                 try{ window.rSkinSubList && window.rSkinSubList(); }catch(_){}
                 try{ window._updateSkinSubBadge && window._updateSkinSubBadge(); }catch(_){}
                 try{ if(typeof updateMenuBadges==='function') updateMenuBadges(); }catch(_){}   // 요청사항 메뉴 배지에 반영
-            });
+            };
+            const _kick = () => { if(!_skTimer) _skTimer = setTimeout(_flush, 60); }; // 초기 N건 버스트를 1회로 병합
+            ref.on('child_added',   s=>{ window._skinSubs[s.key] = s.val(); _kick(); });
+            ref.on('child_changed', s=>{ window._skinSubs[s.key] = s.val(); _kick(); }); // 편집/승인/거절(status)
+            ref.on('child_removed', s=>{ delete window._skinSubs[s.key]; _kick(); });     // 방어적(현재 remove 경로 없음)
         }catch(e){ console.error('[skinSub] listener', e); }
     };
     // 새로고침 시 이미 교사 세션이면 즉시 부착(정의가 startup 호출부보다 뒤라 여기서 처리). 신규 로그인은 logT에서 부착.
