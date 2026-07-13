@@ -86,11 +86,16 @@
         .cont { flex:1; padding:30px; overflow-y:auto; background:#FAFAFA; position:relative; }
         .menu { padding:15px 12px; margin-bottom:10px; cursor:pointer; border-radius:15px; color:#8D6E63; font-size:24px; font-weight:bold; transition:0.2s; }
         .menu.on { background:var(--act); color:white; font-weight:900; box-shadow:0 4px 10px rgba(255, 159, 67, 0.4); }
-        /* 탭 제목 글자 수별 letter-spacing — 짧을수록 넓게, 길수록 좁게 */
-        #appS .menu[data-tlen="2"] { letter-spacing: 18px; }
-        #appS .menu[data-tlen="3"] { letter-spacing: 11px; }
-        #appS .menu[data-tlen="4"] { font-size: 28px; letter-spacing: 10px; white-space: nowrap; }
-        #appS .menu[data-tlen="5"], #appS .menu[data-tlen="6"], #appS .menu[data-tlen="7"] { letter-spacing: 3px; }
+        /* 탭 제목: 아이콘(고정 폭)과 글자(고정 폭 안 양끝정렬) 분리 → 글자수(2~5)와 무관하게
+           이모지 위치·글자 시작·글자 끝이 모두 동일하게 정렬됨 (마크업에 menu-ico/menu-txt span 정적 삽입) */
+        #appS .menu { display: flex; align-items: center; gap: 0.3em; }
+        #appS .menu-ico { flex: 0 0 1.25em; text-align: center; line-height: 1; }
+        #appS .menu-txt { flex: 1 1 auto; min-width: 0; text-align: justify; text-align-last: justify; text-justify: inter-character; }
+        #appS .menu[data-tlen="2"] .menu-txt { font-size: 32px; }
+        #appS .menu[data-tlen="3"] .menu-txt,
+        #appS .menu[data-tlen="4"] .menu-txt,
+        #appS .menu[data-tlen="5"] .menu-txt { font-size: 30px; }
+        #appS .menu[data-tlen="6"] .menu-txt, #appS .menu[data-tlen="7"] .menu-txt { font-size: 24px; }
         .card { background:white; padding:15px; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-bottom:15px; border:2px solid #F5F5F5; position:relative; }
         .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:20px; align-items: start; }
         
@@ -929,7 +934,8 @@
 
             /* 2. 가방: 5칸 고정 (아이템·꾸미기·칭호·펫 통일) */
             #s_bg::-webkit-scrollbar { width: 8px !important; }
-            #s_iv { grid-template-columns: repeat(5, 1fr) !important; padding: 15px !important; gap: 10px !important; }
+            /* 6열 × 3줄 = 18칸을 폭 꽉 차게 (6열이라 칸이 작아져 3줄이 세로 스크롤 없이 들어감) */
+            #s_iv { grid-template-columns: repeat(6, 1fr) !important; padding: 14px !important; gap: 14px !important; }
             .inventory-slot { padding: 5px !important; border-radius: 10px !important; }
             .inventory-slot > img { width: 85px !important; height: 85px !important; }
             .inventory-slot .slot-emoji { font-size: 75px !important; line-height: 85px !important; }
@@ -946,6 +952,10 @@
             .quest-slot { padding: 10px 5px !important; border-radius: 10px !important; }
             .quest-icon { width: 55px !important; height: 55px !important; font-size: 50px !important; line-height: 55px !important; margin-bottom: 5px !important; }
             .quest-slot div:last-child { font-size: 14px !important; }
+
+            /* 4. 좌측 탭: 세로 여백 살짝 축소 → 6개 대신 7개가 한 화면에 들어가게 */
+            #appS .side { padding: 16px 18px !important; }
+            #appS .menu { padding: 20px 16px !important; margin-bottom: 13px !important; }
         }
 
         /* === 아이템 툴팁 === */
@@ -1865,7 +1875,7 @@
 
                 <div id="bingoPendingSection" style="display:none;margin-bottom:12px;">
                     <div style="font-size:12px;color:#E65100;font-weight:bold;margin-bottom:6px;">⏳ 승인 대기 중</div>
-                    <div id="bingoPendingList" style="background:#FFF3E0;border-radius:8px;padding:8px;font-size:12px;max-height:160px;overflow-y:auto;"></div>
+                    <div id="bingoPendingList" style="background:#FFF3E0;border-radius:8px;padding:8px;font-size:12px;max-height:416px;overflow-y:auto;"></div>
                 </div>
 
                 <!-- 학생별 현황 접기/펼치기 -->
@@ -1875,7 +1885,7 @@
                         <span>📊 학생별 현황</span><span class="bs-arrow">▼</span>
                     </div>
                     <div id="bingoStatsListWrap" style="display:none;padding-top:6px;">
-                        <div id="bingoStatsList" style="background:#E3F2FD;border-radius:8px;padding:8px;font-size:12px;max-height:240px;overflow-y:auto;"></div>
+                        <div id="bingoStatsList" style="background:#E3F2FD;border-radius:8px;padding:8px;font-size:12px;max-height:450px;overflow-y:auto;"></div>
                     </div>
                 </div>
                 </div><!-- /bingoCard -->
@@ -2348,19 +2358,19 @@
     <div class="side">
         <div id="student_license"></div>
         
-        <div class="menu on" onclick="navS('s_char',this)">💖 용사</div>
-        <div class="menu" onclick="navS('s_bg',this)">🎒 가방</div>
-        <div class="menu" id="menuColBtn" onclick="navS('s_col',this)" style="display:none;">📖 도감</div>
-        <div class="menu" onclick="navS('s_sh',this)">🎪 상점</div>
-        <div class="menu" id="menuBankBtn" onclick="navS('s_bank',this)" style="display:none;">💰️ 은행</div>
-        <div class="menu" onclick="navS('s_plz',this)">💌 광장</div>
-        <div class="menu" id="menuPetDrawBtn" onclick="window._openPetDraw&&window._openPetDraw()" style="display:none;">🎨 제작</div>
-        <div class="menu" id="menuFashionBtn" onclick="navS('s_fashion',this)" style="display:none;">👗 패션쇼</div>
-        <div class="menu" id="menuTimeBankBtn" onclick="navS('s_tbank',this)" style="display:none;">🐷 순공통장</div>
-        <div class="menu" id="menuGababoBtn" onclick="navS('s_gababo',this)" style="display:none;">⚔️ 가바보</div>
-        <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;">🎉 RPG 축제</div>
-        <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;">💘 마니또</div>
-        <div class="menu" id="menuVoteBtn" onclick="navS('s_vote',this)" style="display:none;">🗳️ 투표</div>
+        <div class="menu on" onclick="navS('s_char',this)" data-tlen="2"><span class="menu-ico">💖</span><span class="menu-txt">용사</span></div>
+        <div class="menu" onclick="navS('s_bg',this)" data-tlen="2"><span class="menu-ico">🎒</span><span class="menu-txt">가방</span></div>
+        <div class="menu" id="menuColBtn" onclick="navS('s_col',this)" style="display:none;" data-tlen="2"><span class="menu-ico">📖</span><span class="menu-txt">도감</span></div>
+        <div class="menu" onclick="navS('s_sh',this)" data-tlen="2"><span class="menu-ico">🎪</span><span class="menu-txt">상점</span></div>
+        <div class="menu" id="menuBankBtn" onclick="navS('s_bank',this)" style="display:none;" data-tlen="2"><span class="menu-ico">💰️</span><span class="menu-txt">은행</span></div>
+        <div class="menu" onclick="navS('s_plz',this)" data-tlen="2"><span class="menu-ico">💌</span><span class="menu-txt">광장</span></div>
+        <div class="menu" id="menuPetDrawBtn" onclick="window._openPetDraw&&window._openPetDraw()" style="display:none;" data-tlen="2"><span class="menu-ico">🎨</span><span class="menu-txt">제작</span></div>
+        <div class="menu" id="menuFashionBtn" onclick="navS('s_fashion',this)" style="display:none;" data-tlen="3"><span class="menu-ico">👗</span><span class="menu-txt">패션쇼</span></div>
+        <div class="menu" id="menuTimeBankBtn" onclick="navS('s_tbank',this)" style="display:none;" data-tlen="4"><span class="menu-ico">🐷</span><span class="menu-txt">순공통장</span></div>
+        <div class="menu" id="menuGababoBtn" onclick="navS('s_gababo',this)" style="display:none;" data-tlen="3"><span class="menu-ico">⚔️</span><span class="menu-txt">가바보</span></div>
+        <div class="menu" id="menuKioskBtn" onclick="navS('s_kiosk',this)" style="display:none;" data-tlen="5"><span class="menu-ico">🎉</span><span class="menu-txt">RPG 축제</span></div>
+        <div class="menu" id="menuManittoBtn" onclick="navS('s_manitto',this)" style="display:none;" data-tlen="3"><span class="menu-ico">💘</span><span class="menu-txt">마니또</span></div>
+        <div class="menu" id="menuVoteBtn" onclick="navS('s_vote',this)" style="display:none;" data-tlen="2"><span class="menu-ico">🗳️</span><span class="menu-txt">투표</span></div>
 
 
     </div>
@@ -3065,11 +3075,13 @@ let _renderLock = false; // 재진입 방지
                 {n:'동성간 3남+1녀(단일그룹)', stus:[..._mk(3,'m'),..._mk(1,'f')], mode:'same'},
                 {n:'동성간 1남+1녀(둘다 단일)', stus:[..._mk(1,'m'),..._mk(1,'f')], mode:'same'},
                 {n:'동성간 4남+4녀', stus:[..._mk(4,'m'),..._mk(4,'f')], mode:'same'},
-                {n:'이성간 3남+2녀(홀수)', stus:[..._mk(3,'m'),..._mk(2,'f')], mode:'cross'}
+                {n:'이성간 3남+2녀(홀수)', stus:[..._mk(3,'m'),..._mk(2,'f')], mode:'cross'},
+                {n:'선택 4명(성별무관 derangement)', stus:[..._mk(2,'m'),..._mk(2,'f')], mode:'select'},
+                {n:'선택 2명(최소)', stus:_mk(2,'m'), mode:'select'}
             ];
             let _mOk=true, _mWhy='';
             for(const sc of _scen){ for(let it=0; it<30 && _mOk; it++){ if(!_validPairs(sc.stus, window._manittoComputePairs(sc.stus, sc.mode))){ _mOk=false; _mWhy=sc.n; } } if(!_mOk) break; }
-            _chgRes.push({n:'① 마니또 페어링 유효성 (전체/동성간/이성간·단일그룹·홀수, 각 30회)', ok:_mOk, d:_mOk?'모든 구성에서 1:1 derangement ✅':`❌ ${_mWhy} 실패`});
+            _chgRes.push({n:'① 마니또 페어링 유효성 (전체/동성간/이성간/선택·단일그룹·홀수, 각 30회)', ok:_mOk, d:_mOk?'모든 구성에서 1:1 derangement ✅':`❌ ${_mWhy} 실패`});
         } else { _chgRes.push({n:'① 마니또 페어링 유효성', ok:false, d:'❌ _manittoComputePairs 미정의'}); }
         // ② 게임 진행 락 TTL — fresh→유효, 15s초과/레거시 문자열/null → stale(탈취 가능)
         if(typeof _plzLockStale === 'function'){
@@ -3239,6 +3251,31 @@ let _renderLock = false; // 재진입 방지
             const _gOk = _r1&&_r2&&_r3&&_r4;
             _chgRes.push({n:'⑰ 고아 reqCnt 산출 _computeOrphanReqCntKeys (cd키모드)', ok:_gOk, d:_gOk?'고아제거/stu0중단/고아없음/null안전 4케이스 ✅':'❌ 실패: '+[!_r1&&'고아제거',!_r2&&'stu0중단',!_r3&&'고아없음',!_r4&&'null안전'].filter(Boolean).join('/')});
         } else { _chgRes.push({n:'⑰ 고아 reqCnt 산출', ok:false, d:'❌ _computeOrphanReqCntKeys 미정의'}); }
+        // ⑱ 쥬크박스 아이템 판별 _isJukeboxItem (공백/전각공백 흡수 · 오탐 없음) — 실제 useQ/showItemDetail과 공유
+        if(typeof window._isJukeboxItem === 'function') {
+            const _jf = window._isJukeboxItem;
+            const _j1 = _jf('왕의 음악대') === true;      // 정확 일치
+            const _j2 = _jf('왕의음악대') === true;        // 공백 없음
+            const _j3 = _jf('  왕의   음악대 ') === true;   // 앞뒤/중간 공백 다수
+            const _j4 = _jf('왕의　음악대') === true;       // 전각 공백(U+3000)
+            const _j5 = _jf('왕의 음악대장') === false;     // 다른 이름 → 오탐 없음
+            const _j6 = _jf('') === false && _jf(null) === false && _jf(undefined) === false; // 빈값 안전
+            const _jOk = _j1&&_j2&&_j3&&_j4&&_j5&&_j6;
+            _chgRes.push({n:'⑱ 쥬크박스 판별 _isJukeboxItem (공백/전각 흡수·오탐없음)', ok:_jOk, d:_jOk?'정확/무공백/다중공백/전각공백/오탐없음/빈값 6케이스 ✅':'❌ 실패: '+[!_j1&&'정확',!_j2&&'무공백',!_j3&&'다중공백',!_j4&&'전각',!_j5&&'오탐',!_j6&&'빈값'].filter(Boolean).join('/')});
+        } else { _chgRes.push({n:'⑱ 쥬크박스 판별 _isJukeboxItem', ok:false, d:'❌ _isJukeboxItem 미정의'}); }
+        // ⑲ 화폐 지급/차감 클램프 (쿠키 shopUsed 상한 · 코인 0하한) — 실제 지급 핸들러와 공유
+        if(typeof window._grantCookieShopUsed === 'function' && typeof window._grantCoinValue === 'function') {
+            const ck = window._grantCookieShopUsed, cv = window._grantCoinValue;
+            const _k1 = ck(0, 5, 100, 0) === -5;       // 쿠키 +5 지급 → shopUsed -5
+            const _k2 = ck(0, -3, 100, 0) === 3;       // 쿠키 -3 차감 → shopUsed +3 (가용 100 이하)
+            const _k3 = ck(0, -200, 100, 0) === 100;   // 가용(100) 초과 차감 → 상한 클램프
+            const _k4 = ck(-10, 5, 100, 0) === -15;    // 기존 shopUsed에 누적 지급
+            const _c1 = cv(10, 5) === 15;              // 코인 +5
+            const _c2 = cv(10, -3) === 7;              // 코인 -3
+            const _c3 = cv(2, -10) === 0;              // 보유 이상 차감 → 0 하한
+            const _gOk = _k1&&_k2&&_k3&&_k4&&_c1&&_c2&&_c3;
+            _chgRes.push({n:'⑲ 화폐 지급/차감 클램프 (쿠키 상한·코인 0하한)', ok:_gOk, d:_gOk?'지급/차감/상한/누적/0하한 7케이스 ✅':'❌ 실패: '+[!_k1&&'쿠키+',!_k2&&'쿠키-',!_k3&&'쿠키상한',!_k4&&'쿠키누적',!_c1&&'코인+',!_c2&&'코인-',!_c3&&'코인0하한'].filter(Boolean).join('/')});
+        } else { _chgRes.push({n:'⑲ 화폐 지급/차감 클램프', ok:false, d:'❌ 헬퍼 미정의'}); }
         const _chgAllPass = _chgRes.every(r=>r.ok);
 
         // 결과 모달 출력
@@ -4759,6 +4796,9 @@ let _renderLock = false; // 재진입 방지
                 if(!db[p]) db[p] = ((p==='cfg'||p==='gacQueue') ? {} : []);
                 if(!isNaN(i)) db[p][i] = cv; else db[p][s.key] = cv;
                 if(p==='gacQueue') console.log('[gacQueue child_added]', s.key, cv);
+                // 🛡️ 공유배열(auc/gacQueue)은 서버 child 이벤트로 db[p]가 갱신되면 _lastSentHash도 동기화 →
+                //   이후 무관한 sv()가 이 stale 상태를 통째 write해 동시 입찰/뽑기요청을 덮어쓰지 않도록.
+                if((p==='auc'||p==='gacQueue') && window._lastSentHash){ try{ window._lastSentHash[p]=JSON.stringify(db[p]==null?null:db[p]); }catch(_){} }
                 if(_splitInitialDone) _splitFire();
                 if(p==='sets' && !document.getElementById('s_sh')?.classList.contains('hidden')) { try { rSh(); } catch(_){} }
             });
@@ -4769,6 +4809,7 @@ let _renderLock = false; // 재진입 방지
                 if(!db[p]) db[p] = ((p==='cfg'||p==='gacQueue') ? {} : []);
                 if(!isNaN(i)) db[p][i] = cv; else db[p][s.key] = cv;
                 if(p==='gacQueue') console.log('[gacQueue child_changed]', s.key, cv);
+                if((p==='auc'||p==='gacQueue') && window._lastSentHash){ try{ window._lastSentHash[p]=JSON.stringify(db[p]==null?null:db[p]); }catch(_){} }
                 if(_splitInitialDone) _splitFire();
                 if(p==='sets' && !document.getElementById('s_sh')?.classList.contains('hidden')) { try { rSh(); } catch(_){} }
             });
@@ -4780,6 +4821,7 @@ let _renderLock = false; // 재진입 방지
                 } else {
                     delete db[p][s.key];
                 }
+                if((p==='auc'||p==='gacQueue') && window._lastSentHash){ try{ window._lastSentHash[p]=JSON.stringify(db[p]==null?null:db[p]); }catch(_){} }
                 if(_splitInitialDone) _splitFire();
                 if(p==='sets' && !document.getElementById('s_sh')?.classList.contains('hidden')) { try { rSh(); } catch(_){} }
             });
@@ -5362,6 +5404,9 @@ let _renderLock = false; // 재진입 방지
                     if(v.titNotify) console.log('[STUOWN-cd] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     const _prevCols = window._colCaptureCols ? window._colCaptureCols() : null; // echo 덮어쓰기 전 컬렉션 스냅샷
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    // Firebase가 inv를 (희소배열 등으로) 객체로 반환할 수 있음 → 배열로 정규화. 아래 pending 재적용 및
+                    //   앱 전반의 me.inv.filter/findIndex/length/push 사용처가 TypeError로 깨지지 않도록 echo 근원에서 방어.
+                    if(me.inv && !Array.isArray(me.inv)) me.inv = Object.values(me.inv).filter(Boolean);
                     // 은행 커밋 창 보호: bankAdj/bank/cookie 복원 — 반드시 _applyDahaeLive 앞에서 (오프셋 재계산이 올바른 bankAdj 사용)
                     try { window._bankRestoreProtected && window._bankRestoreProtected(); } catch(_){}
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
@@ -5446,6 +5491,8 @@ let _renderLock = false; // 재진입 방지
                     if(v.titNotify) console.log('[STUOWN-idx] titNotify 수신 raw=', JSON.stringify(v.titNotify));
                     const _prevCols2 = window._colCaptureCols ? window._colCaptureCols() : null; // echo 덮어쓰기 전 컬렉션 스냅샷
                     Object.keys(v).forEach(k => { me[k] = v[k]; });
+                    // Firebase가 inv를 (희소배열 등으로) 객체로 반환할 수 있음 → 배열로 정규화 (findIndex/length/push 보호)
+                    if(me.inv && !Array.isArray(me.inv)) me.inv = Object.values(me.inv).filter(Boolean);
                     // 은행 커밋 창 보호: bankAdj/bank/cookie 복원 — 반드시 _applyDahaeLive 앞에서
                     try { window._bankRestoreProtected && window._bankRestoreProtected(); } catch(_){}
                     // cookie/usedCookie는 다했니가 진실의 원천 — Firebase stale 값 덮어쓰기 복원
@@ -7588,7 +7635,17 @@ let _renderLock = false; // 재진입 방지
             const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
             const fbKey = _cdMig ? me.cd : (typeof window._myFbIdx === 'number' && window._myFbIdx >= 0 ? window._myFbIdx : -1);
             if(fbKey === -1) return;
-            dbRef.child(`stu/${fbKey}/${field}`).set(value);
+            // updatedAt 동반 + _myWrittenTs 등록 → 교사 증분 리스너가 이 변경을 수신하고, 이후 교사 whole-node write가
+            //   stale 미러로 이 필드를 되돌리지 않도록. self-write 인식으로 학생 meSyncSeq 오증가도 방지.
+            const _ts = Date.now();
+            const _upd = {};
+            _upd[`stu/${fbKey}/${field}`] = value;
+            _upd[`stu/${fbKey}/updatedAt`] = _ts;
+            dbRef.update(_upd);
+            if(me) me.updatedAt = _ts;
+            if(!window._myWrittenTs) window._myWrittenTs = [];
+            window._myWrittenTs.push(_ts);
+            if(window._myWrittenTs.length > 8) window._myWrittenTs.shift();
         } catch(e){}
     }
     // teacherMsgs 읽음 처리 공용 헬퍼 — 전체 .set()/upMe() 대신 트랜잭션 머지로 동시 추가분 보존.
@@ -8619,6 +8676,22 @@ let _renderLock = false; // 재진입 방지
         document.body.appendChild(el);
     };
 
+    // 잠금미션 등 학생 own inv 직접쓰기 공용 헬퍼 — updatedAt 동반 + _myWrittenTs 등록.
+    //   updatedAt을 안 올리면 교사 증분 리스너(startAt lastTs+1)가 변경을 못 받아 교사 캐시가 stale해지고,
+    //   이후 교사의 전체노드 write(_svStu)가 stale inv로 통째 덮어써 미션 진행/해금이 되돌려지는 버그 방지.
+    window._writeMyInvFull = function(fbKey) {
+        const _ts = Date.now();
+        me.updatedAt = _ts;
+        if(!window._myWrittenTs) window._myWrittenTs = [];
+        window._myWrittenTs.push(_ts);
+        if(window._myWrittenTs.length > 8) window._myWrittenTs.shift();
+        const _upd = {};
+        _upd[`stu/${fbKey}/inv`] = me.inv;
+        _upd[`stu/${fbKey}/updatedAt`] = _ts;
+        dbRef.update(_upd);
+        window._pendingInvAdds = []; // raw inv 영속화 → pending 소비(이후 echo 중복 방지)
+    };
+
     window._checkLockMissionUnlock = function() {
         if(!me || !Array.isArray(me.inv)) return;
         const today = window._getTestDate().toLocaleDateString('sv-SE');
@@ -8798,7 +8871,7 @@ let _renderLock = false; // 재진입 방지
             const _stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
             const fbKey = _cdMig ? me.cd : _stuArr.findIndex(s => s && String(s.cd) === String(me.cd));
             if(fbKey !== -1 && fbKey !== undefined) {
-                dbRef.child(`stu/${fbKey}/inv`).set(me.inv); window._pendingInvAdds = []; // raw inv 영속화 → pending 소비(이후 echo 중복 방지)
+                window._writeMyInvFull(fbKey);
             } else if(typeof upMe === 'function') upMe();
         } catch(e) { if(typeof upMe === 'function') upMe(); }
         try { showToast && showToast('↩️ 통과가 취소됐어요.'); } catch(_){}
@@ -8876,11 +8949,20 @@ let _renderLock = false; // 재진입 방지
             const fbKey = _cdMig ? me.cd : _stuArr.findIndex(s => s && String(s.cd) === String(me.cd));
             if(fbKey !== -1 && fbKey !== undefined) {
                 if(_allDone) {
-                    // 완료: locked/st/useDate 등 여러 필드 변경 → full inv write
-                    dbRef.child(`stu/${fbKey}/inv`).set(me.inv); window._pendingInvAdds = []; // raw inv 영속화 → pending 소비(이후 echo 중복 방지)
+                    // 완료: locked/st/useDate 등 여러 필드 변경 → full inv write (updatedAt 동반)
+                    window._writeMyInvFull(fbKey);
                 } else {
-                    // 미완료: checkedDates만 업데이트 (full inv 10KB → 수백 bytes 절감)
-                    dbRef.child(`stu/${fbKey}/inv/${invIdx}/checkedDates`).set(item.checkedDates);
+                    // 미완료: checkedDates만 업데이트 (full inv 10KB → 수백 bytes 절감) + updatedAt 동반
+                    //   updatedAt을 안 올리면 교사 stale 전체노드 write로 체크 진행이 되돌려짐(위 헬퍼 주석 참고).
+                    const _ckTs = Date.now();
+                    me.updatedAt = _ckTs;
+                    if(!window._myWrittenTs) window._myWrittenTs = [];
+                    window._myWrittenTs.push(_ckTs);
+                    if(window._myWrittenTs.length > 8) window._myWrittenTs.shift();
+                    const _ckUpd = {};
+                    _ckUpd[`stu/${fbKey}/inv/${invIdx}/checkedDates`] = item.checkedDates;
+                    _ckUpd[`stu/${fbKey}/updatedAt`] = _ckTs;
+                    dbRef.update(_ckUpd);
                 }
             } else if(typeof upMe === 'function') upMe();
         } catch(e) { if(typeof upMe === 'function') upMe(); }
@@ -8982,7 +9064,7 @@ let _renderLock = false; // 재진입 방지
             const _stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
             const fbKey = _cdMig ? me.cd : _stuArr.findIndex(s => s && String(s.cd) === String(me.cd));
             if(fbKey !== -1 && fbKey !== undefined) {
-                dbRef.child(`stu/${fbKey}/inv`).set(me.inv); window._pendingInvAdds = []; // raw inv 영속화 → pending 소비(이후 echo 중복 방지)
+                window._writeMyInvFull(fbKey);
             } else if(typeof upMe === 'function') upMe();
         } catch(e) { if(typeof upMe === 'function') upMe(); }
         document.getElementById('_lockMissionFailConfirm')?.remove();
@@ -9523,8 +9605,19 @@ let _renderLock = false; // 재진입 방지
                                 if(!Array.isArray(db.stu)) db.stu = [];
                                 const localIdx = db.stu.findIndex(s => s && String(s.cd).trim() === String(cd).trim());
                                 if(localIdx >= 0) Object.assign(db.stu[localIdx], stuData); else db.stu.push(stuData);
+                                // Firebase echo 경로(5401~)와 동일하게 처리 — 미flush 로컬 델타/신규분 재적용 + 외부갱신 시 meSyncSeq 증가.
+                                //   (누락 시 직후 upMe가 stale _safe로 교사 승인/환불을 덮어써 되돌리는 레이스)
+                                const _prevColsBC = window._colCaptureCols ? window._colCaptureCols() : null;
                                 Object.keys(stuData).forEach(k => { me[k] = stuData[k]; });
-                                if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv);
+                                if(!me.inv) me.inv = []; else if(!Array.isArray(me.inv)) me.inv = Object.values(me.inv).filter(Boolean);
+                                try { window._bankRestoreProtected && window._bankRestoreProtected(); } catch(_){}
+                                try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
+                                try { window._applyPendingCurDelta && window._applyPendingCurDelta(); } catch(_){}
+                                try { window._applyPendingInvAdds && window._applyPendingInvAdds(); } catch(_){}
+                                try { window._applyPendingColAdds && window._applyPendingColAdds(_prevColsBC); } catch(_){}
+                                if(!(stuData.updatedAt && window._myWrittenTs && window._myWrittenTs.includes(stuData.updatedAt))) {
+                                    window._meSyncSeq = (window._meSyncSeq || 0) + 1;
+                                }
                                 try { _splitFire && _splitFire(); } catch(_){}
                             }
                         };
@@ -9871,18 +9964,27 @@ let _renderLock = false; // 재진입 방지
     }
 
     function processAuctionWin(auc, winnerData) {
-        const s = db.stu.find(x => x && x.cd === winnerData.cd);
+        const _wIdx = db.stu.findIndex(x => x && x.cd === winnerData.cd);
+        const s = _wIdx >= 0 ? db.stu[_wIdx] : null;
         if(s) {
+            // 로컬 미러(교사 UI용)는 절대값으로 유지하되, 서버 write는 increment(델타)로 처리해
+            //   낙찰자가 동시에 진행 중인 구매·획득(increment)을 통째노드 write가 덮어써 화폐가 유실되는
+            //   레이스를 차단. (curDeltas 경로 → 통화만 leaf increment, 나머지 필드는 leaf 절대 write)
+            let _curDelta;
             if(auc.cur === 'kc') {
                 s.shopUsed = (s.shopUsed || 0) + winnerData.amt;
+                _curDelta = { shopUsed: winnerData.amt };
             } else {
                 s[auc.cur] = Math.max(0, (s[auc.cur] || 0) - winnerData.amt);
+                _curDelta = { [auc.cur]: -winnerData.amt };
             }
             // 낙찰 결과를 학생 본인 노드에 기록 → 학생의 stu own listener로 자동 수신, 결과 모달 표시
             s.aucWin = { id: auc.id, n: auc.n || '경매', amt: winnerData.amt, cur: auc.cur, ts: Date.now() };
             logCandy(s.nm, -winnerData.amt, `경매 낙찰 (${auc.n})`);
-            // 차감·낙찰필드를 해당 학생 노드에 직접 저장(sv() 가드/통째쓰기 우회) — 차감 누락 방지
-            try { if(window._svStuByCd) window._svStuByCd(s.cd); } catch(_){}
+            // 차감·낙찰필드를 해당 학생 노드에 직접 저장 — 통화는 increment(델타)로 clobber 방지
+            try {
+                if(window._svStuByCd) window._svStuByCd(s.cd, { curDeltas: { [_wIdx]: _curDelta } });
+            } catch(_){}
         }
     }
 
@@ -10323,7 +10425,21 @@ let _renderLock = false; // 재진입 방지
                         if(window._stuSentHash[_tsKey] === h) return;
                         // [NEW] cd 키 모드: Firebase 경로에 s.cd 사용. 레거시: 정수 인덱스 사용
                         const _fbKey = _cdMigrated ? s.cd : i;
-                        payload['stu/' + _fbKey] = s;
+                        // 예약 코인 델타가 있으면 통화만 increment(leaf)로 반영, 나머지는 leaf 절대 write(동시 increment 미클로버).
+                        //   그 외엔 whole-node write 유지(sv()는 _sCopy 삭제 baseline이 없어 leaf 전환 시 삭제 semantics가 깨짐 →
+                        //   교사가 지운 필드가 서버에 잔존. 주 bank-클로버 경로는 _svStu(leaf+bank제외)에서 이미 차단).
+                        const _pcdSv = window._pendingCoinDeltas && window._pendingCoinDeltas[s.cd];
+                        if(_pcdSv && (_pcdSv.co || _pcdSv.cn || _pcdSv.tk || _pcdSv.shopUsed)){
+                            const _baseSv = 'stu/' + _fbKey + '/';
+                            Object.keys(s).forEach(f => {
+                                if(f==='co'||f==='cn'||f==='tk'||f==='shopUsed') return;
+                                payload[_baseSv + f] = s[f];
+                            });
+                            ['co','cn','tk','shopUsed'].forEach(k2 => { if(_pcdSv[k2]) payload[_baseSv + k2] = firebase.database.ServerValue.increment(_pcdSv[k2]); });
+                            delete window._pendingCoinDeltas[s.cd];
+                        } else {
+                            payload['stu/' + _fbKey] = s;
+                        }
                         window._stuSentHash[_tsKey] = h;
                         _changedStuIdx.add(_tsKey);
                     });
@@ -10544,6 +10660,17 @@ let _renderLock = false; // 재진입 방지
         _svWriteSafe();
     };
 
+    // 🗑️ 삭제-안전 필드 제거 헬퍼 (Phase 0) — 교사가 학생 top-level 필드를 지울 때 `delete s.field` 대신 사용.
+    //   로컬 삭제 + 비열거 s.__del Set에 기록 → 저장 경로(leaf 전환 시)가 서버에서 명시적으로 null 처리.
+    //   __del은 non-enumerable이라 Object.keys/JSON.stringify/_sCopy에 안 들어감(write 오염 없음).
+    //   현재(whole-node write)는 삭제된 필드가 _sCopy에 없어 이미 서버에서 지워지므로 동작 동일 — Phase 1 leaf 전환 대비 인프라.
+    window._delStuField = function(s, field) {
+        if(!s || !field) return;
+        delete s[field];
+        if(!s.__del) { try { Object.defineProperty(s, '__del', { value: [], writable:true, enumerable:false, configurable:true }); } catch(_){ return; } }
+        if(s.__del.indexOf(field) < 0) s.__del.push(field);
+    };
+
     // 타깃 학생만 부분 업데이트 — 전체 stu 덮어쓰기 방지 (트래픽 절감 + 캔디 버그 방지)
     // indices: 배열 인덱스 목록
     window._svStu = function(indices, _opts) {
@@ -10571,6 +10698,10 @@ let _renderLock = false; // 재진입 방지
         }
         try {
             const updates = {};
+            const _absWrites = []; // whole-node(절대) write된 학생 _sCopy (브로드캐스트용)
+            const _incWrites = []; // 통화 increment(leaf) 방식으로 write된 학생 _sCopy (브로드캐스트용)
+            const _writtenSent = []; // write 성공 시 _stuSentHash 동기화용 {k:tsKey, h:contentHash}
+            const _curDeltas = (_opts && _opts.curDeltas) || null; // {인덱스: {co,cn,tk,shopUsed} 델타}
             const _skipped = [];
             const _cdMigrated = !!(db.cfg && db.cfg.stuKeyCdMigrated);
             uniq.forEach(i => {
@@ -10617,22 +10748,69 @@ let _renderLock = false; // 재진입 방지
                 if(!_sCopy.mondayCookiePending) delete _sCopy.mondayCookiePending;
                 delete _sCopy.lastLevelupCookie; // 학생 접속 시 _writeMeField로만 관리
                 // [NEW] cd 키 모드: Firebase 경로에 s.cd 사용
-                updates['stu/' + (_cdMigrated ? s.cd : i)] = _sCopy;
+                const _key = _cdMigrated ? s.cd : i;
+                let _cd = (_curDeltas && _curDeltas[i]) ? Object.assign({}, _curDeltas[i]) : null;
+                // 코인 승인/환불이 예약한 통화 델타 병합 → 절대값 whole-node write 대신 increment로 처리(학생 동시 increment 보존)
+                if(window._pendingCoinDeltas && window._pendingCoinDeltas[s.cd]){
+                    const _pcd = window._pendingCoinDeltas[s.cd];
+                    _cd = _cd || {};
+                    Object.keys(_pcd).forEach(k => { _cd[k] = (_cd[k]||0) + _pcd[k]; });
+                    delete window._pendingCoinDeltas[s.cd];
+                }
+                // 🛡️ [Phase1] 삭제-안전 leaf write. bank/bankAdj 제외(학생 _bankCommit 전용 필드) → 교사 stale write가
+                //   학생 예금/대출 커밋을 되돌려 화폐 누수시키던 것 차단. whole-node 삭제 semantics는 아래 3중 삭제로 복원.
+                const _hasCurDelta = !!(_cd && (_cd.co || _cd.cn || _cd.tk || _cd.shopUsed));
+                const _base = 'stu/' + _key + '/';
+                if(!window._stuWrittenKeys) window._stuWrittenKeys = {};
+                const _curKeySet = new Set();
+                Object.keys(_sCopy).forEach(f => {
+                    if(f==='bank' || f==='bankAdj') return;                           // 학생권위 — 서버값 보존(미기록)
+                    _curKeySet.add(f);
+                    if(_hasCurDelta && (f==='co'||f==='cn'||f==='tk'||f==='shopUsed')) return; // 통화 델타는 아래 increment로
+                    updates[_base + f] = _sCopy[f];
+                });
+                if(_hasCurDelta) ['co','cn','tk','shopUsed'].forEach(k => { _curKeySet.add(k); }); // 통화도 키셋 포함(삭제 대상 아님)
+                // 삭제 ①: _sCopy 구성 시 제거된 필드(titNotify/lastCouponView/shopLog 등) — s엔 있고 _sCopy엔 없음
+                Object.keys(s).forEach(f => { if(!(f in _sCopy) && f!=='bank' && f!=='bankAdj') updates[_base + f] = null; });
+                // 삭제 ②: 교사 top-level 삭제 — 직전 이 세션이 쓴 키에 있었으나 지금 s에서 사라짐(사이트 누락 무관 자동 반영)
+                const _prevKeys = window._stuWrittenKeys[_key];
+                if(_prevKeys) _prevKeys.forEach(f => { if(!_curKeySet.has(f) && f!=='bank' && f!=='bankAdj' && !(f in s)) updates[_base + f] = null; });
+                // 삭제 ③: _delStuField 명시 삭제(크로스탭·첫write 안전) — 현재 present 아닌 것만
+                if(s.__del && s.__del.length){ s.__del.forEach(f => { if(!(f in s) && f!=='bank' && f!=='bankAdj') updates[_base + f] = null; }); s.__del.length = 0; }
+                window._stuWrittenKeys[_key] = _curKeySet;
+                if(_hasCurDelta) {
+                    ['co','cn','tk','shopUsed'].forEach(k => { if(_cd[k]) updates[_base + k] = firebase.database.ServerValue.increment(_cd[k]); });
+                    _incWrites.push(_sCopy); // 브로드캐스트용(절대값 사본)
+                } else {
+                    _absWrites.push(_sCopy);
+                }
+                // write 성공 시 _stuSentHash 동기화용 — 현재 콘텐츠 해시 캡처(후속 sv() whole-node 재기록 방지)
+                _writtenSent.push({ k: _tsKey, h: (window._stuPerHash || {})[_tsKey] });
             });
             if(_skipped.length) console.warn('[_svStu] write 거부:', _skipped);
-            if(Object.keys(updates).length === 0) return;
-            console.log('[_svStu-write]', new Date().toISOString().slice(11,19), '학생:', Object.keys(updates).length+'명');
+            if(Object.keys(updates).length === 0 && _incWrites.length === 0) return;
+            console.log('[_svStu-write]', new Date().toISOString().slice(11,19), '학생:', (_absWrites.length + _incWrites.length)+'명');
             // [CLEANUP 2026-05-20] inv 머지 로직 제거 — 무한 증가 버그 원인이었음. 단순 write 사용.
-            dbRef.update(updates);
+            if(Object.keys(updates).length > 0) {
+                // 🛡️ write 성공 시에만 _stuSentHash 동기화 → 후속 sv()가 이 학생을 whole-node 절대값으로 재기록해
+                //   Phase1 bank 제외·통화 increment 보호를 되돌리는 것(FINDING1) 차단. 실패 시 미동기화 → sv() fallback이 재전송(복구).
+                //   (_svStuCurField가 동일 취지로 _stuPerHash+_stuSentHash 둘 다 동기화하는 것과 정합)
+                dbRef.update(updates).then(() => {
+                    if(!window._stuSentHash) window._stuSentHash = {};
+                    _writtenSent.forEach(p => { if(p && p.h != null) window._stuSentHash[p.k] = p.h; });
+                }).catch(() => {});
+            }
+            // 브로드캐스트 대상: 절대 write + 통화 increment write 학생 모두 (updates의 leaf값 오인 방지 위해 전용 배열 사용)
+            const _broadcast = _absWrites.concat(_incWrites);
             // 같은 기기 학생 프리뷰 탭에 즉시 전달 (Firebase round-trip 생략)
             if(_teacherBC) try {
-                Object.values(updates).forEach(stuData => {
+                _broadcast.forEach(stuData => {
                     if(stuData && stuData.cd) _teacherBC.postMessage({ type: 'stu_update', cd: stuData.cd, stuData });
                 });
             } catch(_){}
             // 다른 교사 탭에도 변경 브로드캐스트 — _remoteStuTs 즉시 갱신으로 race condition 방지
             if(window._tchTabChannel) try {
-                Object.values(updates).forEach(stuData => {
+                _broadcast.forEach(stuData => {
                     if(stuData && stuData.cd) {
                         window._tchTabChannel.postMessage({ type: 'stu_update', tabId: window._tchTabId, cd: stuData.cd, updatedAt: stuData.updatedAt || 0, stuData });
                     }
@@ -10679,7 +10857,27 @@ let _renderLock = false; // 재진입 방지
         const label = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
         prettyConfirm(`로컬 스냅샷을 불러올까요?<br><span style="font-size:12px;color:#888;">저장 시각: ${label} · 학생 ${(data.stu||[]).length}명</span><br><span style="color:#E53935;font-size:12px;">현재 Firebase 데이터를 덮어씁니다.</span>`,
         () => {
-            if(data.stu) db.stu = data.stu;
+          (async () => {
+            // 🛡️ staleness/급감 가드 — 오래됐거나 부분 로드된 스냅샷이 라이브 데이터를 통째 덮어써
+            //   그 사이 학생들이 쌓은 통화·인벤을 유실시키는 것 방지(타임스탬프 표시만으로는 부족).
+            try {
+                const _liveCnt = Array.isArray(db.stu) ? db.stu.filter(s=>s&&s.cd&&s.nm).length : 0;
+                const _snapCnt = Array.isArray(data.stu) ? data.stu.filter(s=>s&&s.cd&&s.nm).length : 0;
+                if(_liveCnt > 4 && _snapCnt < _liveCnt * 0.9) {
+                    if(!confirm(`⚠️ 스냅샷 학생수(${_snapCnt})가 현재(${_liveCnt})보다 적습니다.\n복구 시 일부 학생이 사라질 수 있어요. 그래도 진행할까요?`)) return;
+                }
+                const _liveTsSnap = await dbRef.child('lastWriteTs').once('value');
+                const _liveTs = _liveTsSnap.val() || 0;
+                const _snapMs = data.ts ? new Date(data.ts).getTime() : 0;
+                if(_liveTs && _snapMs && _snapMs < _liveTs) {
+                    const _mins = Math.round((_liveTs - _snapMs)/60000);
+                    if(!confirm(`⚠️ 이 스냅샷은 현재 서버 데이터보다 약 ${_mins}분 오래됐습니다.\n복구하면 그 사이 학생들이 획득한 쿠키·아이템이 사라집니다. 정말 복구할까요?`)) return;
+                }
+            } catch(_){}
+            // 완료된 은행기록(아카이브)은 라이브 stu에서 분리 보관되므로 병합 후 복구(미병합 시 통장기록 유실)
+            let _stuToRestore = data.stu;
+            try { if(data.stu && typeof window._bankMergeArchiveIntoStu === 'function') _stuToRestore = window._bankMergeArchiveIntoStu(data.stu) || data.stu; } catch(_){}
+            if(_stuToRestore) db.stu = _stuToRestore;
             if(data.itm) db.itm = data.itm;
             if(data.gac) db.gac = data.gac;
             if(data.avt) db.avt = data.avt;
@@ -10689,6 +10887,7 @@ let _renderLock = false; // 재진입 방지
             if(data.log) db.log = data.log;
             if(data.cfg) db.cfg = data.cfg;
             sv(); rTb(); alert('로컬 스냅샷 복구 완료!');
+          })();
         }, {icon:'💾', okLabel:'복구', okClass:'btn-blue', cancelLabel:'취소'});
     };
 
@@ -11103,9 +11302,19 @@ let _renderLock = false; // 재진입 방지
   function _initMenuLetterSpacing() {
         document.querySelectorAll('#appS .menu').forEach(el => {
             if(el.dataset.tlen) return;
-            // 이모지·공백·구분자 제거 후 순수 텍스트 글자 수 계산
-            const text = el.textContent.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}⚔️⚔]/gu, '').replace(/\s/g, '').trim();
-            el.dataset.tlen = String(text.length);
+            const raw = (el.textContent || '').trim();
+            // "이모지 텍스트" 형식을 아이콘/텍스트 span으로 분리 → 아이콘은 고정폭, 텍스트는 고정폭 안에서 양끝정렬
+            //   (글자수 2~5 무관하게 이모지 위치·글자 시작·끝이 동일하게 정렬됨)
+            const m = raw.match(/^(\S+)\s+([\s\S]+)$/);
+            if(m) {
+                const ico = m[1], txt = m[2];
+                el.dataset.tlen = String(txt.replace(/\s/g, '').length);
+                el.innerHTML = `<span class="menu-ico">${ico}</span><span class="menu-txt">${txt}</span>`;
+            } else {
+                // 형식 불일치(이모지 없음 등) — 글자수만 계산하고 분리는 생략
+                const text = raw.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}⚔️⚔]/gu, '').replace(/\s/g, '').trim();
+                el.dataset.tlen = String(text.length);
+            }
         });
     }
 
@@ -11127,7 +11336,13 @@ let _renderLock = false; // 재진입 방지
             // 키오스크 사이드바 로직 삭제됨 (상점 탭으로 이동)
         }
     }
+    // '왕의 음악대'(쥬크박스 신청 아이템) 판별 — 공백/전각공백 차이를 흡수해 이름이 조금 달라도 인식.
+    //   (기존엔 정확 일치만 인식 → 공백·전각 차이로 일반 쿠폰처럼 소진되던 잔재 방지)
+    function _isJukeboxItem(name){ return String(name||'').replace(/[\s　]+/g,'') === '왕의음악대'; }
+    window._isJukeboxItem = _isJukeboxItem;
     window.showItemDetail = function(itemName, invIdx) {
+        // me.inv가 Firebase 객체로 들어와도 안전하게 배열로 정규화 (findIndex/length 사용처 보호)
+        if(me && me.inv && !Array.isArray(me.inv)) me.inv = Object.values(me.inv).filter(Boolean);
         const item = (invIdx != null && me.inv[invIdx] && me.inv[invIdx].st === 'active')
             ? me.inv[invIdx]
             : me.inv.find(i => i.n.trim() === itemName.trim() && i.st === 'active' && !i.pseudo && !i.locked);
@@ -11140,9 +11355,9 @@ let _renderLock = false; // 재진입 방지
         const _needApprove = (itDef?.needApprove ?? item.needApprove);
         // 월요 쿠키는 교사 사용요청이 아니라 상점에서 직접 사용(상점 이용권과 동일) → 사용요청 폼 비표시
         const _isMondayCookieItem = itemName.trim() === '월요 쿠키' || item.type === 'cookie_req';
-        const canUse = !_isMondayCookieItem && (!!(_needApprove === true || _needApprove === 'true' || _needApprove === 1) || (item.usageDurationDays > 0) || !!item.unlimitedDaily || !!itDef?.unlimitedDaily || (itemName.trim() === '왕의 음악대'));
+        const canUse = !_isMondayCookieItem && (!!(_needApprove === true || _needApprove === 'true' || _needApprove === 1) || (item.usageDurationDays > 0) || !!item.unlimitedDaily || !!itDef?.unlimitedDaily || _isJukeboxItem(itemName));
         const _usageDur = item.usageDurationDays || 0;
-        const _isJukebox = itemName.trim() === '왕의 음악대';
+        const _isJukebox = _isJukeboxItem(itemName);
         const _todayISO = new Date().toLocaleDateString('sv-SE');
         // 주말이면 다음 월요일로 초기 날짜 이동
         const _weekdayDate = (function(){ const d=new Date(); while(d.getDay()===0||d.getDay()===6) d.setDate(d.getDate()+1); return d; })();
@@ -11407,8 +11622,10 @@ let _renderLock = false; // 재진입 방지
         window._useQPending.add(_useQKey);
         // 2000ms: Firebase 왕복(debounce+write+echo) 완료 후 해제
         setTimeout(()=>{ window._useQPending.delete(_useQKey); }, 2000);
+        // me.inv가 Firebase 객체로 들어와도 안전하게 배열로 정규화 (아래 findIndex/length 사용처 보호)
+        if(me && me.inv && !Array.isArray(me.inv)) me.inv = Object.values(me.inv).filter(Boolean);
         // 🎵 쥬크 박스(왕의 음악대): 날짜 없이 신청자 이름/사연/링크로 신청곡 제출
-        if(itemName.trim() === '왕의 음악대'){
+        if(_isJukeboxItem(itemName)){
             const applicant = (document.getElementById('jukeboxName')?.value||'').trim();
             const story = (document.getElementById('jukeboxStory')?.value||'').trim();
             let link = (document.getElementById('jukeboxLink')?.value||'').trim();
@@ -11416,7 +11633,7 @@ let _renderLock = false; // 재진입 방지
             if(!story){ prettyConfirm('신청곡 <b>사연</b>을 적어주세요! 🎵', ()=>{}, {icon:'🎵', okLabel:'확인', okClass:'btn-blue', cancelLabel:''}); window._useQPending && window._useQPending.delete(_useQKey); return; }
             if(!link){ prettyConfirm('<b>음악 링크</b>를 넣어주세요! 🔗', ()=>{}, {icon:'🔗', okLabel:'확인', okClass:'btn-blue', cancelLabel:''}); window._useQPending && window._useQPending.delete(_useQKey); return; }
             if(!/^https?:\/\//i.test(link)) link = 'https://' + link;
-            const i = me.inv.findIndex(x => x && x.n.trim()==='왕의 음악대' && x.st==='active' && !x.pseudo && !x.locked);
+            const i = me.inv.findIndex(x => x && _isJukeboxItem(x.n) && x.st==='active' && !x.pseudo && !x.locked);
             if(i<0){ prettyConfirm('보유한 <b>왕의 음악대</b>가 없어요! 🎒', ()=>{}, {icon:'🎒', okLabel:'확인', okClass:'btn-blue', cancelLabel:''}); window._useQPending && window._useQPending.delete(_useQKey); return; }
             me.inv[i].st = 'jukebox';
             me.inv[i].applicant = applicant;
@@ -11424,6 +11641,39 @@ let _renderLock = false; // 재진입 방지
             me.inv[i].musicLink = link;
             delete me.inv[i].useDate; delete me.inv[i].useEndDate; delete me.inv[i].reqApproved; delete me.inv[i].reqDone;
             if(window._upMeLastHash && me.cd) delete window._upMeLastHash[me.cd];
+            // 🎵 신청 상태(jukebox)를 서버에 '즉시 직접' 기록 — upMe(300ms 디바운스+해시dedup+echo병합)만으로는
+            //   중간에 도착한 서버 echo가 me.inv를 이전(active) 상태로 되돌려 신청이 유실되는 레이스가 있어,
+            //   해당 아이템 필드를 곧바로 정밀 경로로 써서 저장 누락을 원천 차단.
+            try {
+                const _cdMigJb = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+                const _jbKey = _cdMigJb
+                    ? me.cd
+                    : ((typeof window._myFbIdx === 'number' && window._myFbIdx >= 0)
+                        ? window._myFbIdx
+                        : (Array.isArray(db.stu) ? db.stu.findIndex(s => s && String(s.cd).trim() === String(me.cd).trim()) : -1));
+                if(_jbKey !== undefined && _jbKey !== null && _jbKey !== '' && _jbKey !== -1) {
+                    // 🎯 inv 전체가 아니라 '해당 신청곡 아이템(inv[i])의 필드만' 정밀 경로로 기록 →
+                    //   다른 아이템(교사가 동시에 처리 중인 req 승인/반려·타 jukebox 재생완료 등)을 건드리지 않아
+                    //   upMe의 stale-inv 병합 가드를 우회해도 clobbering이 원천 발생하지 않음.
+                    // updatedAt도 함께 + _myWrittenTs 등록 → echo가 self-write로 인식돼 _meSyncSeq 미증가(upMe 정책과 동일).
+                    const _jbTs = Date.now();
+                    if(!window._myWrittenTs) window._myWrittenTs = [];
+                    window._myWrittenTs.push(_jbTs);
+                    if(window._myWrittenTs.length > 8) window._myWrittenTs.shift();
+                    const _b = 'stu/' + _jbKey + '/inv/' + i + '/';
+                    const _jbUpd = {};
+                    _jbUpd[_b + 'st'] = 'jukebox';
+                    _jbUpd[_b + 'applicant'] = applicant;
+                    _jbUpd[_b + 'story'] = story;
+                    _jbUpd[_b + 'musicLink'] = link;
+                    _jbUpd[_b + 'useDate'] = null;      // null = 키 삭제 (로컬 delete와 동일)
+                    _jbUpd[_b + 'useEndDate'] = null;
+                    _jbUpd[_b + 'reqApproved'] = null;
+                    _jbUpd[_b + 'reqDone'] = null;
+                    _jbUpd['stu/' + _jbKey + '/updatedAt'] = _jbTs;
+                    dbRef.update(_jbUpd);
+                }
+            } catch(e){ console.error('[jukebox] 즉시 신청 저장 실패 — upMe 폴백', e); }
             upMe();
             document.getElementById('itemModal')?.remove();
             showToast('신청곡이 쥬크 박스에 담겼어요! 🎵', 2500);
@@ -12361,7 +12611,8 @@ let _renderLock = false; // 재진입 방지
         const _seqAtCapture = window._meSyncSeq || 0;
         // Firebase write는 300ms debounce — 연속 구매 시 마지막 상태만 전송 (reqCnt/rank 다중 write 방지)
         clearTimeout(_upMeDebounce);
-        _upMeDebounce = setTimeout(() => {
+        const _doUpMeFlush = () => {
+            window._upMePendingFlush = null;
             if (!me || !me.cd) return;
             // 🛡️ 잔여 레이스 방어: 캡처 후 외부(교사) 갱신이 도착했으면 stale _safe.inv 로 덮어쓰지 않도록 병합.
             //    inv엔 고유 id가 없어 통째 교체는 위험(라운드트립 전 신규 구매/통화 손실) → 손실 없는 보수적 규칙:
@@ -12416,8 +12667,25 @@ let _renderLock = false; // 재진입 방지
             } else {
                 _upMeWriteCd(_safe);
             }
-        }, 300);
+        };
+        // 탭 종료/숨김 시 즉시 flush할 수 있도록 대기 중 flush 함수를 노출(아래 pagehide/visibilitychange 핸들러가 호출).
+        //   미flush 시 마지막 획득 화폐(tpMoney/쿠키/레벨보너스)가 유실됨. increment 경로라 늦은 flush도 안전.
+        window._upMePendingFlush = _doUpMeFlush;
+        _upMeDebounce = setTimeout(_doUpMeFlush, 300);
     }
+    // 대기 중 upMe write를 동기적으로 즉시 실행(탭 닫힘/숨김 직전). 중복 실행 방지 위해 포인터 소비.
+    window._flushUpMe = function(){
+        if(window._upMePendingFlush){
+            clearTimeout(_upMeDebounce);
+            const _f = window._upMePendingFlush;
+            window._upMePendingFlush = null;
+            try { _f(); } catch(_){}
+        }
+    };
+    try {
+        window.addEventListener('pagehide', () => { try { window._flushUpMe && window._flushUpMe(); } catch(_){} });
+        document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden'){ try { window._flushUpMe && window._flushUpMe(); } catch(_){} } });
+    } catch(_){}
     // [LEGACY] 실제 write 로직 — 정수 인덱스 기반 (마이그레이션 전)
     function _upMeWrite(i, _safe){
         if (!me || !me.cd) return;
@@ -12509,7 +12777,8 @@ let _renderLock = false; // 재진입 방지
             //   화폐(cd~tk) + 항상 존재하는 컬렉션/착용 필드(inv/col/avtOwned/earnedBdg/earnedTit/ownedPets/eq/
             //   displayPets/equippedTit). 이들은 비어도 []/{}로 존재 → 키가 빠지면 부분로드 사고이므로 서버 wipe 차단.
             const _noNullFields = new Set(['cd','nm','no','gdr','cookie','usedCookie','shopUsed','co','cn','tk','tpMoney','updatedAt',
-                'inv','col','avtOwned','earnedBdg','earnedTit','ownedPets','eq','displayPets','equippedTit']);
+                'inv','col','avtOwned','earnedBdg','earnedTit','ownedPets','eq','displayPets','equippedTit',
+                'bank','bankAdj','displayProps']); // bank/bankAdj(은행 저축)·displayProps(착용) 부분로드 wipe 방어
             Object.keys(lastHash).forEach(k => { if(!(k in _safeWithoutShopLog) && !_noNullFields.has(k)) updates[k] = null; });
             // shopUsed race 방지: pending delta는 write 여부와 무관하게 소비 (avt-direct 이후 중복 방지)
             const _pendingDelta = window._shopUsedAtomicDelta || 0;
@@ -12560,8 +12829,22 @@ let _renderLock = false; // 재진입 방지
                                 const seen = new Set(arr);
                                 _adds.forEach(it => { if(!seen.has(it)){ arr.push(it); seen.add(it); } });
                                 return arr;
+                            }, function(_err, _committed){
+                                // 🛡️ async 실패/미커밋 폴백 — 완료콜백으로만 보고되므로 sync catch로는 못 잡음.
+                                //   절대값 set은 교사가 회수한 항목을 stale 로컬 배열로 부활시킬 위험이 있어 지양.
+                                //   대신 add-only 트랜잭션을 1회 재시도 → 재실패 시 조용히 포기(신규 획득분만 미반영, 회수분 안전).
+                                if(_err || !_committed){
+                                    try {
+                                        dbRef.child('stu/' + key + '/' + F).transaction(server => {
+                                            const arr = Array.isArray(server) ? server.slice() : (server ? Object.values(server).filter(Boolean) : []);
+                                            const seen = new Set(arr);
+                                            _adds.forEach(it => { if(!seen.has(it)){ arr.push(it); seen.add(it); } });
+                                            return arr;
+                                        }, function(_e2, _c2){ if(_e2 || !_c2) console.warn('[colTxn] add-only 재시도 실패 — 신규 획득분 미반영:', F, _adds); });
+                                    } catch(_){}
+                                }
                             });
-                        } catch(_){ updates[F] = _safeWithoutShopLog[F]; } // 트랜잭션 실패 시 절대값 폴백
+                        } catch(_){ updates[F] = _safeWithoutShopLog[F]; } // 트랜잭션 동기 실패 시 절대값 폴백
                     });
                 }
                 if(Object.keys(updates).length > 0) dbRef.child('stu/' + key).update(updates);
@@ -14774,26 +15057,51 @@ let _renderLock = false; // 재진입 방지
 
         if(_cdMigrated) {
             // [NEW] cd 키 모드: 각 학생을 stu/{cd} 경로에 직접 set/update
+            // 🛡️ 서버 truth로 신규/기존 판정 — 로컬 db.stu가 불완전(캐시 truncate·증분로드·타기기 미동기화)해도
+            //   서버에 실재하는 학생을 0(cookie/inv/bank 리셋)으로 덮어쓰지 않도록. (단일추가 once/레거시 트랜잭션과 동일 안전장치)
+            let _serverByCd = {};
+            try {
+                const _snap = await dbRef.child('stu').once('value');
+                const _svAll = _snap.val() || {};
+                Object.values(_svAll).forEach(v => { if(v && v.cd) _serverByCd[String(v.cd).trim()] = v; });
+            } catch(e){ alert('일괄 등록 실패(서버 조회): '+e.message); return; }
+            // 🛡️ 부분 로드된 db.stu 보정 — 방금 읽은 전체 서버 stu에서 로컬에 없는 학생을 편입.
+            //   이후 _safeCacheStu가 완전한 집합을 캐시 → 부분 로드 상태로 등록 시 일부 학생이 캐시에서 누락되던 갭 차단.
+            try {
+                if(!Array.isArray(db.stu)) db.stu = [];
+                Object.keys(_serverByCd).forEach(cd => {
+                    if(!db.stu.some(s => s && String(s.cd).trim() === cd)) {
+                        db.stu.push(_serverByCd[cd]);
+                        if(!window._remoteStuTs) window._remoteStuTs = {};
+                        if(_serverByCd[cd].updatedAt) window._remoteStuTs[cd] = _serverByCd[cd].updatedAt;
+                    }
+                });
+            } catch(_){}
             const upd = { lastWriteTs: firebase.database.ServerValue.TIMESTAMP };
             const _newCds = [];
             for(const row of _rows) {
                 if(!row.cd) { _skipped++; continue; }
-                const existing = db.stu.find(s => s && s.cd === row.cd);
-                if(existing) {
-                    const _copy = Object.assign({}, existing, {no:row.no, nm:row.nm, updatedAt:Date.now()});
-                    if(row.gdr) _copy.gdr = row.gdr;
-                    Object.assign(existing, _copy);
-                    upd['stu/'+row.cd] = _copy;
-                    upd['reqCnt/'+row.cd] = window._computeReqCnt ? window._computeReqCnt(_copy) : {};
+                const _srv = _serverByCd[String(row.cd).trim()];
+                const _local = db.stu.find(s => s && s.cd === row.cd);
+                if(_srv) {
+                    // 기존(서버 존재): 프로필(no/nm/gdr)만 leaf 갱신 — 통화/인벤/은행/레벨은 서버값 그대로 보존(리셋·클로버 방지)
+                    const _ut = Date.now();
+                    upd['stu/'+row.cd+'/no'] = row.no;
+                    upd['stu/'+row.cd+'/nm'] = row.nm;
+                    if(row.gdr) upd['stu/'+row.cd+'/gdr'] = row.gdr;
+                    upd['stu/'+row.cd+'/updatedAt'] = _ut;
+                    if(_local){ _local.no=row.no; _local.nm=row.nm; if(row.gdr)_local.gdr=row.gdr; _local.updatedAt=_ut; }
+                    else { db.stu.push(Object.assign({}, _srv, {no:row.no, nm:row.nm, updatedAt:_ut}, row.gdr?{gdr:row.gdr}:{})); }
                     if(!window._remoteStuTs) window._remoteStuTs = {};
-                    window._remoteStuTs[row.cd] = _copy.updatedAt;
+                    window._remoteStuTs[row.cd] = _ut;
                     if(window._stuSentHash) delete window._stuSentHash[row.cd];
                     if(window._stuPerHash) delete window._stuPerHash[row.cd];
                     _updated++;
                 } else {
+                    // 신규(서버에 없음): zeroed 레코드 생성
                     const newS = {no:row.no, nm:row.nm, cd:row.cd, cn:0, tk:0, co:0, cookie:0, usedCookie:0, level:1, inv:defInv.slice(), ibx:[], col:[], rd:{}, rb:0, updatedAt:Date.now()};
                     if(row.gdr) newS.gdr = row.gdr;
-                    db.stu.push(newS);
+                    if(_local){ Object.assign(_local, newS); } else { db.stu.push(newS); }
                     upd['stu/'+row.cd] = newS;
                     upd['reqCnt/'+row.cd] = window._computeReqCnt ? window._computeReqCnt(newS) : {};
                     upd['stuDel/'+row.cd] = null;
@@ -15588,7 +15896,7 @@ let _renderLock = false; // 재진입 방지
         const s = db.stu[i]; if(!s) return;
         if(!s.gdr) s.gdr = 'm';
         else if(s.gdr === 'm') s.gdr = 'f';
-        else delete s.gdr;
+        else window._delStuField(s, 'gdr');
         window._svStu([i]); rTb();
     };
 
@@ -16350,13 +16658,24 @@ let _renderLock = false; // 재진입 방지
     //   여러 승인 경로(그룹승인·전체승인·선택승인·날짜별 승인)에서 공통 호출 → _coinGranted 플래그로 중복 방지.
     //   🍪 쿠키(kc)는 다했니 1분 폴링이 덮어쓰는 가상필드 → shopUsed 음수 차감. co/cn/tk는 실제 필드 가산.
     //   반환: 실제 지급이 일어났으면 true.
+    // 코인 승인/환불이 바꾼 통화를 다음 stu write(_svStu/sv)에서 increment(델타)로 내보내도록 예약.
+    //   교사 whole-node 절대값 write가 학생의 동시 increment(획득/소비)를 덮어써 화폐가 유실되는 것 방지.
+    //   예약은 해당 학생을 쓰는 저장 경로(_svStu/sv 루프)에서 consume되며, 각 핸들러가 mutate 직후 동기 저장하므로 누수/중복 없음.
+    window._reserveCoinDelta = function(cd, field, delta){
+        if(!cd || !field || !delta) return;
+        if(!window._pendingCoinDeltas) window._pendingCoinDeltas = {};
+        const _m = window._pendingCoinDeltas[cd] || (window._pendingCoinDeltas[cd] = {});
+        _m[field] = (_m[field]||0) + delta;
+    };
     window._grantCoinItem = function(s, _it) {
         if(!s || !_it || _it._coinGranted) return false;
         const _def = (db.itm||[]).find(it=>it && it.n===_it.n);
         if(!_def || !_def.coinType) return false;
-        const _f = _def.coinType, _a = _def.coinAmt||1;
-        if(_f==='kc') s.shopUsed = (Number(s.shopUsed)||0) - _a;
-        else s[_f] = (Number(s[_f])||0) + _a;
+        const _fld = _def.coinType==='kc' ? 'shopUsed' : _def.coinType;
+        const _a = _def.coinAmt||1;
+        const _delta = _def.coinType==='kc' ? -_a : _a;   // 🍪 쿠키(kc)는 shopUsed 음수 차감, co/cn/tk는 실제 필드 가산
+        s[_fld] = (Number(s[_fld])||0) + _delta;
+        window._reserveCoinDelta(s.cd, _fld, _delta);
         _it._coinGranted = true;
         return true;
     };
@@ -16405,6 +16724,7 @@ let _renderLock = false; // 재진입 방지
         const targets = currentGroups.filter(g=>g.si===si&&g.hasReq);
         if(!targets.length) return alert('승인할 요청 항목이 없습니다.');
         prettyConfirm(`대기 항목 <b>${targets.length}건</b>을<br>모두 승인할까요?`, function(){
+            const _affCds = new Set();
             targets.forEach(g=>{
                 g.items.forEach(x=>{
                     // cd 우선 조회 — index(x.si)는 학생 삭제(splice) 시 흔들려 오대상 승인 위험. 미발견 시 skip.
@@ -16415,11 +16735,15 @@ let _renderLock = false; // 재진입 방지
                         // 화폐 지급 아이템(대기 요청)이면 승인 시 화폐 지급 후 used 처리
                         if((_it.st==='req'||_it.st==='shop_req') && window._grantCoinItem(s,_it)) _it.st='used';
                         else if(_it.st==='shop_req') _it.st='active'; else if(_it.st==='req') _it.reqApproved=true; else _it.st='used';
+                        if(s.cd) _affCds.add(s.cd);
                     }
-                    else if(x.y==='l'&&s.ibx&&s.ibx[x.k]) s.ibx[x.k].st='used';
+                    else if(x.y==='l'&&s.ibx&&s.ibx[x.k]) { s.ibx[x.k].st='used'; if(s.cd) _affCds.add(s.cd); }
                 });
             });
-            db.stu=stuList; sv(); _syncRequestViews();
+            // 타깃 학생만 _svStu로 저장 — 통화 제외 leaf write라 온라인 학생의 동시 화폐 increment 미클로버(sv() 전체노드 회피).
+            db.stu=stuList;
+            if(_affCds.size && window._svStuByCd) window._svStuByCd([..._affCds]); else sv();
+            _syncRequestViews();
         }, {icon:'✅', okLabel:'승인', okClass:'btn-blue'});
     };
 
@@ -16518,6 +16842,7 @@ let _renderLock = false; // 재진입 방지
         const allReq = currentGroups.filter(g=>g.hasReq);
         if(!allReq.length) return alert('승인할 요청이 없습니다.');
         if(!confirm(`전체 학생의 대기 항목 ${allReq.length}건을 모두 승인하시겠습니까?`)) return;
+        const _affCds = new Set();
         allReq.forEach(g=>{
             g.items.forEach(x=>{
                 // cd 우선 조회 — index(x.si)는 학생 삭제(splice) 시 흔들려 오대상 승인 위험. 미발견 시 skip.
@@ -16527,11 +16852,15 @@ let _renderLock = false; // 재진입 방지
                     const _it=s.inv[x.k];
                     if((_it.st==='req'||_it.st==='shop_req') && window._grantCoinItem(s,_it)) _it.st='used';
                     else if(_it.st==='shop_req') _it.st='active'; else if(_it.st==='req') _it.reqApproved=true; else _it.st='used';
+                    if(s.cd) _affCds.add(s.cd);
                 }
-                else if(x.y==='l'&&s.ibx&&s.ibx[x.k]) s.ibx[x.k].st='used';
+                else if(x.y==='l'&&s.ibx&&s.ibx[x.k]) { s.ibx[x.k].st='used'; if(s.cd) _affCds.add(s.cd); }
             });
         });
-        db.stu=stuList; sv(); rAs();
+        // 타깃 학생만 _svStu로 저장(통화 제외 leaf) — 전교생 대상 sv() 전체노드가 온라인 학생 화폐 increment를 덮지 않도록.
+        db.stu=stuList;
+        if(_affCds.size && window._svStuByCd) window._svStuByCd([..._affCds]); else sv();
+        rAs();
     };
 
     const AVT_SUB =[{k:'all',lb:'전체'},{k:'face',lb:'얼굴'},{k:'hair',lb:'머리'},{k:'outfit',lb:'의상'},{k:'shoes',lb:'신발'},{k:'hat',lb:'모자'},{k:'hair_deco',lb:'머리 장식'},{k:'face_deco',lb:'얼굴 장식'},{k:'back',lb:'등 장식'},{k:'prop',lb:'소품'},{k:'pet',lb:'펫'}];
@@ -17281,8 +17610,8 @@ let _renderLock = false; // 재진입 방지
                 const refund = it.paid || itDef?.p || 0;
                 const cur = it.cur || itDef?.c || 'kc';
                 if(refund > 0) {
-                    if(cur === 'kc') s.shopUsed = Math.max(0, (s.shopUsed||0) - refund);
-                    else s[cur] = (s[cur]||0) + refund;
+                    if(cur === 'kc') { s.shopUsed = (s.shopUsed||0) - refund; window._reserveCoinDelta(s.cd, 'shopUsed', -refund); } // 클램프 제거 — 언클램프 increment와 정합(로컬/서버 divergence 방지, 음수=보너스는 grant와 동일)
+                    else { s[cur] = (s[cur]||0) + refund; window._reserveCoinDelta(s.cd, cur, refund); }
                 }
                 inv.splice(k, 1);
             } else {
@@ -17413,7 +17742,7 @@ let _renderLock = false; // 재진입 방지
                 });
                 // 정산 완료: 당일 스냅샷 초기화 (다음날 교사 접속 시 재기록)
                 if (s.xpBoost) { delete s.xpBoost.dailyStartCookie; delete s.xpBoost.dailySnapDate; }
-                delete s.xpBoost;
+                window._delStuField(s, 'xpBoost');
                 s.updatedAt = Date.now();
                 s.inv = inv; db.stu = stuList; if(window._svStuByCd) window._svStuByCd(cd); else sv();
                 window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
@@ -17430,7 +17759,7 @@ let _renderLock = false; // 재진입 방지
                     delete it.useDate; delete it.useEndDate;
                     delete it.currentDay; delete it.totalDays; delete it.baseCookie;
                 });
-                delete s.xpBoost;
+                window._delStuField(s, 'xpBoost');
                 s.updatedAt = Date.now();
                 s.inv = inv; db.stu = stuList; if(window._svStuByCd) window._svStuByCd(cd); else sv();
                 window._teacherSyncReqCnt && window._teacherSyncReqCnt(stuList, cd);
@@ -17485,8 +17814,8 @@ let _renderLock = false; // 재진입 방지
                     const refund = it.paid || itDef?.p || 0;
                     const cur = it.cur || itDef?.c || 'kc';
                     if(refund > 0) {
-                        if(cur === 'kc') s.shopUsed = Math.max(0, (s.shopUsed||0) - refund);
-                        else s[cur] = (s[cur]||0) + refund;
+                        if(cur === 'kc') { s.shopUsed = (s.shopUsed||0) - refund; window._reserveCoinDelta(s.cd, 'shopUsed', -refund); } // 클램프 제거 — 언클램프 increment와 정합(로컬/서버 divergence 방지, 음수=보너스는 grant와 동일)
+                        else { s[cur] = (s[cur]||0) + refund; window._reserveCoinDelta(s.cd, cur, refund); }
                     }
                     it._pendingRemove = true;
                 } else {
@@ -17543,7 +17872,7 @@ let _renderLock = false; // 재진입 방지
             // inv 항목을 못 찾으면 xpBoost만 정리 (방어적)
             window.prettyConfirm(
                 `${s.nm} 학생의 성장의 불꽃/화염 활성 상태만 종료할까요?<br><span style="font-size:12px;color:#888;">(인벤토리 항목이 이미 처리됐어요)</span>`,
-                () => { delete s.xpBoost; db.stu = stuList; if(s.cd && window._svStuByCd) window._svStuByCd(s.cd); else if(typeof sv==='function') sv(); if(typeof window._showReqMiniPopup==='function') window._showReqMiniPopup(); },
+                () => { window._delStuField(s, 'xpBoost'); db.stu = stuList; if(s.cd && window._svStuByCd) window._svStuByCd(s.cd); else if(typeof sv==='function') sv(); if(typeof window._showReqMiniPopup==='function') window._showReqMiniPopup(); },
                 {icon:'⚠️', okLabel:'종료', okClass:'btn-red', cancelLabel:'취소'}
             );
             return;
@@ -17819,13 +18148,13 @@ let _renderLock = false; // 재진입 방지
                     if(from&&to&&from>to){alert('종료일이 시작일보다 빠릅니다.');return;}
                     const sl=Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
                     const ss=sl.find(x=>x.cd==='${stuCd}');
-                    if(from&&to){ss.shopRestrict={from,to};}else{delete ss.shopRestrict;}
+                    if(from&&to){ss.shopRestrict={from,to};}else{window._delStuField(ss,'shopRestrict');}
                     db.stu=sl;(window._svStuByCd?window._svStuByCd('${stuCd}'):sv());document.getElementById('_shopRestrictModal').remove();alert('저장됐습니다.');
                 ">저장</button>
                 <button class="btn btn-gray" style="flex:1;" onclick="
                     const sl=Array.isArray(db.stu)?db.stu:Object.values(db.stu||{});
                     const ss=sl.find(x=>x.cd==='${stuCd}');
-                    delete ss.shopRestrict;db.stu=sl;(window._svStuByCd?window._svStuByCd('${stuCd}'):sv());document.getElementById('_shopRestrictModal').remove();alert('제한이 해제됐습니다.');
+                    window._delStuField(ss,'shopRestrict');db.stu=sl;(window._svStuByCd?window._svStuByCd('${stuCd}'):sv());document.getElementById('_shopRestrictModal').remove();alert('제한이 해제됐습니다.');
                 ">제한 해제</button>
                 <button class="btn btn-gray" onclick="document.getElementById('_shopRestrictModal').remove()">취소</button>
             </div>
@@ -17848,8 +18177,16 @@ let _renderLock = false; // 재진입 방지
             const _arr = Array.isArray(db.gacQueue[_key])?[...db.gacQueue[_key]]:[...Object.values(db.gacQueue[_key]||{})];
             const _i = _arr.findIndex(x=>x.cd===_e.cd&&x.ts===_e.ts);
             if(_i>=0) _arr.splice(_i,1);
-            db.gacQueue[_key] = _arr;
-            sv(); window._showReqMiniPopup(); if(typeof rGacQueue==='function') rGacQueue();
+            db.gacQueue[_key] = _arr; if(!_arr.length) delete db.gacQueue[_key];
+            // 원자 타깃 제거 — 통째 sv()가 동시 신규 뽑기신청(같은/다른 큐)을 덮어쓰지 않도록 해당 항목만 트랜잭션 제거.
+            dbRef.child('gacQueue/'+_key).transaction(cur => {
+                const a = Array.isArray(cur)?cur.slice():(cur?Object.values(cur).filter(Boolean):[]);
+                const j = a.findIndex(x=>x&&x.cd===_e.cd&&x.ts===_e.ts);
+                if(j>=0) a.splice(j,1);
+                return a.length?a:null;
+            });
+            if(window._lastSentHash){ try{ window._lastSentHash.gacQueue = JSON.stringify(db.gacQueue==null?null:db.gacQueue); }catch(_){} }
+            window._showReqMiniPopup(); if(typeof rGacQueue==='function') rGacQueue();
         }, {icon:'🎰', okLabel:'처리', okClass:'btn-green', cancelLabel:'취소'});
     };
     window._miniGacRej = function(gi) {
@@ -17868,20 +18205,27 @@ let _renderLock = false; // 재진입 방지
             const _arr = Array.isArray(db.gacQueue[_key])?[...db.gacQueue[_key]]:[...Object.values(db.gacQueue[_key]||{})];
             const _i = _arr.findIndex(x=>x.cd===_e.cd&&x.ts===_e.ts);
             if(_i>=0) _arr.splice(_i,1);
-            db.gacQueue[_key] = _arr;
-            // 환불: 학생에게 비용 돌려주기
+            db.gacQueue[_key] = _arr; if(!_arr.length) delete db.gacQueue[_key];
+            // 원자 타깃 제거 — 통째 sv()가 동시 신규 뽑기신청을 덮어쓰지 않도록 해당 항목만 트랜잭션 제거.
+            dbRef.child('gacQueue/'+_key).transaction(cur => {
+                const a = Array.isArray(cur)?cur.slice():(cur?Object.values(cur).filter(Boolean):[]);
+                const j = a.findIndex(x=>x&&x.cd===_e.cd&&x.ts===_e.ts);
+                if(j>=0) a.splice(j,1);
+                return a.length?a:null;
+            });
+            if(window._lastSentHash){ try{ window._lastSentHash.gacQueue = JSON.stringify(db.gacQueue==null?null:db.gacQueue); }catch(_){} }
+            // 환불: 학생에게 비용 돌려주기 — 예약(increment)으로 반영해 학생 동시 화폐변경 미클로버.
             const _g = (db.gac||[]).find(g=>g.n===_key);
             const _sIdx = (db.stu||[]).findIndex(s=>String(s.cd)===String(_e.cd));
             if(_g && _sIdx>=0) {
                 const cType = _g.cur || 'cn';
                 const cost = _g.c || 0;
-                if(cType==='kc') db.stu[_sIdx].shopUsed = Math.max(0,(db.stu[_sIdx].shopUsed||0) - cost);
-                else db.stu[_sIdx][cType] = (db.stu[_sIdx][cType]||0) + cost;
+                if(cType==='kc') { db.stu[_sIdx].shopUsed = (db.stu[_sIdx].shopUsed||0) - cost; window._reserveCoinDelta(db.stu[_sIdx].cd, 'shopUsed', -cost); } // 클램프 제거 — 언클램프 increment 정합
+                else { db.stu[_sIdx][cType] = (db.stu[_sIdx][cType]||0) + cost; window._reserveCoinDelta(db.stu[_sIdx].cd, cType, cost); }
             }
-            // [P1] 학생 1명 환불 + gacQueue 변경(cfg path 별도). sv()는 gacQueue 동기화용으로 유지.
-            //      stu 부분 update를 먼저 시도 + 안전망으로 sv() 호출.
+            // 학생 1명 환불만 타깃 저장(_svStuByCd) — gacQueue는 위에서 타깃 트랜잭션 처리했으므로 sv() 불필요.
             if(_sIdx >= 0 && db.stu[_sIdx]?.cd && window._svStuByCd) window._svStuByCd(db.stu[_sIdx].cd);
-            sv(); window._showReqMiniPopup();
+            window._showReqMiniPopup();
         }, {icon:'🧸', okLabel:'거절', okClass:'btn-red', cancelLabel:'취소'});
     };
 
@@ -18497,8 +18841,8 @@ window.appU = function(y, si, k) {
                     const refund = it.paid || itemPrice || 0;
                     const cur = it.cur || itemCur;
                     if(refund > 0) {
-                        if(cur === 'kc') s.shopUsed = Math.max(0, (s.shopUsed||0) - refund);
-                        else s[cur] = (s[cur]||0) + refund;
+                        if(cur === 'kc') { s.shopUsed = (s.shopUsed||0) - refund; window._reserveCoinDelta(s.cd, 'shopUsed', -refund); } // 클램프 제거 — 언클램프 increment와 정합(로컬/서버 divergence 방지, 음수=보너스는 grant와 동일)
+                        else { s[cur] = (s[cur]||0) + refund; window._reserveCoinDelta(s.cd, cur, refund); }
                     }
                     _toDelete.push({si:x.si, k:x.k, y:'inv'});
                 } else {
@@ -18914,8 +19258,9 @@ window.appU = function(y, si, k) {
             }
             const durId = `giDur_${ri}`, durDaysId = `giDurD_${ri}`;
             const expId = `giExp_${ri}`, expDaysId = `giExpD_${ri}`, expDateId = `giExpDt_${ri}`;
+            const _isCoinRow = (type==='coin');
             const qtyPart = showQty
-                ? `<label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#8D6E63;white-space:nowrap;"><span>수량</span><input data-field="qty" type="number" min="1" value="1" style="width:46px;text-align:center;font-size:12px;font-weight:bold;border:1.5px solid #FFB300;border-radius:6px;padding:1px 3px;font-family:'Jua';">개</label>`
+                ? `<label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#8D6E63;white-space:nowrap;"><span>수량</span><input data-field="qty" type="number" ${_isCoinRow?'':'min="1"'} value="1" style="width:${_isCoinRow?'52':'46'}px;text-align:center;font-size:12px;font-weight:bold;border:1.5px solid #FFB300;border-radius:6px;padding:1px 3px;font-family:'Jua';">개</label>`
                 : '';
             const durPart = showDur
                 ? `<label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#0288D1;white-space:nowrap;"><span>N일권</span><select id="${durId}" data-field="dur" autocomplete="off" style="font-size:11px;border:1.5px solid #4FC3F7;border-radius:6px;padding:1px 3px;font-family:'Jua';" onchange="document.getElementById('${durDaysId}').style.display=this.value==='days'?'inline-block':'none';"><option value="">일반</option><option value="1">1일</option><option value="3">3일</option><option value="7">1주</option><option value="14">2주</option><option value="30">1달</option><option value="days">직접</option></select><input id="${durDaysId}" data-field="dur-days" type="number" min="1" max="365" value="1" placeholder="일" style="display:none;width:38px;text-align:center;font-size:11px;border:1.5px solid #4FC3F7;border-radius:6px;padding:1px 3px;font-family:'Jua';"></label>`
@@ -18969,6 +19314,21 @@ window.appU = function(y, si, k) {
         <div id="givStuPopBg" style="position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:9998;" onclick="document.getElementById('givStuPop')?.remove();document.getElementById('givStuPopBg')?.remove();"></div>`);
     };
 
+    // 화폐 지급/차감 순수 계산 (실제 지급 핸들러 doGivMultiStuPop과 자가테스트가 공유)
+    //  쿠키: cookie는 다했니 권위값이라 직접 못 건드림 → shopUsed를 음수차감해 가용쿠키(cookie-usedCookie-shopUsed)를 늘림.
+    //        차감(amt<0) 시 가용쿠키(cookie-usedCookie) 이상은 못 깎도록 shopUsed 상한(cap) 클램프.
+    window._grantCookieShopUsed = function(shopUsed, amt, cookie, usedCookie){
+        let ns = (Number(shopUsed)||0) - amt;
+        const cap = (Number(cookie)||0) - (Number(usedCookie)||0);
+        if(amt < 0 && ns > cap) ns = cap;
+        return ns;
+    };
+    // co/cn/tk: 가산/차감. 차감 시 잔액 0 미만 방지.
+    window._grantCoinValue = function(cur, amt){
+        let nv = (Number(cur)||0) + amt;
+        if(amt < 0 && nv < 0) nv = 0;
+        return nv;
+    };
     window.doGivMultiStuPop = async function() {
         if(window._givMultiRunning) return;
         window._givMultiRunning = true;
@@ -19033,7 +19393,15 @@ window.appU = function(y, si, k) {
             const qtyEl = row.querySelector('[data-field="qty"]');
             const durSel = row.querySelector('[data-field="dur"]');
             const durDays = row.querySelector('[data-field="dur-days"]');
-            const qty = qtyEl ? Math.max(1, parseInt(qtyEl.value||'1')||1) : 1;
+            // 화폐(coin)는 음수(차감) 허용, 그 외(아이템 등)는 최소 1
+            const _rowType = String(key).split(':')[0];
+            let qty;
+            if(_rowType === 'coin'){
+                qty = parseInt(qtyEl?.value || '1');
+                if(isNaN(qty) || qty === 0) qty = 1; // 0/빈값은 무해한 +1로
+            } else {
+                qty = qtyEl ? Math.max(1, parseInt(qtyEl.value||'1')||1) : 1;
+            }
             let dur = 0;
             if(durSel && durSel.value) {
                 if(durSel.value === 'days') dur = Math.max(1, parseInt(durDays?.value||'1')||1);
@@ -19118,12 +19486,15 @@ window.appU = function(y, si, k) {
                 const _key = `${type}:${idx}`;
                 const _iSet = _itemSettings[_key] || {};
                 if(type==='coin'){
-                    const amt = coinQty[idx] || 1;
+                    const amt = coinQty[idx] || 1; // 음수면 차감
                     // 🍪 쿠키는 s.cookie 직접 증가 금지 — cookie는 다했니 권위값이라 학생 1분 폴링(syncMyCookieSilent)이
                     //   다했니 값으로 덮어써 지급이 ~1분 내 사라짐. execGiveCoin(16265)·레벨업 보너스와 동일하게
                     //   폴링이 안 건드리는 shopUsed를 음수 차감해 가용 잔액(cookie-usedCookie-shopUsed)을 늘린다.
-                    if(idx==='cookie') s.shopUsed = (Number(s.shopUsed)||0) - amt;
-                    else s[idx] = (Number(s[idx])||0) + amt;
+                    if(idx==='cookie') {
+                        s.shopUsed = window._grantCookieShopUsed(s.shopUsed, amt, s.cookie, s.usedCookie);
+                    } else {
+                        s[idx] = window._grantCoinValue(s[idx], amt);
+                    }
                     return;
                 }
                 if(type==='itm'){
@@ -19237,7 +19608,7 @@ window.appU = function(y, si, k) {
             const _coinEmoji = { cookie:'🍪', co:'🍯', cn:'🍭', tk:'🧺' };
             const _coinNames2 = { cookie:'쿠키', co:'꿀', cn:'캔디', tk:'바구니' };
             const _msgItems = items.map(({type,idx}) => {
-                if(type==='coin') return { name: _coinNames2[idx]||'화폐', emoji: _coinEmoji[idx]||'💰' };
+                if(type==='coin') { const _a = coinQty[idx]||1; return { name: (_coinNames2[idx]||'화폐') + (_a<0?` ${Math.abs(_a)} 차감`:''), emoji: _coinEmoji[idx]||'💰' }; }
                 if(type==='itm'){ const _l=Array.isArray(db.itm)?db.itm:Object.values(db.itm||{}); const _it=_l[idx]; return { name:_it?.n||'', img:_it?.i||'', emoji:_it?.i||'🎁' }; }
                 if(type==='avt'){ const _a=(db.avt||[])[idx]; return { name:_a?.nm||'', img:_a?.img||'' }; }
                 if(type==='bdg'){ const _b=(db.bdg||[])[idx]; return { name:_b?.name||'', img:_b?.img||'', emoji:_b?.icon||'📛' }; }
@@ -19363,7 +19734,15 @@ window.appU = function(y, si, k) {
         // (화폐·아이템 누락 버그: 예전엔 여기서 updatedAt를 안 올려 _svStu stale-write 가드가
         //  통째 write를 silent-drop → "지급기록엔 +1, 실제 미반영". 이제 _svStu가 내용이 바뀐
         //  레코드에 한해 updatedAt를 자동 stamp하므로 여기서 별도 stamp 불필요.)
-        window._svStu(checked); rAs(); rColT();
+        // 통화 델타(스냅샷 대비 실제 적용분, 클램프 반영) 산출 → _svStu가 increment로 write해 동시 변경 clobber 방지
+        const _curDeltas = {};
+        checked.forEach(si => {
+            const s = stuArr[si], snap = _curSnap[si]; if(!s || !snap) return;
+            const d = {};
+            ['co','cn','tk','shopUsed'].forEach(k => { const dd = (Number(s[k])||0) - (Number(snap[k])||0); if(dd) d[k] = dd; });
+            if(Object.keys(d).length) _curDeltas[si] = d;
+        });
+        window._svStu(checked, { curDeltas: _curDeltas }); rAs(); rColT();
         if(_couponGranted) showToast('🎁 펫 스킬 쿠폰 자동 지급 완료!');
         if(_holidaySkipCount > 0) showToast(`🚩 공휴일 절반 이상 — ${_holidaySkipCount}명 잠금 아이템 미지급`);
         // 지급 기록 (각 아이템별로)
@@ -21347,8 +21726,13 @@ window.appU = function(y, si, k) {
                     </div>
                     <div style="font-size:13px;color:#5D4037;margin-top:8px;">교환권 1장과 위 쿠폰 1개를 사용해 누구나 바구니 ${_vbAmt}개와 교환할까요?</div>`;
                     const _doBasketExchange = () => {
-                        const removeIdx = state.giveInvIdx !== null ? state.giveInvIdx : giveIdxs[giveIdxs.length - 1];
+                        let removeIdx = state.giveInvIdx !== null ? state.giveInvIdx : giveIdxs[giveIdxs.length - 1];
                         const _giveNmForLog = giveDef?.n || state.giveName || '쿠폰';
+                        // 🛡️ 모달 오픈 후 echo로 inv 재인덱스 가능 → 신원 재검증. 어긋나면 이름으로 재탐색, 없으면 중단.
+                        if(!me.inv[removeIdx] || me.inv[removeIdx].n !== state.giveName){
+                            removeIdx = (Array.isArray(me.inv)?me.inv:[]).findIndex(it => it && it.n === state.giveName && (it.st==='active'||it.st==='new') && !it.locked && !it.pseudo);
+                            if(removeIdx < 0){ alert('넣을 쿠폰을 찾지 못했어요. 다시 시도해주세요.'); return; }
+                        }
                         me.inv.splice(removeIdx, 1);
                         _consumeChosenVoucher();
                         me.tk = (me.tk || 0) + _vbAmt;
@@ -21453,7 +21837,12 @@ window.appU = function(y, si, k) {
             const _ckBefore = Number(me.cookie)||0;
             const _usedCkBefore = Number(me.usedCookie)||0;
             // 1) 내 쿠폰 1개 inv에서 제거 (선택된 특정 인덱스 우선)
-            const removeIdx = state.giveInvIdx !== null ? state.giveInvIdx : giveIdxs[giveIdxs.length - 1];
+            let removeIdx = state.giveInvIdx !== null ? state.giveInvIdx : giveIdxs[giveIdxs.length - 1];
+            // 🛡️ 모달 오픈 후 echo로 inv 재인덱스 가능 → 신원 재검증. 어긋나면 이름으로 재탐색, 없으면 중단(엉뚱한 쿠폰 삭제 방지).
+            if(!me.inv[removeIdx] || me.inv[removeIdx].n !== state.giveName){
+                removeIdx = (Array.isArray(me.inv)?me.inv:[]).findIndex(it => it && it.n === state.giveName && (it.st==='active'||it.st==='new') && !it.locked && !it.pseudo);
+                if(removeIdx < 0){ alert('넣을 쿠폰을 찾지 못했어요. 다시 시도해주세요.'); return; }
+            }
             me.inv.splice(removeIdx, 1);
             // 2) 교환권 events에서 선택한 유효기간 것 1건 제거
             _consumeChosenVoucher();
@@ -21588,11 +21977,11 @@ window.appU = function(y, si, k) {
         const _dalInv = (me.inv||[]).find(i => i && i.special === 'dalgona');
         // 빈 슬롯 수 계산: 최소 21칸, 그 이상이면 다음 행을 완성할 만큼만 추가
         const _ivEmptyCount = (itemCount) => {
-            // 태블릿 가로모드(#s_iv 5칸 규칙: @media max-height:850px) → 15개(5칸×3줄)
+            // 태블릿 가로모드(#s_iv 6칸 규칙: @media max-height:850px) → 18개(6칸×3줄)
             // 일반 컴퓨터(데스크톱 6칸) → 18개(6칸×3줄)
             const _isTablet = window.matchMedia && window.matchMedia('(max-height: 850px)').matches;
-            const COLS = _isTablet ? 5 : 6;
-            const MIN  = _isTablet ? 15 : 18;
+            const COLS = 6;
+            const MIN  = 18;
             const total = itemCount <= MIN ? MIN : Math.ceil(itemCount / COLS) * COLS;
             return total - itemCount;
         };
@@ -21718,7 +22107,7 @@ window.appU = function(y, si, k) {
             }
             // 펫·펫스킬을 각각 1줄(태블릿 5열 / 컴퓨터 6열) 고정 그리드로 배치 — 빈칸은 그 줄만 채움
             const _isTabletPet = !!(window.matchMedia && window.matchMedia('(max-height: 850px)').matches);
-            const PET_COLS = _isTabletPet ? 5 : 6;
+            const PET_COLS = 6;
             const _rowFill = (n) => {
                 const empty = (PET_COLS - (n % PET_COLS)) % PET_COLS;
                 let h = ''; for(let i=0;i<empty;i++) h += `<div class="inventory-slot"></div>`; return h;
@@ -21732,6 +22121,11 @@ window.appU = function(y, si, k) {
             if(ownedBadges.length > 0) {
                 _petTabHtml += `<div style="font-size:13px;font-weight:bold;color:#9C27B0;margin:16px 0 8px;display:inline-flex;align-items:center;gap:4px;"><span style="font-size:16px;line-height:1;vertical-align:middle;">🌟</span> 펫 스킬</div>`;
                 _petTabHtml += `<div style="${_petGridStyle}">${bdgHtml}${_rowFill(ownedBadges.length)}</div>`;
+            }
+            // 펫·펫스킬이 하나도 없어도 빈 칸 그리드(6×3=18)를 표시해 가방과 통일
+            if(!_petTabHtml) {
+                let _emp = ''; for(let i=0;i<18;i++) _emp += `<div class="inventory-slot"></div>`;
+                _petTabHtml = `<div style="${_petGridStyle}">${_emp}</div>`;
             }
             document.getElementById('s_bg').innerHTML = `${tabsHtml}<div id="s_iv" style="display:block;">${_petTabHtml}</div>`;
             return;
@@ -24228,7 +24622,9 @@ window.appU = function(y, si, k) {
         if(myBal < p) return alert(`잔액이 부족합니다! (현재: ${myBal}개)`);
 
         const newEntry = {
-            id: Date.now(), n, desc: d, sp: p, cp: p, cur: 'tk',
+            // id에 랜덤 성분 — 두 학생이 같은 ms에 요청 시 id 충돌로 둘째 요청이 false-dup abort되어 조용히 드랍되던 것 방지.
+            //   (안전정수 범위 유지: Date.now()*1000 + rand(0~999))
+            id: Date.now() * 1000 + Math.floor(Math.random() * 1000), n, desc: d, sp: p, cp: p, cur: 'tk',
             reqBy: me.cd, reqNm: me.nm, st: 'req', et: 0,
             bids: [{cd: me.cd, nm: me.nm, amt: p, ts: Date.now()}]
         };
@@ -39211,7 +39607,7 @@ window.addCharRow = function() {
                 if(!exp || exp >= NOW) return;
                 changed = true;
                 if(Array.isArray(s.earnedTit)) s.earnedTit = s.earnedTit.filter(x => x !== tid);
-                if(s.equippedTit === tid) delete s.equippedTit;
+                if(s.equippedTit === tid) window._delStuField(s, 'equippedTit');
                 delete s.titExpire[tid];
             });
         }
@@ -57797,7 +58193,8 @@ window.addCharRow = function() {
     // 마니또 페어링 계산 (순수함수) — 모드별 1:1 derangement 보장. 실제 핸들러와 자가테스트 시뮬레이터가 공유.
     window._manittoComputePairs = function(stus, mode){
         const pairs = {};
-        if(mode === 'all') {
+        if(mode === 'all' || mode === 'select') {
+            // 'select'는 호출부에서 이미 선택된 학생만 stus로 넘겨줌 → 그 인원끼리 성별 무관 derangement
             const sh = _genDerangement(stus);
             stus.forEach((s,i) => { pairs[s.cd] = {cd:sh[i].cd, nm:sh[i].nm}; });
         } else if(mode === 'same') {
@@ -57886,9 +58283,13 @@ window.addCharRow = function() {
         showToast(next ? '🗳️ 정답 투표를 시작했어요!' : '🗳️ 정답 투표를 종료했어요.');
     };
 
-    window.genManitto = function() {
+    window.genManitto = async function() {
         // 모드 선택 모달 표시
         document.querySelectorAll('[data-manitto-modal]').forEach(m=>m.remove());
+        // 선택 모드 체크리스트를 위해 학생 목록을 미리 로드
+        if(!window._stuLoaded && window._ensureStuLoaded) { try { await window._ensureStuLoaded(); } catch(_){} }
+        const _mStuArr = (Array.isArray(db.stu)?db.stu:Object.values(db.stu||{})).filter(s=>s&&s.cd).sort((a,b)=>(Number(a.no)||9999)-(Number(b.no)||9999));
+        const _mSelectListHtml = _mStuArr.map(s=>`<label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:4px 8px;border-radius:8px;cursor:pointer;"><input type="checkbox" class="_mSelStu" value="${s.cd}" checked style="width:auto;margin:0;accent-color:#9C27B0;"><span>${s.no||''} ${s.nm||s.cd}</span></label>`).join('');
         const curMode = db.manitto?.mode || 'all';
         // 이전 결과 테이블 생성
         let prevResultHtml = '';
@@ -57899,7 +58300,7 @@ window.addCharRow = function() {
                 .map(([cd,recv])=>({g:stuMap[cd],recv})).filter(x=>x.g)
                 .sort((a,b)=>(Number(a.g.no)||9999)-(Number(b.g.no)||9999));
             if(prevPairs.length) {
-                const modeLabel = db.manitto.mode==='same'?'동성간':db.manitto.mode==='cross'?'이성간':'전체';
+                const modeLabel = db.manitto.mode==='same'?'동성간':db.manitto.mode==='cross'?'이성간':db.manitto.mode==='select'?'선택':'전체';
                 const rows = prevPairs.map(({g,recv})=>
                     `<tr><td style="padding:4px 10px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:12px;">${g.no||''} ${g.nm}</td><td style="padding:4px 10px;border-bottom:1px solid #F3E5F5;text-align:center;font-size:12px;color:#7B1FA2;font-weight:bold;">💘 ${recv.nm}</td></tr>`
                 ).join('');
@@ -57926,6 +58327,15 @@ window.addCharRow = function() {
                     <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:10px 14px;border-radius:10px;border:2px solid #E1BEE7;background:#FAF0FF;"><input type="radio" name="manittoModeModal" value="all" ${curMode==='all'?'checked':''} style="width:auto;margin:0;accent-color:#9C27B0;"> 전체</label>
                     <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:10px 14px;border-radius:10px;border:2px solid #E1BEE7;background:#FAF0FF;"><input type="radio" name="manittoModeModal" value="same" ${curMode==='same'?'checked':''} style="width:auto;margin:0;accent-color:#9C27B0;"> 동성간</label>
                     <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:10px 14px;border-radius:10px;border:2px solid #E1BEE7;background:#FAF0FF;"><input type="radio" name="manittoModeModal" value="cross" ${curMode==='cross'?'checked':''} style="width:auto;margin:0;accent-color:#9C27B0;"> 이성간</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;padding:10px 14px;border-radius:10px;border:2px solid #E1BEE7;background:#FAF0FF;"><input type="radio" name="manittoModeModal" value="select" ${curMode==='select'?'checked':''} style="width:auto;margin:0;accent-color:#9C27B0;"> 선택 <span style="font-size:11px;color:#999;">(고른 학생만)</span></label>
+                </div>
+                <div id="_manittoSelectWrap" style="display:none;margin-top:10px;border:2px dashed #CE93D8;border-radius:12px;padding:10px;background:#FCF5FF;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+                        <span style="font-size:12px;color:#6A1B9A;font-weight:bold;">참가 학생 <span id="_mSelCount">0</span>명</span>
+                        <button type="button" id="_mSelAll" style="margin-left:auto;font-size:11px;padding:3px 10px;border:1px solid #CE93D8;border-radius:8px;background:white;color:#7B1FA2;cursor:pointer;font-family:'Jua';">전체선택</button>
+                        <button type="button" id="_mSelNone" style="font-size:11px;padding:3px 10px;border:1px solid #CE93D8;border-radius:8px;background:white;color:#7B1FA2;cursor:pointer;font-family:'Jua';">전체해제</button>
+                    </div>
+                    <div style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">${_mSelectListHtml}</div>
                 </div>
             </div>
             <div style="display:flex;gap:10px;">
@@ -57935,13 +58345,30 @@ window.addCharRow = function() {
         </div>`;
         document.body.appendChild(modal);
         modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+        // 선택 모드 UI: 라디오 토글 시 체크리스트 표시 + 참가 인원 카운트
+        const _mSelWrap = modal.querySelector('#_manittoSelectWrap');
+        const _mSelCountEl = modal.querySelector('#_mSelCount');
+        const _mUpdateCount = () => { if(_mSelCountEl) _mSelCountEl.textContent = String(modal.querySelectorAll('._mSelStu:checked').length); };
+        const _mToggleSel = () => {
+            const isSel = modal.querySelector('input[name="manittoModeModal"]:checked')?.value === 'select';
+            if(_mSelWrap) _mSelWrap.style.display = isSel ? '' : 'none';
+            _mUpdateCount();
+        };
+        modal.querySelectorAll('input[name="manittoModeModal"]').forEach(r=>r.addEventListener('change', _mToggleSel));
+        modal.querySelectorAll('._mSelStu').forEach(c=>c.addEventListener('change', _mUpdateCount));
+        modal.querySelector('#_mSelAll')?.addEventListener('click', ()=>{ modal.querySelectorAll('._mSelStu').forEach(c=>c.checked=true); _mUpdateCount(); });
+        modal.querySelector('#_mSelNone')?.addEventListener('click', ()=>{ modal.querySelectorAll('._mSelStu').forEach(c=>c.checked=false); _mUpdateCount(); });
+        _mToggleSel(); // 초기 상태 반영 (직전 모드가 '선택'이면 펼침)
         modal.querySelector('#_manittoDrawBtn').addEventListener('click', async function() {
+            // ⚠️ 값은 modal.remove() 이전에 읽어야 함 — remove 후엔 DOM에서 사라져 조회 불가(기존 '모드 항상 all' 버그도 함께 수정)
+            const mode = modal.querySelector('input[name="manittoModeModal"]:checked')?.value || 'all';
+            const _chosenCds = mode==='select' ? new Set(Array.from(modal.querySelectorAll('._mSelStu:checked')).map(c=>String(c.value))) : null;
             modal.remove();
             if(!window._stuLoaded) { try { await window._ensureStuLoaded(); } catch(_){} }
             const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
-            const stus = stuArr.filter(s => s && s.cd);
-            if(stus.length < 2) { alert('학생이 2명 이상 있어야 합니다.'); return; }
-            const mode = document.querySelector('input[name="manittoModeModal"]:checked')?.value || 'all';
+            let stus = stuArr.filter(s => s && s.cd);
+            if(mode==='select') stus = stus.filter(s => _chosenCds.has(String(s.cd)));
+            if(stus.length < 2) { alert(mode==='select' ? '선택한 학생이 2명 이상이어야 합니다.' : '학생이 2명 이상 있어야 합니다.'); return; }
             const pairs = window._manittoComputePairs(stus, mode);
             const data = {active:true, revealed:false, mode, pairs, createdAt:Date.now()};
             try { dbRef.child('manitto').set(data); } catch(e){ console.error('[manitto]',e); }
@@ -58092,8 +58519,8 @@ window.addCharRow = function() {
                 if(!recv) {
                     inner = `<div style="text-align:center;padding:20px;color:#BDBDBD;"><div style="font-size:36px;">🤔</div><div style="font-size:14px;font-family:'Jua';margin-top:8px;">배정 정보를 찾을 수 없어요</div></div>`;
                 } else {
-                    inner = `<div style="font-size:46px;font-family:'Jua';color:#4A148C;font-weight:bold;padding:20px 24px;background:#F3E5F5;border-radius:20px;border:3px solid #CE93D8;text-align:center;">💘 ${recv.nm}</div>
-                        <div style="font-size:15px;color:#9E9E9E;margin-top:12px;text-align:center;">이 사람에게 몰래 좋은 일을 해주세요 💜</div>`;
+                    inner = `<div style="font-size:34px;font-family:'Jua';color:#4A148C;font-weight:bold;padding:14px 24px;background:#F3E5F5;border-radius:20px;border:3px solid #CE93D8;text-align:center;">💘 ${recv.nm}</div>
+                        <div style="font-size:14px;color:#9E9E9E;margin-top:8px;text-align:center;">이 사람에게 몰래 좋은 일을 해주세요 💜</div>`;
                 }
             }
             // revealed 상태이면 항상 열림 (초기화 전까지 유지), 클릭으로 접기/펼치기는 localStorage에 저장
@@ -58103,12 +58530,12 @@ window.addCharRow = function() {
             manittoHtml = `
                 <div data-mnt-card style="background:white;border-radius:18px;border:2px solid #E1BEE7;overflow:hidden;margin-bottom:0;">
                     <div onclick="${_mntToggleFn}"
-                        style="display:flex;align-items:center;justify-content:center;gap:10px;padding:18px 22px;cursor:pointer;user-select:none;background:#F3E5F5;position:relative;">
-                        <span style="font-size:21px;font-family:'Jua';color:#7B1FA2;">💘 내 마니또 확인하기</span>
+                        style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 22px;cursor:pointer;user-select:none;background:#F3E5F5;position:relative;">
+                        <span style="font-size:19px;font-family:'Jua';color:#7B1FA2;">💘 내 마니또 확인하기</span>
                         <span class="mnt-arrow" style="font-size:15px;color:#9C27B0;position:absolute;right:18px;">${_open?'▲':'▼'}</span>
                     </div>
-                    <div data-mnt-body onclick="${_mntToggleFn}" style="display:${_open?'':'none'};padding:22px 26px;cursor:pointer;">${inner}
-                        <div style="font-size:13px;color:#CE93D8;text-align:center;margin-top:12px;">클릭하면 닫혀요 🔒</div>
+                    <div data-mnt-body onclick="${_mntToggleFn}" style="display:${_open?'':'none'};padding:16px 26px;cursor:pointer;">${inner}
+                        <div style="font-size:12px;color:#CE93D8;text-align:center;margin-top:8px;">클릭하면 닫혀요 🔒</div>
                     </div>
                 </div>`;
         }
@@ -58125,9 +58552,9 @@ window.addCharRow = function() {
         // ── 빙고 섹션 ──
         const bingoHtml = _buildBingoSHtml();
 
-        el.innerHTML = `<div style="max-width:${bingoHtml?'1100px':'560px'};margin:0 auto;padding:0 20px 20px;">
+        el.innerHTML = `<div style="max-width:${bingoHtml?'820px':'560px'};margin:0 auto;padding:0 20px 20px;">
             ${manittoHtml}
-            ${bingoHtml ? `<div style="margin-top:20px;">${bingoHtml}</div>` : ''}
+            ${bingoHtml ? `<div style="margin-top:12px;">${bingoHtml}</div>` : ''}
         </div>`;
         // 편지 스크롤 높이를 빙고 그리드 높이에 맞춤
         if(bingoHtml) requestAnimationFrame(() => {
@@ -58740,9 +59167,9 @@ window.addCharRow = function() {
             const displayLabel = label || `칸${i+1}`;
             const clickFn = isDone||isPending ? '' : (isDrawingCell ? `submitBingoCellDraw(${i})` : `submitBingoCell(${i})`);
             const drawIcon = isDrawingCell && !isDone && !isPending ? `<div style="font-size:20px;position:absolute;bottom:6px;right:8px;opacity:0.5;">🎨</div>` : '';
-            return `<div onclick="${clickFn}" style="background:${bg};color:${textColor};border:2px solid ${isDone?'#EDE7F6':isPending?'#F57F17':isDrawingCell?'#CE93D8':'#F8BBD0'};border-radius:14px;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:${isDone||isPending?'default':'pointer'};font-family:'Jua';font-size:23px;font-weight:bold;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.10);position:relative;user-select:none;padding:8px;" ${isDone||isPending?'':'onmousedown="this.style.transform=\'scale(0.93)\'" onmouseup="this.style.transform=\'\'" onmouseleave="this.style.transform=\'\'"'}>
-                ${overlay?(isDone?`<div style="font-size:38px;line-height:1;"><span class="bingo-star-anim">${overlay}</span></div>`:`<div style="font-size:38px;line-height:1;">${overlay}</div>`):''}
-                <div style="line-height:1.3;">${displayLabel}</div>
+            return `<div onclick="${clickFn}" style="background:${bg};color:${textColor};border:2px solid ${isDone?'#EDE7F6':isPending?'#F57F17':isDrawingCell?'#CE93D8':'#F8BBD0'};border-radius:14px;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:${isDone||isPending?'default':'pointer'};font-family:'Jua';font-size:18px;font-weight:bold;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.10);position:relative;user-select:none;padding:6px;" ${isDone||isPending?'':'onmousedown="this.style.transform=\'scale(0.93)\'" onmouseup="this.style.transform=\'\'" onmouseleave="this.style.transform=\'\'"'}>
+                ${overlay?(isDone?`<div style="font-size:30px;line-height:1;"><span class="bingo-star-anim">${overlay}</span></div>`:`<div style="font-size:30px;line-height:1;">${overlay}</div>`):''}
+                <div style="line-height:1.25;">${displayLabel}</div>
                 ${drawIcon}
             </div>`;
         }).join('');
@@ -58778,12 +59205,12 @@ window.addCharRow = function() {
         </div>`;
 
         return `<div id="_bingoPlusLetter" style="display:flex;gap:14px;align-items:flex-start;">
-            <div id="_bingoGridBox" style="background:white;border-radius:18px;border:2px solid #F8BBD0;padding:22px;flex:2;min-width:0;">
-                <div style="text-align:center;margin-bottom:16px;">
-                    <div style="font-size:24px;font-family:'Jua';color:#880E4F;">💘 마니또 빙고</div>
+            <div id="_bingoGridBox" style="background:white;border-radius:18px;border:2px solid #F8BBD0;padding:16px;flex:2;min-width:0;">
+                <div style="text-align:center;margin-bottom:10px;">
+                    <div style="font-size:20px;font-family:'Jua';color:#880E4F;">💘 마니또 빙고</div>
                 </div>
-                <div style="position:relative;">
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">${cellsHtml}</div>
+                <div style="position:relative;max-width:468px;margin:0 auto;">
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${cellsHtml}</div>
                     <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">${_svgLines}</svg>
                 </div>
             </div>
@@ -59156,7 +59583,12 @@ window.addCharRow = function() {
         }).join('');
 
         const divider = apvHtml ? `<div onclick="var n=this.nextElementSibling;n.style.display=n.style.display==='none'?'':'none';this.querySelector('span').textContent=n.style.display==='none'?'▼':'▲';" style="font-size:11px;color:#2E7D32;padding:4px 0 2px;border-top:1px dashed #ddd;margin-top:2px;cursor:pointer;user-select:none;font-weight:bold;">✓ 승인 완료 ${apvEntries.length}건 <span>▼</span></div><div style="display:none;">${apvHtml}</div>` : '';
-        pendList.innerHTML = pendHtml + divider || '<div style="color:#999;font-size:12px;">없음</div>';
+        // 대기 2건 이상이면 일괄 승인 버튼 노출
+        const bulkBtn = pendEntries.length > 1 ? `<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:11px;color:#E65100;font-weight:bold;">⏳ 대기 ${pendEntries.length}건</span>
+            <button class="btn" style="background:#66BB6A;color:white;padding:5px 14px;font-size:12px;" onclick="window._approveAllBingo()">✅ 전체 승인</button>
+        </div>` : '';
+        pendList.innerHTML = (bulkBtn + pendHtml + divider) || '<div style="color:#999;font-size:12px;">없음</div>';
         _renderBingoStatsTable();
     }
 
@@ -59210,6 +59642,9 @@ window.addCharRow = function() {
             if(mHasPairs) {
                 const giver = _manittoGiverOf(s.cd);
                 r.giverNm = giver ? (stuMapM[giver.cd]?.nm || '') : '-';
+                // 이 학생이 뽑은 마니또 = pairs[s.cd] (이 학생이 몰래 좋은 일을 해줄 대상) — 학생 본인 화면의 '내 마니또'와 동일
+                const _myTarget = db.manitto?.pairs?.[s.cd];
+                r.myManittoNm = _myTarget ? (stuMapM[_myTarget.cd]?.nm || _myTarget.nm || '-') : '-';
                 const v = mVotes[s.cd];
                 if(v) {
                     r.guessNm = v.guessCd ? (stuMapM[v.guessCd]?.nm || v.guessNm || '?') : (v.guessNm || '?');
@@ -59249,8 +59684,10 @@ window.addCharRow = function() {
                     ? '<span style="color:#2E7D32;font-weight:bold;">⭕</span>'
                     : '<span style="color:#C62828;font-weight:bold;">❌</span>';
             } else { guess = '<span style="color:#bbb;">미제출</span>'; verdict = '<span style="color:#bbb;">-</span>'; }
-            const giverCell = _giverHidden ? '<span style="color:#bbb;">•••</span>' : `💘 ${r.giverNm}`;
-            return `<td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;color:#6A1B9A;font-weight:bold;white-space:nowrap;">${giverCell}</td>
+            const _myCell = _giverHidden ? '<span style="color:#bbb;">•••</span>' : `💘 ${r.myManittoNm}`;   // 내가 뽑은 마니또(대상)
+            const _gvCell = _giverHidden ? '<span style="color:#bbb;">•••</span>' : `💘 ${r.giverNm}`;       // 나를 뽑은 마니또(주는 사람)
+            return `<td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;color:#6A1B9A;font-weight:bold;white-space:nowrap;">${_myCell}</td>
+                <td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;color:#AD1457;font-weight:bold;white-space:nowrap;">${_gvCell}</td>
                 <td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;white-space:nowrap;">${guess}</td>
                 <td style="text-align:center;padding:3px 6px;border-bottom:1px solid #BBDEFB;">${verdict}</td>`;
         };
@@ -59259,7 +59696,7 @@ window.addCharRow = function() {
                 <th style="text-align:center;${thStyle}" onclick="_sortBingoStats('no')">학생 ${arrow('no')}</th>
                 <th style="text-align:center;${thStyle}" onclick="_sortBingoStats('done')">완료 칸 ${arrow('done')}</th>
                 <th style="text-align:center;${thStyle}" onclick="_sortBingoStats('lines')">완성 줄 ${arrow('lines')}</th>
-                ${mHasPairs?`<th style="${thStyleM}cursor:pointer;user-select:none;" onclick="window._toggleManittoGiverCol()" title="클릭하여 숨기기/보이기">실제 마니또 ${_giverHidden?'🙈':'👁'}</th><th style="${thStyleM}">제출 정답</th><th style="${thStyleM}">정답</th>`:''}
+                ${mHasPairs?`<th style="${thStyleM}cursor:pointer;user-select:none;" onclick="window._toggleManittoGiverCol()" title="클릭하여 숨기기/보이기">내가 뽑은 마니또 ${_giverHidden?'🙈':'👁'}</th><th style="${thStyleM}cursor:pointer;user-select:none;" onclick="window._toggleManittoGiverCol()" title="클릭하여 숨기기/보이기">나를 뽑은 마니또</th><th style="${thStyleM}">제출 정답</th><th style="${thStyleM}">정답</th>`:''}
             </tr></thead>
             <tbody>${rows.map(r=>`<tr onclick="_showBingoStudentModal('${r.cd}','${r.name.replace(/'/g,'&#39;')}')" style="cursor:pointer;" onmouseover="this.style.background='#E3F2FD'" onmouseout="this.style.background=''">
                 <td style="padding:3px 6px;border-bottom:1px solid #BBDEFB;">${r.name}</td>
@@ -59365,7 +59802,7 @@ window.addCharRow = function() {
         } catch(e){ showToast('❌ 빙고 저장 오류: ' + e.message); }
     };
 
-    window.approveBingo = function(cd, ci) {
+    window.approveBingo = function(cd, ci, silent) {
         // 이미 승인된 클레임이면 무시 — 마니또 편지 push가 비멱등이라 더블클릭/동시 승인 시 편지가 중복 발송됨
         const _apv = (db.bingo?.approved||{})[cd] || {};
         if(_apv[ci] || _apv[String(ci)]) return;
@@ -59399,14 +59836,84 @@ window.addCharRow = function() {
             if(target) {
                 if(!Array.isArray(target.teacherMsgs)) target.teacherMsgs = target.teacherMsgs ? Object.values(target.teacherMsgs) : [];
                 const _newLetter = { type:'manittoLetter', text: cellLabel, note: _pendNote, ts, read: false, ...(_pendImg?{img:_pendImg}:{}) };
-                target.teacherMsgs.push(_newLetter);
+                target.teacherMsgs.push(_newLetter); // 로컬 낙관적 반영
                 const _fbKey2 = _cdMig ? target.cd : stuArr.indexOf(target);
-                if(_fbKey2 !== -1) try { dbRef.child(`stu/${_fbKey2}/teacherMsgs/${target.teacherMsgs.length-1}`).set(_newLetter); } catch(e){}
+                // 절대 인덱스 대신 트랜잭션 append → stale 캐시여도 기존 편지 미덮어씀
+                if(_fbKey2 !== -1) try {
+                    dbRef.child(`stu/${_fbKey2}/teacherMsgs`).transaction(cur => {
+                        const arr = Array.isArray(cur) ? cur.slice() : (cur ? Object.values(cur).filter(Boolean) : []);
+                        arr.push(_newLetter);
+                        return arr;
+                    });
+                } catch(e){}
             }
         }
 
-        _renderBingoPendingSection();
-        showToast('✅ 승인됐습니다!');
+        if(!silent) { _renderBingoPendingSection(); showToast('✅ 승인됐습니다!'); }
+    };
+
+    // 교사: 대기 중인 빙고 클레임을 한 번에 모두 승인 (마니또 편지도 각각 정상 발송)
+    //   🔥 Firebase 폭증 방지: 칸마다 개별 write(칸당 3~4회) 대신 모든 변경을 '단일 multi-path update' 1회로 flush.
+    window._approveAllBingo = function() {
+        const pending = db.bingo?.pending || {};
+        const entries = [];
+        for(const [cd, cells] of Object.entries(pending)) {
+            for(const ci of Object.keys(cells||{})) entries.push([cd, parseInt(ci)]);
+        }
+        if(!entries.length) { showToast('승인할 대기 항목이 없어요.'); return; }
+        prettyConfirm(`대기 중인 빙고 <b>${entries.length}건</b>을<br>모두 승인할까요?`, function() {
+            const stuArr = Array.isArray(db.stu) ? db.stu : Object.values(db.stu||{});
+            const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+            const ts = Date.now();
+            const updates = {};
+            const _lettersByTarget = {}; // fk -> [letter, ...] (teacherMsgs는 인덱스 덮어쓰기 방지 위해 트랜잭션 append)
+            if(!db.bingo) db.bingo = {};
+            if(!db.bingo.approved) db.bingo.approved = {};
+            let _ok = 0;
+            entries.forEach(([cd, ci]) => {
+                const _apv = db.bingo.approved[cd] || {};
+                if(_apv[ci] || _apv[String(ci)]) return; // 이미 승인 — 편지 중복 발송 방지
+                const pd = (db.bingo.pending||{})[cd] || {};
+                const _pe = pd[ci] || pd[String(ci)] || {};
+                // 서버 경로 (null = 삭제) — 개별 approveBingo와 동일한 3경로
+                updates[`bingo/pending/${cd}/${ci}`] = null;
+                updates[`bingo/approved/${cd}/${ci}`] = true;
+                updates[`bingo/rejected/${cd}/${ci}`] = null;
+                // 로컬 캐시 반영
+                if(!db.bingo.approved[cd]) db.bingo.approved[cd] = {};
+                db.bingo.approved[cd][ci] = true;
+                delete pd[ci]; delete pd[String(ci)];
+                if(db.bingo.rejected?.[cd]) { delete db.bingo.rejected[cd][ci]; delete db.bingo.rejected[cd][String(ci)]; }
+                // 마니또 수혜자에게 익명 편지
+                const cellLabel = db.bingo?.cells?.[ci] || `칸${Number(ci)+1}`;
+                const myPair = db.manitto?.pairs?.[cd];
+                if(myPair?.cd) {
+                    const target = stuArr.find(x => x && String(x.cd) === String(myPair.cd));
+                    if(target) {
+                        if(!Array.isArray(target.teacherMsgs)) target.teacherMsgs = target.teacherMsgs ? Object.values(target.teacherMsgs) : [];
+                        const _newLetter = { type:'manittoLetter', text: cellLabel, note: _pe.note||'', ts, read:false, ...(_pe.img?{img:_pe.img}:{}) };
+                        target.teacherMsgs.push(_newLetter); // 로컬 캐시(낙관적) — 서버는 아래 트랜잭션이 권위
+                        const _fk = _cdMig ? target.cd : stuArr.indexOf(target);
+                        if(_fk !== -1 && _fk !== undefined && _fk !== '') (_lettersByTarget[_fk] = _lettersByTarget[_fk] || []).push(_newLetter);
+                    }
+                }
+                _ok++;
+            });
+            try { dbRef.update(updates); } catch(e){ console.error('[bingo 일괄승인]', e); }
+            // 편지는 절대 인덱스 대신 대상별 트랜잭션으로 append → 서버 실제 배열에 안전 추가(stale 캐시여도 기존 편지 미덮어씀)
+            Object.keys(_lettersByTarget).forEach(_fk => {
+                const _ls = _lettersByTarget[_fk];
+                try {
+                    dbRef.child('stu/'+_fk+'/teacherMsgs').transaction(cur => {
+                        const arr = Array.isArray(cur) ? cur.slice() : (cur ? Object.values(cur).filter(Boolean) : []);
+                        _ls.forEach(l => arr.push(l));
+                        return arr;
+                    });
+                } catch(e){ console.error('[bingo 일괄승인 편지]', e); }
+            });
+            _renderBingoPendingSection();
+            showToast(`✅ ${_ok}건 일괄 승인 완료!`);
+        }, {icon:'✅', okLabel:'전체 승인', okClass:'btn-blue', cancelLabel:'취소'});
     };
 
     window.rejectBingo = function(cd, ci) {
@@ -59669,23 +60176,28 @@ window.addCharRow = function() {
 
         function _doRefund(stuK) {
             var updates = {};
+            var _rts = Date.now();
+            var _sLocal = (db.stu && db.stu[stuK]) ? db.stu[stuK] : null;
             if (stuK !== null && stuK !== undefined) {
                 // shopUsed 복구 (구입 신청 시 즉시 차감됐으므로)
                 if (refundAmt > 0) {
                     updates['ClassData/EventShop/stu/' + stuK + '/shopUsed'] =
                         firebase.database.ServerValue.increment(-refundAmt);
                 }
-                // passKeys 복구
+                // passKeys 복구 — 존재하는 인덱스에만(유령/오대상 방지)
                 if (order.passKeys && order.passKeys.length) {
                     order.passKeys.forEach(function(pk) {
-                        updates['ClassData/EventShop/stu/' + stuK + '/inv/' + pk + '/st'] = 'active';
+                        if(!_sLocal || !_sLocal.inv || _sLocal.inv[pk]) updates['ClassData/EventShop/stu/' + stuK + '/inv/' + pk + '/st'] = 'active';
                     });
                 }
             }
             if (!Object.keys(updates).length) return; // 학생 못 찾음 — 주문은 이미 제거됨, 추가 작업 없음
+            // updatedAt 동반 — 교사 증분 리스너가 환불을 수신하고 타 교사탭 stale 가드가 되돌리지 않도록.
+            updates['ClassData/EventShop/stu/' + stuK + '/updatedAt'] = _rts;
             firebase.database().ref().update(updates).then(function() {
                 if (stuK !== null && stuK !== undefined && db.stu && db.stu[stuK]) {
                     var s = db.stu[stuK];
+                    s.updatedAt = _rts;
                     if (refundAmt > 0) s.shopUsed = Math.max(0, (s.shopUsed||0) - refundAmt);
                     if (order.passKeys && order.passKeys.length) {
                         if (!s.inv) s.inv = {};
@@ -59695,7 +60207,7 @@ window.addCharRow = function() {
                     }
                     try {
                         if (window._teacherBC) {
-                            _teacherBC.postMessage({ type: 'stu_update', cd: order.cd, stuData: { shopUsed: s.shopUsed, inv: s.inv } });
+                            _teacherBC.postMessage({ type: 'stu_update', cd: order.cd, stuData: { shopUsed: s.shopUsed, inv: s.inv, updatedAt: _rts } });
                         }
                     } catch(_) {}
                 }
@@ -60384,7 +60896,16 @@ window.addCharRow = function() {
 
         if (btn) { btn.disabled = true; btn.textContent = '처리 중...'; }
 
-        var passKeys = [].concat(s.suraKeys.slice(0, useSura), s.kwonKeys.slice(0, useKwon));
+        // 🛡️ 모달 오픈 후 echo로 me.inv가 재인덱스됐을 수 있으므로, 캡처된 s.suraKeys/kwonKeys(구식 인덱스) 대신
+        //   현재 me.inv에서 신원(이름+상태) 기준으로 이용권/수라상을 재해석 → 엉뚱한 아이템 used 처리·유령아이템 생성 방지.
+        var _freshSura = [], _freshKwon = [];
+        Object.entries(me.inv || {}).forEach(function(entry){
+            var kk = entry[0], it = entry[1];
+            if(!it || !(it.st==='active' || it.st==='new')) return;
+            if(it.n && it.n.includes('왕의 수라상')) _freshSura.push(kk);
+            else if(it.n && it.n.includes('상점 이용권')) _freshKwon.push(kk);
+        });
+        var passKeys = [].concat(_freshSura.slice(0, useSura), _freshKwon.slice(0, useKwon));
 
         // 로컬 즉시 반영 (passKeys 'used', shopUsed 차감)
         if (priceValue > 0) me.shopUsed = (me.shopUsed||0) + effectiveCost;
@@ -60419,7 +60940,15 @@ window.addCharRow = function() {
         };
         if (myFbKey !== null && myFbKey !== undefined) {
             if (priceValue > 0) updates['ClassData/EventShop/stu/' + myFbKey + '/shopUsed'] = firebase.database.ServerValue.increment(effectiveCost);
-            passKeys.forEach(function(pk){ updates['ClassData/EventShop/stu/' + myFbKey + '/inv/' + pk + '/st'] = 'used'; });
+            // 🛡️ 존재하는 인덱스에만 위치쓰기 — 범위초과 pk가 유령 {st:'used'} 아이템을 만드는 것 방지.
+            passKeys.forEach(function(pk){ if(me.inv && me.inv[pk]) updates['ClassData/EventShop/stu/' + myFbKey + '/inv/' + pk + '/st'] = 'used'; });
+            // updatedAt 동반 — 교사 증분 리스너가 구매를 수신해 stale whole-node write로 되돌리지 않도록. self-write 인식 위해 _myWrittenTs 등록.
+            var _kts = Date.now();
+            updates['ClassData/EventShop/stu/' + myFbKey + '/updatedAt'] = _kts;
+            me.updatedAt = _kts;
+            if(!window._myWrittenTs) window._myWrittenTs = [];
+            window._myWrittenTs.push(_kts);
+            if(window._myWrittenTs.length > 8) window._myWrittenTs.shift();
         }
 
         try {
