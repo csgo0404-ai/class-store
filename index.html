@@ -3924,6 +3924,21 @@ let _renderLock = false; // 재진입 방지
             return true;
         } catch(_){ return false; }
     };
+    // 교사 지급(doGiv) 전용 add-only 합집합 트랜잭션 — 대상 학생의 집합 컬렉션(avtOwned/earnedBdg/col/earnedTit)에
+    //   지급 항목을 병합. 절대값 .set()과 달리 서버를 통째 덮지 않으므로, 지급 직전 학생이 동시 구매/획득한 항목이
+    //   교사 stale 캐시로 덮여 사라지는 클로버를 차단. baseline 의존 없음(서버값을 읽어 union), dedup 보장.
+    window._grantColAddTxn = function(fbKey, field, srcArr){
+        const _add = (Array.isArray(srcArr) ? srcArr : (srcArr ? Object.values(srcArr).filter(Boolean) : [])).filter(x => x != null);
+        if(!_add.length) return;
+        try {
+            dbRef.child('stu/' + fbKey + '/' + field).transaction(server => {
+                let arr = Array.isArray(server) ? server.slice() : (server ? Object.values(server).filter(Boolean) : []);
+                const seen = new Set(arr);
+                _add.forEach(it => { if(!seen.has(it)){ arr.push(it); seen.add(it); } });
+                return arr;
+            });
+        } catch(e){ console.error('[doGiv] ' + field + ' add-txn 실패', fbKey, e); }
+    };
     // 용사 레벨용 '순수 다했니 쿠키' — me.cookie는 교사 지급(execGiveCoin 'c')·은행 이자로 오염될 수
     // 있어 레벨 산정에서 제외한다. 다했니 출처(라이브 캐시 + 폴링 캐시)는 누적값이라 단조 증가 →
     // 둘 중 최댓값으로 새로고침 시 stale 깜빡임 방지. 순수 다했니 소스가 전혀 없을 때만 랭크캐시→me.cookie 폴백.
@@ -6226,7 +6241,18 @@ let _renderLock = false; // 재진입 방지
             // me 동기화
             if(me && me.cd && me.cd !== 'teacher_main') {
                 const cur = db.stu.find(s => s && String(s.cd).trim() === String(me.cd).trim());
-                if(cur) Object.keys(cur).forEach(k => { me[k] = cur[k]; });
+                if(cur) {
+                    const _prevCols = window._colCaptureCols ? window._colCaptureCols() : null; // echo 덮어쓰기 전 컬렉션 스냅샷
+                    Object.keys(cur).forEach(k => { me[k] = cur[k]; });
+                    if(me.inv && !Array.isArray(me.inv)) me.inv = Object.values(me.inv).filter(Boolean);
+                    // pending 재적용 — 5403 self-listener 경로와 동일. once-read echo가 미flush 신규 아이템/통화/컬렉션/은행 커밋을
+                    //   stale 서버값으로 덮어쓰고 후속 upMe가 이를 flush해 영구 소실시키는 것 차단.
+                    try { window._bankRestoreProtected && window._bankRestoreProtected(); } catch(_){}
+                    try { window._applyDahaeLive && window._applyDahaeLive(); } catch(_){}
+                    try { window._applyPendingCurDelta && window._applyPendingCurDelta(); } catch(_){}
+                    try { window._applyPendingInvAdds && window._applyPendingInvAdds(); } catch(_){}
+                    try { window._applyPendingColAdds && window._applyPendingColAdds(_prevCols); } catch(_){}
+                }
             }
             if(_splitInitialDone) _splitFire();
         });
@@ -8628,7 +8654,11 @@ let _renderLock = false; // 재진입 방지
         // 보낸 학생 쿠키 -5씩
         targetEvs.forEach(e => {
             const fromIdx = (db.stu||[]).findIndex(x => String(x.cd) === String(e.fromCd));
-            if(fromIdx >= 0) db.stu[fromIdx].shopUsed = (db.stu[fromIdx].shopUsed||0) + 5;
+            if(fromIdx >= 0) {
+                db.stu[fromIdx].shopUsed = (db.stu[fromIdx].shopUsed||0) + 5;
+                // 절대값 whole-node write가 학생 동시 구매(shopUsed increment)를 덮어 화폐 유실하는 것 방지 — 아래 _svStuByCd가 델타로 소비
+                if(window._reserveCoinDelta) window._reserveCoinDelta(e.fromCd, 'shopUsed', 5);
+            }
         });
         // 받는 학생 inv에 '왕의 수라상' N개 지급 (db.itm에서 조회, 없으면 기본값)
         const surangItem = (Array.isArray(db.itm)?db.itm:Object.values(db.itm||{})).find(it=>it && it.n==='왕의 수라상');
@@ -20065,7 +20095,7 @@ window.appU = function(y, si, k) {
                 }
                 if(!s.col) s.col=[];
                 if(!s.col.includes(it.n)) s.col.push(it.n);
-                try { dbRef.child(`stu/${fbKey}/inv`).set(s.inv); dbRef.child(`stu/${fbKey}/col`).set(s.col); } catch(e){ console.error('[doGiv] itm write 실패', fbKey, e); }
+                try { dbRef.child(`stu/${fbKey}/inv`).set(s.inv); window._grantColAddTxn(fbKey, 'col', s.col); } catch(e){ console.error('[doGiv] itm write 실패', fbKey, e); }
             } else if(type==='avt'){
                 const a = (db.avt||[])[idx]; if(!a) return;
                 if(!s.avtOwned) s.avtOwned=[];
@@ -20076,8 +20106,8 @@ window.appU = function(y, si, k) {
                 }
                 _autoEquipAvt(s, a, /*onlyIfEmpty=*/false); // 지급한 새 아이템 우선 착용
                 try {
-                    dbRef.child(`stu/${fbKey}/avtOwned`).set(s.avtOwned);
-                    if(s.earnedBdg) dbRef.child(`stu/${fbKey}/earnedBdg`).set(s.earnedBdg);
+                    window._grantColAddTxn(fbKey, 'avtOwned', s.avtOwned);
+                    if(s.earnedBdg) window._grantColAddTxn(fbKey, 'earnedBdg', s.earnedBdg);
                     if(s.eq) dbRef.child(`stu/${fbKey}/eq`).set(s.eq);
                     if(s.displayProps) dbRef.child(`stu/${fbKey}/displayProps`).set(s.displayProps);
                     if(s.displayPets) {
@@ -20090,7 +20120,7 @@ window.appU = function(y, si, k) {
                 const b = (db.bdg||[])[idx]; if(!b) return;
                 if(!Array.isArray(s.earnedBdg)) s.earnedBdg = s.earnedBdg ? Object.values(s.earnedBdg) : [];
                 if(!s.earnedBdg.includes(b.id)) s.earnedBdg.push(b.id);
-                dbRef.child(`stu/${fbKey}/earnedBdg`).set(s.earnedBdg, e => { if(e) console.error('[doGiv] bdg write 실패', fbKey, e); });
+                window._grantColAddTxn(fbKey, 'earnedBdg', s.earnedBdg);
                 // 잠금 쿠폰이 설정된 펫 스킬이면 즉시 잠금 아이템 지급
                 if(b.coupon && (b.coupon.mode === 'lockMission' || b.coupon.lockDays || b.coupon.weeks)) {
                     const _bc = b.coupon;
@@ -20145,7 +20175,7 @@ window.appU = function(y, si, k) {
                             }
                             try {
                                 dbRef.child(`stu/${fbKey}/inv`).set(s.inv);
-                                if(!_isMC) dbRef.child(`stu/${fbKey}/col`).set(s.col);
+                                if(!_isMC) window._grantColAddTxn(fbKey, 'col', s.col);
                             } catch(e){ console.error('[doGiv] bdg-lock write 실패', fbKey, e); }
                             // lastGrantDate 업데이트 (다음 자동지급 중복 방지)
                             const _bIdx = (db.bdg||[]).indexOf(b);
@@ -20172,7 +20202,7 @@ window.appU = function(y, si, k) {
                 }
                 if(!Array.isArray(s.titNotify)) s.titNotify=[];
                 s.titNotify.push({titId:t.id, ts:Date.now()});
-                try { dbRef.child(`stu/${fbKey}/earnedTit`).set(s.earnedTit); dbRef.child(`stu/${fbKey}/titNotify`).set(s.titNotify); } catch(e){ console.error('[doGiv] tit write 실패', fbKey, e); }
+                try { window._grantColAddTxn(fbKey, 'earnedTit', s.earnedTit); dbRef.child(`stu/${fbKey}/titNotify`).set(s.titNotify); } catch(e){ console.error('[doGiv] tit write 실패', fbKey, e); }
             }
         });
 
@@ -24723,6 +24753,7 @@ window.appU = function(y, si, k) {
         aRef.transaction(cur => {
             if(!cur || cur.id !== aucId) return;        // 다른 경매로 변경됨 — abort
             if(cur.et && Date.now() >= cur.et) return;   // 서버 기준으로도 마감 지났으면 abort
+            if(cur.st && cur.st !== 'active') return;    // 강제종료/정산중(done/resolving/tie) 경매엔 입찰 거부 (표시 오염 방지)
             if((cur.cp||0) > bid) return;               // 이미 더 높은 입찰 — abort (동일 금액은 허용 → 동점 처리)
             cur.cp = bid;
             if(!cur.bids) cur.bids = [];
@@ -32386,6 +32417,7 @@ window.addCharRow = function() {
                     body: JSON.stringify({ message: `Cleanup duplicate: ${f.name}`, sha: f.sha })
                 });
                 deleted++;
+                await new Promise(r => setTimeout(r, 300)); // GitHub secondary rate limit 회피 — 다른 마이그레이션 루프와 동일 간격
             }
             alert(`✅ ${deleted}개 중복 이미지를 삭제했습니다.`);
         } catch(e) { alert('❌ 정리 실패: ' + e.message); }
@@ -48854,7 +48886,7 @@ window.addCharRow = function() {
     const _TP_LABELS = {'한글단어':'가 한글 단어','한글문장':'가 한글 문장'};
     const _TP_BTN = "padding:11px;border-radius:12px;border:none;color:#fff;font-family:'Jua';font-size:14px;cursor:pointer;";
     const _TP_AIN = "padding:4px 6px;border-radius:6px;border:1px solid #bbb;font-family:Jua;font-size:12px;box-sizing:border-box;";
-    const _TP_GEMINI_KEY = 'AIzaSyC1fNsqO8aMOup0Co3cEp4dTitZJbYB3jg';
+    const _TP_GEMINI_KEY = 'AIzaSyDbtdw1VFcMBelouPuWZ6hsUMWZx3jjqVk';
     const _TP_GEMINI_MODELS = ['gemini-2.5-flash','gemini-2.0-flash'];
     const _TP_PROMPTS = {
         '한글단어':'초등학생 타자 연습용 한국어 낱말 40개를 만들어줘. 각 낱말은 2~5글자, 받침 포함 가능.',
@@ -59816,12 +59848,18 @@ window.addCharRow = function() {
         db.bingo.cells = cells;
         const cellTypes = db.bingo.cellTypes || Array(9).fill('text');
         localStorage.setItem('_bingoCells', JSON.stringify(cells));
-        try {
-            dbRef.child('bingo/cells').set(cells, err => {
-                if(err) showToast('❌ 빙고 저장 실패: ' + err.message);
-            });
-            dbRef.child('bingo/cellTypes').set(cellTypes);
-        } catch(e){ showToast('❌ 빙고 저장 오류: ' + e.message); }
+        // Firebase write는 디바운스 — oninput 키입력마다 2 write(cells+cellTypes) 폭증하던 것 방지(로컬/localStorage는 즉시 반영)
+        clearTimeout(window._bingoCfgSaveTimer);
+        window._bingoCfgSaveTimer = setTimeout(() => {
+            try {
+                const _latest = [];
+                for(let i=0;i<9;i++) _latest.push(document.getElementById('bingo_c'+i)?.value || (db.bingo?.cells?.[i]) || '');
+                dbRef.child('bingo/cells').set(_latest, err => {
+                    if(err) showToast('❌ 빙고 저장 실패: ' + err.message);
+                });
+                dbRef.child('bingo/cellTypes').set(db.bingo?.cellTypes || cellTypes);
+            } catch(e){ showToast('❌ 빙고 저장 오류: ' + e.message); }
+        }, 700);
     };
 
     window.approveBingo = function(cd, ci, silent) {
