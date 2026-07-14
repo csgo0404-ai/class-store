@@ -3268,7 +3268,7 @@ let _renderLock = false; // 재진입 방지
             const ck = window._grantCookieShopUsed, cv = window._grantCoinValue;
             const _k1 = ck(0, 5, 100, 0) === -5;       // 쿠키 +5 지급 → shopUsed -5
             const _k2 = ck(0, -3, 100, 0) === 3;       // 쿠키 -3 차감 → shopUsed +3 (가용 100 이하)
-            const _k3 = ck(0, -200, 100, 0) === 100;   // 가용(100) 초과 차감 → 상한 클램프
+            const _k3 = ck(0, -200, 100, 0) === 200;   // 가용(100) 초과 차감 → 부채 허용(클램프 없음)
             const _k4 = ck(-10, 5, 100, 0) === -15;    // 기존 shopUsed에 누적 지급
             const _c1 = cv(10, 5) === 15;              // 코인 +5
             const _c2 = cv(10, -3) === 7;              // 코인 -3
@@ -3525,8 +3525,7 @@ let _renderLock = false; // 재진입 방지
         const s = stuList[idx];
         if(!s || !(s.shopUsed > 0)) return;
         if(!confirm(`${s.nm} (${s.no}번)\n사용 쿠키 ${s.shopUsed}🍪를 차감하시겠습니까?`)) return;
-        s.cookie = Math.max(0, (s.cookie||0) - (s.shopUsed||0));
-        s.shopUsed = 0;
+        { const _net = (s.cookie||0) - (s.shopUsed||0); if(_net >= 0){ s.cookie = _net; s.shopUsed = 0; } else { s.cookie = 0; s.shopUsed = -_net; } } // 음수 잔액이면 남은 부채를 shopUsed로 이월
         s.shopLog = [];
         try { dbRef.child('shopLog/' + s.cd).remove(); } catch(_){}
         // [P1] 학생 1명만 변경 — _svStuByCd로 부분 update (fallback: sv)
@@ -3539,8 +3538,7 @@ let _renderLock = false; // 재진입 방지
         const s = stuList.find(x => x && x.cd === cd);
         if(!s || !(s.shopUsed > 0)) return;
         if(!confirm(`${s.nm} (${s.no}번)\n사용 쿠키 ${s.shopUsed}🍪를 차감하시겠습니까?`)) return;
-        s.cookie = Math.max(0, (s.cookie||0) - (s.shopUsed||0));
-        s.shopUsed = 0;
+        { const _net = (s.cookie||0) - (s.shopUsed||0); if(_net >= 0){ s.cookie = _net; s.shopUsed = 0; } else { s.cookie = 0; s.shopUsed = -_net; } } // 음수 잔액이면 남은 부채를 shopUsed로 이월
         s.shopLog = [];
         try { dbRef.child('shopLog/' + s.cd).remove(); } catch(_){}
         if(window._svStuByCd) window._svStuByCd(cd); else sv();
@@ -3554,8 +3552,7 @@ let _renderLock = false; // 재진입 방지
         if(!confirm(`${rows.length}명의 쿠키를 일괄 차감하시겠습니까?`)) return;
         const _changedCds = [];
         rows.forEach(s => {
-            s.cookie = Math.max(0, (s.cookie||0) - (s.shopUsed||0));
-            s.shopUsed = 0;
+            { const _net = (s.cookie||0) - (s.shopUsed||0); if(_net >= 0){ s.cookie = _net; s.shopUsed = 0; } else { s.cookie = 0; s.shopUsed = -_net; } } // 음수 잔액이면 남은 부채를 shopUsed로 이월
             s.shopLog = [];
             try { dbRef.child('shopLog/' + s.cd).remove(); } catch(_){}
             if(s.cd) _changedCds.push(s.cd);
@@ -11327,7 +11324,7 @@ let _renderLock = false; // 재진입 방지
             if(document.getElementById('snm')) document.getElementById('snm').innerHTML = starHtml + _esc(me.nm);
             // 레벨용 totalCookie = 순수 다했니 쿠키 (me.cookie 오염 제외). curCookie(잔액)는 me.cookie 사용.
             const totalCookie = window._myDahaeCookie();
-            const curCookie = Math.max(0, (me.cookie || 0) - (me.usedCookie || 0) - (me.shopUsed || 0));
+            const curCookie = (me.cookie || 0) - (me.usedCookie || 0) - (me.shopUsed || 0); // 부채(음수) 표시 허용
             const lv = Math.max(0, Math.floor(totalCookie / 10));
 
             if(document.getElementById('side_lv')) document.getElementById('side_lv').innerText = lv;
@@ -12769,6 +12766,7 @@ let _renderLock = false; // 재진입 방지
             const updates = {};
             Object.keys(_safeWithoutShopLog).forEach(k => {
                 if(k === 'updatedAt') return;
+                if(k === 'xpBoost') return; // 🔒 교사 권위 필드 — 학생 upMe가 쓰지 않음(정산 stale 덮어쓰기/resurrection 방지)
                 let v; try { v = JSON.stringify(_safeWithoutShopLog[k]); } catch(_) { v = null; }
                 newHash[k] = v;
                 if(v !== lastHash[k]) updates[k] = _safeWithoutShopLog[k];
@@ -12778,7 +12776,7 @@ let _renderLock = false; // 재진입 방지
             //   displayPets/equippedTit). 이들은 비어도 []/{}로 존재 → 키가 빠지면 부분로드 사고이므로 서버 wipe 차단.
             const _noNullFields = new Set(['cd','nm','no','gdr','cookie','usedCookie','shopUsed','co','cn','tk','tpMoney','updatedAt',
                 'inv','col','avtOwned','earnedBdg','earnedTit','ownedPets','eq','displayPets','equippedTit',
-                'bank','bankAdj','displayProps']); // bank/bankAdj(은행 저축)·displayProps(착용) 부분로드 wipe 방어
+                'bank','bankAdj','displayProps','xpBoost']); // bank/bankAdj(은행 저축)·displayProps(착용)·xpBoost(교사 권위) 부분로드 wipe 방어
             Object.keys(lastHash).forEach(k => { if(!(k in _safeWithoutShopLog) && !_noNullFields.has(k)) updates[k] = null; });
             // shopUsed race 방지: pending delta는 write 여부와 무관하게 소비 (avt-direct 이후 중복 방지)
             const _pendingDelta = window._shopUsedAtomicDelta || 0;
@@ -15765,7 +15763,7 @@ let _renderLock = false; // 재진입 방지
        if(!window._stuLoaded) return;
        const s = (db.stu||[])[i];
        if(!s) return;
-       const want = Math.max(0, parseInt(val)||0);
+       const want = parseInt(val)||0; // 음수(부채) 허용
        const remain = (s.cookie||0) - (s.usedCookie||0);
        const newShopUsed = remain - want;
        s.shopUsed = newShopUsed;
@@ -17908,14 +17906,40 @@ let _renderLock = false; // 재진입 방지
              </div>
              <div style="font-size:14px;color:#4E342E;line-height:1.5;">다했어요에서 <b style="color:#E65100;">${delta}🍪</b>를<br>오늘분으로 추가 지급해주세요.</div>`,
             () => {
-                s.xpBoost.history = s.xpBoost.history || [];
-                s.xpBoost.history.push({date: todayISO, delta, cookieAt: ceil});
-                s.xpBoost.lastSettledCookie = ceil;
-                s.xpBoost.lastSettledDate = todayISO;
-                db.stu = stuList;
-                // [P3] 학생 1명만 변경
-                if(s.cd && window._svStuByCd) window._svStuByCd(s.cd); else if(typeof sv==='function') sv();
-                if(typeof window._showReqMiniPopup==='function') window._showReqMiniPopup();
+                // 🔒 서버 원자 트랜잭션 — 다중세션 중복정산·history 통째유실 방지(F3/F2)
+                //   cd-키(migrated) 모드에서만 트랜잭션 사용 — 비-migrated 인덱스 키는 정렬/객체화 시
+                //   다른 학생 노드로 오배정될 수 있어 기존 로컬 경로로 폴백(오배정 위험 0).
+                const _cdMig = !!(db.cfg && db.cfg.stuKeyCdMigrated);
+                if(!_cdMig || !cd) {
+                    s.xpBoost.history = s.xpBoost.history || [];
+                    s.xpBoost.history.push({date: todayISO, delta, cookieAt: ceil});
+                    s.xpBoost.lastSettledCookie = ceil;
+                    s.xpBoost.lastSettledDate = todayISO;
+                    db.stu = stuList;
+                    if(s.cd && window._svStuByCd) window._svStuByCd(s.cd); else if(typeof sv==='function') sv();
+                    if(typeof window._showReqMiniPopup==='function') window._showReqMiniPopup();
+                    return;
+                }
+                dbRef.child('stu/' + cd + '/xpBoost').transaction(cur => {
+                    if(!cur) return cur;                                 // 부스트 없음 → abort
+                    if(cur.lastSettledDate === todayISO) return;         // 이미 정산됨(서버 기준) → abort
+                    const _ceil = (cur.frozenCookie != null) ? cur.frozenCookie : (s.cookie||0);
+                    const _delta = Math.max(0, _ceil - (cur.lastSettledCookie||0));
+                    if(_delta === 0) return;                            // 적립 없음 → abort
+                    cur.history = Array.isArray(cur.history) ? cur.history : [];
+                    cur.history.push({date: todayISO, delta: _delta, cookieAt: _ceil});
+                    cur.lastSettledCookie = _ceil;
+                    cur.lastSettledDate = todayISO;
+                    return cur;
+                }, (err, committed, snap) => {
+                    if(err) { console.warn('[xpBoostSettle] 트랜잭션 실패', err); return; }
+                    if(!committed) {
+                        window.prettyConfirm('이미 정산됐거나 적립분이 없어요.', null, {icon:'ℹ️', okLabel:'확인', cancelLabel:''});
+                    }
+                    // 로컬 동기화 후 재렌더
+                    try { const _v = snap && snap.val(); const _si = stuList.findIndex(x => x && x.cd === cd); if(_v && _si >= 0) stuList[_si].xpBoost = _v; db.stu = stuList; } catch(_){}
+                    if(typeof window._showReqMiniPopup==='function') window._showReqMiniPopup();
+                }, false); // applyLocally=false: 로컬 echo 튐 방지
             },
             {icon:'🔥', okLabel:'네, 지급했어요', okClass:'btn-blue', cancelLabel:'아직이요'}
         );
@@ -19316,12 +19340,10 @@ window.appU = function(y, si, k) {
 
     // 화폐 지급/차감 순수 계산 (실제 지급 핸들러 doGivMultiStuPop과 자가테스트가 공유)
     //  쿠키: cookie는 다했니 권위값이라 직접 못 건드림 → shopUsed를 음수차감해 가용쿠키(cookie-usedCookie-shopUsed)를 늘림.
-    //        차감(amt<0) 시 가용쿠키(cookie-usedCookie) 이상은 못 깎도록 shopUsed 상한(cap) 클램프.
+    //        차감(amt<0) 시 상한 클램프 없음 — 가용쿠키를 초과 차감하면 잔액이 0 미만(부채)까지 내려간다(은행 연체와 동일 정책).
     window._grantCookieShopUsed = function(shopUsed, amt, cookie, usedCookie){
-        let ns = (Number(shopUsed)||0) - amt;
-        const cap = (Number(cookie)||0) - (Number(usedCookie)||0);
-        if(amt < 0 && ns > cap) ns = cap;
-        return ns;
+        // 음수 지급(차감) 시에도 상한 클램프 없음 → 가용 잔액이 0 미만(부채)까지 내려갈 수 있음
+        return (Number(shopUsed)||0) - amt;
     };
     // co/cn/tk: 가산/차감. 차감 시 잔액 0 미만 방지.
     window._grantCoinValue = function(cur, amt){
@@ -25938,7 +25960,7 @@ let isScratchDone = false;
     window.showCharModal = function() {
         const old = document.getElementById('charModal'); if(old) old.remove();
         const totalCookie = me.cookie || 0;
-        const curCookie = Math.max(0, totalCookie - (me.usedCookie || 0) - (me.shopUsed || 0));
+        const curCookie = totalCookie - (me.usedCookie || 0) - (me.shopUsed || 0); // 부채(음수) 표시 허용
         const lv = Math.max(0, Math.floor(window._myDahaeCookie() / 10)); // 레벨은 순수 다했니
         
         // 🌟 수정: 모달을 닫을 때(배경 클릭 또는 X 클릭) 이전 탭으로 슬라이더 복원
@@ -63331,10 +63353,23 @@ window.addCharRow = function() {
             const banned = bank.loans.some(l => l.shopBanUntil && l.shopBanUntil >= today);
             // 다중 연체 시 가장 늦은 차단일 (학생 측 _getBankShopBanUntil과 일치)
             const banUntilMax = bank.loans.reduce((mx, l) => (l.shopBanUntil && l.shopBanUntil >= today && (!mx || l.shopBanUntil > mx)) ? l.shopBanUntil : mx, null);
-            let status = '정상';
-            if(banned) status = '<span style="color:#c62828;">🚫 상점제한</span>';
-            else if(overdue) status = '<span style="color:#e53935;">⚠️ 연체</span>';
-            else if(diff !== null && diff <= 3) status = `<span style="color:#fb8c00;">D-${diff}</span>`;
+            // 상태: 예금·대출 각 건별 D-day 표시 (여러 건이면 모두 나눠서 표시)
+            const _ddFmt = df => `D${df >= 0 ? '-' + df : '+' + Math.abs(df)}`;
+            const _ddColor = df => df < 0 ? '#e53935' : df <= 3 ? '#fb8c00' : '#2e7d32';
+            const statusParts = [];
+            for(const d of activeDeposits) {
+                if(!d.dueDate) continue;
+                const df = _bankDiff(d.dueDate);
+                statusParts.push(`<span style="color:${_ddColor(df)};">예금 (${_ddFmt(df)})</span>`);
+            }
+            for(const l of activeLoans) {
+                const bannedL = l.shopBanUntil && l.shopBanUntil >= today;
+                const overdueL = l.dueDate && l.dueDate < today;
+                if(bannedL) statusParts.push(`<span style="color:#c62828;">대출 (상점제한)</span>`);
+                else if(overdueL) statusParts.push(`<span style="color:#e53935;">대출 (연체)</span>`);
+                else if(l.dueDate) { const df = _bankDiff(l.dueDate); statusParts.push(`<span style="color:${_ddColor(df)};">대출 (${_ddFmt(df)})</span>`); }
+            }
+            let status = statusParts.length ? statusParts.join(' / ') : 'D-0';
             if(totalDep === 0 && totalLoanRem === 0 && !banned) continue;
             // 수동 조작 버튼
             const safeNm = (s.nm||'').replace(/'/g,'&apos;');
@@ -63355,7 +63390,7 @@ window.addCharRow = function() {
                 <td style="padding:7px 8px;text-align:center;">${totalLoanAmt > 0 ? '🍪' + totalLoanAmt : (banned?'<span style="color:#c62828;font-size:11px;">상환완료</span>':'-')}</td>
                 <td style="padding:7px 8px;text-align:center;">${totalLoanRem > 0 ? '🍪' + totalLoanRem : (banned?'<span style="color:#c62828;font-size:11px;">0</span>':'-')}</td>
                 <td style="padding:7px 8px;text-align:center;">${banned ? `<span style="color:#c62828;font-size:11px;">제한 ~${(banUntilMax||'').slice(5)}</span>` : nearestDue ? nearestDue.slice(5) + (diff !== null ? ` (D${diff >= 0 ? '-' + diff : '+' + Math.abs(diff)})` : '') : '-'}</td>
-                <td style="padding:7px 8px;text-align:center;">${status}</td>
+                <td style="padding:7px 8px;text-align:center;font-size:12px;line-height:1.7;white-space:nowrap;">${status}</td>
                 <td style="padding:7px 8px;text-align:center;min-width:155px;">${actions || '-'}</td>
             </tr>`;
         }
