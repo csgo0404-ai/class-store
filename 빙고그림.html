@@ -449,6 +449,17 @@ function initCoverCanvas() {
         _panStart=null;
         if(e.touches.length===0) endDraw(e.changedTouches[0]?.clientX,e.changedTouches[0]?.clientY);
     });
+    // 저사양 태블릿 팜리젝션·시스템 제스처·메모리 압박으로 OS가 터치를 취소하면 touchend가 안 옴.
+    // → 진행 중이던 획을 안전하게 마감(saveCoverState=히스토리+드래프트 저장)하고 상태 초기화해 "그리다 유실" 방지.
+    _coverCanvas.addEventListener('touchcancel', e => {
+        _panStart=null; _pinchDist=0;
+        if(_coverTool==='select'&&_selectMarquee){ _selectMarquee=null; clearPreview(); renderStickerLayer(); return; }
+        if(_stickerDragMode){ _stickerDragMode=null; saveCoverState(); return; }
+        if(_coverDrawing){
+            if(_coverShapeStart){ _coverShapeStart=null; clearPreview(); renderStickerLayer(); }
+            _coverDrawing=false; _lastDrawPoint=null; saveCoverState();
+        }
+    }, { passive:false });
 
     applyTransform();
     document.getElementById('coverBrushSize')?.addEventListener('input',updateCoverCursor);
@@ -745,10 +756,19 @@ function offColorSwatch(kind){const sw=document.getElementById(kind==='shadow'?'
 function updateColorSwatch(kind,color){const sw=document.getElementById(kind==='shadow'?'coverShadowSwatch':'coverBgSwatch');sw.dataset.off='0';sw.style.background=color;}
 
 /* ── 히스토리 ── */
+function _composeHistorySnapshot(){
+    // 베이스+탑(=모든 붓/도형 획)을 합성해 저장하고, 스티커/글자/이미지는 배열로 함께 보관.
+    // (과거: 탑만 저장 → bakeTopToBase로 베이스에 구운 획이 히스토리에 없어 undo 시 영구 삭제됐음)
+    var tmp=document.createElement('canvas');tmp.width=_coverCanvas.width;tmp.height=_coverCanvas.height;
+    var tc=tmp.getContext('2d');
+    if(_coverBase)tc.drawImage(_coverBase,0,0);
+    tc.drawImage(_coverCanvas,0,0);
+    return { img:tmp.toDataURL('image/png'), stickers:JSON.parse(JSON.stringify(_coverStickers||[])) };
+}
 function saveCoverState(){
     if(!_coverCanvas)return;
     _coverHistory=_coverHistory.slice(0,_coverHistIdx+1);
-    _coverHistory.push(_coverCanvas.toDataURL());
+    _coverHistory.push(_composeHistorySnapshot());
     if(_coverHistory.length>15)_coverHistory.shift(); // 30→15: 저사양 태블릿 메모리 절감(toDataURL 누적→탭 튕김 방지)
     _coverHistIdx=_coverHistory.length-1;
     // 드래프트 자동저장 — 디바운스. (과거: 매 획마다 toDataURL+localStorage → CPU/메모리/쿼터 폭증으로
@@ -766,14 +786,24 @@ function _scheduleBingoDraftSave(){
 function _flushBingoDraftSave(){ if(_bingoDraftTimer){ clearTimeout(_bingoDraftTimer); _bingoDraftTimer=null; _writeBingoDraft(); } }
 function _writeBingoDraft(){
     if(!_bingoDraftKey||!_coverCanvas) return;
+    // 빈 캔버스면 저장하지 않고 기존 드래프트도 제거.
+    //  (getCoverDataUrl은 흰 배경 JPEG라 빈 상태를 저장하면 복원 시 흰 이미지가 실려
+    //   isCoverBlank이 false로 뒤집혀 "그림 먼저 그려주세요" 가드가 뚫림)
+    //  ⚠️ isCoverBlank은 getImageData를 쓰므로 tainted 캔버스에서 throw 가능 → 반드시 try로 감싸
+    //     예외가 드래프트 저장/인터벌/flush 전체를 깨뜨리지 않게 함.
+    var _blank=false;
+    try{ _blank=(typeof isCoverBlank==='function')&&isCoverBlank(); }catch(_){ _blank=false; }
+    if(_blank){
+        try{ localStorage.removeItem(_bingoDraftKey); }catch(_){}
+        return;
+    }
     var url='';
     try{
-        var tmp=document.createElement('canvas');tmp.width=_coverCanvas.width;tmp.height=_coverCanvas.height;
-        var tc=tmp.getContext('2d');
-        if(_coverBase)tc.drawImage(_coverBase,0,0);
-        tc.drawImage(_coverCanvas,0,0);
-        url=tmp.toDataURL('image/png');
+        // 스티커/글자/이미지까지 모두 포함한 최종 합성본으로 저장(JPEG).
+        // (과거: 베이스+탑만 저장 → 튕김 복원 시 스티커/글자/삽입이미지 소실. JPEG라 용량도 절감돼 쿼터 여유↑)
+        url=getCoverDataUrl();
     }catch(e){ return; }
+    if(!url) return;
     try{
         localStorage.setItem(_bingoDraftKey, url);
     }catch(e){
@@ -787,7 +817,20 @@ function _writeBingoDraft(){
 // 백그라운드 전환/닫기 직전 대기 중 저장 flush (튕김·이탈 시 최신 상태 보존)
 window.addEventListener('pagehide', _flushBingoDraftSave);
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') _flushBingoDraftSave(); });
-function _restoreFromHistory(){const url=_coverHistory[_coverHistIdx];if(!url)return;const img=new Image();img.onload=()=>{clearCoverNoSave();_coverCtx.drawImage(img,0,0);};img.src=url;}
+// 한 획을 오래 긋는 도중 튕기면 그 획이 유실됨(드래프트는 획 끝에만 예약). 획은 탑 캔버스에
+//   실시간으로 그려지므로, 그리는 중에는 주기적으로 드래프트를 저장해 mid-stroke 크래시에 대비.
+setInterval(function(){ if(_coverDrawing && _bingoDraftKey) _writeBingoDraft(); }, 4000);
+function _restoreFromHistory(){
+    const snap=_coverHistory[_coverHistIdx];if(!snap)return;
+    // 구버전(문자열) 호환 + 신버전({img,stickers}) 지원
+    const url=(typeof snap==='string')?snap:(snap.img||'');
+    const stk=(typeof snap==='string')?[]:(snap.stickers||[]);
+    _coverStickers=JSON.parse(JSON.stringify(stk));_selectedStickerIdx=-1;
+    if(!url){clearCoverNoSave();renderStickerLayer();return;}
+    const img=new Image();
+    img.onload=()=>{clearCoverNoSave();if(_coverBaseCtx)_coverBaseCtx.drawImage(img,0,0);renderStickerLayer();};
+    img.src=url;
+}
 function undoCover(){if(_coverHistIdx>0){_coverHistIdx--;_restoreFromHistory();}}
 function redoCover(){if(_coverHistIdx<_coverHistory.length-1){_coverHistIdx++;_restoreFromHistory();}}
 function clearCoverNoSave(){if(!_coverCtx)return;_coverCtx.clearRect(0,0,_coverCanvas.width,_coverCanvas.height);if(_coverBaseCtx)_coverBaseCtx.clearRect(0,0,_coverBase.width,_coverBase.height);}
@@ -865,9 +908,11 @@ window.addEventListener('message',e=>{
         // sid를 포함해 드래프트 키를 격리 — clearBingo 후 새 빙고 시작 시 이전 드래프트 무시
         _bingoDraftKey=(cd&&ci!=='')?`bingoDraft_${cd}_${ci}${sid?'_'+sid:''}`:null;
         const prevImg=e.data.prevImg||'';
-        // 드래프트 복원 우선순위: 거절 이미지 → 로컬 드래프트
-        const draftImg=(_bingoDraftKey&&!prevImg)?(() => { try { return localStorage.getItem(_bingoDraftKey)||''; } catch(e){return '';} })():'';
-        const imgToLoad=prevImg||draftImg;
+        // 복원 우선순위: 로컬 드래프트(=최신 진행분) → 거절 이미지(prevImg).
+        //  첫 제출 성공 시 드래프트는 ack로 삭제되므로, 재접속 때 드래프트가 남아있다는 건
+        //  "거절 후 다시 그리던 진행분"이라 반드시 최우선이어야 함(과거: prevImg 우선 → 재그리기 유실).
+        const draftImg=_bingoDraftKey?(() => { try { return localStorage.getItem(_bingoDraftKey)||''; } catch(e){return '';} })():'';
+        const imgToLoad=draftImg||prevImg;
         if(imgToLoad){
             const img=new Image();img.crossOrigin='anonymous';
             img.onload=()=>{
