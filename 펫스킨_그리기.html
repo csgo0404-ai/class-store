@@ -1389,19 +1389,30 @@ function draftKey(){ return 'skinTool_draft_' + (currentUser && currentUser.code
 function saveDraftNow(){
   if(_editMode) return;   // 교사 편집 모드: 학생 본인 임시저장을 건드리지 않음
   if(!_draftLoaded) return;
+  let payload='';
   try{
     // 희소 인코딩: 색칠된 셀만 [index,color]로 저장 → 빈/성긴 그림은 수백 바이트.
     // (90×90 전체 배열은 빈 그림도 ~40KB라 공유 PC에서 용량 초과 사고 위험)
     const cells=[];
     for(let y=0;y<GRID_H;y++){ const row=pixels[y]; for(let x=0;x<GRID_W;x++){ const c=row[x]; if(c) cells.push([y*GRID_W+x, c]); } }
-    localStorage.setItem(draftKey(), JSON.stringify({
+    payload = JSON.stringify({
       v:2, w:GRID_W, h:GRID_H, cells, color, brushSize, zoomLevel, tool,
       refOpacity:+document.getElementById('refOpacity').value,
       refVisible,
       type: (document.getElementById('inType')||{}).value || '',
       price: document.getElementById('inPrice').value
-    }));
-  }catch(_){}
+    });
+  }catch(_){ return; }
+  const k = draftKey();
+  try{
+    localStorage.setItem(k, payload);
+  }catch(_){
+    // 쿼터 초과 — 다른(오래된) 스킨 드래프트 정리 후 1회 재시도 (부모 앱과 origin 공유라 꽉 찰 수 있음)
+    try{
+      for(let i=localStorage.length-1;i>=0;i--){ const kk=localStorage.key(i); if(kk && kk.indexOf('skinTool_draft_')===0 && kk!==k) localStorage.removeItem(kk); }
+      localStorage.setItem(k, payload);
+    }catch(_){}
+  }
 }
 function scheduleSaveDraft(){ if(_editMode) return; if(!_draftLoaded) return; clearTimeout(_draftT); _draftT=setTimeout(saveDraftNow,400); }
 // 새로고침/탭 닫기/탭 전환 직전 강제 저장 — 디바운스 대기 중인 변경분 유실 방지

@@ -269,6 +269,9 @@ const CLOUDINARY_PRESET = 'csgo0404';
 /* ── 스티커 세트 ── */
 const STICKER_SET = ['⭐','🌸','🌈','🌟','🎈','🎀','🌙','☀️','🍀','🐰','🐱','🐶','🦄','💖','🌺','🍎','🦋','🐢','🍓','🍰'];
 
+/* ── 드래프트 자동저장 키 ── */
+let _bingoDraftKey = null;
+
 /* ── 상태 변수 (동화책 제작과 동일한 이름) ── */
 let _coverCanvas = null, _coverCtx = null;
 let _coverBase = null, _coverBaseCtx = null;
@@ -452,7 +455,9 @@ function initCoverCanvas() {
     updateCoverCursor();
 }
 
-function syncWrapToInteger() {
+let _syncWrapTimer=null;
+function syncWrapToInteger(){clearTimeout(_syncWrapTimer);_syncWrapTimer=setTimeout(_doSyncWrap,16);}
+function _doSyncWrap(){
     const wrap=document.getElementById('coverCanvasWrap'); if(!wrap) return;
     wrap.style.width=''; wrap.style.height='';
     const w=Math.floor(wrap.getBoundingClientRect().width); if(w<=0) return;
@@ -627,8 +632,14 @@ function clearPreview() { if(_coverPreviewCtx)_coverPreviewCtx.clearRect(0,0,_co
 function bakeTopToBase() { if(!_coverCtx||!_coverBaseCtx)return;_coverBaseCtx.drawImage(_coverCanvas,0,0);_coverCtx.clearRect(0,0,_coverCanvas.width,_coverCanvas.height); }
 
 /* ── 채우기 ── */
+let _fillBusy=false;
+let _fillLastMs=0;
 function floodFill(x,y) {
+    const _now=Date.now();
+    if(_fillBusy||_now-_fillLastMs<400)return;
     if(!_coverCtx||x<0||y<0||x>=_coverCanvas.width||y>=_coverCanvas.height)return;
+    _fillBusy=true;
+    try{
     const w=_coverCanvas.width,h=_coverCanvas.height;
     const compose=document.createElement('canvas');compose.width=w;compose.height=h;
     const cctx=compose.getContext('2d',{willReadFrequently:true});
@@ -646,6 +657,7 @@ function floodFill(x,y) {
     const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tc=tmp.getContext('2d');const td=tc.createImageData(w,h);
     for(let i=0;i<mask.length;i++)if(mask[i]){const p=i*4;td.data[p]=fillRgb.r;td.data[p+1]=fillRgb.g;td.data[p+2]=fillRgb.b;td.data[p+3]=255;}
     tc.putImageData(td,0,0);_coverCtx.drawImage(tmp,0,0);saveCoverState();
+    }finally{_fillLastMs=Date.now();_fillBusy=false;}
 }
 
 /* ── 스포이드 ── */
@@ -733,7 +745,48 @@ function offColorSwatch(kind){const sw=document.getElementById(kind==='shadow'?'
 function updateColorSwatch(kind,color){const sw=document.getElementById(kind==='shadow'?'coverShadowSwatch':'coverBgSwatch');sw.dataset.off='0';sw.style.background=color;}
 
 /* ── 히스토리 ── */
-function saveCoverState(){if(!_coverCanvas)return;_coverHistory=_coverHistory.slice(0,_coverHistIdx+1);_coverHistory.push(_coverCanvas.toDataURL());if(_coverHistory.length>30)_coverHistory.shift();_coverHistIdx=_coverHistory.length-1;}
+function saveCoverState(){
+    if(!_coverCanvas)return;
+    _coverHistory=_coverHistory.slice(0,_coverHistIdx+1);
+    _coverHistory.push(_coverCanvas.toDataURL());
+    if(_coverHistory.length>15)_coverHistory.shift(); // 30→15: 저사양 태블릿 메모리 절감(toDataURL 누적→탭 튕김 방지)
+    _coverHistIdx=_coverHistory.length-1;
+    // 드래프트 자동저장 — 디바운스. (과거: 매 획마다 toDataURL+localStorage → CPU/메모리/쿼터 폭증으로
+    //   태블릿 탭 튕김 + 쿼터초과 시 setItem이 조용히 실패해 복원 불가 → "그리는 중 그림 날아감")
+    _scheduleBingoDraftSave();
+}
+// ── 드래프트 저장: 디바운스 + 쿼터 복원력 ──
+//   localStorage는 부모(이벤트 상점) 앱과 origin을 공유해 쉽게 꽉 참 → setItem 실패 시 오래된 다른 드래프트 정리 후 재시도.
+var _bingoDraftTimer=null;
+function _scheduleBingoDraftSave(){
+    if(!_bingoDraftKey) return;
+    if(_bingoDraftTimer) clearTimeout(_bingoDraftTimer);
+    _bingoDraftTimer=setTimeout(function(){ _bingoDraftTimer=null; _writeBingoDraft(); }, 700);
+}
+function _flushBingoDraftSave(){ if(_bingoDraftTimer){ clearTimeout(_bingoDraftTimer); _bingoDraftTimer=null; _writeBingoDraft(); } }
+function _writeBingoDraft(){
+    if(!_bingoDraftKey||!_coverCanvas) return;
+    var url='';
+    try{
+        var tmp=document.createElement('canvas');tmp.width=_coverCanvas.width;tmp.height=_coverCanvas.height;
+        var tc=tmp.getContext('2d');
+        if(_coverBase)tc.drawImage(_coverBase,0,0);
+        tc.drawImage(_coverCanvas,0,0);
+        url=tmp.toDataURL('image/png');
+    }catch(e){ return; }
+    try{
+        localStorage.setItem(_bingoDraftKey, url);
+    }catch(e){
+        // 쿼터 초과 — 다른(오래된) 빙고 드래프트 정리 후 1회 재시도
+        try{
+            for(var i=localStorage.length-1;i>=0;i--){ var k=localStorage.key(i); if(k && k.indexOf('bingoDraft_')===0 && k!==_bingoDraftKey) localStorage.removeItem(k); }
+            localStorage.setItem(_bingoDraftKey, url);
+        }catch(e2){}
+    }
+}
+// 백그라운드 전환/닫기 직전 대기 중 저장 flush (튕김·이탈 시 최신 상태 보존)
+window.addEventListener('pagehide', _flushBingoDraftSave);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden') _flushBingoDraftSave(); });
 function _restoreFromHistory(){const url=_coverHistory[_coverHistIdx];if(!url)return;const img=new Image();img.onload=()=>{clearCoverNoSave();_coverCtx.drawImage(img,0,0);};img.src=url;}
 function undoCover(){if(_coverHistIdx>0){_coverHistIdx--;_restoreFromHistory();}}
 function redoCover(){if(_coverHistIdx<_coverHistory.length-1){_coverHistIdx++;_restoreFromHistory();}}
@@ -747,22 +800,85 @@ function getCoverDataUrl(){if(!_coverCanvas)return'';const tmp=document.createEl
 
 /* ── 제출 / 취소 ── */
 function doSubmit(){
-    if(isCoverBlank()){alert('그림을 그려주세요!');return;}
-    const btn=document.getElementById('btnSubmit');btn.textContent='⏳ 처리 중...';btn.disabled=true;
-    try{
-        const dataUrl=getCoverDataUrl();
-        window.parent.postMessage({type:'bingoDrawDone',dataUrl,note:''},'*');
-    }catch(e){btn.textContent='🎨 제출하기';btn.disabled=false;alert('오류: '+e.message);}
+    if(isCoverBlank()){
+        // 빈 캔버스 알림 모달
+        const m=document.createElement('div');
+        m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;';
+        m.innerHTML=`<div style="background:white;border-radius:22px;padding:28px 24px;width:min(320px,100%);text-align:center;font-family:'Jua';box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+            <div style="font-size:42px;margin-bottom:10px;">🎨</div>
+            <div style="font-size:17px;font-weight:bold;color:#333;margin-bottom:20px;">그림을 먼저 그려주세요!</div>
+            <button onclick="this.closest('[data-blank-modal]').remove()" style="padding:10px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#7F77DD,#D4537E);color:white;font-family:'Jua';font-size:15px;font-weight:bold;cursor:pointer;">확인</button>
+        </div>`;
+        m.setAttribute('data-blank-modal','1');
+        document.body.appendChild(m);
+        m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+        return;
+    }
+    // 제출 확인 모달
+    const modal=document.createElement('div');
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    modal.innerHTML=`<div style="background:white;border-radius:22px;padding:28px 24px;width:min(320px,100%);text-align:center;font-family:'Jua';box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <div style="font-size:42px;margin-bottom:10px;">📤</div>
+        <div style="font-size:18px;font-weight:bold;color:#333;margin-bottom:6px;">제출할까요?</div>
+        <div style="font-size:13px;color:#999;margin-bottom:22px;">선생님께 그림을 보냅니다</div>
+        <div style="display:flex;gap:10px;">
+            <button id="_submitCancelBtn" style="flex:1;padding:12px;border:none;border-radius:12px;background:#F5F5F5;color:#666;font-family:'Jua';font-size:15px;font-weight:bold;cursor:pointer;">취소</button>
+            <button id="_submitOkBtn" style="flex:2;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#7F77DD,#D4537E);color:white;font-family:'Jua';font-size:15px;font-weight:bold;cursor:pointer;">📤 제출하기</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+    modal.querySelector('#_submitCancelBtn').onclick=()=>modal.remove();
+    modal.querySelector('#_submitOkBtn').onclick=()=>{
+        modal.remove();
+        const btn=document.getElementById('btnSubmit');btn.textContent='⏳ 처리 중...';btn.disabled=true;
+        try{
+            const dataUrl=getCoverDataUrl();
+            // ⚠️ 드래프트는 여기서 지우지 않는다 — 부모가 Cloudinary 업로드 성공(bingoDrawSaved)을
+            //    ack로 알려줄 때까지 보존해야 업로드 실패 시 그림이 소실되지 않는다.
+            window.parent.postMessage({type:'bingoDrawDone',dataUrl,note:''},'*');
+        }catch(e){btn.textContent='📤';btn.disabled=false;alert('오류: '+e.message);}
+    };
 }
 function doCancel(){window.parent.postMessage({type:'bingoDrawCancel'},'*');}
 
 /* ── postMessage ── */
 window.addEventListener('message',e=>{
+    if(e.data?.type==='bingoDrawSaved'){
+        // 부모가 업로드+제출 확정 완료 → 이제서야 드래프트 삭제(재현 방지)
+        if(_bingoDraftKey){try{localStorage.removeItem(_bingoDraftKey);}catch(_){} _bingoDraftKey=null;}
+        if(_bingoDraftTimer){clearTimeout(_bingoDraftTimer);_bingoDraftTimer=null;}
+        return;
+    }
+    if(e.data?.type==='bingoDrawError'){
+        // 업로드 실패 → 버튼 재활성화, 드래프트는 그대로 유지해 재제출/복원 가능
+        const btn=document.getElementById('btnSubmit');
+        if(btn){btn.textContent='📤';btn.disabled=false;}
+        return;
+    }
     if(e.data?.type==='bingoDrawInit'){
         const label=e.data.cellLabel||'';
         document.getElementById('titleBar').textContent=label?`🎨 ${label} — 그림 그리기`:'🎨 그림 그리기';
         clearCoverNoSave();_coverStickers=[];_selectedStickerIdx=-1;_coverHistory=[];_coverHistIdx=-1;
-        renderStickerLayer();saveCoverState();
+        // 드래프트 키 설정
+        const cd=e.data.cd||'';const ci=e.data.ci!=null?String(e.data.ci):'';const sid=e.data.sid||'';
+        // sid를 포함해 드래프트 키를 격리 — clearBingo 후 새 빙고 시작 시 이전 드래프트 무시
+        _bingoDraftKey=(cd&&ci!=='')?`bingoDraft_${cd}_${ci}${sid?'_'+sid:''}`:null;
+        const prevImg=e.data.prevImg||'';
+        // 드래프트 복원 우선순위: 거절 이미지 → 로컬 드래프트
+        const draftImg=(_bingoDraftKey&&!prevImg)?(() => { try { return localStorage.getItem(_bingoDraftKey)||''; } catch(e){return '';} })():'';
+        const imgToLoad=prevImg||draftImg;
+        if(imgToLoad){
+            const img=new Image();img.crossOrigin='anonymous';
+            img.onload=()=>{
+                if(_coverBaseCtx){_coverBaseCtx.drawImage(img,0,0,_coverBase.width,_coverBase.height);}
+                else if(_coverCtx){_coverCtx.drawImage(img,0,0,_coverCanvas.width,_coverCanvas.height);}
+                renderStickerLayer();saveCoverState();
+            };
+            img.src=imgToLoad;
+        } else {
+            renderStickerLayer();saveCoverState();
+        }
     }
 });
 
