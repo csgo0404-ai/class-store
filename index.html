@@ -61208,7 +61208,7 @@ window.addCharRow = function() {
                 <div style="display:flex;gap:10px;margin-top:14px;">
                     <button onclick="document.querySelectorAll('[data-bingo-modal]').forEach(m=>m.remove())"
                         style="flex:1;padding:11px;border:none;border-radius:10px;background:#F5F5F5;color:#888;font-family:'Jua';font-size:14px;cursor:pointer;">취소</button>
-                    <button onclick="(function(){const n=document.getElementById('_bingoNoteInput');if(!n||!n.value.trim()){n.style.border='1.5px solid #E53935';n.focus();return;}window._submitBingoCellConfirm(${ci},'${cd}');})()"
+                    <button onclick="(function(btn){const n=document.getElementById('_bingoNoteInput');if(!n||!n.value.trim()){n.style.border='1.5px solid #E53935';n.focus();return;}btn.disabled=true;btn.textContent='⏳ 제출 중...';Promise.resolve(window._submitBingoCellConfirm(${ci},'${cd}')).then(ok=>{if(ok===false){btn.disabled=false;btn.textContent='📨 제출하기';alert('제출에 실패했어요. 잠시 후 다시 시도해주세요.');}else{document.querySelectorAll('[data-bingo-modal]').forEach(m=>m.remove());}}).catch(()=>{btn.disabled=false;btn.textContent='📨 제출하기';});})(this)"
                         style="flex:2;padding:11px;border:none;border-radius:10px;background:linear-gradient(135deg,#1565C0,#42A5F5);color:white;font-family:'Jua';font-size:15px;font-weight:bold;cursor:pointer;">📨 제출하기</button>
                 </div>
             </div>`;
@@ -61217,29 +61217,39 @@ window.addCharRow = function() {
         setTimeout(()=>document.getElementById('_bingoNoteInput')?.focus(), 100);
     };
 
-    window._submitBingoCellConfirm = function(ci, cd, img) {
+    // ★ async: 서버 기록(Firebase pending)이 '실제로' 확정된 뒤에야 성공(true)을 반환한다.
+    //   그림 경로 호출부는 이 반환을 기다렸다가 성공일 때만 자식에 드래프트 삭제 ack를 보낸다
+    //   (옛 순서: ack→기록. 느린 인터넷에서 기록이 조용히 실패하면 드래프트만 사라져 제출 누락 위험).
+    //   모달 제거는 각 호출부가 담당한다(그림 경로는 ack를 보낼 iframe을 기록 확정 전까지 살려둬야 함).
+    window._submitBingoCellConfirm = async function(ci, cd, img) {
         const note = (window._submitBingoCellConfirmNote !== undefined ? window._submitBingoCellConfirmNote : (document.getElementById('_bingoNoteInput')?.value||'')).trim();
         window._submitBingoCellConfirmNote = undefined;
         // 그림 작업이 길어져 확정 시점에 상태가 바뀌었을 수 있음 — 재검증.
-        //   이미 승인/대기면 pending 재작성 금지(교사 중복 대기 항목 방지).
+        //   이미 승인/대기면 pending 재작성 금지(교사 중복 대기 항목 방지). 이미 제출된 상태이므로
+        //   드래프트 삭제는 안전 → true 반환.
         const _apvNow = (db.bingo?.approved||{})[cd] || {};
         const _pendNow = (db.bingo?.pending||{})[cd] || {};
         if(_apvNow[ci] !== undefined || _apvNow[String(ci)] !== undefined) {
-            document.querySelectorAll('[data-bingo-modal]').forEach(m=>m.remove());
-            showToast('이미 승인된 칸이에요!'); return;
+            showToast('이미 승인된 칸이에요!'); return true;
         }
         if(_pendNow[ci] !== undefined || _pendNow[String(ci)] !== undefined) {
-            document.querySelectorAll('[data-bingo-modal]').forEach(m=>m.remove());
-            showToast('⏳ 이미 승인 대기 중이에요!'); return;
+            showToast('⏳ 이미 승인 대기 중이에요!'); return true;
         }
-        document.querySelectorAll('[data-bingo-modal]').forEach(m=>m.remove());
         const data = { note, ts: Date.now(), ...(img ? {img} : {}) };
-        try { dbRef.child(`bingo/pending/${cd}/${ci}`).set(data); } catch(e){ console.error('[bingo]',e); }
+        // set()을 await해 서버 확정을 확인. 느린 인터넷에서 무한 대기하지 않도록 12초 타임아웃.
+        //   실패/타임아웃 → false(호출부가 드래프트 보존 + 재시도). 같은 경로 재기록은 멱등이라 중복 없음.
+        try {
+            await Promise.race([
+                dbRef.child(`bingo/pending/${cd}/${ci}`).set(data),
+                new Promise((_,rej)=>setTimeout(()=>rej(new Error('시간 초과')), 12000))
+            ]);
+        } catch(e){ console.error('[bingo]',e); return false; }
         if(!db.bingo.pending) db.bingo.pending={};
         if(!db.bingo.pending[cd]) db.bingo.pending[cd]={};
         db.bingo.pending[cd][ci] = data;
         rBingoS(); rManittoS();
         showToast('📨 제출됐습니다! 선생님 승인을 기다려주세요.');
+        return true;
     };
 
     window.submitBingoCellDraw = function(ci) {
@@ -61306,11 +61316,15 @@ window.addCharRow = function() {
                         const j = await res.json();
                         imgUrl = j.secure_url || '';
                     }
-                    // 모달(iframe) 제거 전에 자식에 성공 ack → 자식이 그제서야 로컬 드래프트 삭제
+                    // ★ 그림(Cloudinary)뿐 아니라 제출 기록(Firebase pending)까지 확정된 뒤에야
+                    //   자식에 성공 ack를 보내 로컬 드래프트를 지운다. 기록 실패면 throw → catch에서
+                    //   bingoDrawError로 드래프트 보존 + 재시도(iframe은 아직 살아있음).
+                    window._submitBingoCellConfirmNote = note;
+                    const _recorded = await window._submitBingoCellConfirm(ci, cd, imgUrl);
+                    if(_recorded === false) throw new Error('제출 기록에 실패했어요. 잠시 후 다시 시도해주세요.');
+                    // 기록 확정 → 자식 드래프트 삭제 ack 후 모달(iframe) 제거
                     try { iframe.contentWindow.postMessage({type:'bingoDrawSaved'}, '*'); } catch(_){}
                     modal.remove();
-                    window._submitBingoCellConfirmNote = note;
-                    window._submitBingoCellConfirm(ci, cd, imgUrl);
                 } catch(err) {
                     if(loading) loading.style.display = 'none';
                     // 자식 버튼 재활성화 + 드래프트 유지시켜 재제출/복원 가능하게
