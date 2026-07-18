@@ -319,10 +319,12 @@ function render(){
     const c = pixels[y][x];
     if(c){ ctx.fillStyle = c; ctx.fillRect(x*s, y*s, s, s); }
   }
-  // light grid lines
+  // light grid lines — 저사양 태블릿: 전체 선을 한 path로 묶어 stroke() 1회만 호출(획당 ~182회 → 1회)
   ctx.strokeStyle = '#00000016'; ctx.lineWidth = 1;
-  for(let i=0;i<=GRID_W;i++){ ctx.beginPath(); ctx.moveTo(i*s,0); ctx.lineTo(i*s,H); ctx.stroke(); }
-  for(let i=0;i<=GRID_H;i++){ ctx.beginPath(); ctx.moveTo(0,i*s); ctx.lineTo(W,i*s); ctx.stroke(); }
+  ctx.beginPath();
+  for(let i=0;i<=GRID_W;i++){ ctx.moveTo(i*s,0); ctx.lineTo(i*s,H); }
+  for(let i=0;i<=GRID_H;i++){ ctx.moveTo(0,i*s); ctx.lineTo(W,i*s); }
+  ctx.stroke();
   if(typeof scheduleSaveDraft==='function') scheduleSaveDraft();   // 픽셀 변경 자동 임시저장
 }
 
@@ -935,9 +937,18 @@ function _prettyMsg(opts){
 }
 
 /* ============ SUBMIT ============ */
+// 저품질 인터넷 대비: fetch가 무한정 매달려 제출 버튼이 '⏳'로 멈춰 보이는 것을 막음.
+//   타임아웃 시 AbortController로 끊고 안내 문구가 있는 에러를 던짐(호출부 catch가 draft 보존 + 재시도 안내).
+function _fetchTimeout(url, opts, ms, label){
+  const ctl = new AbortController();
+  const t = setTimeout(()=>ctl.abort(), ms);
+  return fetch(url, Object.assign({}, opts, {signal:ctl.signal}))
+    .catch(err=>{ if(err && err.name==='AbortError') throw new Error((label||'연결')+'이(가) 너무 느려요. 인터넷 상태를 확인하고 다시 시도해주세요.'); throw err; })
+    .finally(()=>clearTimeout(t));
+}
 async function uploadToCloudinary(blob, creatorCd){
   const publicId = `petskin_${creatorCd}_${Date.now()}`;
-  const signRes = await fetch(SIGN_WORKER,{method:'POST',body:JSON.stringify({action:'signUpload', publicId})});
+  const signRes = await _fetchTimeout(SIGN_WORKER,{method:'POST',body:JSON.stringify({action:'signUpload', publicId})}, 15000, '서버 연결');
   const sign = await signRes.json();
   const fd = new FormData();
   fd.append('file', blob);
@@ -947,7 +958,7 @@ async function uploadToCloudinary(blob, creatorCd){
   fd.append('timestamp', String(sign.timestamp));
   fd.append('signature', sign.signature);
   fd.append('api_key', sign.apiKey);
-  const res = await fetch(CLOUDINARY_URL,{method:'POST',body:fd});
+  const res = await _fetchTimeout(CLOUDINARY_URL,{method:'POST',body:fd}, 45000, '이미지 업로드');
   const j = await res.json();
   if(!j.secure_url) throw new Error(j.error?.message || '업로드 실패');
   return j.secure_url;
@@ -1390,6 +1401,23 @@ var _draftT = null;
 //  stale(비편집) 탭의 pagehide flush가 다른 탭의 최신 작업을 덮는 것을 차단.
 var _draftBaseTs = 0;
 var _editedSinceSync = false;
+var _saveWarned = false;   // 용량 포화로 임시저장이 최종 실패했을 때 안내를 1회만 띄우기 위한 플래그
+// 공유 origin(부모 앱과 localStorage 공유) 용량 포화로 임시저장이 막힐 때 학생에게 알림.
+//   그림은 화면(pixels)엔 남아있지만 새로고침/튕김 시 복원이 안 되므로 '지금 제출/다운로드'를 유도.
+function _warnSaveFailed(){
+  if(_saveWarned) return;            // 실패가 이어지는 동안 반복 알림 방지(성공 시 리셋)
+  if(document.hidden) return;        // 탭 닫힘/전환(pagehide 등) 중엔 모달 무의미 → 플래그 소모 없이 다음 기회로
+  _saveWarned = true;
+  try{
+    if(typeof _prettyMsg==='function'){
+      _prettyMsg({
+        emoji:'⚠️', title:'임시저장 공간이 가득 찼어요',
+        html:'그림이 자동으로 백업되지 않고 있어요.<br><b style="color:#e67e22">지금 제출하거나 ⬇️ 다운로드</b>해서 그림을 꼭 보관해주세요!',
+        accent:'#e67e22', bg:'linear-gradient(135deg,#fff4e6,#ffe8cc)'
+      });
+    } else if(typeof toast==='function'){ toast('⚠️ 저장 공간이 가득 찼어요. 지금 제출하거나 다운로드해 주세요.'); }
+  }catch(_){}
+}
 function draftKey(){ return 'skinTool_draft_' + (currentUser && currentUser.code ? currentUser.code : 'anon'); }
 function saveDraftNow(){
   if(_editMode) return;   // 교사 편집 모드: 학생 본인 임시저장을 건드리지 않음
@@ -1416,14 +1444,14 @@ function saveDraftNow(){
     const k = draftKey();
     try{
       localStorage.setItem(k, payload);
-      _draftBaseTs = _ts; _editedSinceSync = false;
+      _draftBaseTs = _ts; _editedSinceSync = false; _saveWarned = false;   // 저장 성공 → 경고 상태 해제
     }catch(_){
       // 쿼터 초과 — 다른(오래된) 스킨 드래프트 정리 후 1회 재시도 (부모 앱과 origin 공유라 꽉 찰 수 있음)
       try{
         for(let i=localStorage.length-1;i>=0;i--){ const kk=localStorage.key(i); if(kk && kk.indexOf('skinTool_draft_')===0 && kk!==k) localStorage.removeItem(kk); }
         localStorage.setItem(k, payload);
-        _draftBaseTs = _ts; _editedSinceSync = false;
-      }catch(_){}
+        _draftBaseTs = _ts; _editedSinceSync = false; _saveWarned = false;   // 정리 후 재시도 성공 → 해제
+      }catch(_){ _warnSaveFailed(); }   // 재시도도 실패 = 공간 확보 불가 → 학생에게 안내(1회)
     }
     return;
   }catch(_){ return; }
