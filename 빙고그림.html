@@ -128,18 +128,13 @@ body { display:flex; flex-direction:column; }
 .text-color-swatch[data-off="1"] { background:white !important; }
 
 /* ── 우측 상단 X버튼 ── */
-#topBtns { position:fixed; top:6px; right:8px; display:flex; gap:6px; z-index:200; }
-#btnCancel { border:none; border-radius:8px; cursor:pointer; font-family:inherit; font-size:12px; padding:5px 10px; background:transparent; color:#aaa; }
+#btnCancel { color:#aaa; }
 #btnSubmit:disabled { opacity:.6; cursor:not-allowed; }
 </style>
 </head>
 <body>
 
 <div id="titleBar"></div>
-<div id="topBtns">
-  <button id="btnCancel" onclick="doCancel()">✕</button>
-</div>
-
 <div id="mainWrap">
   <div class="cover-main-row">
 
@@ -196,7 +191,10 @@ body { display:flex; flex-direction:column; }
         <button class="cover-tool-btn" onclick="undoCover()" title="실행 취소">↶</button>
         <button class="cover-tool-btn" onclick="redoCover()" title="다시 실행">↷</button>
         <button class="cover-tool-btn" onclick="clearCover()" title="전체 지우기">🗑️</button>
-        <button id="btnSubmit" class="cover-tool-btn" onclick="doSubmit()" title="제출하기">📤</button>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <button id="btnSubmit" class="cover-tool-btn" onclick="doSubmit()" title="제출하기">📤</button>
+          <button id="btnCancel" class="cover-tool-btn" onclick="doCancel()" title="닫기">✕</button>
+        </div>
       </div>
     </div>
 
@@ -794,7 +792,9 @@ function _writeBingoDraft(){
     var _blank=false;
     try{ _blank=(typeof isCoverBlank==='function')&&isCoverBlank(); }catch(_){ _blank=false; }
     if(_blank){
-        try{ localStorage.removeItem(_bingoDraftKey); }catch(_){}
+        // ⚠️ 그냥 지우면 '지운 사실'이 사라져, 다시 열 때 서버의 옛 그림이 되살아난다.
+        //    'BLANK' 표식 + 시각을 남겨 '가장 최근 상태 = 빈 캔버스'임을 알린다.
+        try{ localStorage.setItem(_bingoDraftKey,'BLANK'); localStorage.setItem(_bingoDraftKey+'_ts', String(Date.now())); }catch(_){}
         return;
     }
     var url='';
@@ -807,6 +807,7 @@ function _writeBingoDraft(){
     if(!url) return;
     try{
         localStorage.setItem(_bingoDraftKey, url);
+        try{ localStorage.setItem(_bingoDraftKey+'_ts', String(Date.now())); }catch(_){}
     }catch(e){
         // 쿼터 초과 — 다른(오래된) 빙고 드래프트 정리 후 1회 재시도
         try{
@@ -843,7 +844,21 @@ function isCoverBlank(){if(!_coverCanvas||!_coverCtx)return true;if(_coverSticke
 function getCoverDataUrl(maxW,quality){if(!_coverCanvas)return'';const _bScale=maxW?Math.min(1,maxW/_coverCanvas.width):1;const _bW=Math.round(_coverCanvas.width*_bScale),_bH=Math.round(_coverCanvas.height*_bScale);const tmp=document.createElement('canvas');tmp.width=_bW;tmp.height=_bH;const tctx=tmp.getContext('2d');tctx.fillStyle='white';tctx.fillRect(0,0,_bW,_bH);if(_bScale!==1)tctx.scale(_bScale,_bScale);if(_coverBase)tctx.drawImage(_coverBase,0,0);_coverStickers.forEach(s=>{if(s.type==='image'){const w=s.size,h=s.size/(s.aspect||1);const img=_imageCache[s.src];if(img&&img.complete){tctx.save();tctx.translate(s.x,s.y);if(s.rotation)tctx.rotate(s.rotation);tctx.drawImage(img,-w/2,-h/2,w,h);tctx.restore();}}else if(s.type==='text'){tctx.save();tctx.translate(s.x,s.y);if(s.rotation)tctx.rotate(s.rotation);tctx.font=`${s.size}px '${s.font||'Dongle'}',sans-serif`;tctx.textAlign='center';tctx.textBaseline='middle';const lines=String(s.text).split('\n'),lh=s.size*1.1,startY=-(lines.length-1)*lh/2;if(s.bg){let mw=0;lines.forEach(ln=>{mw=Math.max(mw,tctx.measureText(ln).width);});tctx.fillStyle=s.bg;tctx.fillRect(-mw/2-s.size*.2,startY-lh/2-s.size*.1,mw+s.size*.4,lines.length*lh+s.size*.2);}if(s.shadow){tctx.fillStyle=s.shadow;lines.forEach((ln,i)=>tctx.fillText(ln,2,startY+i*lh+2));}tctx.fillStyle=s.color||'#333';lines.forEach((ln,i)=>tctx.fillText(ln,0,startY+i*lh));tctx.restore();}else{tctx.save();tctx.translate(s.x,s.y);if(s.rotation)tctx.rotate(s.rotation);tctx.font=`${s.size}px serif`;tctx.textAlign='center';tctx.textBaseline='middle';tctx.fillText(s.emoji,0,0);tctx.restore();}});if(_coverCanvas)tctx.drawImage(_coverCanvas,0,0);return tmp.toDataURL('image/jpeg',quality||0.88);}
 
 /* ── 제출 / 취소 ── */
+let _saveMode=false;   // true = 마니또 그림 선물(제출이 아니라 '저장'), ✕로 닫아도 저장
+
+function _sendDrawDone(close){
+    const btn=document.getElementById('btnSubmit');
+    if(btn){btn.textContent='⏳';btn.disabled=true;}
+    try{
+        const dataUrl=getCoverDataUrl();
+        // ⚠️ 드래프트는 부모가 ack(bingoDrawSaved)를 줄 때까지 보존
+        // close=true면 부모가 창을 닫는다(✕). 저장(💾)만 누른 경우엔 창을 유지.
+        window.parent.postMessage({type:'bingoDrawDone',dataUrl,note:'',close:!!close},'*');
+    }catch(e){ if(btn){btn.textContent=_saveMode?'💾':'📤';btn.disabled=false;} alert('오류: '+e.message); }
+}
+
 function doSubmit(){
+    if(_saveMode){ if(isCoverBlank()){ _sendDrawCleared(false); return; } _sendDrawDone(false); return; }
     if(isCoverBlank()){
         // 빈 캔버스 알림 모달
         const m=document.createElement('div');
@@ -884,20 +899,45 @@ function doSubmit(){
         }catch(e){btn.textContent='📤';btn.disabled=false;alert('오류: '+e.message);}
     };
 }
-function doCancel(){window.parent.postMessage({type:'bingoDrawCancel'},'*');}
+function _showBlankMsg(){
+    const m=document.createElement('div');
+    m.setAttribute('data-blank-modal','1');
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:20000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    m.innerHTML=`<div style="background:white;border-radius:22px;padding:28px 24px;width:min(320px,100%);text-align:center;font-family:'Jua';box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+        <div style="font-size:42px;margin-bottom:10px;">🎨</div>
+        <div style="font-size:17px;font-weight:bold;color:#333;margin-bottom:20px;">그림을 먼저 그려주세요!</div>
+        <button onclick="this.closest('[data-blank-modal]').remove()" style="padding:10px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#7F77DD,#D4537E);color:white;font-family:'Jua';font-size:15px;font-weight:bold;cursor:pointer;">확인</button>
+    </div>`;
+    document.body.appendChild(m);
+    m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+}
+
+// ✕: 저장 모드면 저장하고 닫기(빈 그림이면 그냥 닫기), 아니면 기존대로 취소
+function _sendDrawCleared(close){
+    // 저장 모드에서 다 지우면 '그림 없음'을 그대로 저장 (드래프트도 제거)
+    if(_bingoDraftKey){try{localStorage.removeItem(_bingoDraftKey);localStorage.removeItem(_bingoDraftKey+'_ts');}catch(_){}}
+    window.parent.postMessage({type:'bingoDrawCleared',close:!!close},'*');
+}
+
+function doCancel(){
+    if(_saveMode){ if(isCoverBlank()) _sendDrawCleared(true); else _sendDrawDone(true); return; }
+    window.parent.postMessage({type:'bingoDrawCancel'},'*');
+}
 
 /* ── postMessage ── */
 window.addEventListener('message',e=>{
     if(e.data?.type==='bingoDrawSaved'){
         // 부모가 업로드+제출 확정 완료 → 이제서야 드래프트 삭제(재현 방지)
-        if(_bingoDraftKey){try{localStorage.removeItem(_bingoDraftKey);}catch(_){} _bingoDraftKey=null;}
-        if(_bingoDraftTimer){clearTimeout(_bingoDraftTimer);_bingoDraftTimer=null;}
+        if(_bingoDraftKey){try{localStorage.removeItem(_bingoDraftKey);localStorage.removeItem(_bingoDraftKey+'_ts');}catch(_){} if(!_saveMode)_bingoDraftKey=null;}
+        if(_bingoDraftTimer&&!_saveMode){clearTimeout(_bingoDraftTimer);_bingoDraftTimer=null;}
+        const _b=document.getElementById('btnSubmit');
+        if(_b&&_saveMode){_b.textContent='💾';_b.disabled=false;}
         return;
     }
     if(e.data?.type==='bingoDrawError'){
         // 업로드 실패 → 버튼 재활성화, 드래프트는 그대로 유지해 재제출/복원 가능
         const btn=document.getElementById('btnSubmit');
-        if(btn){btn.textContent='📤';btn.disabled=false;}
+        if(btn){btn.textContent=_saveMode?'💾':'📤';btn.disabled=false;}
         return;
     }
     if(e.data?.type==='bingoDrawInit'){
@@ -908,12 +948,31 @@ window.addEventListener('message',e=>{
         const cd=e.data.cd||'';const ci=e.data.ci!=null?String(e.data.ci):'';const sid=e.data.sid||'';
         // sid를 포함해 드래프트 키를 격리 — clearBingo 후 새 빙고 시작 시 이전 드래프트 무시
         _bingoDraftKey=(cd&&ci!=='')?`bingoDraft_${cd}_${ci}${sid?'_'+sid:''}`:null;
+        _saveMode=!!e.data.saveMode;
+        const _sb=document.getElementById('btnSubmit');
+        if(_sb){ _sb.textContent=_saveMode?'💾':'📤'; _sb.title=_saveMode?'저장하기':'제출하기'; _sb.disabled=false; }
         const prevImg=e.data.prevImg||'';
         // 복원 우선순위: 로컬 드래프트(=최신 진행분) → 거절 이미지(prevImg).
         //  첫 제출 성공 시 드래프트는 ack로 삭제되므로, 재접속 때 드래프트가 남아있다는 건
         //  "거절 후 다시 그리던 진행분"이라 반드시 최우선이어야 함(과거: prevImg 우선 → 재그리기 유실).
-        const draftImg=_bingoDraftKey?(() => { try { return localStorage.getItem(_bingoDraftKey)||''; } catch(e){return '';} })():'';
-        const imgToLoad=draftImg||prevImg;
+        const draftRaw=_bingoDraftKey?(() => { try { return localStorage.getItem(_bingoDraftKey); } catch(e){return null;} })():null;
+        const hasDraft=(draftRaw!=null);
+        const draftImg=(draftRaw&&draftRaw!=='BLANK')?draftRaw:'';   // 'BLANK' = 지운 상태
+        // 복원 선택:
+        //  · preferPrev(마니또 그림 선물): 서버 저장본(prevImg)과 로컬 진행분(draft) 중 '더 최근 것'
+        //    (저장 안 하고 나갔다 다시 들어온 진행분이 옛 서버 그림에 덮이지 않게)
+        //  · 그 외(빙고 미션): 기존대로 로컬 드래프트 우선
+        let imgToLoad=draftImg||prevImg;
+        if(e.data.preferPrev){
+            // (그림 선물) 지운 상태(BLANK)도 하나의 '진행분'으로 취급해 시각 비교에 참여시킨다
+            // 서버 저장본(prevImg, 지운 상태면 '')과 로컬 진행분 중 '더 최근 것'.
+            //   ★ prevImg가 비어 있어도(=지움 저장) 비교해야 한다. 안 그러면 오래된 로컬 진행분이
+            //     되살아나 "지웠는데 새로고침하면 처음 그림이 돌아오는" 버그가 생김.
+            let draftTs=0;
+            try{ draftTs=parseInt(localStorage.getItem((_bingoDraftKey||'')+'_ts'))||0; }catch(_){}
+            const prevTs=parseInt(e.data.prevTs)||0;
+            imgToLoad=(hasDraft&&draftTs>prevTs)?draftImg:prevImg;
+        }
         if(imgToLoad){
             const img=new Image();img.crossOrigin='anonymous';
             img.onload=()=>{
