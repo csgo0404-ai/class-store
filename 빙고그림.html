@@ -334,12 +334,15 @@ function initCoverCanvas() {
         return { x:(clientX-r.left)*(_coverCanvas.width/r.width), y:(clientY-r.top)*(_coverCanvas.height/r.height) };
     };
     const getSize = () => parseInt(document.getElementById('coverBrushSize').value)||4;
+    // 화면 1px당 캔버스 좌표 단위(줌/축소 반영). 터치 핸들 히트 영역 확대에 사용.
+    window._coverCanvasScale = () => { const r=_coverCanvas.getBoundingClientRect(); return r.width>0?_coverCanvas.width/r.width:1; };
 
     const startDraw = (cx, cy) => {
         if (_coverTool === 'pan') { _panStart={panX:_coverPanX,panY:_coverPanY,px:cx,py:cy}; updateCoverCursor(); return; }
         const p = getPos(cx, cy);
         if (_coverTool === 'sticker' || _coverTool === 'select') {
-            const hit = hitTestSticker(p.x, p.y);
+            const _pad = window._coverIsTouch ? 18*window._coverCanvasScale() : 0;
+            const hit = hitTestSticker(p.x, p.y, _pad);
             if (hit.handle === 'delete') { _coverStickers.splice(hit.idx,1); _selectedStickerIdx=-1; renderStickerLayer(); saveCoverState(); return; }
             if (hit.idx >= 0) {
                 _selectedStickerIdx = hit.idx; _stickerDragMode = hit.handle||'move';
@@ -404,7 +407,7 @@ function initCoverCanvas() {
         if(hit.idx>=0&&_coverStickers[hit.idx].type==='text') editTextSticker(hit.idx);
     });
     _coverCanvas.addEventListener('mousedown', e => {
-        e.preventDefault(); startDraw(e.clientX,e.clientY);
+        e.preventDefault(); window._coverIsTouch=false; startDraw(e.clientX,e.clientY);
         const wm=(ev)=>moveDraw(ev.clientX,ev.clientY);
         const wu=(ev)=>{endDraw(ev.clientX,ev.clientY); window.removeEventListener('mousemove',wm); window.removeEventListener('mouseup',wu);};
         window.addEventListener('mousemove',wm); window.addEventListener('mouseup',wu);
@@ -428,7 +431,17 @@ function initCoverCanvas() {
             const r=_coverWrap.getBoundingClientRect();
             _pinchCenter={x:(t1.clientX+t2.clientX)/2-r.left,y:(t1.clientY+t2.clientY)/2-r.top};
             _panStart={panX:_coverPanX,panY:_coverPanY,cx:_pinchCenter.x,cy:_pinchCenter.y};
-        } else if(e.touches.length===1) { startDraw(e.touches[0].clientX,e.touches[0].clientY); }
+        } else if(e.touches.length===1) {
+            window._coverIsTouch=true;
+            const t=e.touches[0], p0=getPos(t.clientX,t.clientY), now=Date.now(), prev=window._gbLastTap;
+            // 더블탭 = 더블클릭 대체: 기존 텍스트 스티커 편집(태블릿엔 dblclick이 없음)
+            if(prev && (now-prev.t)<320 && Math.hypot(t.clientX-prev.x,t.clientY-prev.y)<30){
+                const hit=hitTestSticker(p0.x,p0.y,18*window._coverCanvasScale());
+                if(hit.idx>=0 && _coverStickers[hit.idx].type==='text'){ window._gbLastTap=null; _stickerDragMode=null; editTextSticker(hit.idx); return; }
+            }
+            window._gbLastTap={t:now,x:t.clientX,y:t.clientY};
+            startDraw(t.clientX,t.clientY);
+        }
     }, { passive:false });
     _coverCanvas.addEventListener('touchmove', e => {
         e.preventDefault();
@@ -441,7 +454,7 @@ function initCoverCanvas() {
             zoomAt(ratio,_pinchCenter.x,_pinchCenter.y);
             _coverPanX+=nc.x-_pinchCenter.x; _coverPanY+=nc.y-_pinchCenter.y;
             applyTransform(); _pinchDist=nd; _pinchCenter=nc;
-        } else if(e.touches.length===1&&_coverDrawing) { moveDraw(e.touches[0].clientX,e.touches[0].clientY); }
+        } else if(e.touches.length===1&&(_coverDrawing||_panStart||_selectMarquee||(_stickerDragMode&&_selectedStickerIdx>=0))) { moveDraw(e.touches[0].clientX,e.touches[0].clientY); }
     }, { passive:false });
     _coverCanvas.addEventListener('touchend', e => {
         _panStart=null;
@@ -607,15 +620,18 @@ function renderStickerLayer() {
         }
     });
 }
-function hitTestSticker(x,y) {
+function hitTestSticker(x,y,pad) {
+    pad=pad||0;
     for(let i=_coverStickers.length-1;i>=0;i--){
         const s=_coverStickers[i],halfW=s.size/2,halfH=(s.type==='image'?s.size/(s.aspect||1):s.size)/2;
         const cos=Math.cos(-(s.rotation||0)),sin=Math.sin(-(s.rotation||0));
         const dx=x-s.x,dy=y-s.y,lx=dx*cos-dy*sin,ly=dx*sin+dy*cos;
         if(i===_selectedStickerIdx){
-            if(Math.hypot(lx-(halfW+4),ly-(-halfH-4))<=14) return{idx:i,handle:'delete'};
-            if(Math.hypot(lx-0,ly-(-halfH-24))<=12) return{idx:i,handle:'rotate'};
-            if(lx>=halfW-10&&lx<=halfW+10&&ly>=halfH-10&&ly<=halfH+10) return{idx:i,handle:'resize'};
+            // 핸들이 몸통 중심까지 삼키지 않도록 스티커 크기에 비례해 pad 상한 적용(작은 이미지 이동 보호)
+            const hp=Math.min(pad,Math.max(halfW,halfH)*0.6);
+            if(Math.hypot(lx-(halfW+4),ly-(-halfH-4))<=14+hp) return{idx:i,handle:'delete'};
+            if(Math.hypot(lx-0,ly-(-halfH-24))<=12+hp) return{idx:i,handle:'rotate'};
+            if(Math.hypot(lx-halfW,ly-halfH)<=14+hp) return{idx:i,handle:'resize'};
         }
         if(lx>=-halfW&&lx<=halfW&&ly>=-halfH&&ly<=halfH) return{idx:i,handle:false};
     }
