@@ -9141,8 +9141,13 @@ let _renderLock = false; // 재진입 방지
         if(machine && machine.r && machine.r.length) {
             const totalP = machine.r.reduce((a,r)=>a+(r.p||0),0) || 1;
             let roll = Math.random() * totalP;
-            let pick = machine.r[0];
-            for(const r of machine.r) { roll -= (r.p||0); if(roll <= 0) { pick = r; break; } }
+            let pick = null;
+            // p<=0 항목은 건너뛰어 절대 선택되지 않게, 흡수 대상도 p>0인 마지막 항목
+            for(const r of machine.r) { const p=(r.p||0); if(p<=0) continue; roll -= p; if(roll < 0) { pick = r; break; } }
+            if(!pick){
+                for(let i=machine.r.length-1;i>=0;i--){ if((machine.r[i].p||0)>0){ pick=machine.r[i]; break; } }
+                if(!pick) pick=machine.r[0]; // 전부 0%면 최후 안전장치
+            }
             const itmCat = (Array.isArray(db.itm)?db.itm:Object.values(db.itm||{})).find(it=>it && it.n===pick.n);
             if(itmCat) {
                 if(!s.inv) s.inv = [];
@@ -22606,9 +22611,18 @@ window.appU = function(y, si, k) {
         // 즉시 Firebase 저장 — sv() 디바운스 우회 (학생 화면 즉시 반영)
         try {
             dbRef.child('gac').set(db.gac);
+            // ★학생 캐시 무효화 — gacRev bump.
+            //   saveGac은 gac를 직접 write하고 아래에서 _lastSentHash.gac까지 동기화하므로,
+            //   뒤이은 sv()가 gac 변경을 감지 못해 gacRev를 올리지 않는다.
+            //   → 학생 화면은 cfg/gacRev가 그대로라 옛 localStorage 캐시(_gac_v)를 계속 사용
+            //     (변경 전 확률/항목이 그대로 뽑힘). 여기서 직접 gacRev를 올려 캐시를 무효화한다.
+            const _gacRev = Date.now();
+            if(!db.cfg) db.cfg = {};
+            db.cfg.gacRev = _gacRev;
+            dbRef.child('cfg/gacRev').set(_gacRev);
             // _lastSentHash 동기화 — 후속 sv()가 불필요하게 재전송 안 하도록
             if(window._lastSentHash) window._lastSentHash.gac = JSON.stringify(db.gac);
-            console.log('[saveGac] 직접 저장 →', item.n, '/ 총', db.gac.length, '대');
+            console.log('[saveGac] 직접 저장 →', item.n, '/ 총', db.gac.length, '대 (gacRev', _gacRev, ')');
         } catch(e) { console.error('[saveGac] direct write 실패', e); }
         sv(); rSet(editIdx>=0?editIdx:db.gac.length-1); document.getElementById('gacMgrModal').remove();
     };
@@ -26446,9 +26460,15 @@ window.appU = function(y, si, k) {
             if(pick.ns && pick.ns.length > 1) _pickedBundle = pick.ns;
             if(pick.currency) window._pickCurrency = pick.currency;
         } else {
-            // 일반 확률 뽑기 로직 (확률 합이 100 미만이면 마지막 항목이 나머지를 흡수)
-            let rnd=Math.random()*100, acc=0, pk=g.r[g.r.length-1];
-            for(let r of g.r){ acc+=parseFloat(r.p); if(rnd<=acc){ pk=r; break; } }
+            // 일반 확률 뽑기 로직 (확률 합이 100 미만이면 p>0인 마지막 항목이 나머지를 흡수)
+            //  - rnd<acc (등호 제외): p=0 항목은 구간 폭이 0이라 절대 선택되지 않음
+            //  - 흡수 대상도 p>0인 마지막 항목 → 마지막 줄을 0%로 둬도 안 나옴
+            let rnd=Math.random()*100, acc=0, pk=null;
+            for(let r of g.r){ acc+=(parseFloat(r.p)||0); if(rnd<acc){ pk=r; break; } }
+            if(!pk){
+                for(let i=g.r.length-1;i>=0;i--){ if((parseFloat(g.r[i].p)||0)>0){ pk=g.r[i]; break; } }
+                if(!pk) pk=g.r[g.r.length-1]; // 전부 0%면 최후 안전장치
+            }
 
             pkName = pk.n || (pk.ns && pk.ns[0]) || '?';
             qty = pk.q || 1;
@@ -29917,9 +29937,14 @@ window.addCharRow = function() {
             if(!gac.spc) {
                 const totalP = candidates.reduce((s, r) => s + (parseFloat(r.p) || 0), 0);
                 if(totalP > 0) {
+                    // p=0 항목은 선택 안 됨(rnd<acc), 남는 확률도 p>0인 마지막 항목이 흡수
                     let rnd = Math.random() * 100, acc = 0;
-                    pick = candidates[candidates.length - 1];
-                    for(const r of candidates) { acc += parseFloat(r.p) || 0; if(rnd <= acc) { pick = r; break; } }
+                    pick = null;
+                    for(const r of candidates) { acc += (parseFloat(r.p) || 0); if(rnd < acc) { pick = r; break; } }
+                    if(!pick){
+                        for(let i=candidates.length-1;i>=0;i--){ if((parseFloat(candidates[i].p)||0)>0){ pick=candidates[i]; break; } }
+                        if(!pick) pick=candidates[candidates.length-1];
+                    }
                 } else {
                     pick = candidates[Math.floor(Math.random() * candidates.length)];
                 }
@@ -29928,8 +29953,12 @@ window.addCharRow = function() {
             }
         } else {
             let rnd = Math.random() * 100, acc = 0;
-            pick = gac.r[gac.r.length - 1];
-            for(const r of gac.r) { acc += parseFloat(r.p); if(rnd <= acc) { pick = r; break; } }
+            pick = null;
+            for(const r of gac.r) { acc += (parseFloat(r.p) || 0); if(rnd < acc) { pick = r; break; } }
+            if(!pick){
+                for(let i=gac.r.length-1;i>=0;i--){ if((parseFloat(gac.r[i].p)||0)>0){ pick=gac.r[i]; break; } }
+                if(!pick) pick=gac.r[gac.r.length-1];
+            }
         }
         if(!pick) return null;
         // entry 사본 — undefined 필드 제거 (Firebase가 undefined 거부)
@@ -30724,8 +30753,13 @@ window.addCharRow = function() {
             const cands = unowned.length>0 ? unowned : gac.r;
             return cands[Math.floor(Math.random()*cands.length)];
         }
-        let rnd=Math.random()*100,acc=0,pk=gac.r[gac.r.length-1];
-        for(let r of gac.r){acc+=parseFloat(r.p||0);if(rnd<=acc){pk=r;break;}}
+        // p=0 항목은 절대 선택 안 됨(rnd<acc), 남는 확률도 p>0인 마지막 항목이 흡수
+        let rnd=Math.random()*100,acc=0,pk=null;
+        for(let r of gac.r){acc+=(parseFloat(r.p)||0);if(rnd<acc){pk=r;break;}}
+        if(!pk){
+            for(let i=gac.r.length-1;i>=0;i--){ if((parseFloat(gac.r[i].p)||0)>0){ pk=gac.r[i]; break; } }
+            if(!pk) pk=gac.r[gac.r.length-1];
+        }
         return pk;
     }
 
@@ -34974,6 +35008,13 @@ window.addCharRow = function() {
         if(!confirm('접속 중인 모든 사용자 화면을 강제로 새로고침합니까?\n저장되지 않은 내용이 있으면 소실될 수 있습니다.')) return;
         if(!db.cfg) db.cfg = {};
         db.cfg.reloadAt = Date.now();
+        // gac 캐시도 강제 무효화 — gacRev bump.
+        //   (학생은 location.reload()만으론 localStorage _gac_v 캐시를 유지하고,
+        //    gacRev가 그대로면 gac를 다시 안 받아온다. 여기서 올려 최신 뽑기 설정을 재fetch.)
+        //   버전 비교 방식이라 학생당 gac 1회만 재다운로드 → 이후 접속은 트래픽 0.
+        const _gacRev = Date.now();
+        db.cfg.gacRev = _gacRev;
+        try { dbRef.child('cfg/gacRev').set(_gacRev); } catch(_){}
         sv();
         alert('새로고침 신호가 전송되었습니다.');
     };
