@@ -983,7 +983,10 @@ async function uploadToCloudinary(blob, creatorCd){
 }
 
 // ===== 아이템 종류(교사 설정 cfg.petDraw.cats) =====
-const _PETDRAW_CATS = [['petskin','🐾 펫 스킨'],['face','얼굴'],['hair','머리'],['outfit','의상'],['shoes','신발'],['hat','모자'],['hair_deco','머리 장식'],['face_deco','얼굴 장식'],['back','등 장식'],['prop','소품'],['pet','펫']];
+// 표시 순서 = 이 배열 순서(_populateTypeSelect가 그대로 option으로 만든다).
+//   '펫 스킨'은 맨 아래로 — 목록 첫 항목이 기본 선택되므로, 위에 두면 매번 펫 스킨이 선택된 채 시작한다.
+//   ⚠️ 순서만 바꾼 것이며 key는 그대로다. 미설정 기본값(994)·빈목록 폴백(997)은 key 기반이라 영향 없다.
+const _PETDRAW_CATS = [['face','얼굴'],['hair','머리'],['outfit','의상'],['shoes','신발'],['hat','모자'],['hair_deco','머리 장식'],['face_deco','얼굴 장식'],['back','등 장식'],['prop','소품'],['pet','펫'],['petskin','펫 스킨']];
 function _catLabel(k){ const p=_PETDRAW_CATS.find(x=>x[0]===k); return p?p[1]:(k||''); }
 function _enabledCats(){
   const cats = (shopDb.cfg && shopDb.cfg.petDraw && shopDb.cfg.petDraw.cats) || {};
@@ -994,7 +997,7 @@ function _enabledCats(){
     const on = hasAny ? !!c.on : (k==='petskin');   // 미설정 기본값: 펫 스킨만
     if(on) out.push({key:k, label:lb, min:(c.min!=null?c.min:0), max:(c.max!=null?c.max:0)});
   });
-  if(!out.length) out.push({key:'petskin', label:'🐾 펫 스킨', min:0, max:0});
+  if(!out.length) out.push({key:'petskin', label:'펫 스킨', min:0, max:0});
   return out;
 }
 function _typeBounds(k){ const e=_enabledCats().find(c=>c.key===k); return e?{min:e.min,max:e.max}:{min:0,max:0}; }
@@ -1077,6 +1080,9 @@ document.getElementById('submitBtn').addEventListener('click', async ()=>{
       };
       const _subRef = await dbRef.child('skinSubmissions').push(sub);
       subKey = (_subRef && _subRef.key) || '';
+      // 교사 사이드바 '대기 N건' 배지용 경량 카운터 +1 — 교사가 무거운 skinSubmissions 구독을
+      //   접었을 때도 배지가 뜨게 한다(이어그리기 덮어쓰기는 대기 수가 안 늘므로 여기서만 증가).
+      try { await dbRef.child('cfg/skinSubCnt').set(firebase.database.ServerValue.increment(1)); } catch(_){}
     }
     if(subKey){
       const _cid = _continueCid || ('c'+Date.now()+'_'+Math.floor(Math.random()*1000));
@@ -1246,7 +1252,14 @@ window._confirmDeleteMySub = function(cid){
 };
 async function _deleteMySub(cid){
   const rec=_getMySubs().find(r=>r.cid===cid); if(!rec) return;
-  if(rec.key){ try{ await dbRef.child('skinSubmissions/'+rec.key).remove(); }catch(e){ console.warn('[삭제]',e); } _unwatchMySub(rec.key); }
+  if(rec.key){
+    // 대기중인 것만 카운터 -1 (승인·거절된 건은 이미 대기 수에서 빠져 있다)
+    let _wasPending = (rec.status === 'pending');
+    try{ const _cur=(await dbRef.child('skinSubmissions/'+rec.key).get()).val(); if(_cur) _wasPending = (_cur.status === 'pending'); }catch(_){}
+    try{ await dbRef.child('skinSubmissions/'+rec.key).remove(); }catch(e){ console.warn('[삭제]',e); }
+    if(_wasPending){ try{ await dbRef.child('cfg/skinSubCnt').set(firebase.database.ServerValue.increment(-1)); }catch(_){} }
+    _unwatchMySub(rec.key);
+  }
   _removeMySubByCid(cid);
   if(_continueCid===cid){ _continueCid=''; _continueKey=''; }
   try{ window._renderMySubs && window._renderMySubs(); }catch(_){}
